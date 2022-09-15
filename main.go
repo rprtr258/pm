@@ -89,6 +89,7 @@ func main() {
 					fmt.Fprintf(os.Stderr, "found strange file %q which should not exist\n", path.Join(homeDir, f.Name()))
 					continue
 				}
+
 				fmt.Printf("%#v", f.Name())
 			}
 			return nil
