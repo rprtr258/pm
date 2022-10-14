@@ -49,7 +49,7 @@ touch unit_time
 D=test/programmatic
 
 # Abort script at first error
-# set -e
+set -e
 
 runUnitTest $D/filter_env.mocha.js
 runUnitTest $D/resurect_state.mocha.js

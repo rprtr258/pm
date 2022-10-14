@@ -1,7 +1,3 @@
-#
-# (C) 2013 Unitech.io Inc.
-#
-
 # export PM2_RPC_PORT=4242
 # export PM2_PUB_PORT=4243
 

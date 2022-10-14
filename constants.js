@@ -1,16 +1,11 @@
 var debug  = require('debug')('pm2:conf');
 var p      = require('path');
-var util   = require('util');
 var chalk  = require('chalk');
 
-/**
- * Get PM2 path structure
- */
+// Get PM2 path structure
 var path_structure = require('./paths.js')(process.env.OVER_HOME);
 
-/**
- * Constants variables used by PM2
- */
+// Constants variables used by PM2
 var csts = {
   PREFIX_MSG              : chalk.green('[PM2] '),
   PREFIX_MSG_INFO         : chalk.cyan('[PM2][INFO] '),
