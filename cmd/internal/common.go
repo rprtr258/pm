@@ -38,12 +38,6 @@ func NewGrpcClient() (pb.GreeterClient, func() error, error) {
 	}
 
 	return pb.NewGreeterClient(conn), conn.Close, nil
-
-	// r, err := c.SayHello(ctx, &pb.HelloRequest{Name: *name})
-	// if err != nil {
-	// 	log.Fatalf("could not greet: %v", err)
-	// }
-	// log.Printf("Greeting: %s", r.GetMessage())
 }
 
 // { // 	Name:      "trigger", // 	Usage:     "trigger process action", // 	ArgsUsage: "<id|proc_name|namespace|all> <action_name> [params]", // 	//   .action(function(pm_id, action_name, params) { // 	//     pm2.trigger(pm_id, action_name, params); // },
