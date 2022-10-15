@@ -1,6 +1,9 @@
 package internal
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // import (
 //   commander   "commander"
@@ -776,6 +779,26 @@ func start(script string, options StartOptions, errback ErrProcCallback) {
 // Private methods //
 /////////////////////
 
+// If start <app_name> start/restart application
+func restartProcessByName(name string) error {
+	id, err := Client.getProcessIdByName(name)
+	if err != nil {
+		return err
+	}
+
+	if !id.Valid {
+		return fmt.Errorf("process with name %q was not found", name)
+	}
+
+	list, err := _operate("restartProcessId", name, opts)
+	if err != nil {
+		return err
+	}
+
+	Common.printOut(conf.PREFIX_MSG + "Process successfully started")
+	return cb(true, list)
+}
+
 // _startScript - START / RESTART a script
 func _startScript(cfg config, opts StartOptions) error {
 	app_conf := RunConfig{
@@ -816,7 +839,7 @@ func _startScript(cfg config, opts StartOptions) error {
 
 	//     series([
 	//       restartExistingProcessName,
-	//       restartExistingNameSpace,
+	//       restartExistingNamespace,
 	//       restartExistingProcessId,
 	//       restartExistingProcessPathOrStartNew
 	//     ], function(err, data) {
@@ -833,30 +856,8 @@ func _startScript(cfg config, opts StartOptions) error {
 	//       return cb ? cb(null, ret) : that.speedList();
 	//     });
 
-	//     // If start <app_name> start/restart application
-	//     function restartExistingProcessName(cb) {
-	//       if (!isNaN(script) ||
-	//         (typeof script == 'string' && script.indexOf('/') != -1) ||
-	//         (typeof script == 'string' && path.extname(script) !== ''))
-	//         return cb(null);
-
-	//         that.Client.getProcessIdByName(script, function(err, ids) {
-	//           if (err && cb) return cb(err);
-	//           if (ids.length > 0) {
-	//             that._operate('restartProcessId', script, opts, function(err, list) {
-	//               if (err) return cb(err);
-	//               Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
-	//               return cb(true, list);
-	//             });
-	//           }
-	//           else return cb(null);
-	//         });
-	//     }
-
-	//     /**
-	//      * If start <namespace> start/restart namespace
-	//      */
-	//     function restartExistingNameSpace(cb) {
+	// If start <namespace> start/restart namespace
+	//     function restartExistingNamespace(cb) {
 	//       if (!isNaN(script) ||
 	//         (typeof script == 'string' && script.indexOf('/') != -1) ||
 	//         (typeof script == 'string' && path.extname(script) !== ''))
@@ -894,10 +895,7 @@ func _startScript(cfg config, opts StartOptions) error {
 	//       });
 	//     }
 
-	//     /**
-	//      * Restart a process with the same full path
-	//      * Or start it
-	//      */
+	// Restart a process with the same full path. Or start it
 	//     function restartExistingProcessPathOrStartNew(cb) {
 	//       that.Client.executeRemote('getMonitorData', {}, function(err, procs) {
 	//         if (err) return cb ? cb(new Error(err)) : that.exitCli(conf.ERROR_EXIT);
