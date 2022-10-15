@@ -6,9 +6,8 @@ import (
 	"path"
 
 	"github.com/fatih/color"
+	"github.com/rprtr258/pm/internal"
 	"github.com/urfave/cli/v2"
-
-	cst "github.com/rprtr258/pm"
 )
 
 // processes - proc name -> pid
@@ -185,7 +184,7 @@ func main() {
 - Install pm2 auto completion:
 %s
 `,
-				cst.PREFIX_MSG,
+				internal.PREFIX_MSG,
 				color.HiBlackString("pm2 usage examples:"),
 				color.CyanString("pm2 start app.js --name app"),
 				color.CyanString("pm2 ls"),

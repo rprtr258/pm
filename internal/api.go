@@ -67,102 +67,104 @@ type Proc struct {
 	exit_code         Optional[int]
 }
 
+// TODO: remove
 type ErrProcCallback func(error, Proc)
 
 type StartOptions struct {
-	// Enable or disable auto restart after process failure (default: true).
-	autorestart Optional[bool]
-	/**
-	 * An arbitrary name that can be used to interact with (e.g. restart) the process
-	 * later in other commands. Defaults to the script name without its extension
-	 * (eg “testScript” for “testScript.js”)
-	 */
-	name Optional[string]
-	// The path of the script to run
-	script Optional[string]
+	namespace Optional[string]
+	// // Enable or disable auto restart after process failure (default: true).
+	// autorestart Optional[bool]
+	// /**
+	//  * An arbitrary name that can be used to interact with (e.g. restart) the process
+	//  * later in other commands. Defaults to the command name without its extension
+	//  * (eg “testScript” for “testScript.js”)
+	//  */
+	// name Optional[string]
+	// The path of the command to run
+	command string
 	// A string or array of strings composed of arguments to pass to the script.
 	args []string
-	/**
-	 * A string or array of strings composed of arguments to call the interpreter process with.
-	 * Eg “–harmony” or [”–harmony”,”–debug”]. Only applies if interpreter is something other
-	 * than “none” (its “node” by default).
-	 */
-	interpreter_args []string
-	// The working directory to start the process with.
-	cwd Optional[string]
-	/**
-	 * (Default: “~/.pm2/logs/app_name-out.log”) The path to a file to append stdout output to.
-	 * Can be the same file as error.
-	 */
-	output Optional[string]
-	// (Default: “~/.pm2/logs/app_name-error.err”) The path to a file to append stderr output to. Can be the same file as output.
-	error Optional[string]
-	// The display format for log timestamps (eg “YYYY-MM-DD HH:mm Z”). The format is a moment display format.
-	log_date_format Optional[string]
-	/**
-	 * Default: “~/.pm2/logs/~/.pm2/pids/app_name-id.pid”)
-	 * The path to a file to write the pid of the started process. The file will be overwritten.
-	 * Note that the file is not used in any way by pm2 and so the user is free to manipulate or
-	 * remove that file at any time. The file will be deleted when the process is stopped or the daemon killed.
-	 */
-	pid Optional[string]
-	// The minimum uptime of the script before it’s considered successfully started.
-	min_uptime Optional[int]
-	// The maximum number of times in a row a script will be restarted if it exits in less than min_uptime.
-	max_restarts       Optional[int]
-	max_memory_restart int
-	// Arguments to pass to the interpreter
-	node_args []string
-	// Prefix logs with time
-	time Optional[bool]
-	/**
-	 * This will make PM2 listen for that event. In your application you will need to add process.send('ready');
-	 * when you want your application to be considered as ready.
-	 */
-	wait_ready Optional[bool]
-	/**
-	 * (Default: 1600)
-	 * The number of milliseconds to wait after a stop or restart command issues a SIGINT signal to kill the
-	 * script forceably with a SIGKILL signal.
-	 */
-	kill_timeout Optional[time.Duration]
-	// (Default: 0) Number of millseconds to wait before restarting a script that has exited.
-	restart_delay Optional[time.Duration]
-	/**
-	 * (Default: “node”) The interpreter for your script (eg “python”, “ruby”, “bash”, etc).
-	 * The value “none” will execute the ‘script’ as a binary executable.
-	 */
-	interpreter Optional[string]
-	/**
-	 * (Default: ‘fork’) If sets to ‘cluster’, will enable clustering
-	 * (running multiple instances of the script).
-	 */
-	exec_mode Optional[string]
-	// (Default: 1) How many instances of script to create. Only relevant in exec_mode ‘cluster’.
-	instances Optional[int]
-	/**
-	 * (Default: false) If true, merges the log files for all instances of script into one stderr log
-	 * and one stdout log. Only applies in ‘cluster’ mode. For example, if you have 4 instances of
-	 * ‘test.js’ started via pm2, normally you would have 4 stdout log files and 4 stderr log files,
-	 * but with this option set to true you would only have one stdout file and one stderr file.
-	 */
-	merge_logs Optional[bool]
-	// If set to true, the application will be restarted on change of the script file.
-	watch []string
-	/**
-	 * (Default: false) By default, pm2 will only start a script if that script isn’t
-	 * already running (a script is a path to an application, not the name of an application
-	 * already running). If force is set to true, pm2 will start a new instance of that script.
-	 */
-	force                      Optional[bool]
-	ignore_watch               []string
-	cron                       any
-	execute_command            any
-	write                      any
-	source_map_support         any
-	disable_source_map_support any
-	// The environment variables to pass on to the process.
-	env map[string]string
+	// /**
+	//  * A string or array of strings composed of arguments to call the interpreter process with.
+	//  * Eg “–harmony” or [”–harmony”,”–debug”]. Only applies if interpreter is something other
+	//  * than “none” (its “node” by default).
+	//  */
+	// interpreter_args []string
+	// // The working directory to start the process with.
+	// cwd Optional[string]
+	// /**
+	//  * (Default: “~/.pm2/logs/app_name-out.log”) The path to a file to append stdout output to.
+	//  * Can be the same file as error.
+	//  */
+	// output Optional[string]
+	// // (Default: “~/.pm2/logs/app_name-error.err”) The path to a file to append stderr output to. Can be the same file as output.
+	// error Optional[string]
+	// // The display format for log timestamps (eg “YYYY-MM-DD HH:mm Z”). The format is a moment display format.
+	// log_date_format Optional[string]
+	// /**
+	//  * Default: “~/.pm2/logs/~/.pm2/pids/app_name-id.pid”)
+	//  * The path to a file to write the pid of the started process. The file will be overwritten.
+	//  * Note that the file is not used in any way by pm2 and so the user is free to manipulate or
+	//  * remove that file at any time. The file will be deleted when the process is stopped or the daemon killed.
+	//  */
+	// pid Optional[string]
+	// // The minimum uptime of the script before it’s considered successfully started.
+	// min_uptime Optional[int]
+	// // The maximum number of times in a row a script will be restarted if it exits in less than min_uptime.
+	// max_restarts       Optional[int]
+	// max_memory_restart int
+	// // Arguments to pass to the interpreter
+	// node_args []string
+	// // Prefix logs with time
+	// time Optional[bool]
+	// /**
+	//  * This will make PM2 listen for that event. In your application you will need to add process.send('ready');
+	//  * when you want your application to be considered as ready.
+	//  */
+	// wait_ready Optional[bool]
+	// /**
+	//  * (Default: 1600)
+	//  * The number of milliseconds to wait after a stop or restart command issues a SIGINT signal to kill the
+	//  * script forceably with a SIGKILL signal.
+	//  */
+	// kill_timeout Optional[time.Duration]
+	// // (Default: 0) Number of millseconds to wait before restarting a script that has exited.
+	// restart_delay Optional[time.Duration]
+	// /**
+	//  * (Default: “node”) The interpreter for your script (eg “python”, “ruby”, “bash”, etc).
+	//  * The value “none” will execute the ‘script’ as a binary executable.
+	//  */
+	// interpreter Optional[string]
+	// /**
+	//  * (Default: ‘fork’) If sets to ‘cluster’, will enable clustering
+	//  * (running multiple instances of the script).
+	//  */
+	// exec_mode Optional[string]
+	// // (Default: 1) How many instances of script to create. Only relevant in exec_mode ‘cluster’.
+	// instances Optional[int]
+	// /**
+	//  * (Default: false) If true, merges the log files for all instances of script into one stderr log
+	//  * and one stdout log. Only applies in ‘cluster’ mode. For example, if you have 4 instances of
+	//  * ‘test.js’ started via pm2, normally you would have 4 stdout log files and 4 stderr log files,
+	//  * but with this option set to true you would only have one stdout file and one stderr file.
+	//  */
+	// merge_logs Optional[bool]
+	// // If set to true, the application will be restarted on change of the script file.
+	// watch []string
+	// /**
+	//  * (Default: false) By default, pm2 will only start a script if that script isn’t
+	//  * already running (a script is a path to an application, not the name of an application
+	//  * already running). If force is set to true, pm2 will start a new instance of that script.
+	//  */
+	// force                      Optional[bool]
+	// ignore_watch               []string
+	// cron                       any
+	// execute_command            any
+	// write                      any
+	// source_map_support         any
+	// disable_source_map_support any
+	// // The environment variables to pass on to the process.
+	// env map[string]string
 }
 
 // type Opts struct {
@@ -450,13 +452,7 @@ func start(script string, options StartOptions, errback ErrProcCallback) {
 		return
 	}
 
-	_startScript(script, options, func(err error, procs Proc) {
-		if errback != nil {
-			errback(err, procs)
-		}
-
-		speedList(0)
-	})
+	_startScript(script, options)
 }
 
 //   // Reset process counters
@@ -780,209 +776,199 @@ func start(script string, options StartOptions, errback ErrProcCallback) {
 // Private methods //
 /////////////////////
 
-// Method to START / RESTART a script. script name will be resolved according to location
-  func _startScript (script string, opts struct{
-	ScriptArgs []string
-	namespace Optional[string]
-  }, cb ErrProcCallback) {
-    var app_conf = Config.filterOptions(opts);
-    appConf := {
-		args: opts.scriptArgs,
-		script: script,
-		namespace: OrDefault(opts.namespace, "default"),
-	};
+// _startScript - START / RESTART a script
+func _startScript(cfg config, opts StartOptions) error {
+	app_conf := RunConfig{
+		command:   opts.command,
+		args:      opts.args,
+		namespace: OrDefault("default", opts.namespace),
+	}
 
-    if ((appConf = Common.verifyConfs(app_conf)) instanceof Error) {
-      Common.err(appConf)
-      return cb ? cb(Common.retErr(appConf)) : that.exitCli(conf.ERROR_EXIT);
-    }
+	if err := validateRunConfig([]RunConfig{app_conf}); err != nil {
+		cfg.L().Err(err.Error())
+		return err
+	}
 
-    app_conf = appConf[0];
+	//     if (opts.watchDelay) {
+	//       if (typeof opts.watchDelay == "string" && opts.watchDelay.indexOf("ms") !== -1)
+	//         app_conf.watch_delay = parseInt(opts.watchDelay);
+	//       else {
+	//         app_conf.watch_delay = parseFloat(opts.watchDelay) * 1000;
+	//       }
+	//     }
 
-    if (opts.watchDelay) {
-      if (typeof opts.watchDelay == "string" && opts.watchDelay.indexOf("ms") !== -1)
-        app_conf.watch_delay = parseInt(opts.watchDelay);
-      else {
-        app_conf.watch_delay = parseFloat(opts.watchDelay) * 1000;
-      }
-    }
+	//     var mas = [];
+	//     if(typeof opts.ext != 'undefined')
+	//       hf.make_available_extension(opts, mas); // for -e flag
+	//     mas.length > 0 ? app_conf.ignore_watch = mas : 0;
 
-    var mas = [];
-    if(typeof opts.ext != 'undefined')
-      hf.make_available_extension(opts, mas); // for -e flag
-    mas.length > 0 ? app_conf.ignore_watch = mas : 0;
+	// If -w option, write configuration to configuration.json file
+	//     if (app_conf.write) {
+	//       var dst_path = path.join(process.env.PWD || process.cwd(), app_conf.name + '-pm2.json');
+	//       Common.printOut(conf.PREFIX_MSG + 'Writing configuration to', chalk.blue(dst_path));
+	//       // pretty JSON
+	//       try {
+	//         fs.writeFileSync(dst_path, JSON.stringify(app_conf, null, 2));
+	//       } catch (e) {
+	//         console.error(e.stack || e);
+	//       }
+	//     }
 
-    /**
-     * If -w option, write configuration to configuration.json file
-     */
-    if (app_conf.write) {
-      var dst_path = path.join(process.env.PWD || process.cwd(), app_conf.name + '-pm2.json');
-      Common.printOut(conf.PREFIX_MSG + 'Writing configuration to', chalk.blue(dst_path));
-      // pretty JSON
-      try {
-        fs.writeFileSync(dst_path, JSON.stringify(app_conf, null, 2));
-      } catch (e) {
-        console.error(e.stack || e);
-      }
-    }
+	//     series([
+	//       restartExistingProcessName,
+	//       restartExistingNameSpace,
+	//       restartExistingProcessId,
+	//       restartExistingProcessPathOrStartNew
+	//     ], function(err, data) {
+	//       if (err instanceof Error)
+	//         return cb ? cb(err) : that.exitCli(conf.ERROR_EXIT);
 
-    series([
-      restartExistingProcessName,
-      restartExistingNameSpace,
-      restartExistingProcessId,
-      restartExistingProcessPathOrStartNew
-    ], function(err, data) {
-      if (err instanceof Error)
-        return cb ? cb(err) : that.exitCli(conf.ERROR_EXIT);
+	//       var ret = {};
 
-      var ret = {};
+	//       data.forEach(function(_dt) {
+	//         if (_dt !== undefined)
+	//           ret = _dt;
+	//       });
 
-      data.forEach(function(_dt) {
-        if (_dt !== undefined)
-          ret = _dt;
-      });
+	//       return cb ? cb(null, ret) : that.speedList();
+	//     });
 
-      return cb ? cb(null, ret) : that.speedList();
-    });
+	//     // If start <app_name> start/restart application
+	//     function restartExistingProcessName(cb) {
+	//       if (!isNaN(script) ||
+	//         (typeof script == 'string' && script.indexOf('/') != -1) ||
+	//         (typeof script == 'string' && path.extname(script) !== ''))
+	//         return cb(null);
 
-    /**
-     * If start <app_name> start/restart application
-     */
-    function restartExistingProcessName(cb) {
-      if (!isNaN(script) ||
-        (typeof script == 'string' && script.indexOf('/') != -1) ||
-        (typeof script == 'string' && path.extname(script) !== ''))
-        return cb(null);
+	//         that.Client.getProcessIdByName(script, function(err, ids) {
+	//           if (err && cb) return cb(err);
+	//           if (ids.length > 0) {
+	//             that._operate('restartProcessId', script, opts, function(err, list) {
+	//               if (err) return cb(err);
+	//               Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
+	//               return cb(true, list);
+	//             });
+	//           }
+	//           else return cb(null);
+	//         });
+	//     }
 
-        that.Client.getProcessIdByName(script, function(err, ids) {
-          if (err && cb) return cb(err);
-          if (ids.length > 0) {
-            that._operate('restartProcessId', script, opts, function(err, list) {
-              if (err) return cb(err);
-              Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
-              return cb(true, list);
-            });
-          }
-          else return cb(null);
-        });
-    }
+	//     /**
+	//      * If start <namespace> start/restart namespace
+	//      */
+	//     function restartExistingNameSpace(cb) {
+	//       if (!isNaN(script) ||
+	//         (typeof script == 'string' && script.indexOf('/') != -1) ||
+	//         (typeof script == 'string' && path.extname(script) !== ''))
+	//         return cb(null);
 
-    /**
-     * If start <namespace> start/restart namespace
-     */
-    function restartExistingNameSpace(cb) {
-      if (!isNaN(script) ||
-        (typeof script == 'string' && script.indexOf('/') != -1) ||
-        (typeof script == 'string' && path.extname(script) !== ''))
-        return cb(null);
+	//       if (script !== 'all') {
+	//         that.Client.getProcessIdsByNamespace(script, function (err, ids) {
+	//           if (err && cb) return cb(err);
+	//           if (ids.length > 0) {
+	//             that._operate('restartProcessId', script, opts, function (err, list) {
+	//               if (err) return cb(err);
+	//               Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
+	//               return cb(true, list);
+	//             });
+	//           }
+	//           else return cb(null);
+	//         });
+	//       }
+	//       else {
+	//         that._operate('restartProcessId', 'all', function(err, list) {
+	//           if (err) return cb(err);
+	//           Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
+	//           return cb(true, list);
+	//         });
+	//       }
+	//     }
 
-      if (script !== 'all') {
-        that.Client.getProcessIdsByNamespace(script, function (err, ids) {
-          if (err && cb) return cb(err);
-          if (ids.length > 0) {
-            that._operate('restartProcessId', script, opts, function (err, list) {
-              if (err) return cb(err);
-              Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
-              return cb(true, list);
-            });
-          }
-          else return cb(null);
-        });
-      }
-      else {
-        that._operate('restartProcessId', 'all', function(err, list) {
-          if (err) return cb(err);
-          Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
-          return cb(true, list);
-        });
-      }
-    }
+	//     function restartExistingProcessId(cb) {
+	//       if (isNaN(script)) return cb(null);
 
-    function restartExistingProcessId(cb) {
-      if (isNaN(script)) return cb(null);
+	//       that._operate('restartProcessId', script, opts, function(err, list) {
+	//         if (err) return cb(err);
+	//         Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
+	//         return cb(true, list);
+	//       });
+	//     }
 
-      that._operate('restartProcessId', script, opts, function(err, list) {
-        if (err) return cb(err);
-        Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
-        return cb(true, list);
-      });
-    }
+	//     /**
+	//      * Restart a process with the same full path
+	//      * Or start it
+	//      */
+	//     function restartExistingProcessPathOrStartNew(cb) {
+	//       that.Client.executeRemote('getMonitorData', {}, function(err, procs) {
+	//         if (err) return cb ? cb(new Error(err)) : that.exitCli(conf.ERROR_EXIT);
 
-    /**
-     * Restart a process with the same full path
-     * Or start it
-     */
-    function restartExistingProcessPathOrStartNew(cb) {
-      that.Client.executeRemote('getMonitorData', {}, function(err, procs) {
-        if (err) return cb ? cb(new Error(err)) : that.exitCli(conf.ERROR_EXIT);
+	//         var full_path = path.resolve(that.cwd, script);
+	//         var managed_script = null;
 
-        var full_path = path.resolve(that.cwd, script);
-        var managed_script = null;
+	//         procs.forEach(function(proc) {
+	//           if (proc.pm2_env.pm_exec_path == full_path &&
+	//               proc.pm2_env.name == app_conf.name)
+	//             managed_script = proc;
+	//         });
 
-        procs.forEach(function(proc) {
-          if (proc.pm2_env.pm_exec_path == full_path &&
-              proc.pm2_env.name == app_conf.name)
-            managed_script = proc;
-        });
+	//         if (managed_script &&
+	//           (managed_script.pm2_env.status == conf.STOPPED_STATUS ||
+	//             managed_script.pm2_env.status == conf.STOPPING_STATUS ||
+	//             managed_script.pm2_env.status == conf.ERRORED_STATUS)) {
+	//           // Restart process if stopped
+	//           var app_name = managed_script.pm2_env.name;
 
-        if (managed_script &&
-          (managed_script.pm2_env.status == conf.STOPPED_STATUS ||
-            managed_script.pm2_env.status == conf.STOPPING_STATUS ||
-            managed_script.pm2_env.status == conf.ERRORED_STATUS)) {
-          // Restart process if stopped
-          var app_name = managed_script.pm2_env.name;
+	//           that._operate('restartProcessId', app_name, opts, function(err, list) {
+	//             if (err) return cb ? cb(new Error(err)) : that.exitCli(conf.ERROR_EXIT);
+	//             Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
+	//             return cb(true, list);
+	//           });
+	//           return false;
+	//         }
+	//         else if (managed_script && !opts.force) {
+	//           Common.err('Script already launched, add -f option to force re-execution');
+	//           return cb(new Error('Script already launched'));
+	//         }
 
-          that._operate('restartProcessId', app_name, opts, function(err, list) {
-            if (err) return cb ? cb(new Error(err)) : that.exitCli(conf.ERROR_EXIT);
-            Common.printOut(conf.PREFIX_MSG + 'Process successfully started');
-            return cb(true, list);
-          });
-          return false;
-        }
-        else if (managed_script && !opts.force) {
-          Common.err('Script already launched, add -f option to force re-execution');
-          return cb(new Error('Script already launched'));
-        }
+	//         var resolved_paths = null;
 
-        var resolved_paths = null;
+	//         try {
+	//           resolved_paths = Common.resolveAppAttributes({
+	//             cwd      : that.cwd,
+	//             pm2_home : that.pm2_home
+	//           }, app_conf);
+	//         } catch(e) {
+	//           Common.err(e.message);
+	//           return cb(Common.retErr(e));
+	//         }
 
-        try {
-          resolved_paths = Common.resolveAppAttributes({
-            cwd      : that.cwd,
-            pm2_home : that.pm2_home
-          }, app_conf);
-        } catch(e) {
-          Common.err(e.message);
-          return cb(Common.retErr(e));
-        }
+	//         Common.printOut(conf.PREFIX_MSG + 'Starting %s in %s (%d instance' + (resolved_paths.instances > 1 ? 's' : '') + ')',
+	//           resolved_paths.pm_exec_path, resolved_paths.exec_mode, resolved_paths.instances);
 
-        Common.printOut(conf.PREFIX_MSG + 'Starting %s in %s (%d instance' + (resolved_paths.instances > 1 ? 's' : '') + ')',
-          resolved_paths.pm_exec_path, resolved_paths.exec_mode, resolved_paths.instances);
+	//         if (!resolved_paths.env) resolved_paths.env = {};
 
-        if (!resolved_paths.env) resolved_paths.env = {};
+	//         // Set PM2 HOME in case of child process using PM2 API
+	//         resolved_paths.env['PM2_HOME'] = that.pm2_home;
 
-        // Set PM2 HOME in case of child process using PM2 API
-        resolved_paths.env['PM2_HOME'] = that.pm2_home;
+	//         var additional_env = Modularizer.getAdditionalConf(resolved_paths.name);
+	//         Object.assign(resolved_paths.env, additional_env);
 
-        var additional_env = Modularizer.getAdditionalConf(resolved_paths.name);
-        Object.assign(resolved_paths.env, additional_env);
+	//         // Is KM linked?
+	//         resolved_paths.km_link = that.gl_is_km_linked;
 
-        // Is KM linked?
-        resolved_paths.km_link = that.gl_is_km_linked;
+	//         that.Client.executeRemote('prepare', resolved_paths, function(err, data) {
+	//           if (err) {
+	//             Common.printError(conf.PREFIX_MSG_ERR + 'Error while launching application', err.stack || err);
+	//             return cb(Common.retErr(err));
+	//           }
 
-        that.Client.executeRemote('prepare', resolved_paths, function(err, data) {
-          if (err) {
-            Common.printError(conf.PREFIX_MSG_ERR + 'Error while launching application', err.stack || err);
-            return cb(Common.retErr(err));
-          }
-
-          Common.printOut(conf.PREFIX_MSG + 'Done.');
-          return cb(true, data);
-        });
-        return false;
-      });
-    }
-  }
+	//           Common.printOut(conf.PREFIX_MSG + 'Done.');
+	//           return cb(true, data);
+	//         });
+	//         return false;
+	//       });
+	//     }
+}
 
 // Method to start/restart/reload processes from a JSON file
 // It will start app not started
