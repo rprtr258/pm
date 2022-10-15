@@ -5,11 +5,15 @@ import (
 	"path"
 )
 
-// Processes - proc name -> pid
 var (
+	// Processes - proc name -> pid
 	Processes map[string]int = make(map[string]int)
-	UserHome                 = os.Getenv("HOME")
-	HomeDir                  = path.Join(UserHome, ".pm")
+
+	UserHome        = os.Getenv("HOME")
+	HomeDir         = path.Join(UserHome, ".pm")
+	DaemonPidFile   = path.Join(HomeDir, "pm.pid")
+	DaemonLogFile   = path.Join(HomeDir, "pm.log")
+	DaemonRpcSocket = path.Join(HomeDir, "rpc.sock")
 )
 
 // { // 	Name:      "trigger", // 	Usage:     "trigger process action", // 	ArgsUsage: "<id|proc_name|namespace|all> <action_name> [params]", // 	//   .action(function(pm_id, action_name, params) { // 	//     pm2.trigger(pm_id, action_name, params); // },

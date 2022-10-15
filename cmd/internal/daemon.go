@@ -1,24 +1,37 @@
 package internal
 
 import (
+	"context"
 	"fmt"
-	"html"
 	"log"
-	"net/http"
-	"path"
+	"net"
 
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
+	"google.golang.org/grpc"
+
+	pb "github.com/rprtr258/pm/api"
 )
+
+type daemonServer struct {
+	pb.UnimplementedGreeterServer
+}
+
+func (*daemonServer) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloReply, error) {
+	log.Println("HI", req.GetName())
+	return &pb.HelloReply{
+		Message: req.GetName(),
+	}, nil
+}
 
 var DaemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "run daemon",
 	Action: func(*cli.Context) error {
 		daemonCtx := &daemon.Context{
-			PidFileName: path.Join(HomeDir, "pm.pid"),
+			PidFileName: DaemonPidFile,
 			PidFilePerm: 0644,
-			LogFileName: path.Join(HomeDir, "pm.log"),
+			LogFileName: DaemonLogFile,
 			LogFilePerm: 0640,
 			WorkDir:     "./",
 			Umask:       027,
@@ -36,14 +49,20 @@ var DaemonCmd = &cli.Command{
 
 		defer daemonCtx.Release()
 
-		log.Println("- - - - - - - - - - - - - - -")
-		log.Println("daemon started")
+		sock, err := net.Listen("unix", DaemonRpcSocket)
+		if err != nil {
+			log.Fatalf("failed to listen: %v", err)
+		}
 
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
-			fmt.Fprintf(w, "go-daemon: %q", html.EscapeString(r.URL.Path))
-		})
-		http.ListenAndServe("127.0.0.1:8080", nil)
+		srv := grpc.NewServer()
+		pb.RegisterGreeterServer(srv, &daemonServer{})
+
+		log.Println("- - - - - - - - - - - - - - -")
+		log.Printf("daemon started at %v", sock.Addr())
+		if err := srv.Serve(sock); err != nil {
+			log.Fatalf("failed to serve: %v", err)
+			return err
+		}
 
 		return nil
 	},
