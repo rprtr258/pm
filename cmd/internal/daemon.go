@@ -6,7 +6,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
@@ -67,16 +66,6 @@ var DaemonCmd = &cli.Command{
 			Name:  "start",
 			Usage: "launch daemon process",
 			Action: func(ctx *cli.Context) error {
-				// killDaemon()
-
-				// if err := os.Remove(DaemonPidFile); err != nil {
-				// 	log.Println("error removing pid file:", err.Error())
-				// }
-
-				if err := os.Remove(DaemonRpcSocket); err != nil {
-					log.Println("error removing socket file:", err.Error())
-				}
-
 				daemonCtx := &daemon.Context{
 					PidFileName: DaemonPidFile,
 					PidFilePerm: 0644,
@@ -87,13 +76,7 @@ var DaemonCmd = &cli.Command{
 					Args:        []string{"pm", "daemon", "start"},
 				}
 
-				if proc, err := daemonCtx.Search(); err != nil {
-					log.Println("failed searching daemon:", err.Error())
-				} else if proc != nil {
-					if err := proc.Kill(); err != nil {
-						log.Println("failed killing daemon:", err.Error())
-					}
-				}
+				killDaemon(daemonCtx)
 
 				d, err := daemonCtx.Reborn()
 				if err != nil {
@@ -114,7 +97,17 @@ var DaemonCmd = &cli.Command{
 			Name:  "stop",
 			Usage: "stop daemon process",
 			Action: func(ctx *cli.Context) error {
-				killDaemon()
+				daemonCtx := &daemon.Context{
+					PidFileName: DaemonPidFile,
+					PidFilePerm: 0644,
+					LogFileName: DaemonLogFile,
+					LogFilePerm: 0640,
+					WorkDir:     "./",
+					Umask:       027,
+					Args:        []string{"pm", "daemon", "start"},
+				}
+
+				killDaemon(daemonCtx)
 				return nil
 			},
 		},
@@ -148,27 +141,16 @@ func runDaemon() error {
 	return nil
 }
 
-func killDaemon() {
-	content, err := os.ReadFile(DaemonPidFile)
-	if err != nil {
-		log.Println("error reading pid file:", err.Error())
-		return
+func killDaemon(daemonCtx *daemon.Context) {
+	if err := os.Remove(DaemonRpcSocket); err != nil {
+		log.Println("error removing socket file:", err.Error())
 	}
 
-	pid, err := strconv.Atoi(string(content))
-	if err != nil {
-		log.Println("error parsing pid:", err.Error())
-		return
-	}
-
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		log.Println("error finding process:", err.Error())
-		return
-	}
-
-	if err := process.Kill(); err != nil {
-		log.Println("error killing process:", err.Error())
-		return
+	if proc, err := daemonCtx.Search(); err != nil {
+		log.Println("failed searching daemon:", err.Error())
+	} else if proc != nil {
+		if err := proc.Kill(); err != nil {
+			log.Println("failed killing daemon:", err.Error())
+		}
 	}
 }
