@@ -75,7 +75,7 @@ function run(cmd, opts) {
     opts.ignore_watch.push('node_modules');
   }
 
-  if (timestamp === true)
+  if (timestamp == true)
     timestamp = 'YYYY-MM-DD-HH:mm:ss';
 
   pm2.start(cmd, opts, function(err, procs) {

@@ -77,11 +77,11 @@ package main
 //   // HERE we instanciate the Client object
 //   pm2.connect(function() {
 //     debug('Now connected to daemon');
-//     if (process.argv.slice(2)[0] === 'completion') {
+//     if (process.argv.slice(2)[0] == 'completion') {
 //       checkCompletion();
 //       //Close client if completion related installation
 //       var third = process.argv.slice(3)[0];
-//       if ( third == null || third === 'install' || third === 'uninstall')
+//       if ( third == null || third == 'install' || third == 'uninstall')
 //         pm2.disconnect();
 //     }
 //     else {

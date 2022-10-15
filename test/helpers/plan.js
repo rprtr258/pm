@@ -22,13 +22,13 @@ function Plan(count, done) {
 Plan.prototype.ok = function(expression) {
   assert(expression);
 
-  if (this.count === 0) {
+  if (this.count == 0) {
     assert(false, 'Too many assertions called');
   } else {
     this.count--;
   }
 
-  if (this.count === 0) {
+  if (this.count == 0) {
     this.done();
   }
 };

@@ -23,7 +23,7 @@ describe('Unique ID verification', function() {
         PM2.list(function(err, list) {
           should(err).be.null();
           assert(list.length > 0)
-          assert(typeof list[0].pm2_env.unique_id === 'string')
+          assert(typeof list[0].pm2_env.unique_id == 'string')
           _id = list[0].pm2_env.unique_id
           done();
         });
@@ -40,8 +40,8 @@ describe('Unique ID verification', function() {
         PM2.list(function(err, list) {
           should(err).be.null();
           assert(list.length > 0)
-          assert(typeof list[0].pm2_env.unique_id === 'string')
-          assert( list[0].pm2_env.unique_id === _id)
+          assert(typeof list[0].pm2_env.unique_id == 'string')
+          assert( list[0].pm2_env.unique_id == _id)
           done();
         });
       });
@@ -53,9 +53,9 @@ describe('Unique ID verification', function() {
         assert(!err);
         PM2.list(function(err, list) {
           should(err).be.null();
-          assert(list.length === 2)
-          assert(typeof list[0].pm2_env.unique_id === 'string')
-          assert(typeof list[1].pm2_env.unique_id === 'string')
+          assert(list.length == 2)
+          assert(typeof list[0].pm2_env.unique_id == 'string')
+          assert(typeof list[1].pm2_env.unique_id == 'string')
           assert(list[0].pm2_env.unique_id !== typeof list[1].pm2_env.unique_id)
           done();
         });
@@ -68,9 +68,9 @@ describe('Unique ID verification', function() {
         PM2.list(function(err, list) {
           should(err).be.null();
           should(list.length).eql(3);
-          assert(typeof list[0].pm2_env.unique_id === 'string')
-          assert(typeof list[1].pm2_env.unique_id === 'string')
-          assert(typeof list[2].pm2_env.unique_id === 'string')
+          assert(typeof list[0].pm2_env.unique_id == 'string')
+          assert(typeof list[1].pm2_env.unique_id == 'string')
+          assert(typeof list[2].pm2_env.unique_id == 'string')
           assert(list[0].pm2_env.unique_id !== typeof list[1].pm2_env.unique_id)
           assert(list[1].pm2_env.unique_id !== typeof list[2].pm2_env.unique_id)
           assert(list[0].pm2_env.unique_id !== typeof list[2].pm2_env.unique_id)

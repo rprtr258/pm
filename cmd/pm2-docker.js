@@ -93,9 +93,9 @@ var Runtime = {
    * Log Streaming Management
    */
   startLogStreaming : function() {
-    if (commander.json === true)
+    if (commander.json == true)
       Log.jsonStream(this.pm2.Client, 'all');
-    else if (commander.format === true)
+    else if (commander.format == true)
       Log.formatStream(this.pm2.Client, 'all', false, 'YYYY-MM-DD-HH:mm:ssZZ');
     else
       Log.stream(this.pm2.Client, 'all', !commander.formatted, commander.timestamp, true);
@@ -113,7 +113,7 @@ var Runtime = {
           return cb(new Error(`0 application started (no apps to run on ${cmd})`))
 
         if (commander.web) {
-          var port = commander.web === true ? cst.WEB_PORT : commander.web;
+          var port = commander.web == true ? cst.WEB_PORT : commander.web;
           Runtime.pm2.web(port);
         }
 
@@ -166,13 +166,13 @@ var Runtime = {
 
         apps.forEach(function (app) {
           if (!app.pm2_env.pmx_module &&
-            (app.pm2_env.status === cst.ONLINE_STATUS ||
-              app.pm2_env.status === cst.LAUNCHING_STATUS)) {
+            (app.pm2_env.status == cst.ONLINE_STATUS ||
+              app.pm2_env.status == cst.LAUNCHING_STATUS)) {
             appOnline++;
           }
         });
 
-        if (appOnline === 0) {
+        if (appOnline == 0) {
           console.log('0 application online, retry =', fail_count);
           if (fail_count <= 0)
             return Runtime.exit(2);

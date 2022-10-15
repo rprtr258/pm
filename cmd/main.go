@@ -51,7 +51,7 @@ func main() {
 			// else {
 			//   // Commander.js patch
 			//   cmd = patchCommanderArg(cmd);
-			//   if (cmd.length === 0) {
+			//   if (cmd.length == 0) {
 			//     cmd = [cst.APP_CONF_DEFAULT_FILE];
 			//   }
 			//   let acc = []
@@ -62,8 +62,8 @@ func main() {
 			//     });
 			//   }, function(err, dt) {
 			//     if (err && err.message &&
-			//         (err.message.includes('Script not found') === true ||
-			//          err.message.includes('NOT AVAILABLE IN PATH') === true)) {
+			//         (err.message.includes('Script not found') == true ||
+			//          err.message.includes('NOT AVAILABLE IN PATH') == true)) {
 			//       pm2.exitCli(1)
 			//     }
 			//     else
@@ -229,6 +229,7 @@ func main() {
 			// &cli.IntFlag{Name: "pid", Aliases: []string{"p"}, Usage: "specify pid file"},
 			// &cli.DurationFlag{Name: "kill-timeout", Aliases: []string{"k"}, Usage: "delay before sending final SIGKILL signal to process"},
 			// &cli.DurationFlag{Name: "listen-timeout", Usage: "listen timeout on application reload"},
+			// If sets and script’s memory usage goes about the configured number, pm2 restarts the script. Uses human-friendly suffixes: ‘K’ for kilobytes, ‘M’ for megabytes, ‘G’ for gigabytes’, etc. Eg “150M”.
 			// &cli.IntFlag{Name: "max-memory-restart", Usage: "Restart the app if an amount of memory is exceeded (in bytes)"},
 			// &cli.DurationFlag{Name: "restart-delay", Usage: "specify a delay between restarts"},
 			// &cli.DurationFlag{Name: "exp-backoff-restart-delay", Usage: "specify a delay between restarts"},
@@ -560,7 +561,7 @@ func main() {
 			// 	// commander.command('monitor [name]')
 			// 	//   .description('monitor target process')
 			// 	//   .action(function(name) {
-			// 	//     if (name === undefined) {
+			// 	//     if (name == undefined) {
 			// 	//       return plusHandler()
 			// 	//     }
 			// 	//     pm2.monitorState('monitor', name);
@@ -843,22 +844,22 @@ func main() {
 			// 	//       raw = true;
 
 			// 	//     if (cmd.timestamp)
-			// 	//       timestamp = typeof cmd.timestamp === 'string' ? cmd.timestamp : 'YYYY-MM-DD-HH:mm:ss';
+			// 	//       timestamp = typeof cmd.timestamp == 'string' ? cmd.timestamp : 'YYYY-MM-DD-HH:mm:ss';
 
 			// 	//     if (cmd.highlight)
-			// 	//       highlight = typeof cmd.highlight === 'string' ? cmd.highlight : false;
+			// 	//       highlight = typeof cmd.highlight == 'string' ? cmd.highlight : false;
 
-			// 	//     if (cmd.out === true)
+			// 	//     if (cmd.out == true)
 			// 	//       exclusive = 'out';
 
-			// 	//     if (cmd.err === true)
+			// 	//     if (cmd.err == true)
 			// 	//       exclusive = 'err';
 
-			// 	//     if (cmd.nostream === true)
+			// 	//     if (cmd.nostream == true)
 			// 	//       pm2.printLogs(id, line, raw, timestamp, exclusive);
-			// 	//     else if (cmd.json === true)
+			// 	//     else if (cmd.json == true)
 			// 	//       Logs.jsonStream(pm2.Client, id);
-			// 	//     else if (cmd.format === true)
+			// 	//     else if (cmd.format == true)
 			// 	//       Logs.formatStream(pm2.Client, id, false, 'YYYY-MM-DD-HH:mm:ssZZ', exclusive, highlight);
 			// 	//     else
 			// 	//       pm2.streamLogs(id, line, raw, timestamp, exclusive, highlight);

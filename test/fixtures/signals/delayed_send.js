@@ -4,7 +4,7 @@ setInterval(function() {
 }, 1000);
 
 process.on('message', function (msg) {
-  if (msg === 'shutdown') {
+  if (msg == 'shutdown') {
     console.log('shutdown message received but forbid exit');
   }
 });

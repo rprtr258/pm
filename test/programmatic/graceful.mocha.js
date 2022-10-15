@@ -200,7 +200,7 @@ describe('Wait ready / Graceful start / restart', function() {
         pm2.reload('echo', {}, done);
         setTimeout(function() {
           sexec(`ps -eo pid | grep -w ${oldPid}`, (err, res) => {
-            plan.ok(err === 1);
+            plan.ok(err == 1);
           })
         }, 2000);
       });

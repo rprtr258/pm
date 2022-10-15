@@ -24,7 +24,7 @@ function getDefaultPM2Home() {
 module.exports = function(PM2_HOME) {
   var has_node_embedded = false
 
-  if (fs.existsSync(p.resolve(__dirname, './node')) === true) {
+  if (fs.existsSync(p.resolve(__dirname, './node')) == true) {
     has_node_embedded = true
   }
 
@@ -60,8 +60,8 @@ module.exports = function(PM2_HOME) {
     INTERACTION_CONF         : p.resolve(PM2_HOME, 'agent.json5'),
 
     HAS_NODE_EMBEDDED        : has_node_embedded,
-    BUILTIN_NODE_PATH        : has_node_embedded === true ? p.resolve(__dirname, './node/bin/node') : null,
-    BUILTIN_NPM_PATH         : has_node_embedded === true ? p.resolve(__dirname, './node/bin/npm') : null,
+    BUILTIN_NODE_PATH        : has_node_embedded == true ? p.resolve(__dirname, './node/bin/node') : null,
+    BUILTIN_NPM_PATH         : has_node_embedded == true ? p.resolve(__dirname, './node/bin/npm') : null,
   };
 
   // allow overide of file paths via environnement
@@ -73,8 +73,8 @@ module.exports = function(PM2_HOME) {
     }
   });
 
-  if (process.platform === 'win32' ||
-      process.platform === 'win64') {
+  if (process.platform == 'win32' ||
+      process.platform == 'win64') {
     //@todo instead of static unique rpc/pub file custom with PM2_HOME or UID
     pm2_file_stucture.DAEMON_RPC_PORT = '\\\\.\\pipe\\rpc.sock';
     pm2_file_stucture.DAEMON_PUB_PORT = '\\\\.\\pipe\\pub.sock';

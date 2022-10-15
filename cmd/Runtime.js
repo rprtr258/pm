@@ -38,7 +38,7 @@ commander.command('*')
 
     pm2.connect(function() {
       if (commander.web) {
-        var port = commander.web === true ? cst.WEB_PORT : commander.web;
+        var port = commander.web == true ? cst.WEB_PORT : commander.web;
         pm2.web(port);
       }
 
@@ -60,9 +60,9 @@ commander.command('*')
           });
         }
 
-        if (commander.json === true)
+        if (commander.json == true)
           Log.jsonStream(pm2.Client, pm_id);
-        else if (commander.format === true)
+        else if (commander.format == true)
           Log.formatStream(pm2.Client, pm_id, false, 'YYYY-MM-DD-HH:mm:ssZZ');
         else
           Log.stream(pm2.Client, 'all', true);
