@@ -1,4 +1,4 @@
-package tools
+package which
 
 import "os/exec"
 
@@ -46,7 +46,7 @@ import "os/exec"
 // Searches for `command` in the system's `PATH`. On Windows, this uses the
 // `PATHEXT` variable to append the extension if it's not already executable.
 // Returns a ShellString containing the absolute path to `command`.
-func _which(cmd string) (string, error) {
+func Which(cmd string) (string, error) {
 	return exec.LookPath(cmd) // TODO: ErrDot
 
 	// var options = {}
@@ -109,5 +109,3 @@ func _which(cmd string) (string, error) {
 	// }
 	// return options.all ? [] : null;
 }
-
-// module.exports = _which;

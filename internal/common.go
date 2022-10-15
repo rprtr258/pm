@@ -1,86 +1,29 @@
+// Common Utilities ONLY USED IN ->CLI<-
 package internal
 
 import (
-	"os"
-	"os/exec"
+	// var fs        = require('fs');
+	// var util      = require('util');
+	// var chalk     = require('chalk');
+	// var fclone    = require('fclone');
+	// var semver    = require('semver');
+	// var dayjs     = require('dayjs');
+	// var execSync  = require('child_process').execSync;
+	"errors"
+	"log"
 	"os/user"
 	"path"
 	"strings"
-	"time"
+
+	// var isBinary  = require('./tools/isbinaryfile.js');
+	// var extItps   = require('./API/interpreter.json');
+	// var Config    = require('./tools/Config');
+	// var pkg       = require('../package.json');
+	// var which     = require('./tools/which.js');
+	cst "github.com/rprtr258/pm"
+	"github.com/rprtr258/pm/internal/tools/passwd"
+	"github.com/rprtr258/pm/internal/tools/which"
 )
-
-// /**
-//  * Common Utilities ONLY USED IN ->CLI<-
-//  */
-
-// var fs        = require('fs');
-// var path      = require('path');
-// var os        = require('os');
-// var util      = require('util');
-// var chalk     = require('chalk');
-// var fclone    = require('fclone');
-// var semver    = require('semver');
-// var dayjs     = require('dayjs');
-// var execSync  = require('child_process').execSync;
-// var isBinary  = require('./tools/isbinaryfile.js');
-// var cst       = require('../constants.js');
-// var extItps   = require('./API/interpreter.json');
-// var Config    = require('./tools/Config');
-// var pkg       = require('../package.json');
-// var which     = require('./tools/which.js');
-// var Common = module.exports;
-
-type Optional[T any] struct {
-	Value T
-	Valid bool
-}
-
-func Valid[T any](value T) Optional[T] {
-	return Optional[T]{
-		Value: value,
-		Valid: true,
-	}
-}
-
-func Invalid[T any]() Optional[T] {
-	return Optional[T]{
-		Valid: false,
-	}
-}
-
-func OrDefault[T any](optional Optional[T], defaultValue T) T {
-	if optional.Valid {
-		return optional.Value
-	}
-	return defaultValue
-}
-
-func Or[T any](optional Optional[T], or... Optional[T]) Optional[T] {
-	if optional.Valid {
-		return optional
-	}
-	for _,ori:=range or{
-		if ori.Valid{
-			return ori
-		}
-	}
-	return Invalid[T]()
-}
-
-func Map[T, R any](optional Optional[T], mapper func(T)R) Optional[R]{
-	if !optional.Valid{
-		return Invalid[R]()
-	}
-	return Valid(mapper(optional.Value))
-}
-
-func GetEnv(varName string)Optional[string]{
-	value,valid:=os.LookupEnv(varName)
-	return Optional[string]{
-		Value: value,
-		Valid: valid,
-	}
-}
 
 // function homedir() {
 //   var env = process.env;
@@ -376,23 +319,24 @@ func isConfigFile(filename string) Optional[string] {
 
 // Common.sink = {};
 
-// Common.sink.determineCron = function(app) {
-//   if (app.cron_restart == 0 || app.cron_restart == '0') {
-//     Common.printOut(cst.PREFIX_MSG + 'disabling cron restart');
-//     return
-//   }
+func determineCron(app any) error {
+	//   if app.cron_restart == 0 || app.cron_restart == '0' {
+	//     Common.printOut(cst.PREFIX_MSG + "disabling cron restart");
+	//     return
+	//   }
 
-//   if (app.cron_restart) {
-//     const Croner = require('croner');
+	//   if (app.cron_restart) {
+	//     const Croner = require("croner");
 
-//     try {
-//       Common.printOut(cst.PREFIX_MSG + 'cron restart at ' + app.cron_restart);
-//       Croner(app.cron_restart);
-//     } catch(ex) {
-//       return new Error(`Cron pattern error: ${ex.message}`);
-//     }
-//   }
-// };
+	//	  try {
+	//	    Common.printOut(cst.PREFIX_MSG + "cron restart at " + app.cron_restart);
+	//	    Croner(app.cron_restart);
+	//	  } catch(ex) {
+	//	    return new Error(`Cron pattern error: ${ex.message}`);
+	//	  }
+	//	}
+	return nil
+}
 
 // /**
 //  * Handle alias (fork <=> fork_mode, cluster <=> cluster_mode)
@@ -539,15 +483,15 @@ func isConfigFile(filename string) Optional[string] {
 // }
 
 func printError(msg string) {
-  if (process.env.PM2_SILENT || process.env.PM2_PROGRAMMATIC == "true"){
-  	return
+	if process.env.PM2_SILENT || process.env.PM2_PROGRAMMATIC == "true" {
+		return
+	}
+	//   if (msg instanceof Error){
+	//     console.error(msg.message);
+	// 	return
+	// }
+	console.error.apply(console, arguments)
 }
-//   if (msg instanceof Error){
-//     console.error(msg.message);
-// 	return
-// }
-  console.error.apply(console, arguments);
-};
 
 // Common.log = function(msg) {
 //   if (process.env.PM2_SILENT || process.env.PM2_PROGRAMMATIC == 'true') return false;
@@ -569,10 +513,12 @@ func printError(msg string) {
 //   return console.log(`${cst.PREFIX_MSG_MOD}${msg}`);
 // }
 
-// Common.printOut = function() {
-//   if (process.env.PM2_SILENT == 'true' || process.env.PM2_PROGRAMMATIC == 'true') return false;
-//   return console.log.apply(console, arguments);
-// };
+func printOut(args ...any) {
+	if process.env.PM2_SILENT == "true" || process.env.PM2_PROGRAMMATIC == "true" {
+		return
+	}
+	log.Println(args...)
+}
 
 // /**
 //  * Raw extend
@@ -700,215 +646,206 @@ func printError(msg string) {
 // }
 
 // Verify configurations. Called on EVERY Operation (start/restart/reload/stop...)
-func verifyConfs(appConfs []struct{
-	exec_mode Optional[string] // "fork" or "cluster"
-	command Optional[string]
-	script string
-	env map[string]string
+func verifyConfs(appConfs []struct {
+	exec_mode       Optional[string] // "fork" or "cluster"
+	command         Optional[string]
+	script          Optional[string]
+	args            []string
+	env             map[string]string
 	execute_command bool
-	username string
-	name Optional[string]
+	username        string
+	name            Optional[string]
 	log_date_format Optional[string]
-	uid Optional[int]
-	gid Optional[int]
-	user Optional[string]
-}) []any {
-  verifiedConf := []any{};
+	uid             Optional[int]
+	gid             int
+	user            Optional[string]
+	deep_monitoring bool
+	pmx             bool
+	disable_trace   bool
+	trace           bool
+	merge_logs      bool
+	cron_restart    bool
+}) ([]any, error) {
+	verifiedConf := []any{}
 
-  for i, app := range appConfs {
-	// TODO: remove mutation
-    if app.exec_mode.Valid{
-      app.exec_mode.Value += "_mode"
+	for _, app := range appConfs {
+		// TODO: remove mutation
+		if app.exec_mode.Valid {
+			app.exec_mode.Value += "_mode"
+		}
+
+		if app.command.Valid {
+			app.script = app.command
+		}
+
+		// Render an app name if not existing.
+		app.name = Valid(renderApplicationName(app.name, app.script))
+
+		if app.execute_command {
+			app.exec_mode = Valid("fork")
+		}
+
+		app.username = getCurrentUsername()
+
+		// If command is like pm2 start "python xx.py --ok".
+		// Then automatically start the script with bash -c and set a name eq to command
+		if app.script.Valid && strings.ContainsRune(app.script.Value, ' ') && !cst.IS_WINDOWS {
+			_script := app.script
+
+			if _, err := which.Which("bash"); err == nil {
+				app.script = Valid("bash")
+				app.args = []string{"-c", _script}
+				if !app.name.Valid {
+					app.name = _script
+				}
+			} else if _, err := which.Which("sh"); err == nil {
+				app.script = "sh"
+				app.args = []string{"-c", _script}
+				if !app.name.Valid {
+					app.name = _script
+				}
+			} else {
+				warn("bash or sh not available in $PATH, keeping script as is")
+			}
+		}
+
+		// Add log_date_format by default
+		if app.time || process.env.ASZ_MODE {
+			app.log_date_format = Valid("2006-01-02T15:04:05")
+		}
+
+		// Checks + Resolve UID/GID
+		// comes from pm2 --uid <> --gid <> or --user
+		if app.uid.Valid || app.gid.Valid || app.user.Valid {
+			// 1/ Check if windows
+			if cst.IS_WINDOWS {
+				printError(cst.PREFIX_MSG_ERR + "--uid and --git does not works on windows")
+				return nil, errors.New("--uid and --git does not works on windows")
+			}
+
+			// 2/ Verify that user is root (todo: verify if other has right)
+			if process.env.NODE_ENV != "test" && process.getuid && process.getuid() != 0 {
+				printError(cst.PREFIX_MSG_ERR + "To use --uid and --gid please run pm2 as root")
+				return nil, errors.New("To use UID and GID please run PM2 as root")
+			}
+
+			// 3/ Resolve user info via /etc/password
+			users, err := passwd.GetUsers()
+			if err != nil {
+				printError(err.Error())
+				return nil, err
+			}
+
+			user_info, ok := users[app.uid || app.user]
+			if !ok {
+				printError(`${cst.PREFIX_MSG_ERR} User ${app.uid || app.user} cannot be found`)
+				return nil, errors.New(`${cst.PREFIX_MSG_ERR} User ${app.uid || app.user} cannot be found`)
+			}
+
+			app.env.HOME = user_info.homedir
+			app.uid = user_info.userId
+
+			// 4/ Resolve group id if gid is specified
+			if app.gid.Valid {
+				groups, err := passwd.getGroups()
+				if err != nil {
+					printError(err)
+					return nil, err
+				}
+				group_info, ok = groups[app.gid]
+				if !ok {
+					printError(`${cst.PREFIX_MSG_ERR} Group ${app.gid} cannot be found`)
+					return nil, errors.New(`${cst.PREFIX_MSG_ERR} Group ${app.gid} cannot be found`)
+				}
+				app.gid = group_info.id
+			} else {
+				app.gid = user_info.groupId
+			}
+		}
+
+		// Specific options of PM2.io
+		app.deep_monitoring = process.env.PM2_DEEP_MONITORING
+
+		if !app.automation {
+			app.pmx = false
+		}
+
+		if app.disable_trace {
+			app.trace = false
+		}
+
+		// Instances params
+		if app.instances == "max" {
+			app.instances = 0
+		}
+
+		if typeof(app.instances) == "string" {
+			app.instances = parseInt(app.instances) || 0
+		}
+
+		if app.exec_mode != "cluster_mode" && !app.instances {
+			app.merge_logs = true
+		}
+
+		if app.cron_restart {
+			var err error
+			err = determineCron(app)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// Now validation configuration
+		if err := validateJSON(app); err != nil {
+			warn(err)
+			return nil, err
+		}
+
+		// verifiedConf=append(verifiedConf,ret.config);
 	}
 
-    if app.command.Valid {
-      app.script = app.command
-    }
-
-    // Render an app name if not existing.
-    app.name = renderApplicationName(app);
-
-    if app.execute_command {
-      app.exec_mode = Valid("fork")
-    }
-
-    app.username = getCurrentUsername();
-
-    // If command is like pm2 start "python xx.py --ok".
-	// Then automatically start the script with bash -c and set a name eq to command
-    if app.script.Valid && strings.ContainsRune(app.script.Value,' ') && !cst.IS_WINDOWS {
-      _script := app.script;
-
-      if _,err:=tools._which("bash");err==nil {
-        app.script = "bash";
-        app.args = []string{"-c", _script};
-        if (!app.name.Valid) {
-          app.name = _script
-        }
-      } else if _,err:=which("sh");err==nil {
-        app.script = "sh";
-        app.args = []string{"-c", _script};
-        if (!app.name.Valid) {
-          app.name = _script
-        }
-      } else {
-        warn("bash or sh not available in $PATH, keeping script as is")
-      }
-    }
-
-    // Add log_date_format by default
-    if app.time || process.env.ASZ_MODE {
-      app.log_date_format = Valid("2006-01-02T15:04:05")
-    }
-
-    // Checks + Resolve UID/GID
-    // comes from pm2 --uid <> --gid <> or --user
-    if app.uid.Valid || app.gid.Valid || app.user.Valid {
-      // 1/ Check if windows
-      if (cst.IS_WINDOWS == true) {
-        Common.printError(cst.PREFIX_MSG_ERR + "--uid and --git does not works on windows");
-        return errors.New("--uid and --git does not works on windows");
-      }
-
-      // 2/ Verify that user is root (todo: verify if other has right)
-      if (process.env.NODE_ENV != "test" && process.getuid && process.getuid() !== 0) {
-        Common.printError(cst.PREFIX_MSG_ERR + "To use --uid and --gid please run pm2 as root");
-        return errors.New("To use UID and GID please run PM2 as root");
-      }
-
-      // 3/ Resolve user info via /etc/password
-      var passwd = require("./tools/passwd.js")
-      var users
-      try {
-        users = passwd.getUsers()
-      } catch(e) {
-        Common.printError(e);
-        return new Error(e);
-      }
-
-      var user_info = users[app.uid || app.user]
-      if (!user_info) {
-        Common.printError(`${cst.PREFIX_MSG_ERR} User ${app.uid || app.user} cannot be found`);
-        return new Error(`${cst.PREFIX_MSG_ERR} User ${app.uid || app.user} cannot be found`);
-      }
-
-      app.env.HOME = user_info.homedir
-      app.uid = parseInt(user_info.userId)
-
-      // 4/ Resolve group id if gid is specified
-      if (app.gid) {
-        var groups
-        try {
-          groups = passwd.getGroups()
-        } catch(e) {
-          Common.printError(e);
-          return new Error(e);
-        }
-        var group_info = groups[app.gid]
-        if (!group_info) {
-          Common.printError(`${cst.PREFIX_MSG_ERR} Group ${app.gid} cannot be found`);
-          return new Error(`${cst.PREFIX_MSG_ERR} Group ${app.gid} cannot be found`);
-        }
-        app.gid = parseInt(group_info.id)
-      } else {
-        app.gid = parseInt(user_info.groupId)
-      }
-    }
-
-    // Specific options of PM2.io
-    if (process.env.PM2_DEEP_MONITORING) {
-      app.deep_monitoring = true;
-    }
-
-    if (app.automation == false) {
-      app.pmx = false;
-    }
-
-    if (app.disable_trace) {
-      app.trace = false
-      delete app.disable_trace;
-    }
-
-    // Instances params
-    if (app.instances == 'max') {
-      app.instances = 0;
-    }
-
-    if (typeof(app.instances) == 'string') {
-      app.instances = parseInt(app.instances) || 0;
-    }
-
-    if (app.exec_mode != 'cluster_mode' &&
-        !app.instances &&
-        typeof(app.merge_logs) == 'undefined') {
-      app.merge_logs = true;
-    }
-
-    var ret;
-
-    if (app.cron_restart) {
-      if ((ret = Common.sink.determineCron(app)) instanceof Error)
-        return ret;
-    }
-
-    // Now validation configuration
-    var ret = Config.validateJSON(app);
-    if (ret.errors && ret.errors.length > 0){
-      ret.errors.forEach(function(err) { warn(err) });
-      return new Error(ret.errors);
-    }
-
-    verifiedConf.push(ret.config);
-  }
-
-  return verifiedConf;
+	return verifiedConf, nil
 }
 
 // Get current username
-func getCurrentUsername() string{
-  if (os.userInfo) {
-	user,err:=user.Current()
-	if err != nil{
-		// TODO: return err
+func getCurrentUsername() string {
+	if os.userInfo {
+		user, err := user.Current()
+		if err != nil {
+			// TODO: return err
+		}
+		return user.Username
 	}
-	return user.Username
-  }
 
-  current_user := OrDefault(
-	GetEnv("USER"),
-	GetEnv("LNAME"),
-	GetEnv("USERNAME"),
-	GetEnv("SUDO_USER"),
-	GetEnv("C9_USER"),
-	GetEnv("LOGNAME"),
-  )
+	current_user := OrDefault(
+		GetEnv("USER"),
+		GetEnv("LNAME"),
+		GetEnv("USERNAME"),
+		GetEnv("SUDO_USER"),
+		GetEnv("C9_USER"),
+		GetEnv("LOGNAME"),
+	)
 
-  // TODO: err on not found
-  return current_user.Value;
+	// TODO: err on not found
+	return current_user.Value
 }
 
 // Render an app name if not existing.
-func renderApplicationName(conf *struct{
-	name Optional[any]
-	script Optional[any]
-}) string {
-	if conf.name.Valid {
-		return conf.name.Value
+func renderApplicationName(name Optional[string], script Optional[string]) string {
+	if name.Valid {
+		return name.Value
 	}
 
-    name := OrDefault(Map(conf.script, path.Base), "undefined")
-	extension := path.Ext(name)
-    if extension!=""{
-		return strings.TrimRight(name, "."+extension)
-    }
+	res := OrDefault(Map(script, path.Base), "undefined")
+	extension := path.Ext(res)
+	if extension != "" {
+		return strings.TrimRight(res, "."+extension)
+	}
 
-	return name
+	return res
 }
 
-// /**
-//  * Show warnings
-//  * @param {String} warning
-//  */
-// function warn(warning){
-//   Common.printOut(cst.PREFIX_MSG_WARNING + warning);
-// }
+// Show warnings
+func warn(warning string) {
+	printOut(cst.PREFIX_MSG_WARNING + warning)
+}
