@@ -18,6 +18,39 @@ type daemonServer struct {
 }
 
 func (*daemonServer) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloReply, error) {
+	// stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer stdoutLogFile.Close()
+
+	// stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer stderrLogFile.Close()
+
+	// pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// if err != nil {
+	// 	return err
+	// }
+	// defer pidFile.Close()
+
+	// // TODO: syscall.ForkExec()
+	// cmd := exec.CommandContext(ctx.Context, args[0], args[1:]...)
+	// cmd.Stdout = stdoutLogFile
+	// cmd.Stderr = stderrLogFile
+	// if err := cmd.Start(); err != nil {
+	// 	return err
+	// }
+
+	// if _, err := pidFile.WriteString(strconv.Itoa(cmd.Process.Pid)); err != nil {
+	// 	return err
+	// }
+
+	// Processes[name] = cmd.Process.Pid
+
+	// return nil
 	log.Println("HI", req.GetName())
 	return &pb.HelloReply{
 		Message: req.GetName(),

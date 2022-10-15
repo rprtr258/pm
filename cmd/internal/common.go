@@ -1,8 +1,16 @@
 package internal
 
 import (
+	"context"
+	"log"
+	"net"
 	"os"
 	"path"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
+	pb "github.com/rprtr258/pm/api"
 )
 
 var (
@@ -15,6 +23,28 @@ var (
 	DaemonLogFile   = path.Join(HomeDir, "pm.log")
 	DaemonRpcSocket = path.Join(HomeDir, "rpc.sock")
 )
+
+func NewGrpcClient() (pb.GreeterClient, func() error, error) {
+	conn, err := grpc.Dial(
+		DaemonRpcSocket,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+			return net.Dial("unix", s)
+		}),
+	)
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+		return nil, nil, err
+	}
+
+	return pb.NewGreeterClient(conn), conn.Close, nil
+
+	// r, err := c.SayHello(ctx, &pb.HelloRequest{Name: *name})
+	// if err != nil {
+	// 	log.Fatalf("could not greet: %v", err)
+	// }
+	// log.Printf("Greeting: %s", r.GetMessage())
+}
 
 // { // 	Name:      "trigger", // 	Usage:     "trigger process action", // 	ArgsUsage: "<id|proc_name|namespace|all> <action_name> [params]", // 	//   .action(function(pm_id, action_name, params) { // 	//     pm2.trigger(pm_id, action_name, params); // },
 // { // 	Name:      "deploy", // 	Usage:     "deploy your json", // 	ArgsUsage: "<file|environment>", // 	//   .action(function(cmd) { // 	//     pm2.deploy(cmd, commander); // },

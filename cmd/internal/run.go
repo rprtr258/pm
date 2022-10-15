@@ -1,12 +1,11 @@
 package internal
 
 import (
+	"context"
 	"errors"
-	"os"
-	"os/exec"
-	"path"
-	"strconv"
+	"fmt"
 
+	"github.com/rprtr258/pm/api"
 	"github.com/urfave/cli/v2"
 )
 
@@ -31,6 +30,12 @@ var StartCmd = &cli.Command{
 		// &cli.BoolFlag{Name: "dockerdaemon", Usage: "for debugging purpose"},
 	},
 	Action: func(ctx *cli.Context) error {
+		client, deferFunc, err := NewGrpcClient()
+		if err != nil {
+			return err
+		}
+		defer deferFunc()
+
 		name := ctx.String(_flagName)
 
 		args := ctx.Args().Slice()
@@ -38,38 +43,14 @@ var StartCmd = &cli.Command{
 			return errors.New("command expected")
 		}
 
-		stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		resp, err := client.SayHello(context.TODO(), &api.HelloRequest{
+			Name: fmt.Sprint(name, args),
+		})
 		if err != nil {
 			return err
 		}
-		defer stdoutLogFile.Close()
 
-		stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-		if err != nil {
-			return err
-		}
-		defer stderrLogFile.Close()
-
-		pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-		if err != nil {
-			return err
-		}
-		defer pidFile.Close()
-
-		// TODO: syscall.ForkExec()
-		cmd := exec.CommandContext(ctx.Context, args[0], args[1:]...)
-		cmd.Stdout = stdoutLogFile
-		cmd.Stderr = stderrLogFile
-		if err := cmd.Start(); err != nil {
-			return err
-		}
-
-		if _, err := pidFile.WriteString(strconv.Itoa(cmd.Process.Pid)); err != nil {
-			return err
-		}
-
-		Processes[name] = cmd.Process.Pid
-
+		fmt.Println("got from server", resp.GetMessage())
 		return nil
 
 		// ==================
