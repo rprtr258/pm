@@ -28,6 +28,12 @@ func main() {
 
 				fmt.Printf("%#v", f.Name())
 			}
+			fmt.Println("ololo")
+			fmt.Println("ololo")
+			fmt.Println("ololo")
+			fmt.Println("ololo")
+			fmt.Println("ololo")
+			fmt.Println("ololo")
 			return nil
 		},
 	}
@@ -63,6 +69,7 @@ func main() {
 			internal.StartCmd,
 			stopCmd,
 			listCmd,
+			internal.DaemonCmd,
 		},
 		Before: func(*cli.Context) error {
 			if _, err := os.Stat(internal.HomeDir); os.IsNotExist(err) {
@@ -73,6 +80,7 @@ func main() {
 		},
 	}
 
+	// TODO: check for update
 	//   pm2.getVersion(function(err, remote_version) { //     if (!err && (pkg.version != remote_version)) { //       console.log(''); //       console.log(chalk.red.bold('>>>> In-memory PM2 is out-of-date, do:\n>>>> $ pm2 update')); //       console.log('In memory PM2 version:', chalk.blue.bold(remote_version)); //       console.log('Local PM2 version:', chalk.blue.bold(pkg.version)); //       console.log(''); //     } //   });
 
 	if err := app.Run(os.Args); err != nil {

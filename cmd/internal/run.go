@@ -38,24 +38,23 @@ var StartCmd = &cli.Command{
 			return errors.New("command expected")
 		}
 
-		if err := os.Mkdir(path.Join(HomeDir, name), 0755); err != nil {
-			return err
-		}
-
 		stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return err
 		}
+		defer stdoutLogFile.Close()
 
 		stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return err
 		}
+		defer stderrLogFile.Close()
 
 		pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return err
 		}
+		defer pidFile.Close()
 
 		// TODO: syscall.ForkExec()
 		cmd := exec.CommandContext(ctx.Context, args[0], args[1:]...)
@@ -74,11 +73,6 @@ var StartCmd = &cli.Command{
 		return nil
 
 		// ==================
-		// if (opts.container == true && opts.dist == true)
-		//   return pm2.dockerMode(cmd, opts, 'distribution');
-		// else if (opts.container == true)
-		//   return pm2.dockerMode(cmd, opts, 'development');
-
 		// if (cmd == "-") {
 		//   process.stdin.resume();
 		//   process.stdin.setEncoding('utf8');
@@ -86,8 +80,7 @@ var StartCmd = &cli.Command{
 		//     process.stdin.pause();
 		//     pm2._startJson(cmd, commander, 'restartProcessId', 'pipe');
 		//   });
-		// }
-		// else {
+		// } else {
 		//   // Commander.js patch
 		//   cmd = patchCommanderArg(cmd);
 		//   if (cmd.length == 0) {
@@ -104,8 +97,7 @@ var StartCmd = &cli.Command{
 		//         (err.message.includes('Script not found') == true ||
 		//          err.message.includes('NOT AVAILABLE IN PATH') == true)) {
 		//       pm2.exitCli(1)
-		//     }
-		//     else
+		//     } else
 		//       pm2.speedList(err ? 1 : 0, acc);
 		//   });
 		// }
