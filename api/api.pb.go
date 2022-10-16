@@ -20,16 +20,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type HelloRequest struct {
+type StartReq struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Cmd  string   `protobuf:"bytes,1,opt,name=cmd,proto3" json:"cmd,omitempty"`
+	Args []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	Name string   `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 }
 
-func (x *HelloRequest) Reset() {
-	*x = HelloRequest{}
+func (x *StartReq) Reset() {
+	*x = StartReq{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_api_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -37,13 +39,13 @@ func (x *HelloRequest) Reset() {
 	}
 }
 
-func (x *HelloRequest) String() string {
+func (x *StartReq) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*HelloRequest) ProtoMessage() {}
+func (*StartReq) ProtoMessage() {}
 
-func (x *HelloRequest) ProtoReflect() protoreflect.Message {
+func (x *StartReq) ProtoReflect() protoreflect.Message {
 	mi := &file_api_api_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -55,28 +57,43 @@ func (x *HelloRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use HelloRequest.ProtoReflect.Descriptor instead.
-func (*HelloRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use StartReq.ProtoReflect.Descriptor instead.
+func (*StartReq) Descriptor() ([]byte, []int) {
 	return file_api_api_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *HelloRequest) GetName() string {
+func (x *StartReq) GetCmd() string {
+	if x != nil {
+		return x.Cmd
+	}
+	return ""
+}
+
+func (x *StartReq) GetArgs() []string {
+	if x != nil {
+		return x.Args
+	}
+	return nil
+}
+
+func (x *StartReq) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-type HelloReply struct {
+type StartResp struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Message string `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	Id  int64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Pid int64 `protobuf:"varint,2,opt,name=pid,proto3" json:"pid,omitempty"`
 }
 
-func (x *HelloReply) Reset() {
-	*x = HelloReply{}
+func (x *StartResp) Reset() {
+	*x = StartResp{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_api_api_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -84,13 +101,13 @@ func (x *HelloReply) Reset() {
 	}
 }
 
-func (x *HelloReply) String() string {
+func (x *StartResp) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*HelloReply) ProtoMessage() {}
+func (*StartResp) ProtoMessage() {}
 
-func (x *HelloReply) ProtoReflect() protoreflect.Message {
+func (x *StartResp) ProtoReflect() protoreflect.Message {
 	mi := &file_api_api_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -102,31 +119,40 @@ func (x *HelloReply) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use HelloReply.ProtoReflect.Descriptor instead.
-func (*HelloReply) Descriptor() ([]byte, []int) {
+// Deprecated: Use StartResp.ProtoReflect.Descriptor instead.
+func (*StartResp) Descriptor() ([]byte, []int) {
 	return file_api_api_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *HelloReply) GetMessage() string {
+func (x *StartResp) GetId() int64 {
 	if x != nil {
-		return x.Message
+		return x.Id
 	}
-	return ""
+	return 0
+}
+
+func (x *StartResp) GetPid() int64 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
 }
 
 var File_api_api_proto protoreflect.FileDescriptor
 
 var file_api_api_proto_rawDesc = []byte{
 	0x0a, 0x0d, 0x61, 0x70, 0x69, 0x2f, 0x61, 0x70, 0x69, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12,
-	0x03, 0x61, 0x70, 0x69, 0x22, 0x22, 0x0a, 0x0c, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x26, 0x0a, 0x0a, 0x48, 0x65, 0x6c, 0x6c,
-	0x6f, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x18, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67,
-	0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65,
-	0x32, 0x39, 0x0a, 0x07, 0x47, 0x72, 0x65, 0x65, 0x74, 0x65, 0x72, 0x12, 0x2e, 0x0a, 0x08, 0x53,
-	0x61, 0x79, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x12, 0x11, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x48, 0x65,
-	0x6c, 0x6c, 0x6f, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0f, 0x2e, 0x61, 0x70, 0x69,
-	0x2e, 0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x42, 0x1c, 0x5a, 0x1a, 0x67,
+	0x03, 0x61, 0x70, 0x69, 0x22, 0x44, 0x0a, 0x08, 0x53, 0x74, 0x61, 0x72, 0x74, 0x52, 0x65, 0x71,
+	0x12, 0x10, 0x0a, 0x03, 0x63, 0x6d, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x63,
+	0x6d, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x61, 0x72, 0x67, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09,
+	0x52, 0x04, 0x61, 0x72, 0x67, 0x73, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x2d, 0x0a, 0x09, 0x53, 0x74,
+	0x61, 0x72, 0x74, 0x52, 0x65, 0x73, 0x70, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x03, 0x52, 0x02, 0x69, 0x64, 0x12, 0x10, 0x0a, 0x03, 0x70, 0x69, 0x64, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x03, 0x52, 0x03, 0x70, 0x69, 0x64, 0x32, 0x30, 0x0a, 0x06, 0x44, 0x61, 0x65,
+	0x6d, 0x6f, 0x6e, 0x12, 0x26, 0x0a, 0x05, 0x53, 0x74, 0x61, 0x72, 0x74, 0x12, 0x0d, 0x2e, 0x61,
+	0x70, 0x69, 0x2e, 0x53, 0x74, 0x61, 0x72, 0x74, 0x52, 0x65, 0x71, 0x1a, 0x0e, 0x2e, 0x61, 0x70,
+	0x69, 0x2e, 0x53, 0x74, 0x61, 0x72, 0x74, 0x52, 0x65, 0x73, 0x70, 0x42, 0x1c, 0x5a, 0x1a, 0x67,
 	0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x72, 0x70, 0x72, 0x74, 0x72, 0x32,
 	0x35, 0x38, 0x2f, 0x70, 0x6d, 0x2f, 0x61, 0x70, 0x69, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
 	0x33,
@@ -146,12 +172,12 @@ func file_api_api_proto_rawDescGZIP() []byte {
 
 var file_api_api_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_api_api_proto_goTypes = []interface{}{
-	(*HelloRequest)(nil), // 0: api.HelloRequest
-	(*HelloReply)(nil),   // 1: api.HelloReply
+	(*StartReq)(nil),  // 0: api.StartReq
+	(*StartResp)(nil), // 1: api.StartResp
 }
 var file_api_api_proto_depIdxs = []int32{
-	0, // 0: api.Greeter.SayHello:input_type -> api.HelloRequest
-	1, // 1: api.Greeter.SayHello:output_type -> api.HelloReply
+	0, // 0: api.Daemon.Start:input_type -> api.StartReq
+	1, // 1: api.Daemon.Start:output_type -> api.StartResp
 	1, // [1:2] is the sub-list for method output_type
 	0, // [0:1] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
@@ -166,7 +192,7 @@ func file_api_api_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_api_api_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HelloRequest); i {
+			switch v := v.(*StartReq); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -178,7 +204,7 @@ func file_api_api_proto_init() {
 			}
 		}
 		file_api_api_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HelloReply); i {
+			switch v := v.(*StartResp); i {
 			case 0:
 				return &v.state
 			case 1:

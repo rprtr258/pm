@@ -6,6 +6,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
+	"path"
+	"strconv"
 
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
@@ -15,46 +18,49 @@ import (
 )
 
 type daemonServer struct {
-	pb.UnimplementedGreeterServer
+	pb.UnimplementedDaemonServer
 }
 
-func (*daemonServer) SayHello(ctx context.Context, req *pb.HelloRequest) (*pb.HelloReply, error) {
-	// stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer stdoutLogFile.Close()
+func (*daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
+	name := req.GetName()
+	cmd := req.GetCmd()
+	args := req.GetArgs()
 
-	// stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer stderrLogFile.Close()
+	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return nil, err
+	}
+	defer stdoutLogFile.Close()
 
-	// pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	// if err != nil {
-	// 	return err
-	// }
-	// defer pidFile.Close()
+	stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return nil, err
+	}
+	defer stderrLogFile.Close()
 
-	// // TODO: syscall.ForkExec()
-	// cmd := exec.CommandContext(ctx.Context, args[0], args[1:]...)
-	// cmd.Stdout = stdoutLogFile
-	// cmd.Stderr = stderrLogFile
-	// if err := cmd.Start(); err != nil {
-	// 	return err
-	// }
+	pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	if err != nil {
+		return nil, err
+	}
+	defer pidFile.Close()
 
-	// if _, err := pidFile.WriteString(strconv.Itoa(cmd.Process.Pid)); err != nil {
-	// 	return err
-	// }
+	// TODO: syscall.ForkExec()
+	execCmd := exec.CommandContext(context.TODO(), cmd, args...)
+	execCmd.Stdout = stdoutLogFile
+	execCmd.Stderr = stderrLogFile
+	if err := execCmd.Start(); err != nil {
+		return nil, err
+	}
 
-	// Processes[name] = cmd.Process.Pid
+	if _, err := pidFile.WriteString(strconv.Itoa(execCmd.Process.Pid)); err != nil {
+		return nil, err
+	}
 
-	// return nil
-	log.Println("HI", req.GetName())
-	return &pb.HelloReply{
-		Message: req.GetName(),
+	// Processes[name] = execCmd.Process.Pid
+
+	return &pb.StartResp{
+		Id:  0,
+		Pid: int64(execCmd.Process.Pid),
 	}, nil
 }
 
@@ -129,7 +135,7 @@ func runDaemon() error {
 	defer sock.Close()
 
 	srv := grpc.NewServer()
-	pb.RegisterGreeterServer(srv, &daemonServer{})
+	pb.RegisterDaemonServer(srv, &daemonServer{})
 
 	log.Println("- - - - - - - - - - - - - - -")
 	log.Printf("daemon started at %v", sock.Addr())

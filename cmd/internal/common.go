@@ -15,7 +15,7 @@ import (
 
 var (
 	// Processes - proc name -> pid
-	Processes map[string]int = make(map[string]int)
+	// Processes map[string]int = make(map[string]int)
 
 	UserHome        = os.Getenv("HOME")
 	HomeDir         = path.Join(UserHome, ".pm")
@@ -24,7 +24,7 @@ var (
 	DaemonRpcSocket = path.Join(HomeDir, "rpc.sock")
 )
 
-func NewGrpcClient() (pb.GreeterClient, func() error, error) {
+func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 	conn, err := grpc.Dial(
 		DaemonRpcSocket,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -37,7 +37,7 @@ func NewGrpcClient() (pb.GreeterClient, func() error, error) {
 		return nil, nil, err
 	}
 
-	return pb.NewGreeterClient(conn), conn.Close, nil
+	return pb.NewDaemonClient(conn), conn.Close, nil
 }
 
 // { // 	Name:      "trigger", // 	Usage:     "trigger process action", // 	ArgsUsage: "<id|proc_name|namespace|all> <action_name> [params]", // 	//   .action(function(pm_id, action_name, params) { // 	//     pm2.trigger(pm_id, action_name, params); // },

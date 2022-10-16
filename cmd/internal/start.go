@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -43,44 +42,16 @@ var StartCmd = &cli.Command{
 			return errors.New("command expected")
 		}
 
-		resp, err := client.SayHello(context.TODO(), &api.HelloRequest{
-			Name: fmt.Sprint(name, args),
+		resp, err := client.Start(ctx.Context, &api.StartReq{
+			Cmd:  args[0],
+			Args: args[1:],
+			Name: name,
 		})
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("got from server", resp.GetMessage())
+		fmt.Printf("got: id=%d pid=%d", resp.GetId(), resp.GetPid())
 		return nil
-
-		// ==================
-		// if (cmd == "-") {
-		//   process.stdin.resume();
-		//   process.stdin.setEncoding('utf8');
-		//   process.stdin.on('data', function (cmd) {
-		//     process.stdin.pause();
-		//     pm2._startJson(cmd, commander, 'restartProcessId', 'pipe');
-		//   });
-		// } else {
-		//   // Commander.js patch
-		//   cmd = patchCommanderArg(cmd);
-		//   if (cmd.length == 0) {
-		//     cmd = [cst.APP_CONF_DEFAULT_FILE];
-		//   }
-		//   let acc = []
-		//   forEachLimit(cmd, 1, function(script, next) {
-		//     pm2.start(script, commander, (err, apps) => {
-		//       acc = acc.concat(apps)
-		//       next(err)
-		//     });
-		//   }, function(err, dt) {
-		//     if (err && err.message &&
-		//         (err.message.includes('Script not found') == true ||
-		//          err.message.includes('NOT AVAILABLE IN PATH') == true)) {
-		//       pm2.exitCli(1)
-		//     } else
-		//       pm2.speedList(err ? 1 : 0, acc);
-		//   });
-		// }
 	},
 }
