@@ -9,9 +9,15 @@ service Daemon {
 }
 
 message StartReq {
-    string cmd = 1;
-    repeated string args = 2;
-    string name = 3;
+    oneof process {
+        message Cmd {
+            string cmd = 1;
+            repeated string args = 2;
+        },
+        string shell,
+    } = 1;
+    string name = 2;
+    string cwd = 3;
 }
 
 message StartResp {
