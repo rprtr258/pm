@@ -20,8 +20,9 @@ func main() {
 		Commands: append(
 			internal.AllCmds,
 			&cli.Command{
-				Name:  "version",
-				Usage: "print pm version",
+				Name:    "version",
+				Aliases: []string{"v"},
+				Usage:   "print pm version",
 			},
 		),
 		Before: func(*cli.Context) error {
