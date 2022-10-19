@@ -7,9 +7,12 @@ import (
 	"net"
 	"os"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "github.com/rprtr258/pm/api"
 )
@@ -66,6 +69,34 @@ func (*daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp
 		Id:  0,
 		Pid: 1,
 	}, nil
+}
+
+func (*daemonServer) List(context.Context, *empty.Empty) (*pb.ListResp, error) {
+	fs, err := os.ReadDir(HomeDir)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range fs {
+		if !f.IsDir() {
+			// fmt.Fprintf(os.Stderr, "found strange file %q which should not exist\n", path.Join(HomeDir, f.Name()))
+			continue
+		}
+
+		// fmt.Printf("%#v", f.Name())
+	}
+
+	return &pb.ListResp{
+		Items: []*pb.ListRespEntry{},
+	}, nil
+}
+
+func (*daemonServer) Stop(context.Context, *pb.DeleteReq) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
+}
+
+func (*daemonServer) Delete(context.Context, *pb.DeleteReq) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 
 func init() {
@@ -127,7 +158,7 @@ var DaemonCmd = &cli.Command{
 		},
 		{
 			Name:  "run",
-			Usage: "run daemon",
+			Usage: "run daemon, DON'T USE BY HAND IF YOU DON'T KNOW WHAT YOU ARE DOING",
 			Action: func(ctx *cli.Context) error {
 				return runDaemon()
 			},

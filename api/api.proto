@@ -47,6 +47,10 @@ message RunningInfo {
 }
 
 message ListResp {
+    repeated ListRespEntry items = 1;
+}
+
+message ListRespEntry {
     int64 id = 1;
     string name = 3;
     oneof status {
