@@ -4,6 +4,7 @@
 # bump dependencies
 @bump:
     go get -u ./...
+    go mod tidy
 
 # compile go sources for protobuf
 @protoc:
