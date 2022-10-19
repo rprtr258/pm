@@ -43,9 +43,13 @@ var StartCmd = &cli.Command{
 		}
 
 		resp, err := client.Start(ctx.Context, &api.StartReq{
-			Cmd:  args[0],
-			Args: args[1:],
+			Process: &api.StartReq_Cmd{Cmd: &api.Cmd{
+				Cmd:  args[0],
+				Args: args[1:],
+			}},
 			Name: name,
+			Cwd:  ".",
+			Tags: &api.Tags{Tags: []string{"default"}},
 		})
 		if err != nil {
 			return err

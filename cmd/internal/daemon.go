@@ -6,9 +6,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
-	"path"
-	"strconv"
 
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
@@ -22,45 +19,52 @@ type daemonServer struct {
 }
 
 func (*daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
-	name := req.GetName()
-	cmd := req.GetCmd()
-	args := req.GetArgs()
+	// name := req.GetName()
+	// cmd := req.GetCmd()
+	startParamsProto := req.GetProcess()
+	switch /*startParams :=*/ startParamsProto.(type) {
+	case *pb.StartReq_Cmd:
+	// 	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	defer stdoutLogFile.Close()
 
-	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		return nil, err
+	// 	stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	defer stderrLogFile.Close()
+
+	// 	pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	defer pidFile.Close()
+
+	// 	// TODO: syscall.ForkExec()
+	// 	execCmd := exec.CommandContext(context.TODO(), cmd, startParamsProto...)
+	// 	execCmd.Stdout = stdoutLogFile
+	// 	execCmd.Stderr = stderrLogFile
+	// 	if err := execCmd.Start(); err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	if _, err := pidFile.WriteString(strconv.Itoa(execCmd.Process.Pid)); err != nil {
+	// 		return nil, err
+	// 	}
+	// // Processes[name] = execCmd.Process.Pid
+	// return &pb.StartResp{
+	// 	Id:  0,
+	// 	Pid: int64(execCmd.Process.Pid),
+	// }, nil
+	case *pb.StartReq_Shell:
+	case *pb.StartReq_Config:
 	}
-	defer stdoutLogFile.Close()
-
-	stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		return nil, err
-	}
-	defer stderrLogFile.Close()
-
-	pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	if err != nil {
-		return nil, err
-	}
-	defer pidFile.Close()
-
-	// TODO: syscall.ForkExec()
-	execCmd := exec.CommandContext(context.TODO(), cmd, args...)
-	execCmd.Stdout = stdoutLogFile
-	execCmd.Stderr = stderrLogFile
-	if err := execCmd.Start(); err != nil {
-		return nil, err
-	}
-
-	if _, err := pidFile.WriteString(strconv.Itoa(execCmd.Process.Pid)); err != nil {
-		return nil, err
-	}
-
-	// Processes[name] = execCmd.Process.Pid
 
 	return &pb.StartResp{
 		Id:  0,
-		Pid: int64(execCmd.Process.Pid),
+		Pid: 1,
 	}, nil
 }
 
