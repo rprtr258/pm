@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 
 	"github.com/urfave/cli/v2"
 
@@ -11,32 +10,6 @@ import (
 )
 
 func main() {
-	listCmd := &cli.Command{
-		Name:    "list",
-		Aliases: []string{"l"},
-		Action: func(*cli.Context) error {
-			fs, err := os.ReadDir(internal.HomeDir)
-			if err != nil {
-				return err
-			}
-
-			for _, f := range fs {
-				if !f.IsDir() {
-					fmt.Fprintf(os.Stderr, "found strange file %q which should not exist\n", path.Join(internal.HomeDir, f.Name()))
-					continue
-				}
-
-				fmt.Printf("%#v", f.Name())
-			}
-			fmt.Println("ololo")
-			fmt.Println("ololo")
-			fmt.Println("ololo")
-			fmt.Println("ololo")
-			fmt.Println("ololo")
-			fmt.Println("ololo")
-			return nil
-		},
-	}
 
 	app := &cli.App{
 		Name:  "pm",
@@ -47,7 +20,7 @@ func main() {
 		Commands: []*cli.Command{
 			internal.StartCmd,
 			internal.StopCmd,
-			listCmd,
+			internal.ListCmd,
 			internal.DaemonCmd,
 		},
 		Before: func(*cli.Context) error {
