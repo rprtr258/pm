@@ -38,27 +38,6 @@ func main() {
 		},
 	}
 
-	stopCmd := &cli.Command{
-		Name:      "stop",
-		Usage:     "stop a process",
-		ArgsUsage: "<id|name|namespace|all|json|stdin...>",
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "watch",
-				Usage: "Stop watching folder for changes",
-			},
-		},
-		Action: func(*cli.Context) error {
-			//   .action(function(param) {
-			//     forEachLimit(param, 1, function(script, next) {
-			//       pm2.stop(script, next);
-			//     }, function(err) {
-			//       pm2.speedList(err ? 1 : 0);
-			//     });
-			return nil
-		},
-	}
-
 	app := &cli.App{
 		Name:  "pm",
 		Usage: "manage running processes",
@@ -67,7 +46,7 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			internal.StartCmd,
-			stopCmd,
+			internal.StopCmd,
 			listCmd,
 			internal.DaemonCmd,
 		},
