@@ -12,6 +12,10 @@ const (
 	_flagName = "name"
 )
 
+func init() {
+	AllCmds = append(AllCmds, StartCmd)
+}
+
 var StartCmd = &cli.Command{
 	Name: "start",
 	// ArgsUsage: "<'cmd args...'|name|namespace|config|id>...",

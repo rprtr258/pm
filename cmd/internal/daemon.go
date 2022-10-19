@@ -68,6 +68,10 @@ func (*daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp
 	}, nil
 }
 
+func init() {
+	AllCmds = append(AllCmds, DaemonCmd)
+}
+
 var DaemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "manage daemon",

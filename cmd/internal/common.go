@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/rprtr258/pm/api"
+	"github.com/urfave/cli/v2"
 )
 
 var (
@@ -22,6 +23,8 @@ var (
 	DaemonPidFile   = path.Join(HomeDir, "pm.pid")
 	DaemonLogFile   = path.Join(HomeDir, "pm.log")
 	DaemonRpcSocket = path.Join(HomeDir, "rpc.sock")
+
+	AllCmds []*cli.Command
 )
 
 func NewGrpcClient() (pb.DaemonClient, func() error, error) {

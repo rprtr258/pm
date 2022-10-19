@@ -2,6 +2,10 @@ package internal
 
 import "github.com/urfave/cli/v2"
 
+func init() {
+	AllCmds = append(AllCmds, StopCmd)
+}
+
 var StopCmd = &cli.Command{
 	Name:      "stop",
 	Usage:     "stop a process",
