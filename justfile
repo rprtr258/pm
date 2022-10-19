@@ -1,4 +1,12 @@
-protoc:
+@_help:
+    just --list --unsorted
+
+# bump dependencies
+@bump:
+    go get -u ./...
+
+# compile go sources for protobuf
+@protoc:
     protoc \
         --go_out=. \
         --go_opt=paths=source_relative \
