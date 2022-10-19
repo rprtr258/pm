@@ -7,12 +7,12 @@ import (
 	"net"
 	"os"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/rprtr258/pm/api"
 )
@@ -71,7 +71,7 @@ func (*daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp
 	}, nil
 }
 
-func (*daemonServer) List(context.Context, *empty.Empty) (*pb.ListResp, error) {
+func (*daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, error) {
 	fs, err := os.ReadDir(HomeDir)
 	if err != nil {
 		return nil, err
@@ -91,11 +91,11 @@ func (*daemonServer) List(context.Context, *empty.Empty) (*pb.ListResp, error) {
 	}, nil
 }
 
-func (*daemonServer) Stop(context.Context, *pb.DeleteReq) (*empty.Empty, error) {
+func (*daemonServer) Stop(context.Context, *pb.DeleteReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
 
-func (*daemonServer) Delete(context.Context, *pb.DeleteReq) (*empty.Empty, error) {
+func (*daemonServer) Delete(context.Context, *pb.DeleteReq) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 
