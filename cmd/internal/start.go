@@ -9,10 +9,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const (
-	_flagName = "name"
-)
-
 func init() {
 	AllCmds = append(AllCmds, StartCmd)
 }
@@ -23,13 +19,9 @@ var StartCmd = &cli.Command{
 	ArgsUsage: "cmd args...",
 	Usage:     "start and daemonize an app",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    _flagName,
-			Aliases: []string{"n"},
-			Usage:   "set a name for the process",
-		},
-		// &cli.StringFlag{Name:      "namespace", Usage: "start application within specified namespace"},
-		// &cli.StringFlag{Name:      "cwd", Usage: "run target script from path <cwd>"},
+		&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "set a name for the process"},
+		&cli.StringSliceFlag{Name: "tags", Usage: "assign specified tags"},
+		&cli.StringFlag{Name: "cwd", Usage: "set working directory"},
 		// &cli.BoolFlag{Name:        "only", Usage: "with json declaration, allow to only act on one application"},
 		// &cli.BoolFlag{Name:        "watch", Usage: "Watch folder for changes"},
 		// &cli.StringSliceFlag{Name: "watch", Usage: "watch application folder for changes"},
@@ -75,7 +67,7 @@ var StartCmd = &cli.Command{
 		}
 		defer deferFunc()
 
-		name := ctx.String(_flagName)
+		name := ctx.String("name")
 
 		args := ctx.Args().Slice()
 		if len(args) < 1 {
@@ -92,7 +84,7 @@ var StartCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("got: id=%d pid=%d", resp.GetId(), resp.GetPid())
+		fmt.Println(resp.GetId())
 		return nil
 	},
 }

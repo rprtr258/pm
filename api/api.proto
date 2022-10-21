@@ -10,8 +10,8 @@ package api;
 service Daemon {
     rpc Start(StartReq) returns (StartResp);
     rpc List(google.protobuf.Empty) returns (ListResp);
-    rpc Stop(DeleteReq) returns (google.protobuf.Empty);
-    rpc Delete(DeleteReq) returns (google.protobuf.Empty);
+    rpc Stop(DeleteReq) returns (DeleteResp);
+    rpc Delete(DeleteReq) returns (DeleteResp);
 }
 
 message Cmd {
@@ -33,7 +33,7 @@ message StartReq {
 }
 
 message StartResp {
-    int64 id = 1;
+    uint64 id = 1;
     int64 pid = 2;
 }
 
@@ -47,7 +47,7 @@ message ListResp {
 }
 
 message ListRespEntry {
-    int64 id = 1;
+    uint64 id = 1;
     string cmd = 2;
     string name = 3;
     oneof status {
@@ -75,4 +75,8 @@ message DeleteFilter {
 
 message Tags {
     repeated string tags = 1;
+}
+
+message DeleteResp {
+    repeated uint64 id = 1;
 }

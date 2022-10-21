@@ -25,8 +25,8 @@ const _ = grpc.SupportPackageIsVersion7
 type DaemonClient interface {
 	Start(ctx context.Context, in *StartReq, opts ...grpc.CallOption) (*StartResp, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResp, error)
-	Stop(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Stop(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*DeleteResp, error)
+	Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*DeleteResp, error)
 }
 
 type daemonClient struct {
@@ -55,8 +55,8 @@ func (c *daemonClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc
 	return out, nil
 }
 
-func (c *daemonClient) Stop(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *daemonClient) Stop(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*DeleteResp, error) {
+	out := new(DeleteResp)
 	err := c.cc.Invoke(ctx, "/api.Daemon/Stop", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -64,8 +64,8 @@ func (c *daemonClient) Stop(ctx context.Context, in *DeleteReq, opts ...grpc.Cal
 	return out, nil
 }
 
-func (c *daemonClient) Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *daemonClient) Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*DeleteResp, error) {
+	out := new(DeleteResp)
 	err := c.cc.Invoke(ctx, "/api.Daemon/Delete", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -79,8 +79,8 @@ func (c *daemonClient) Delete(ctx context.Context, in *DeleteReq, opts ...grpc.C
 type DaemonServer interface {
 	Start(context.Context, *StartReq) (*StartResp, error)
 	List(context.Context, *emptypb.Empty) (*ListResp, error)
-	Stop(context.Context, *DeleteReq) (*emptypb.Empty, error)
-	Delete(context.Context, *DeleteReq) (*emptypb.Empty, error)
+	Stop(context.Context, *DeleteReq) (*DeleteResp, error)
+	Delete(context.Context, *DeleteReq) (*DeleteResp, error)
 	mustEmbedUnimplementedDaemonServer()
 }
 
@@ -94,10 +94,10 @@ func (UnimplementedDaemonServer) Start(context.Context, *StartReq) (*StartResp, 
 func (UnimplementedDaemonServer) List(context.Context, *emptypb.Empty) (*ListResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-func (UnimplementedDaemonServer) Stop(context.Context, *DeleteReq) (*emptypb.Empty, error) {
+func (UnimplementedDaemonServer) Stop(context.Context, *DeleteReq) (*DeleteResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
-func (UnimplementedDaemonServer) Delete(context.Context, *DeleteReq) (*emptypb.Empty, error) {
+func (UnimplementedDaemonServer) Delete(context.Context, *DeleteReq) (*DeleteResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 func (UnimplementedDaemonServer) mustEmbedUnimplementedDaemonServer() {}

@@ -96,7 +96,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 		return nil, err
 	}
 
-	var procID int64
+	var procID uint64
 
 	if err := srv.DB.Update(func(tx *bbolt.Tx) error {
 		{
@@ -110,16 +110,14 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 				return err
 			}
 
-			procID = int64(id)
+			procID = id
 
-			idBytes := []byte(strconv.FormatInt(procID, 10))
+			idBytes := []byte(strconv.FormatInt(int64(procID), 10))
 			if err := mainBucket.Put(idBytes, encodedMetadata); err != nil {
 				return err
 			}
-
 		}
 		{
-
 			byNameBucket := tx.Bucket([]byte(_byNameBucket))
 			if byNameBucket == nil {
 				return errors.New("byName bucket was not found")
@@ -133,7 +131,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 				}
 			}
 
-			newIdsByName := append(idsByName, procID)
+			newIdsByName := append(idsByName, int64(procID))
 			newIdsByNameBytes, err := json.Marshal(newIdsByName)
 			if err != nil {
 				return err
@@ -158,7 +156,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 					}
 				}
 
-				newIdsWithSuchName := append(idsByTag, procID)
+				newIdsWithSuchName := append(idsByTag, int64(procID))
 				newIdsWithSuchNameBytes, err := json.Marshal(newIdsWithSuchName)
 				if err != nil {
 					return err
@@ -191,7 +189,7 @@ func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, er
 		}
 
 		if err := bucket.ForEach(func(key, value []byte) error {
-			id, err := strconv.ParseInt(string(key), 10, 64)
+			id, err := strconv.ParseUint(string(key), 10, 64)
 			if err != nil {
 				return fmt.Errorf("incorrect key: %w", err)
 			}
@@ -227,11 +225,11 @@ func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, er
 	}, nil
 }
 
-func (*daemonServer) Stop(context.Context, *pb.DeleteReq) (*emptypb.Empty, error) {
+func (*daemonServer) Stop(context.Context, *pb.DeleteReq) (*pb.DeleteResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
 
-func (*daemonServer) Delete(context.Context, *pb.DeleteReq) (*emptypb.Empty, error) {
+func (*daemonServer) Delete(context.Context, *pb.DeleteReq) (*pb.DeleteResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 
