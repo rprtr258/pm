@@ -14,6 +14,9 @@ func init() {
 var ListCmd = &cli.Command{
 	Name:    "list",
 	Aliases: []string{"l"},
+	// &cli.BoolFlag{Name:        "mini-list", Aliases: []string{"m"}, Usage: "display a compacted list without formatting"},
+	// &cli.BoolFlag{Name:        "sort", Usage: "sort <field_name:sort> sort process according to field's name"},
+	// --format
 	Action: func(ctx *cli.Context) error {
 		client, deferFunc, err := NewGrpcClient()
 		if err != nil {

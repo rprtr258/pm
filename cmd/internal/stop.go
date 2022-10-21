@@ -15,6 +15,9 @@ var StopCmd = &cli.Command{
 			Name:  "watch",
 			Usage: "Stop watching folder for changes",
 		},
+		// &cli.BoolFlag{Name:        "shutdown-with-message", Usage: "shutdown an application with process.send('shutdown') instead of process.kill(pid, SIGINT)"},
+		// &cli.DurationFlag{Name:    "kill-timeout", Aliases: []string{"k"}, Usage: "delay before sending final SIGKILL signal to process"},
+		// &cli.BoolFlag{Name:        "no-treekill", Usage: "Only kill the main process, not detached children"},
 	},
 	Action: func(*cli.Context) error {
 		//   .action(function(param) {

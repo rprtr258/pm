@@ -341,6 +341,10 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 //     pm2.generateSample(mode);
 //   });
 // },
+// &cli.BoolFlag{Name:        "service-name", Usage: "define service name when generating startup script"},
+// &cli.StringFlag{Name:      "home-path", Usage: "define home path when generating startup script"},
+// &cli.StringFlag{Name:      "user", Aliases: []string{"u"}, Usage: "define user when generating startup script"},
+// &cli.BoolFlag{Name:        "write", Aliases: []string{"w"}, Usage: "write configuration in local folder"},
 
 // { Name: "reset",
 // commander.command('reset <name|id|all>')
