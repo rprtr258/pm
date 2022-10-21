@@ -2,10 +2,13 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"strconv"
 
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
@@ -17,6 +20,18 @@ import (
 
 	pb "github.com/rprtr258/pm/api"
 )
+
+const (
+	mainBucket   = "main"
+	byNameBucket = "by_name"
+	byTagBucket  = "by_tag"
+)
+
+type ProcMetadata struct {
+	Name   string   `json:"name"`
+	Status string   `json:"status"`
+	Tags   []string `json:"tags"`
+}
 
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
@@ -73,23 +88,48 @@ func (*daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp
 	}, nil
 }
 
-func (*daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, error) {
-	fs, err := os.ReadDir(HomeDir)
+func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, error) {
+	resp := []*pb.ListRespEntry{}
+
+	err := srv.DB.View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(mainBucket))
+		if bucket == nil {
+			return errors.New("main bucket does not exist")
+		}
+
+		if err := bucket.ForEach(func(key, value []byte) error {
+			id, err := strconv.ParseInt(string(key), 10, 64)
+			if err != nil {
+				return fmt.Errorf("incorrect key: %w", err)
+			}
+
+			var metadata ProcMetadata
+			if err := json.Unmarshal(value, &metadata); err != nil {
+				return fmt.Errorf("failed decoding value: %w", err)
+			}
+
+			resp = append(resp, &pb.ListRespEntry{
+				Id:     id,
+				Name:   metadata.Name,
+				Status: &pb.ListRespEntry_Errored{},
+				Tags:   &pb.Tags{Tags: metadata.Tags},
+				Cpu:    0, // TODO: take from ps
+				Memory: 0, // TODO: take from ps
+			})
+
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	for _, f := range fs {
-		if !f.IsDir() {
-			// fmt.Fprintf(os.Stderr, "found strange file %q which should not exist\n", path.Join(HomeDir, f.Name()))
-			continue
-		}
-
-		// fmt.Printf("%#v", f.Name())
-	}
-
 	return &pb.ListResp{
-		Items: []*pb.ListRespEntry{},
+		Items: resp,
 	}, nil
 }
 
@@ -175,11 +215,28 @@ func runDaemon() error {
 	}
 	defer sock.Close()
 
-	db, err := bbolt.Open("my.db", 0600, nil)
+	db, err := bbolt.Open(DBFile, 0600, nil)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
+	if err := db.Update(func(tx *bbolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(mainBucket)); err != nil {
+			return err
+		}
+
+		if _, err := tx.CreateBucketIfNotExists([]byte(byNameBucket)); err != nil {
+			return err
+		}
+
+		if _, err := tx.CreateBucketIfNotExists([]byte(byTagBucket)); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
 
 	srv := grpc.NewServer()
 	pb.RegisterDaemonServer(srv, &daemonServer{
