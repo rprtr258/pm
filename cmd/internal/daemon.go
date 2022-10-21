@@ -88,7 +88,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 		Name:   req.GetName(),
 		Cmd:    req.GetCmd(),
 		Status: "running",
-		Tags:   lo.Uniq(append(req.GetTags().GetTags(), "default")),
+		Tags:   lo.Uniq(append(req.GetTags().GetTags(), "all")),
 	}
 
 	encodedMetadata, err := json.Marshal(metadata)

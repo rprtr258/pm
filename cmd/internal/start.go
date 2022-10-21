@@ -28,6 +28,8 @@ var StartCmd = &cli.Command{
 			Aliases: []string{"n"},
 			Usage:   "set a name for the process",
 		},
+		// &cli.StringFlag{Name:      "namespace", Usage: "start application within specified namespace"},
+		// &cli.StringFlag{Name:      "cwd", Usage: "run target script from path <cwd>"},
 		// &cli.BoolFlag{Name: "watch", Usage: "Watch folder for changes"},
 		// &cli.BoolFlag{Name: "fresh", Usage: "Rebuild Dockerfile"},
 		// &cli.BoolFlag{Name: "daemon", Usage: "Run container in Daemon mode (debug purposes)"},
