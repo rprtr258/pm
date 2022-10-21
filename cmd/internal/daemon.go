@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/samber/lo"
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
 	"go.etcd.io/bbolt"
@@ -34,18 +35,17 @@ type ProcMetadata struct {
 	Tags   []string `json:"tags"`
 }
 
+// TODO: move out server things
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
 	DB *bbolt.DB
 }
 
 func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
-	var cmd string
-	// cmd := req.GetCmd()
-	startParamsProto := req.GetProcess()
+	// startParamsProto := req.GetProcess()
 	// TODO: move to client
-	switch /*startParams :=*/ startParamsProto.(type) {
-	case *pb.StartReq_Cmd:
+	// switch /*startParams :=*/ startParamsProto.(type) {
+	// case *pb.StartReq_Cmd:
 	// 	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	// 	if err != nil {
 	// 		return nil, err
@@ -80,15 +80,15 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 	// 	Id:  0,
 	// 	Pid: int64(execCmd.Process.Pid),
 	// }, nil
-	case *pb.StartReq_Shell:
-	case *pb.StartReq_Config:
-	}
+	// case *pb.StartReq_Shell:
+	// case *pb.StartReq_Config:
+	// }
 
 	metadata := ProcMetadata{
 		Name:   req.GetName(),
-		Cmd:    cmd,
+		Cmd:    req.GetCmd(),
 		Status: "running",
-		Tags:   []string{"default"},
+		Tags:   lo.Uniq(append(req.GetTags().GetTags(), "default")),
 	}
 
 	encodedMetadata, err := json.Marshal(metadata)
@@ -127,8 +127,10 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 
 			idsByNameBytes := byNameBucket.Get([]byte(metadata.Name))
 			var idsByName []int64
-			if err := json.Unmarshal(idsByNameBytes, &idsByName); err != nil {
-				return err
+			if idsByName != nil {
+				if err := json.Unmarshal(idsByNameBytes, &idsByName); err != nil {
+					return err
+				}
 			}
 
 			newIdsByName := append(idsByName, procID)
@@ -150,8 +152,10 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 			for _, tag := range metadata.Tags {
 				idsWithSuchNameBytes := byTagBucket.Get([]byte(tag))
 				var idsByTag []int64
-				if err := json.Unmarshal(idsWithSuchNameBytes, &idsByTag); err != nil {
-					return err
+				if idsWithSuchNameBytes != nil {
+					if err := json.Unmarshal(idsWithSuchNameBytes, &idsByTag); err != nil {
+						return err
+					}
 				}
 
 				newIdsWithSuchName := append(idsByTag, procID)
@@ -172,7 +176,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 	}
 
 	return &pb.StartResp{
-		Id:  0,
+		Id:  procID,
 		Pid: 1,
 	}, nil
 }
@@ -200,6 +204,7 @@ func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, er
 			resp = append(resp, &pb.ListRespEntry{
 				Id:     id,
 				Name:   metadata.Name,
+				Cmd:    metadata.Cmd,
 				Status: &pb.ListRespEntry_Errored{}, // TODO: decode status
 				Tags:   &pb.Tags{Tags: metadata.Tags},
 				Cpu:    0, // TODO: take from ps

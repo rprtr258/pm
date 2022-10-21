@@ -25,15 +25,11 @@ message ConfigStart {
 }
 
 message StartReq {
-    oneof process {
-        Cmd cmd = 10;
-        string shell = 11;
-        ConfigStart config = 12;
-    };
     string name = 1;
     string cwd = 2;
     Tags tags = 3;
     repeated string watch = 4;
+    string cmd = 5;
 }
 
 message StartResp {
@@ -52,6 +48,7 @@ message ListResp {
 
 message ListRespEntry {
     int64 id = 1;
+    string cmd = 2;
     string name = 3;
     oneof status {
         google.protobuf.Empty stopped = 10;

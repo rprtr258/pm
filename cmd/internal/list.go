@@ -26,8 +26,18 @@ var ListCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("id\tname\tstatus\ttags\tcpu\tmemory\tcmd")
 		for _, item := range resp.GetItems() {
-			fmt.Printf("%#v\n", item)
+			fmt.Printf(
+				"%d\t%s\t%T\t%v\t%d\t%d\t%s\n",
+				item.GetId(),
+				item.GetName(),
+				item.GetStatus(),
+				item.GetTags().GetTags(),
+				item.GetCpu(),
+				item.GetMemory(),
+				item.GetCmd(),
+			)
 		}
 
 		return nil

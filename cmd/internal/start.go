@@ -3,6 +3,7 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/urfave/cli/v2"
@@ -22,7 +23,11 @@ var StartCmd = &cli.Command{
 	ArgsUsage: "cmd args...",
 	Usage:     "start and daemonize an app",
 	Flags: []cli.Flag{
-		&cli.StringFlag{Name: _flagName, Aliases: []string{"n"}, Usage: "set a name for the process"},
+		&cli.StringFlag{
+			Name:    _flagName,
+			Aliases: []string{"n"},
+			Usage:   "set a name for the process",
+		},
 		// &cli.BoolFlag{Name: "watch", Usage: "Watch folder for changes"},
 		// &cli.BoolFlag{Name: "fresh", Usage: "Rebuild Dockerfile"},
 		// &cli.BoolFlag{Name: "daemon", Usage: "Run container in Daemon mode (debug purposes)"},
@@ -47,13 +52,10 @@ var StartCmd = &cli.Command{
 		}
 
 		resp, err := client.Start(ctx.Context, &api.StartReq{
-			Process: &api.StartReq_Cmd{Cmd: &api.Cmd{
-				Cmd:  args[0],
-				Args: args[1:],
-			}},
 			Name: name,
 			Cwd:  ".",
-			Tags: &api.Tags{Tags: []string{"default"}},
+			Tags: &api.Tags{Tags: []string{}},
+			Cmd:  strings.Join(args, " "),
 		})
 		if err != nil {
 			return err
