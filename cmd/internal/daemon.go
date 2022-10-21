@@ -22,13 +22,14 @@ import (
 )
 
 const (
-	mainBucket   = "main"
-	byNameBucket = "by_name"
-	byTagBucket  = "by_tag"
+	_mainBucket   = "main"
+	_byNameBucket = "by_name"
+	_byTagBucket  = "by_tag"
 )
 
 type ProcMetadata struct {
 	Name   string   `json:"name"`
+	Cmd    string   `json:"cmd"`
 	Status string   `json:"status"`
 	Tags   []string `json:"tags"`
 }
@@ -38,10 +39,11 @@ type daemonServer struct {
 	DB *bbolt.DB
 }
 
-func (*daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
-	// name := req.GetName()
+func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
+	var cmd string
 	// cmd := req.GetCmd()
 	startParamsProto := req.GetProcess()
+	// TODO: move to client
 	switch /*startParams :=*/ startParamsProto.(type) {
 	case *pb.StartReq_Cmd:
 	// 	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
@@ -82,6 +84,93 @@ func (*daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp
 	case *pb.StartReq_Config:
 	}
 
+	metadata := ProcMetadata{
+		Name:   req.GetName(),
+		Cmd:    cmd,
+		Status: "running",
+		Tags:   []string{"default"},
+	}
+
+	encodedMetadata, err := json.Marshal(metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	var procID int64
+
+	if err := srv.DB.Update(func(tx *bbolt.Tx) error {
+		{
+			mainBucket := tx.Bucket([]byte(_mainBucket))
+			if mainBucket == nil {
+				return errors.New("main bucket was not found")
+			}
+
+			id, err := mainBucket.NextSequence()
+			if err != nil {
+				return err
+			}
+
+			procID = int64(id)
+
+			idBytes := []byte(strconv.FormatInt(procID, 10))
+			if err := mainBucket.Put(idBytes, encodedMetadata); err != nil {
+				return err
+			}
+
+		}
+		{
+
+			byNameBucket := tx.Bucket([]byte(_byNameBucket))
+			if byNameBucket == nil {
+				return errors.New("byName bucket was not found")
+			}
+
+			idsByNameBytes := byNameBucket.Get([]byte(metadata.Name))
+			var idsByName []int64
+			if err := json.Unmarshal(idsByNameBytes, &idsByName); err != nil {
+				return err
+			}
+
+			newIdsByName := append(idsByName, procID)
+			newIdsByNameBytes, err := json.Marshal(newIdsByName)
+			if err != nil {
+				return err
+			}
+
+			if err := byNameBucket.Put([]byte(metadata.Name), newIdsByNameBytes); err != nil {
+				return err
+			}
+		}
+		{
+			byTagBucket := tx.Bucket([]byte(_byTagBucket))
+			if byTagBucket == nil {
+				return errors.New("byTag bucket was not found")
+			}
+
+			for _, tag := range metadata.Tags {
+				idsWithSuchNameBytes := byTagBucket.Get([]byte(tag))
+				var idsByTag []int64
+				if err := json.Unmarshal(idsWithSuchNameBytes, &idsByTag); err != nil {
+					return err
+				}
+
+				newIdsWithSuchName := append(idsByTag, procID)
+				newIdsWithSuchNameBytes, err := json.Marshal(newIdsWithSuchName)
+				if err != nil {
+					return err
+				}
+
+				if err := byTagBucket.Put([]byte(metadata.Name), newIdsWithSuchNameBytes); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
 	return &pb.StartResp{
 		Id:  0,
 		Pid: 1,
@@ -92,7 +181,7 @@ func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, er
 	resp := []*pb.ListRespEntry{}
 
 	err := srv.DB.View(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket([]byte(mainBucket))
+		bucket := tx.Bucket([]byte(_mainBucket))
 		if bucket == nil {
 			return errors.New("main bucket does not exist")
 		}
@@ -111,7 +200,7 @@ func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, er
 			resp = append(resp, &pb.ListRespEntry{
 				Id:     id,
 				Name:   metadata.Name,
-				Status: &pb.ListRespEntry_Errored{},
+				Status: &pb.ListRespEntry_Errored{}, // TODO: decode status
 				Tags:   &pb.Tags{Tags: metadata.Tags},
 				Cpu:    0, // TODO: take from ps
 				Memory: 0, // TODO: take from ps
@@ -221,15 +310,15 @@ func runDaemon() error {
 	}
 	defer db.Close()
 	if err := db.Update(func(tx *bbolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(mainBucket)); err != nil {
+		if _, err := tx.CreateBucketIfNotExists([]byte(_mainBucket)); err != nil {
 			return err
 		}
 
-		if _, err := tx.CreateBucketIfNotExists([]byte(byNameBucket)); err != nil {
+		if _, err := tx.CreateBucketIfNotExists([]byte(_byNameBucket)); err != nil {
 			return err
 		}
 
-		if _, err := tx.CreateBucketIfNotExists([]byte(byTagBucket)); err != nil {
+		if _, err := tx.CreateBucketIfNotExists([]byte(_byTagBucket)); err != nil {
 			return err
 		}
 
