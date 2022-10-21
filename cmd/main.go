@@ -41,6 +41,7 @@ func main() {
 				Name:    "version",
 				Aliases: []string{"v"},
 				Usage:   "print pm version",
+				// TODO: implement
 			},
 		),
 		Before: func(*cli.Context) error {
@@ -54,7 +55,15 @@ func main() {
 	}
 
 	// TODO: check for update
-	//   pm2.getVersion(function(err, remote_version) { //     if (!err && (pkg.version != remote_version)) { //       console.log(''); //       console.log(chalk.red.bold('>>>> In-memory PM2 is out-of-date, do:\n>>>> $ pm2 update')); //       console.log('In memory PM2 version:', chalk.blue.bold(remote_version)); //       console.log('Local PM2 version:', chalk.blue.bold(pkg.version)); //       console.log(''); //     } //   });
+	// pm2.getVersion(function(err, remote_version) {
+	//   if (!err && (pkg.version != remote_version)) {
+	//     console.log('');
+	//     console.log(chalk.red.bold('>>>> In-memory PM2 is out-of-date, do:\n>>>> $ pm2 update'));
+	//     console.log('In memory PM2 version:', chalk.blue.bold(remote_version));
+	//     console.log('Local PM2 version:', chalk.blue.bold(pkg.version));
+	//     console.log('');
+	//   }
+	// });
 
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
