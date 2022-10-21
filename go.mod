@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/urfave/cli/v2 v2.20.2
+	go.etcd.io/bbolt v1.3.6
 	google.golang.org/grpc v1.50.1
 	google.golang.org/protobuf v1.28.1
 )

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
+	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -19,6 +20,7 @@ import (
 
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
+	DB *bbolt.DB
 }
 
 func (*daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
@@ -169,18 +171,24 @@ var DaemonCmd = &cli.Command{
 func runDaemon() error {
 	sock, err := net.Listen("unix", DaemonRpcSocket)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		return fmt.Errorf("failed to listen: %w", err)
 	}
 	defer sock.Close()
 
-	srv := grpc.NewServer()
-	pb.RegisterDaemonServer(srv, &daemonServer{})
+	db, err := bbolt.Open("my.db", 0600, nil)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 
-	log.Println("- - - - - - - - - - - - - - -")
+	srv := grpc.NewServer()
+	pb.RegisterDaemonServer(srv, &daemonServer{
+		DB: db,
+	})
+
 	log.Printf("daemon started at %v", sock.Addr())
 	if err := srv.Serve(sock); err != nil {
-		log.Fatalf("failed to serve: %v", err)
-		return err
+		return fmt.Errorf("failed to serve: %w", err)
 	}
 
 	return nil
