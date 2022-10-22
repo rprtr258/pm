@@ -39,7 +39,7 @@ var ListCmd = &cli.Command{
 	Name:    "list",
 	Aliases: []string{"l"},
 	Flags: []cli.Flag{
-		&cli.BoolFlag{
+		&cli.BoolFlag{ // TODO: ???
 			Name:    "mini-list",
 			Aliases: []string{"m"},
 			Usage:   "display a compacted list without formatting",
@@ -47,6 +47,11 @@ var ListCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "sort",
 			Usage: "sort <id|name|pid>:<inc|dec> sort process according to field value",
+		},
+		&cli.BoolFlag{
+			Name:  "compact",
+			Usage: "show compact table",
+			Value: false,
 		},
 		&cli.StringFlag{
 			Name:    "format",
@@ -67,6 +72,7 @@ var ListCmd = &cli.Command{
 		}
 
 		t := table.New(os.Stdout)
+		t.SetRowLines(!ctx.Bool("compact"))
 
 		t.SetHeaders("id", "name", "status", "tags", "cpu", "memory", "cmd")
 
