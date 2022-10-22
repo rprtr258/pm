@@ -15,15 +15,25 @@ func init() {
 var StopCmd = &cli.Command{
 	Name:      "stop",
 	Usage:     "stop a process",
-	ArgsUsage: "<id|name|namespace|all|json|stdin...>",
+	ArgsUsage: "<id|name|namespace|all|json>...",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "watch",
-			Usage: "Stop watching folder for changes",
+			Usage: "stop watching for file changes",
 		},
-		// &cli.BoolFlag{Name:        "shutdown-with-message", Usage: "shutdown an application with process.send('shutdown') instead of process.kill(pid, SIGINT)"},
-		// &cli.DurationFlag{Name:    "kill-timeout", Aliases: []string{"k"}, Usage: "delay before sending final SIGKILL signal to process"},
-		// &cli.BoolFlag{Name:        "no-treekill", Usage: "Only kill the main process, not detached children"},
+		&cli.BoolFlag{
+			Name:  "kill",
+			Usage: "kill process with SIGKILL instead of SIGINT",
+		},
+		&cli.DurationFlag{
+			Name:    "kill-timeout",
+			Aliases: []string{"k"},
+			Usage:   "delay before sending final SIGKILL signal to process",
+		},
+		&cli.BoolFlag{
+			Name:  "no-treekill",
+			Usage: "Only kill the main process, not detached children",
+		},
 	},
 	Action: func(ctx *cli.Context) error {
 		client, deferFunc, err := NewGrpcClient()
@@ -31,8 +41,6 @@ var StopCmd = &cli.Command{
 			return err
 		}
 		defer deferFunc()
-
-		// watch := ctx.Bool("watch")
 
 		args := ctx.Args().Slice()
 		if len(args) < 1 {
