@@ -20,6 +20,7 @@ func init() {
 func mapStatus(pbStatus any) string {
 	switch status := pbStatus.(type) {
 	case *pb.ListRespEntry_Running:
+		// TODO: separate
 		return color.GreenString(
 			"running(pid=%d,uptime=%v)",
 			status.Running.GetPid(),
