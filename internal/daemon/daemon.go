@@ -40,6 +40,7 @@ type DB struct {
 }
 
 func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
+	// TODO: serialize/deserialize protobuffers
 	encodedMetadata, err := json.Marshal(metadata)
 	if err != nil {
 		return 0, err
