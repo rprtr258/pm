@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/rprtr258/pm/api"
@@ -34,70 +35,18 @@ type ProcMetadata struct {
 	Tags   []string `json:"tags"`
 }
 
-type daemonServer struct {
-	pb.UnimplementedDaemonServer
-	DB *bbolt.DB
+type DB struct {
+	db bbolt.DB
 }
 
-// TODO: use grpc status codes
-func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
-	// startParamsProto := req.GetProcess()
-	// TODO: move to client
-	// switch /*startParams :=*/ startParamsProto.(type) {
-	// case *pb.StartReq_Cmd:
-	// 	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	defer stdoutLogFile.Close()
-
-	// 	stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	defer stderrLogFile.Close()
-
-	// 	pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	defer pidFile.Close()
-
-	// 	// TODO: syscall.ForkExec()
-	// 	execCmd := exec.CommandContext(context.TODO(), cmd, startParamsProto...)
-	// 	execCmd.Stdout = stdoutLogFile
-	// 	execCmd.Stderr = stderrLogFile
-	// 	if err := execCmd.Start(); err != nil {
-	// 		return nil, err
-	// 	}
-
-	// 	if _, err := pidFile.WriteString(strconv.Itoa(execCmd.Process.Pid)); err != nil {
-	// 		return nil, err
-	// 	}
-	// // Processes[name] = execCmd.Process.Pid
-	// return &pb.StartResp{
-	// 	Id:  0,
-	// 	Pid: int64(execCmd.Process.Pid),
-	// }, nil
-	// case *pb.StartReq_Shell:
-	// case *pb.StartReq_Config:
-	// }
-
-	metadata := ProcMetadata{
-		Name:   req.GetName(),
-		Cmd:    req.GetCmd(),
-		Status: "running",
-		Tags:   lo.Uniq(append(req.GetTags().GetTags(), "all")),
-	}
-
+func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
 	encodedMetadata, err := json.Marshal(metadata)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	var procID uint64
-
-	if err := srv.DB.Update(func(tx *bbolt.Tx) error {
+	if err := db.db.Update(func(tx *bbolt.Tx) error {
 		{
 			mainBucket := tx.Bucket([]byte(_mainBucket))
 			if mainBucket == nil {
@@ -169,19 +118,21 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 
 		return nil
 	}); err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return &pb.StartResp{
-		Id:  procID,
-		Pid: 1,
-	}, nil
+	return procID, nil
 }
 
-func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, error) {
-	resp := []*pb.ListRespEntry{}
+type ProcData struct {
+	ID       uint64
+	Metadata ProcMetadata
+}
 
-	err := srv.DB.View(func(tx *bbolt.Tx) error {
+func (db *DB) List() ([]ProcData, error) {
+	var res []ProcData
+
+	if err := db.db.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(_mainBucket))
 		if bucket == nil {
 			return errors.New("main bucket does not exist")
@@ -198,14 +149,14 @@ func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, er
 				return fmt.Errorf("failed decoding value: %w", err)
 			}
 
-			resp = append(resp, &pb.ListRespEntry{
-				Id:     id,
-				Name:   metadata.Name,
-				Cmd:    metadata.Cmd,
-				Status: &pb.ListRespEntry_Errored{}, // TODO: decode status
-				Tags:   &pb.Tags{Tags: metadata.Tags},
-				Cpu:    0, // TODO: take from ps
-				Memory: 0, // TODO: take from ps
+			res = append(res, ProcData{
+				ID: id,
+				Metadata: ProcMetadata{
+					Name:   metadata.Name,
+					Cmd:    metadata.Cmd,
+					Status: metadata.Status,
+					Tags:   metadata.Tags,
+				},
 			})
 
 			return nil
@@ -214,13 +165,125 @@ func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, er
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+type daemonServer struct {
+	pb.UnimplementedDaemonServer
+	DB *DB
+}
+
+// TODO: use grpc status codes
+func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
+	// startParamsProto := req.GetProcess()
+	// TODO: move to client
+	// switch /*startParams :=*/ startParamsProto.(type) {
+	// case *pb.StartReq_Cmd:
+	// 	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	defer stdoutLogFile.Close()
+
+	// 	stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	defer stderrLogFile.Close()
+
+	// 	pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	defer pidFile.Close()
+
+	// 	// TODO: syscall.ForkExec()
+	// 	execCmd := exec.CommandContext(context.TODO(), cmd, startParamsProto...)
+	// 	execCmd.Stdout = stdoutLogFile
+	// 	execCmd.Stderr = stderrLogFile
+	// 	if err := execCmd.Start(); err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	if _, err := pidFile.WriteString(strconv.Itoa(execCmd.Process.Pid)); err != nil {
+	// 		return nil, err
+	// 	}
+	// // Processes[name] = execCmd.Process.Pid
+	// return &pb.StartResp{
+	// 	Id:  0,
+	// 	Pid: int64(execCmd.Process.Pid),
+	// }, nil
+	// case *pb.StartReq_Shell:
+	// case *pb.StartReq_Config:
+	// }
+
+	metadata := ProcMetadata{
+		Name:   req.GetName(),
+		Cmd:    req.GetCmd(),
+		Status: "running",
+		Tags:   lo.Uniq(append(req.GetTags().GetTags(), "all")),
+	}
+
+	procID, err := srv.DB.AddTask(metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.StartResp{
+		Id:  procID,
+		Pid: 1,
+	}, nil
+}
+
+func mapStatus(status string) func(*pb.ListRespEntry) {
+	switch status {
+	case "running":
+		return func(lre *pb.ListRespEntry) {
+			lre.Status = &pb.ListRespEntry_Running{
+				Running: &pb.RunningInfo{
+					Pid:    0,
+					Uptime: durationpb.New(0),
+				},
+			}
+		}
+	case "stopped":
+		return func(lre *pb.ListRespEntry) {
+			lre.Status = &pb.ListRespEntry_Stopped{}
+		}
+	case "errored":
+		return func(lre *pb.ListRespEntry) {
+			lre.Status = &pb.ListRespEntry_Errored{}
+		}
+	default:
+		return func(lre *pb.ListRespEntry) {
+			lre.Status = &pb.ListRespEntry_Invalid{Invalid: status}
+		}
+	}
+}
+
+func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, error) {
+	resp, err := srv.DB.List()
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.ListResp{
-		Items: resp,
+		Items: lo.Map(resp, func(elem ProcData, _ int) *pb.ListRespEntry {
+			res := &pb.ListRespEntry{
+				Id:     elem.ID,
+				Cmd:    elem.Metadata.Cmd,
+				Name:   elem.Metadata.Name,
+				Tags:   &pb.Tags{Tags: elem.Metadata.Tags},
+				Cpu:    0, // TODO: take from ps
+				Memory: 0, // TODO: take from ps
+			}
+			mapStatus(elem.Metadata.Status)(res)
+			return res
+		}),
 	}, nil
 }
 
@@ -265,7 +328,7 @@ func Run(rpcSocket, dbFile string) error {
 
 	srv := grpc.NewServer()
 	pb.RegisterDaemonServer(srv, &daemonServer{
-		DB: db,
+		DB: &DB{db: *db},
 	})
 
 	log.Printf("daemon started at %v", sock.Addr())

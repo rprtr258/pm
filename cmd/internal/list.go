@@ -2,13 +2,37 @@ package internal
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/aquasecurity/table"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	pb "github.com/rprtr258/pm/api"
 )
 
 func init() {
 	AllCmds = append(AllCmds, ListCmd)
+}
+
+func mapStatus(pbStatus any) string {
+	switch status := pbStatus.(type) {
+	case *pb.ListRespEntry_Running:
+		return fmt.Sprintf(
+			"running(pid=%d,uptime=%v)",
+			status.Running.GetPid(),
+			status.Running.GetUptime(),
+		)
+	case *pb.ListRespEntry_Stopped:
+		return "stopped"
+	case *pb.ListRespEntry_Errored:
+		return "errored"
+	case *pb.ListRespEntry_Invalid:
+		return fmt.Sprintf("invalid(%T)", status)
+	default:
+		return fmt.Sprintf("BROKEN(%T)", status)
+	}
 }
 
 var ListCmd = &cli.Command{
@@ -42,19 +66,23 @@ var ListCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("id\tname\tstatus\ttags\tcpu\tmemory\tcmd")
-		for _, item := range resp.GetItems() {
-			fmt.Printf(
-				"%d\t%s\t%T\t%v\t%d\t%d\t%s\n",
-				item.GetId(),
+		t := table.New(os.Stdout)
+
+		t.SetHeaders("id", "name", "status", "tags", "cpu", "memory", "cmd")
+
+		lo.ForEach(resp.GetItems(), func(item *pb.ListRespEntry, _ int) {
+			t.AddRow(
+				fmt.Sprint(item.GetId()),
 				item.GetName(),
-				item.GetStatus(),
-				item.GetTags().GetTags(),
-				item.GetCpu(),
-				item.GetMemory(),
+				mapStatus(item.GetStatus()),
+				fmt.Sprint(item.GetTags().GetTags()),
+				fmt.Sprint(item.GetCpu()),
+				fmt.Sprint(item.GetMemory()),
 				item.GetCmd(),
 			)
-		}
+		})
+
+		t.Render()
 
 		return nil
 	},
