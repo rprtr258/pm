@@ -18,19 +18,19 @@ var (
 	// Processes - proc name -> pid
 	// Processes map[string]int = make(map[string]int)
 
-	UserHome        = os.Getenv("HOME")
-	HomeDir         = path.Join(UserHome, ".pm")
-	DaemonPidFile   = path.Join(HomeDir, "pm.pid")
-	DaemonLogFile   = path.Join(HomeDir, "pm.log")
-	DaemonRpcSocket = path.Join(HomeDir, "rpc.sock")
-	DBFile          = path.Join(HomeDir, "pm.db")
+	_userHome        = os.Getenv("HOME")
+	HomeDir          = path.Join(_userHome, ".pm")
+	_daemonPidFile   = path.Join(HomeDir, "pm.pid")
+	_daemonLogFile   = path.Join(HomeDir, "pm.log")
+	_daemonRpcSocket = path.Join(HomeDir, "rpc.sock")
+	_daemonDBFile    = path.Join(HomeDir, "pm.db")
 
 	AllCmds []*cli.Command
 )
 
 func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 	conn, err := grpc.Dial(
-		DaemonRpcSocket,
+		_daemonRpcSocket,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return net.Dial("unix", s)
