@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/aquasecurity/table"
+	"github.com/fatih/color"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -19,19 +20,19 @@ func init() {
 func mapStatus(pbStatus any) string {
 	switch status := pbStatus.(type) {
 	case *pb.ListRespEntry_Running:
-		return fmt.Sprintf(
-			"✓running(pid=%d,uptime=%v)",
+		return color.GreenString(
+			"running(pid=%d,uptime=%v)",
 			status.Running.GetPid(),
 			status.Running.GetUptime().AsDuration(),
 		)
 	case *pb.ListRespEntry_Stopped:
-		return "✗stopped"
+		return color.YellowString("stopped")
 	case *pb.ListRespEntry_Errored:
-		return "⚠errored"
+		return color.RedString("errored")
 	case *pb.ListRespEntry_Invalid:
-		return fmt.Sprintf("🚫invalid(%T)", status)
+		return color.RedString("invalid(%T)", status)
 	default:
-		return fmt.Sprintf("☠BROKEN(%T)", status)
+		return color.RedString("BROKEN(%T)", status)
 	}
 }
 
@@ -74,12 +75,14 @@ var ListCmd = &cli.Command{
 		t := table.New(os.Stdout)
 		t.SetRowLines(!ctx.Bool("compact"))
 		t.SetDividers(table.UnicodeRoundedDividers)
-		t.SetHeaders("id", "name", "status", "tags", "cpu", "memory", "cmd")
 		t.SetAutoMerge(true)
+		t.SetHeaders("id", "name", "status", "tags", "cpu", "memory", "cmd")
+		t.SetHeaderStyle(table.StyleBold)
+		t.SetLineStyle(table.StyleDim)
 
 		lo.ForEach(resp.GetItems(), func(item *pb.ListRespEntry, _ int) {
 			t.AddRow(
-				fmt.Sprint(item.GetId()),
+				color.New(color.FgCyan, color.Bold).Sprint(item.GetId()),
 				item.GetName(),
 				mapStatus(item.GetStatus()),
 				fmt.Sprint(item.GetTags().GetTags()),
