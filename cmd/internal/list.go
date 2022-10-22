@@ -22,7 +22,7 @@ func mapStatus(pbStatus any) string {
 		return fmt.Sprintf(
 			"running(pid=%d,uptime=%v)",
 			status.Running.GetPid(),
-			status.Running.GetUptime(),
+			status.Running.GetUptime().AsDuration(),
 		)
 	case *pb.ListRespEntry_Stopped:
 		return "stopped"
