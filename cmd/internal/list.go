@@ -75,6 +75,7 @@ var ListCmd = &cli.Command{
 		t.SetRowLines(!ctx.Bool("compact"))
 		t.SetDividers(table.UnicodeRoundedDividers)
 		t.SetHeaders("id", "name", "status", "tags", "cpu", "memory", "cmd")
+		t.SetAutoMerge(true)
 
 		lo.ForEach(resp.GetItems(), func(item *pb.ListRespEntry, _ int) {
 			t.AddRow(
