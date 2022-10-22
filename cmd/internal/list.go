@@ -73,7 +73,7 @@ var ListCmd = &cli.Command{
 
 		t := table.New(os.Stdout)
 		t.SetRowLines(!ctx.Bool("compact"))
-
+		t.SetDividers(table.UnicodeRoundedDividers)
 		t.SetHeaders("id", "name", "status", "tags", "cpu", "memory", "cmd")
 
 		lo.ForEach(resp.GetItems(), func(item *pb.ListRespEntry, _ int) {
