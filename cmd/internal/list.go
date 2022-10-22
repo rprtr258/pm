@@ -20,18 +20,18 @@ func mapStatus(pbStatus any) string {
 	switch status := pbStatus.(type) {
 	case *pb.ListRespEntry_Running:
 		return fmt.Sprintf(
-			"running(pid=%d,uptime=%v)",
+			"✓running(pid=%d,uptime=%v)",
 			status.Running.GetPid(),
 			status.Running.GetUptime().AsDuration(),
 		)
 	case *pb.ListRespEntry_Stopped:
-		return "stopped"
+		return "✗stopped"
 	case *pb.ListRespEntry_Errored:
-		return "errored"
+		return "⚠errored"
 	case *pb.ListRespEntry_Invalid:
-		return fmt.Sprintf("invalid(%T)", status)
+		return fmt.Sprintf("🚫invalid(%T)", status)
 	default:
-		return fmt.Sprintf("BROKEN(%T)", status)
+		return fmt.Sprintf("☠BROKEN(%T)", status)
 	}
 }
 
