@@ -39,6 +39,14 @@ type DB struct {
 	db bbolt.DB
 }
 
+func encodeKey(procID uint64) []byte {
+	return []byte(strconv.FormatUint(procID, 10))
+}
+
+func decodeKey(key []byte) (uint64, error) {
+	return strconv.ParseUint(string(key), 10, 64)
+}
+
 func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
 	// TODO: serialize/deserialize protobuffers
 	encodedMetadata, err := json.Marshal(metadata)
@@ -61,8 +69,7 @@ func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
 
 			procID = id
 
-			idBytes := []byte(strconv.FormatInt(int64(procID), 10))
-			if err := mainBucket.Put(idBytes, encodedMetadata); err != nil {
+			if err := mainBucket.Put(encodeKey(id), encodedMetadata); err != nil {
 				return err
 			}
 		}
@@ -73,14 +80,14 @@ func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
 			}
 
 			idsByNameBytes := byNameBucket.Get([]byte(metadata.Name))
-			var idsByName []int64
+			var idsByName []uint64
 			if idsByName != nil {
 				if err := json.Unmarshal(idsByNameBytes, &idsByName); err != nil {
 					return err
 				}
 			}
 
-			newIdsByName := append(idsByName, int64(procID))
+			newIdsByName := append(idsByName, procID)
 			newIdsByNameBytes, err := json.Marshal(newIdsByName)
 			if err != nil {
 				return err
@@ -98,14 +105,14 @@ func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
 
 			for _, tag := range metadata.Tags {
 				idsWithSuchNameBytes := byTagBucket.Get([]byte(tag))
-				var idsByTag []int64
+				var idsByTag []uint64
 				if idsWithSuchNameBytes != nil {
 					if err := json.Unmarshal(idsWithSuchNameBytes, &idsByTag); err != nil {
 						return err
 					}
 				}
 
-				newIdsWithSuchName := append(idsByTag, int64(procID))
+				newIdsWithSuchName := append(idsByTag, procID)
 				newIdsWithSuchNameBytes, err := json.Marshal(newIdsWithSuchName)
 				if err != nil {
 					return err
@@ -140,7 +147,7 @@ func (db *DB) List() ([]ProcData, error) {
 		}
 
 		if err := bucket.ForEach(func(key, value []byte) error {
-			id, err := strconv.ParseUint(string(key), 10, 64)
+			id, err := decodeKey(key)
 			if err != nil {
 				return fmt.Errorf("incorrect key: %w", err)
 			}
@@ -171,6 +178,34 @@ func (db *DB) List() ([]ProcData, error) {
 	}
 
 	return res, nil
+}
+
+func (db *DB) SetStatus(procID uint64, newStatus string /*TODO: enum statuses*/) error {
+	return db.db.Update(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket([]byte(_mainBucket))
+		if bucket == nil {
+			return errors.New("main bucket does not exist")
+		}
+
+		key := encodeKey(procID)
+
+		var metadata ProcMetadata
+		{
+			value := bucket.Get(key)
+			if err := json.Unmarshal(value, &metadata); err != nil {
+				return fmt.Errorf("failed decoding value: %w", err)
+			}
+
+			metadata.Status = newStatus
+		}
+
+		buf, err := json.Marshal(metadata)
+		if err != nil {
+			return err
+		}
+
+		return bucket.Put(key, buf)
+	})
 }
 
 type daemonServer struct {
@@ -288,11 +323,32 @@ func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, er
 	}, nil
 }
 
-func (*daemonServer) Stop(context.Context, *pb.DeleteReq) (*pb.DeleteResp, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
+func (srv *daemonServer) Stop(_ context.Context, req *pb.DeleteReq) (*pb.DeleteResp, error) {
+	procs, err := srv.DB.List()
+	if err != nil {
+		return nil, status.Errorf(codes.DataLoss, err.Error())
+	}
+
+	procsToStop := lo.Filter(procs, func(proc ProcData, _ int) bool {
+		// TODO: filter based on req.GetFilters()
+		return true
+	})
+
+	for _, proc := range procsToStop {
+		// TODO: stop proc
+		if err := srv.DB.SetStatus(proc.ID, "stopped"); err != nil {
+			return nil, status.Errorf(codes.DataLoss, err.Error())
+		}
+	}
+
+	return &pb.DeleteResp{
+		Id: lo.Map(procsToStop, func(proc ProcData, _ int) uint64 {
+			return proc.ID
+		}),
+	}, nil
 }
 
-func (*daemonServer) Delete(context.Context, *pb.DeleteReq) (*pb.DeleteResp, error) {
+func (*daemonServer) Delete(_ context.Context, req *pb.DeleteReq) (*pb.DeleteResp, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 
