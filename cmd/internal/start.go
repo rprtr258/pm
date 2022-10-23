@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rprtr258/pm/api"
+	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/daemon"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -16,6 +18,12 @@ func init() {
 var StartCmd = &cli.Command{
 	Name: "start",
 	// ArgsUsage: "<'cmd args...'|name|namespace|config|id>...",
+	//     oneof filter {
+	//         Tags tags = 10; // all procs having all of those tags
+	//         string name = 11; // proc with such name
+	//         google.protobuf.Empty all = 12; // all
+	//         string config = 13; // all procs described in config
+	//     };
 	ArgsUsage: "cmd args...",
 	Usage:     "start and daemonize an app",
 	Flags: []cli.Flag{
@@ -33,6 +41,7 @@ var StartCmd = &cli.Command{
 			Name:  "cwd",
 			Usage: "set working directory",
 		},
+		// TODO: script + names..?
 		// &cli.BoolFlag{Name:        "only", Usage: "with json declaration, allow to only act on one application"},
 		// &cli.BoolFlag{Name:        "watch", Usage: "Watch folder for changes"},
 		// &cli.StringSliceFlag{Name: "watch", Usage: "watch application folder for changes"},
@@ -86,17 +95,18 @@ var StartCmd = &cli.Command{
 			return errors.New("command expected")
 		}
 
-		resp, err := client.Start(ctx.Context, &api.StartReq{
+		procData := daemon.ProcData{
 			Name: name,
 			Cwd:  ".",
-			Tags: &api.Tags{Tags: []string{}},
+			Tags: lo.Uniq(append(ctx.StringSlice("tags"), "all")),
 			Cmd:  strings.Join(args, " "),
-		})
-		if err != nil {
+		}
+
+		if _, err := client.Start(ctx.Context, &pb.IDs{Ids: []uint64{procData.ID}}); err != nil {
 			return err
 		}
 
-		fmt.Println(resp.GetId())
+		fmt.Println(procData.ID)
 		return nil
 	},
 }

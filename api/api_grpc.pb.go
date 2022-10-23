@@ -23,10 +23,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DaemonClient interface {
-	Start(ctx context.Context, in *StartReq, opts ...grpc.CallOption) (*StartResp, error)
-	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResp, error)
-	Stop(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*DeleteResp, error)
-	Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*DeleteResp, error)
+	Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type daemonClient struct {
@@ -37,8 +35,8 @@ func NewDaemonClient(cc grpc.ClientConnInterface) DaemonClient {
 	return &daemonClient{cc}
 }
 
-func (c *daemonClient) Start(ctx context.Context, in *StartReq, opts ...grpc.CallOption) (*StartResp, error) {
-	out := new(StartResp)
+func (c *daemonClient) Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/api.Daemon/Start", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -46,27 +44,9 @@ func (c *daemonClient) Start(ctx context.Context, in *StartReq, opts ...grpc.Cal
 	return out, nil
 }
 
-func (c *daemonClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ListResp, error) {
-	out := new(ListResp)
-	err := c.cc.Invoke(ctx, "/api.Daemon/List", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *daemonClient) Stop(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*DeleteResp, error) {
-	out := new(DeleteResp)
+func (c *daemonClient) Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/api.Daemon/Stop", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *daemonClient) Delete(ctx context.Context, in *DeleteReq, opts ...grpc.CallOption) (*DeleteResp, error) {
-	out := new(DeleteResp)
-	err := c.cc.Invoke(ctx, "/api.Daemon/Delete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -77,10 +57,8 @@ func (c *daemonClient) Delete(ctx context.Context, in *DeleteReq, opts ...grpc.C
 // All implementations must embed UnimplementedDaemonServer
 // for forward compatibility
 type DaemonServer interface {
-	Start(context.Context, *StartReq) (*StartResp, error)
-	List(context.Context, *emptypb.Empty) (*ListResp, error)
-	Stop(context.Context, *DeleteReq) (*DeleteResp, error)
-	Delete(context.Context, *DeleteReq) (*DeleteResp, error)
+	Start(context.Context, *IDs) (*emptypb.Empty, error)
+	Stop(context.Context, *IDs) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDaemonServer()
 }
 
@@ -88,17 +66,11 @@ type DaemonServer interface {
 type UnimplementedDaemonServer struct {
 }
 
-func (UnimplementedDaemonServer) Start(context.Context, *StartReq) (*StartResp, error) {
+func (UnimplementedDaemonServer) Start(context.Context, *IDs) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
 }
-func (UnimplementedDaemonServer) List(context.Context, *emptypb.Empty) (*ListResp, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
-}
-func (UnimplementedDaemonServer) Stop(context.Context, *DeleteReq) (*DeleteResp, error) {
+func (UnimplementedDaemonServer) Stop(context.Context, *IDs) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
-}
-func (UnimplementedDaemonServer) Delete(context.Context, *DeleteReq) (*DeleteResp, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 func (UnimplementedDaemonServer) mustEmbedUnimplementedDaemonServer() {}
 
@@ -114,7 +86,7 @@ func RegisterDaemonServer(s grpc.ServiceRegistrar, srv DaemonServer) {
 }
 
 func _Daemon_Start_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StartReq)
+	in := new(IDs)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -126,31 +98,13 @@ func _Daemon_Start_Handler(srv interface{}, ctx context.Context, dec func(interf
 		FullMethod: "/api.Daemon/Start",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).Start(ctx, req.(*StartReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Daemon_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DaemonServer).List(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.Daemon/List",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).List(ctx, req.(*emptypb.Empty))
+		return srv.(DaemonServer).Start(ctx, req.(*IDs))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Daemon_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteReq)
+	in := new(IDs)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -162,25 +116,7 @@ func _Daemon_Stop_Handler(srv interface{}, ctx context.Context, dec func(interfa
 		FullMethod: "/api.Daemon/Stop",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).Stop(ctx, req.(*DeleteReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Daemon_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DaemonServer).Delete(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/api.Daemon/Delete",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).Delete(ctx, req.(*DeleteReq))
+		return srv.(DaemonServer).Stop(ctx, req.(*IDs))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -197,16 +133,8 @@ var Daemon_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Daemon_Start_Handler,
 		},
 		{
-			MethodName: "List",
-			Handler:    _Daemon_List_Handler,
-		},
-		{
 			MethodName: "Stop",
 			Handler:    _Daemon_Stop_Handler,
-		},
-		{
-			MethodName: "Delete",
-			Handler:    _Daemon_Delete_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

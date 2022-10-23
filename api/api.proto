@@ -1,83 +1,16 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
-import "google/protobuf/duration.proto";
 
 option go_package = "github.com/rprtr258/pm/api";
 
 package api;
 
 service Daemon {
-    rpc Start(StartReq) returns (StartResp);
-    rpc List(google.protobuf.Empty) returns (ListResp);
-    rpc Stop(DeleteReq) returns (DeleteResp);
-    rpc Delete(DeleteReq) returns (DeleteResp);
+    rpc Start(IDs) returns (google.protobuf.Empty);
+    rpc Stop(IDs) returns (google.protobuf.Empty);
 }
 
-message Cmd {
-    string cmd = 1;
-    repeated string args = 2;
-}
-
-message ConfigStart {
-    string config = 1;
-    repeated string names = 2;
-}
-
-message StartReq {
-    string name = 1;
-    string cwd = 2;
-    Tags tags = 3;
-    repeated string watch = 4;
-    string cmd = 5;
-}
-
-message StartResp {
-    uint64 id = 1;
-    int64 pid = 2;
-}
-
-message RunningInfo {
-    int64 pid = 1;
-    google.protobuf.Duration uptime = 4;
-}
-
-message ListResp {
-    repeated ListRespEntry items = 1;
-}
-
-message ListRespEntry {
-    uint64 id = 1;
-    string cmd = 2;
-    string name = 3;
-    oneof status {
-        google.protobuf.Empty stopped = 10;
-        RunningInfo running = 11;
-        google.protobuf.Empty errored = 12;
-        string invalid = 13;
-    };
-    Tags tags = 5;
-    int64 cpu = 6; // round(cpu usage in % * 100)
-    int64 memory = 7; // in bytes
-}
-
-message DeleteReq {
-    repeated DeleteFilter filters = 1;
-}
-
-message DeleteFilter {
-    oneof filter {
-        Tags tags = 10; // all procs having all of those tags
-        string name = 11; // proc with such name
-        google.protobuf.Empty all = 12; // all
-        string config = 13; // all procs described in config
-    };
-}
-
-message Tags {
-    repeated string tags = 1;
-}
-
-message DeleteResp {
-    repeated uint64 id = 1;
+message IDs {
+    repeated uint64 ids = 1;
 }

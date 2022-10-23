@@ -5,9 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/samber/lo"
 	"go.etcd.io/bbolt"
+)
+
+type _status int // TODO: rename
+
+const (
+	StatusInvalid _status = iota
+	StatusStarting
+	StatusRunning
+	StatusStopped
+	StatusErrored
 )
 
 var (
@@ -16,16 +27,23 @@ var (
 	_byTagBucket  = []byte("by_tag")
 )
 
-type ProcMetadata struct {
-	Name   string   `json:"name"`
-	Cmd    string   `json:"cmd"`
-	Status string   `json:"status"`
-	Tags   []string `json:"tags"`
+type Status struct {
+	Status _status
+	// nulls if not running
+	Pid       uint64
+	StartTime time.Time
+	Cpu       uint64 // round(cpu usage in % * 100)
+	Memory    uint64 // in bytes
 }
 
 type ProcData struct {
-	ID       uint64
-	Metadata ProcMetadata
+	ID     uint64   `json:"id"` // TODO: separate type
+	Name   string   `json:"name"`
+	Cmd    string   `json:"cmd"`
+	Status Status   `json:"status"`
+	Tags   []string `json:"tags"`
+	Cwd    string   `json:"cwd"`
+	Watch  []string `json:"watch"`
 }
 
 type DB struct {
@@ -80,7 +98,7 @@ func put[V any](bucket *bbolt.Bucket, key []byte, value V) error {
 }
 
 // TODO: store pid in db
-func (db *DB) AddProc(metadata ProcMetadata) (uint64, error) {
+func (db *DB) AddProc(metadata ProcData) (uint64, error) {
 	var procID uint64
 	if err := db.db.Update(func(tx *bbolt.Tx) error {
 		{
@@ -151,26 +169,13 @@ func (db *DB) List() ([]ProcData, error) {
 			return errors.New("main bucket does not exist")
 		}
 
-		if err := bucket.ForEach(func(key, value []byte) error {
-			id, err := decodeUintKey(key)
-			if err != nil {
-				return fmt.Errorf("incorrect key: %w", err)
-			}
-
-			metadata, err := decodeJSON[ProcMetadata](value)
+		if err := bucket.ForEach(func(_, value []byte) error {
+			procData, err := decodeJSON[ProcData](value)
 			if err != nil {
 				return err
 			}
 
-			res = append(res, ProcData{
-				ID: id,
-				Metadata: ProcMetadata{
-					Name:   metadata.Name,
-					Cmd:    metadata.Cmd,
-					Status: metadata.Status,
-					Tags:   metadata.Tags,
-				},
-			})
+			res = append(res, procData)
 
 			return nil
 		}); err != nil {
@@ -185,7 +190,7 @@ func (db *DB) List() ([]ProcData, error) {
 	return res, nil
 }
 
-func (db *DB) SetStatus(procID uint64, newStatus string /*TODO: enum statuses*/) error {
+func (db *DB) SetStatus(procID uint64, newStatus _status) error {
 	return db.db.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(_mainBucket)
 		if bucket == nil {
@@ -193,12 +198,12 @@ func (db *DB) SetStatus(procID uint64, newStatus string /*TODO: enum statuses*/)
 		}
 
 		key := encodeUintKey(procID)
-		metadata, err := get[ProcMetadata](bucket, key)
+		metadata, err := get[ProcData](bucket, key)
 		if err != nil {
 			return err
 		}
 
-		metadata.Status = newStatus
+		metadata.Status.Status = newStatus
 
 		return put(bucket, key, metadata)
 	})
@@ -213,7 +218,7 @@ func (db *DB) Delete(procID uint64) error {
 
 		key := encodeUintKey(procID)
 
-		proc, err := get[ProcMetadata](mainBucket, key)
+		proc, err := get[ProcData](mainBucket, key)
 		if err != nil {
 			return fmt.Errorf("failed getting proc with id %d: %w", procID, err)
 		}

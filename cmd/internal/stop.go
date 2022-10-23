@@ -47,17 +47,11 @@ var StopCmd = &cli.Command{
 			return errors.New("what to stop expected")
 		}
 
-		resp, err := client.Stop(ctx.Context, &api.DeleteReq{
-			Filters: []*api.DeleteFilter{{
-				// Filter: &api.DeleteFilter_Name{Name: name},
-				// Filter: &api.DeleteFilter_Tags{Tags: &api.Tags{Tags: []string{}}},
-			}},
-		})
-		if err != nil {
+		if _, err := client.Stop(ctx.Context, &api.IDs{Ids: []uint64{}}); err != nil {
 			return err
 		}
 
-		for _, id := range resp.GetId() {
+		for _, id := range []uint64{} {
 			fmt.Println(id)
 		}
 		return nil

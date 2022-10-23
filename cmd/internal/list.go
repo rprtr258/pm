@@ -3,34 +3,36 @@ package internal
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/aquasecurity/table"
 	"github.com/fatih/color"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
-	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/daemon"
 )
 
 func init() {
 	AllCmds = append(AllCmds, ListCmd)
 }
 
-func mapStatus(pbStatus any) string {
-	switch status := pbStatus.(type) {
-	case *pb.ListRespEntry_Running:
+func mapStatus(status daemon.Status) string {
+	switch status.Status {
+	case daemon.StatusStarting:
+		return color.YellowString("starting")
+	case daemon.StatusRunning:
 		// TODO: separate
 		return color.GreenString(
 			"running(pid=%d,uptime=%v)",
-			status.Running.GetPid(),
-			status.Running.GetUptime().AsDuration(),
+			status.Pid,
+			time.Since(status.StartTime),
 		)
-	case *pb.ListRespEntry_Stopped:
+	case daemon.StatusStopped:
 		return color.YellowString("stopped")
-	case *pb.ListRespEntry_Errored:
+	case daemon.StatusErrored:
 		return color.RedString("errored")
-	case *pb.ListRespEntry_Invalid:
+	case daemon.StatusInvalid:
 		return color.RedString("invalid(%T)", status)
 	default:
 		return color.RedString("BROKEN(%T)", status)
@@ -62,13 +64,12 @@ var ListCmd = &cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		client, deferFunc, err := NewGrpcClient()
+		db, err := daemon.New(_daemonDBFile)
 		if err != nil {
 			return err
 		}
-		defer deferFunc()
 
-		resp, err := client.List(ctx.Context, &emptypb.Empty{})
+		resp, err := db.List()
 		if err != nil {
 			return err
 		}
@@ -81,15 +82,15 @@ var ListCmd = &cli.Command{
 		t.SetHeaderStyle(table.StyleBold)
 		t.SetLineStyle(table.StyleDim)
 
-		lo.ForEach(resp.GetItems(), func(item *pb.ListRespEntry, _ int) {
+		lo.ForEach(resp, func(item daemon.ProcData, _ int) {
 			t.AddRow(
-				color.New(color.FgCyan, color.Bold).Sprint(item.GetId()),
-				item.GetName(),
-				mapStatus(item.GetStatus()),
-				fmt.Sprint(item.GetTags().GetTags()),
-				fmt.Sprint(item.GetCpu()),
-				fmt.Sprint(item.GetMemory()),
-				item.GetCmd(),
+				color.New(color.FgCyan, color.Bold).Sprint(item.ID),
+				item.Name,
+				mapStatus(item.Status),
+				fmt.Sprint(item.Tags),
+				fmt.Sprint(item.Status.Cpu),
+				fmt.Sprint(item.Status.Memory),
+				item.Cmd,
 			)
 		})
 
