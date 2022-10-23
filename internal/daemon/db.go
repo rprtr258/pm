@@ -84,7 +84,7 @@ func (db *DB) AddProc(metadata ProcMetadata) (uint64, error) {
 	var procID uint64
 	if err := db.db.Update(func(tx *bbolt.Tx) error {
 		{
-			mainBucket := tx.Bucket([]byte(_mainBucket))
+			mainBucket := tx.Bucket(_mainBucket)
 			if mainBucket == nil {
 				return errors.New("main bucket was not found")
 			}
@@ -102,7 +102,7 @@ func (db *DB) AddProc(metadata ProcMetadata) (uint64, error) {
 			}
 		}
 		{
-			byNameBucket := tx.Bucket([]byte(_byNameBucket))
+			byNameBucket := tx.Bucket(_byNameBucket)
 			if byNameBucket == nil {
 				return errors.New("byName bucket was not found")
 			}
@@ -117,7 +117,7 @@ func (db *DB) AddProc(metadata ProcMetadata) (uint64, error) {
 			}
 		}
 		{
-			byTagBucket := tx.Bucket([]byte(_byTagBucket))
+			byTagBucket := tx.Bucket(_byTagBucket)
 			if byTagBucket == nil {
 				return errors.New("byTag bucket was not found")
 			}
@@ -146,7 +146,7 @@ func (db *DB) List() ([]ProcData, error) {
 	var res []ProcData
 
 	if err := db.db.View(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket([]byte(_mainBucket))
+		bucket := tx.Bucket(_mainBucket)
 		if bucket == nil {
 			return errors.New("main bucket does not exist")
 		}
@@ -187,7 +187,7 @@ func (db *DB) List() ([]ProcData, error) {
 
 func (db *DB) SetStatus(procID uint64, newStatus string /*TODO: enum statuses*/) error {
 	return db.db.Update(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket([]byte(_mainBucket))
+		bucket := tx.Bucket(_mainBucket)
 		if bucket == nil {
 			return errors.New("main bucket does not exist")
 		}
@@ -206,7 +206,7 @@ func (db *DB) SetStatus(procID uint64, newStatus string /*TODO: enum statuses*/)
 
 func (db *DB) Delete(procID uint64) error {
 	return db.db.Update(func(tx *bbolt.Tx) error {
-		mainBucket := tx.Bucket([]byte(_mainBucket))
+		mainBucket := tx.Bucket(_mainBucket)
 		if mainBucket == nil {
 			return errors.New("main bucket was not found")
 		}
@@ -223,7 +223,7 @@ func (db *DB) Delete(procID uint64) error {
 		}
 
 		{
-			byNameBucket := tx.Bucket([]byte(_byNameBucket))
+			byNameBucket := tx.Bucket(_byNameBucket)
 			if byNameBucket == nil {
 				return errors.New("byName bucket was not found")
 			}
@@ -240,7 +240,7 @@ func (db *DB) Delete(procID uint64) error {
 			}
 		}
 		{
-			byTagBucket := tx.Bucket([]byte(_byTagBucket))
+			byTagBucket := tx.Bucket(_byTagBucket)
 			if byTagBucket == nil {
 				return errors.New("byTag bucket was not found")
 			}
@@ -284,15 +284,15 @@ func DBInit(dbFile string) error {
 	defer db.Close()
 
 	if err := db.Update(func(tx *bbolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(_mainBucket)); err != nil {
+		if _, err := tx.CreateBucketIfNotExists(_mainBucket); err != nil {
 			return err
 		}
 
-		if _, err := tx.CreateBucketIfNotExists([]byte(_byNameBucket)); err != nil {
+		if _, err := tx.CreateBucketIfNotExists(_byNameBucket); err != nil {
 			return err
 		}
 
-		if _, err := tx.CreateBucketIfNotExists([]byte(_byTagBucket)); err != nil {
+		if _, err := tx.CreateBucketIfNotExists(_byTagBucket); err != nil {
 			return err
 		}
 
