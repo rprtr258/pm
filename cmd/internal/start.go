@@ -80,6 +80,7 @@ var StartCmd = &cli.Command{
 
 		name := ctx.String("name")
 
+		// TODO: do more smartly
 		args := ctx.Args().Slice()
 		if len(args) < 1 {
 			return errors.New("command expected")
