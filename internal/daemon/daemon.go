@@ -187,6 +187,8 @@ func (srv *daemonServer) Delete(_ context.Context, req *pb.DeleteReq) (*pb.Delet
 	}, nil
 }
 
+// TODO: fix "reborn failed: daemon: Resource temporarily unavailable" on start when
+// daemon is already running
 // Run daemon
 func Run(rpcSocket, dbFile string) error {
 	sock, err := net.Listen("unix", rpcSocket)
