@@ -58,7 +58,7 @@ func get[V any](bucket *bbolt.Bucket, key []byte) (V, error) {
 	// keyBytes, err := encodeUintKey(key)
 	bytes := bucket.Get(key)
 	if bytes == nil {
-		return lo.Empty[V](), fmt.Errorf("value not found by key %v", key)
+		return lo.Empty[V](), nil // fmt.Errorf("value not found by key %v", key)
 	}
 
 	return decodeJSON[V](bytes)
@@ -80,7 +80,7 @@ func put[V any](bucket *bbolt.Bucket, key []byte, value V) error {
 }
 
 // TODO: store pid in db
-func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
+func (db *DB) AddProc(metadata ProcMetadata) (uint64, error) {
 	var procID uint64
 	if err := db.db.Update(func(tx *bbolt.Tx) error {
 		{
@@ -91,13 +91,13 @@ func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
 
 			id, err := mainBucket.NextSequence()
 			if err != nil {
-				return err
+				return fmt.Errorf("next id generating failed: %w", err)
 			}
 
 			procID = id
 
 			if err := put(mainBucket, encodeUintKey(id), metadata); err != nil {
-				return err
+				return fmt.Errorf("putting proc metadata failed: %w", err)
 			}
 		}
 		{
@@ -108,11 +108,11 @@ func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
 
 			idsByName, err := get[[]uint64](byNameBucket, []byte(metadata.Name))
 			if err != nil {
-				return err
+				return fmt.Errorf("getting ids by name %q failed: %w", metadata.Name, err)
 			}
 
 			if err := put(byNameBucket, []byte(metadata.Name), append(idsByName, procID)); err != nil {
-				return err
+				return fmt.Errorf("putting ids by name %q failed: %w", metadata.Name, err)
 			}
 		}
 		{
@@ -124,11 +124,11 @@ func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
 			for _, tag := range metadata.Tags {
 				idsByTag, err := get[[]uint64](byTagBucket, []byte(tag))
 				if err != nil {
-					return err
+					return fmt.Errorf("getting ids by tag %q failed: %w", tag, err)
 				}
 
 				if err := put(byTagBucket, []byte(tag), append(idsByTag, procID)); err != nil {
-					return err
+					return fmt.Errorf("putting ids by tag %q failed: %w", tag, err)
 				}
 			}
 		}
@@ -214,11 +214,11 @@ func (db *DB) Delete(procID uint64) error {
 
 		proc, err := get[ProcMetadata](mainBucket, key)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed getting proc with id %d: %w", procID, err)
 		}
 
 		if err := mainBucket.Delete(key); err != nil {
-			return err
+			return fmt.Errorf("failed deleting proc with id %d: %w", procID, err)
 		}
 
 		{
@@ -227,8 +227,15 @@ func (db *DB) Delete(procID uint64) error {
 				return errors.New("byName bucket was not found")
 			}
 
-			if err := byNameBucket.Delete([]byte(proc.Name)); err != nil {
-				return err
+			idsByName, err := get[[]uint64](byNameBucket, []byte(proc.Name))
+			if err != nil {
+				return fmt.Errorf("failed reading ids by name %q: %w", proc.Name, err)
+			}
+
+			if err := put(byNameBucket, []byte(proc.Name), lo.Reject(idsByName, func(item uint64, _ int) bool {
+				return item == procID
+			})); err != nil {
+				return fmt.Errorf("failed updating ids by name %q: %w", proc.Name, err)
 			}
 		}
 		{
@@ -240,13 +247,13 @@ func (db *DB) Delete(procID uint64) error {
 			for _, tag := range proc.Tags {
 				idsByTag, err := get[[]uint64](byTagBucket, []byte(tag))
 				if err != nil {
-					return err
+					return fmt.Errorf("failed reading ids by tag %q: %w", tag, err)
 				}
 
 				if err := put(byTagBucket, []byte(tag), lo.Reject(idsByTag, func(item uint64, _ int) bool {
 					return item == procID
 				})); err != nil {
-					return err
+					return fmt.Errorf("failed updating ids by tag %q: %w", tag, err)
 				}
 			}
 		}

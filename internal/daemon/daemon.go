@@ -75,7 +75,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 		Tags:   lo.Uniq(append(req.GetTags().GetTags(), "all")),
 	}
 
-	procID, err := srv.DB.AddTask(metadata)
+	procID, err := srv.DB.AddProc(metadata)
 	if err != nil {
 		return nil, err
 	}

@@ -19,9 +19,20 @@ var StartCmd = &cli.Command{
 	ArgsUsage: "cmd args...",
 	Usage:     "start and daemonize an app",
 	Flags: []cli.Flag{
-		&cli.StringFlag{Name: "name", Aliases: []string{"n"}, Usage: "set a name for the process"},
-		&cli.StringSliceFlag{Name: "tags", Usage: "assign specified tags"},
-		&cli.StringFlag{Name: "cwd", Usage: "set working directory"},
+		&cli.StringFlag{
+			Name:     "name",
+			Aliases:  []string{"n"},
+			Usage:    "set a name for the process",
+			Required: false, // TODO: gen name if not provided
+		},
+		&cli.StringSliceFlag{
+			Name:  "tags",
+			Usage: "assign specified tags",
+		},
+		&cli.StringFlag{
+			Name:  "cwd",
+			Usage: "set working directory",
+		},
 		// &cli.BoolFlag{Name:        "only", Usage: "with json declaration, allow to only act on one application"},
 		// &cli.BoolFlag{Name:        "watch", Usage: "Watch folder for changes"},
 		// &cli.StringSliceFlag{Name: "watch", Usage: "watch application folder for changes"},

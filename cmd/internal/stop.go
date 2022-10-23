@@ -57,7 +57,9 @@ var StopCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(resp.GetId())
+		for _, id := range resp.GetId() {
+			fmt.Println(id)
+		}
 		return nil
 	},
 }
