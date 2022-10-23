@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	// TODO: []byte-s
 	_mainBucket   = "main"
 	_byNameBucket = "by_name"
 	_byTagBucket  = "by_tag"
@@ -260,4 +261,41 @@ func (db *DB) Delete(procID uint64) error {
 
 		return nil
 	})
+}
+
+func New(dbFile string) (*DB, error) {
+	db, err := bbolt.Open(dbFile, 0600, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DB{db: *db}, nil
+}
+
+func DBInit(dbFile string) error {
+	db, err := bbolt.Open(dbFile, 0600, nil)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	if err := db.Update(func(tx *bbolt.Tx) error {
+		if _, err := tx.CreateBucketIfNotExists([]byte(_mainBucket)); err != nil {
+			return err
+		}
+
+		if _, err := tx.CreateBucketIfNotExists([]byte(_byNameBucket)); err != nil {
+			return err
+		}
+
+		if _, err := tx.CreateBucketIfNotExists([]byte(_byTagBucket)); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }

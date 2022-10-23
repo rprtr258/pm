@@ -9,7 +9,6 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/sevlyar/go-daemon"
-	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,7 +20,7 @@ import (
 
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
-	DB *DB
+	dbFile string
 }
 
 // TODO: use grpc status codes
@@ -75,7 +74,12 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 		Tags:   lo.Uniq(append(req.GetTags().GetTags(), "all")),
 	}
 
-	procID, err := srv.DB.AddProc(metadata)
+	db, err := New(srv.dbFile)
+	if err != nil {
+		return nil, err
+	}
+
+	procID, err := db.AddProc(metadata)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +117,12 @@ func mapStatus(status string) func(*pb.ListRespEntry) {
 }
 
 func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, error) {
-	resp, err := srv.DB.List()
+	db, err := New(srv.dbFile)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := db.List()
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +156,12 @@ func filterProcs(db *DB) ([]ProcData, error) {
 }
 
 func (srv *daemonServer) Stop(_ context.Context, req *pb.DeleteReq) (*pb.DeleteResp, error) {
-	procsToStop, err := filterProcs(srv.DB)
+	db, err := New(srv.dbFile)
+	if err != nil {
+		return nil, err
+	}
+
+	procsToStop, err := filterProcs(db)
 	if err != nil {
 		return nil, status.Errorf(codes.DataLoss, err.Error())
 	}
@@ -155,7 +169,7 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.DeleteReq) (*pb.DeleteR
 	for _, proc := range procsToStop {
 		// TODO: stop proc
 		// TODO: batch
-		if err := srv.DB.SetStatus(proc.ID, "stopped"); err != nil {
+		if err := db.SetStatus(proc.ID, "stopped"); err != nil {
 			return nil, status.Errorf(codes.DataLoss, err.Error())
 		}
 	}
@@ -168,14 +182,19 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.DeleteReq) (*pb.DeleteR
 }
 
 func (srv *daemonServer) Delete(_ context.Context, req *pb.DeleteReq) (*pb.DeleteResp, error) {
-	procsToDelete, err := filterProcs(srv.DB)
+	db, err := New(srv.dbFile)
+	if err != nil {
+		return nil, err
+	}
+
+	procsToDelete, err := filterProcs(db)
 	if err != nil {
 		return nil, status.Errorf(codes.DataLoss, err.Error())
 	}
 
 	for _, proc := range procsToDelete {
 		// TODO: batch
-		if err := srv.DB.Delete(proc.ID); err != nil {
+		if err := db.Delete(proc.ID); err != nil {
 			return nil, err
 		}
 	}
@@ -197,34 +216,13 @@ func Run(rpcSocket, dbFile string) error {
 	}
 	defer sock.Close()
 
-	// TODO: open on every request, don't hold lock/rewrite to sqlite
-	db, err := bbolt.Open(dbFile, 0600, nil)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	if err := db.Update(func(tx *bbolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists([]byte(_mainBucket)); err != nil {
-			return err
-		}
-
-		if _, err := tx.CreateBucketIfNotExists([]byte(_byNameBucket)); err != nil {
-			return err
-		}
-
-		if _, err := tx.CreateBucketIfNotExists([]byte(_byTagBucket)); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
+	if err := DBInit(dbFile); err != nil {
 		return err
 	}
 
 	srv := grpc.NewServer()
 	pb.RegisterDaemonServer(srv, &daemonServer{
-		DB: &DB{db: *db},
+		dbFile: dbFile,
 	})
 
 	log.Printf("daemon started at %v", sock.Addr())
