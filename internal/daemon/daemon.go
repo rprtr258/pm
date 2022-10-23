@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -239,7 +240,7 @@ func Run(rpcSocket, dbFile string) error {
 
 // Kill daemon
 func Kill(daemonCtx *daemon.Context, rpcSocket string) error {
-	if err := os.Remove(rpcSocket); err != nil {
+	if err := os.Remove(rpcSocket); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("error removing socket file: %w", err)
 	}
 

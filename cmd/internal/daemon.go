@@ -31,7 +31,9 @@ var DaemonCmd = &cli.Command{
 					Args:        []string{"pm", "daemon", "start"},
 				}
 
-				pm_daemon.Kill(daemonCtx, _daemonRpcSocket)
+				if err := pm_daemon.Kill(daemonCtx, _daemonRpcSocket); err != nil {
+					return err
+				}
 
 				d, err := daemonCtx.Reborn()
 				if err != nil {

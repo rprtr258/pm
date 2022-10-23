@@ -10,11 +10,10 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-const (
-	// TODO: []byte-s
-	_mainBucket   = "main"
-	_byNameBucket = "by_name"
-	_byTagBucket  = "by_tag"
+var (
+	_mainBucket   = []byte("main")
+	_byNameBucket = []byte("by_name")
+	_byTagBucket  = []byte("by_tag")
 )
 
 type ProcMetadata struct {
