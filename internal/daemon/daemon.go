@@ -154,6 +154,7 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.DeleteReq) (*pb.DeleteR
 
 	for _, proc := range procsToStop {
 		// TODO: stop proc
+		// TODO: batch
 		if err := srv.DB.SetStatus(proc.ID, "stopped"); err != nil {
 			return nil, status.Errorf(codes.DataLoss, err.Error())
 		}
@@ -173,6 +174,7 @@ func (srv *daemonServer) Delete(_ context.Context, req *pb.DeleteReq) (*pb.Delet
 	}
 
 	for _, proc := range procsToDelete {
+		// TODO: batch
 		if err := srv.DB.Delete(proc.ID); err != nil {
 			return nil, err
 		}
@@ -193,11 +195,13 @@ func Run(rpcSocket, dbFile string) error {
 	}
 	defer sock.Close()
 
+	// TODO: open on every request, don't hold lock/rewrite to sqlite
 	db, err := bbolt.Open(dbFile, 0600, nil)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
+
 	if err := db.Update(func(tx *bbolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists([]byte(_mainBucket)); err != nil {
 			return err

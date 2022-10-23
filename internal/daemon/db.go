@@ -79,6 +79,7 @@ func put[V any](bucket *bbolt.Bucket, key []byte, value V) error {
 	return nil
 }
 
+// TODO: store pid in db
 func (db *DB) AddTask(metadata ProcMetadata) (uint64, error) {
 	var procID uint64
 	if err := db.db.Update(func(tx *bbolt.Tx) error {
