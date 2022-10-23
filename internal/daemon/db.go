@@ -90,6 +90,7 @@ func (db *DB) AddProc(metadata ProcMetadata) (uint64, error) {
 				return errors.New("main bucket was not found")
 			}
 
+			// TODO: manage ids myself
 			id, err := mainBucket.NextSequence()
 			if err != nil {
 				return fmt.Errorf("next id generating failed: %w", err)
@@ -261,6 +262,10 @@ func (db *DB) Delete(procID uint64) error {
 
 		return nil
 	})
+}
+
+func (db *DB) Close() error {
+	return db.db.Close()
 }
 
 func New(dbFile string) (*DB, error) {

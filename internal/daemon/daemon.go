@@ -25,6 +25,12 @@ type daemonServer struct {
 
 // TODO: use grpc status codes
 func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
+	db, err := New(srv.dbFile)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
 	// startParamsProto := req.GetProcess()
 	// TODO: move to client
 	// switch /*startParams :=*/ startParamsProto.(type) {
@@ -74,11 +80,6 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.Start
 		Tags:   lo.Uniq(append(req.GetTags().GetTags(), "all")),
 	}
 
-	db, err := New(srv.dbFile)
-	if err != nil {
-		return nil, err
-	}
-
 	procID, err := db.AddProc(metadata)
 	if err != nil {
 		return nil, err
@@ -121,6 +122,7 @@ func (srv *daemonServer) List(context.Context, *emptypb.Empty) (*pb.ListResp, er
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	resp, err := db.List()
 	if err != nil {
@@ -160,6 +162,7 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.DeleteReq) (*pb.DeleteR
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	procsToStop, err := filterProcs(db)
 	if err != nil {
@@ -186,6 +189,7 @@ func (srv *daemonServer) Delete(_ context.Context, req *pb.DeleteReq) (*pb.Delet
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	procsToDelete, err := filterProcs(db)
 	if err != nil {
