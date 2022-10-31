@@ -22,7 +22,8 @@ const (
 )
 
 var (
-	_mainBucket   = []byte("main")
+	_mainBucket = []byte("main")
+	// TODO: remove these buckets
 	_byNameBucket = []byte("by_name")
 	_byTagBucket  = []byte("by_tag")
 )
