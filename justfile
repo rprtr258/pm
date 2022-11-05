@@ -14,3 +14,7 @@
         --go-grpc_out=. \
         --go-grpc_opt=paths=source_relative \
         api/api.proto
+
+# check todos
+@todo:
+  rg 'TODO' --glob '**/*.go' || echo 'All done!'
