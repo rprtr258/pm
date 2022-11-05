@@ -105,7 +105,7 @@ var StartCmd = &cli.Command{
 			Cmd:  strings.Join(args, " "),
 		}
 
-		// TODO: make prettier
+		// TODO: make prettier/adjust db api so no new/close needed
 		if err := func() error {
 			db, err := daemon.New(_daemonDBFile)
 			if err != nil {
