@@ -1,3 +1,0 @@
-
-
-console.log(module.parent);

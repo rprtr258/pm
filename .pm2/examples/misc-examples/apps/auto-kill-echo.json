@@ -1,5 +1,0 @@
-{
-  "name" : "auto-kill",
-  "script" : "./examples/echokill.js",
-  "max" : "10"
-}

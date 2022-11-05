@@ -1,5 +1,0 @@
-{
-  "name" : "echo-default",
-  "script" : "examples/echo.js",
-  "max" : "1"
-}
