@@ -21,9 +21,7 @@ const (
 	StatusErrored
 )
 
-var (
-	_mainBucket = []byte("main")
-)
+var _mainBucket = []byte("main")
 
 type Status struct {
 	Status _status
@@ -34,8 +32,10 @@ type Status struct {
 	Memory    uint64 // in bytes
 }
 
+type ProcID uint64
+
 type ProcData struct {
-	ID     uint64   `json:"id"` // TODO: separate type
+	ID     ProcID   `json:"id"`
 	Name   string   `json:"name"`
 	Cmd    string   `json:"cmd"`
 	Status Status   `json:"status"`

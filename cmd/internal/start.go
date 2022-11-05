@@ -102,7 +102,7 @@ var StartCmd = &cli.Command{
 			Cmd:  strings.Join(args, " "),
 		}
 
-		if _, err := client.Start(ctx.Context, &pb.IDs{Ids: []uint64{procData.ID}}); err != nil {
+		if _, err := client.Start(ctx.Context, &pb.IDs{Ids: []uint64{uint64(procData.ID)}}); err != nil {
 			return err
 		}
 
