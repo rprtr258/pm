@@ -87,12 +87,6 @@ var StartCmd = &cli.Command{
 		}
 		defer deferFunc()
 
-		db, err := daemon.New(_daemonDBFile)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
-
 		name := ctx.String("name")
 
 		// TODO: do more smartly
@@ -111,12 +105,25 @@ var StartCmd = &cli.Command{
 			Cmd:  strings.Join(args, " "),
 		}
 
-		procID, err := db.AddProc(procData)
-		if err != nil {
+		// TODO: make prettier
+		if err := func() error {
+			db, err := daemon.New(_daemonDBFile)
+			if err != nil {
+				return err
+			}
+			defer db.Close()
+
+			procID, err := db.AddProc(procData)
+			if err != nil {
+				return err
+			}
+
+			procData.ID = procID
+
+			return nil
+		}(); err != nil {
 			return err
 		}
-
-		procData.ID = procID
 
 		if _, err := client.Start(ctx.Context, &pb.IDs{Ids: []uint64{uint64(procData.ID)}}); err != nil {
 			return err
