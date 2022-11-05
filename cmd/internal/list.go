@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aquasecurity/table"
@@ -69,6 +70,15 @@ var ListCmd = &cli.Command{
 			return err
 		}
 
+		procsToShow := filterProcs(
+			resp,
+			ctx.Args().Slice(),
+			[]string{},
+			[]string{},
+			[]db.ProcStatus{},
+			[]db.ProcID{},
+		)
+
 		t := table.New(os.Stdout)
 		t.SetRowLines(!ctx.Bool("compact"))
 		t.SetDividers(table.UnicodeRoundedDividers)
@@ -77,7 +87,7 @@ var ListCmd = &cli.Command{
 		t.SetHeaderStyle(table.StyleBold)
 		t.SetLineStyle(table.StyleDim)
 
-		lo.ForEach(resp, func(item db.ProcData, _ int) {
+		for _, item := range procsToShow {
 			t.AddRow(
 				color.New(color.FgCyan, color.Bold).Sprint(item.ID),
 				item.Name,
@@ -87,10 +97,46 @@ var ListCmd = &cli.Command{
 				fmt.Sprint(item.Status.Memory),
 				item.Cmd,
 			)
-		})
+		}
 
 		t.Render()
 
 		return nil
 	},
+}
+
+// TODO: any other filters?
+func filterProcs(
+	procs []db.ProcData,
+	generic, names, tags []string,
+	statuses []db.ProcStatus,
+	ids []db.ProcID,
+) []db.ProcData {
+	// if no filters, return all
+	if len(generic) == 0 &&
+		len(names) == 0 &&
+		len(tags) == 0 &&
+		len(statuses) == 0 &&
+		len(ids) == 0 {
+		return procs
+	}
+
+	genericIDs := lo.FilterMap(generic, func(filter string, _ int) (db.ProcID, bool) {
+		id, err := strconv.ParseUint(filter, 10, 64)
+		if err != nil {
+			return 0, false
+		}
+
+		return db.ProcID(id), true
+	})
+
+	return lo.Filter(procs, func(proc db.ProcData, _ int) bool {
+		return lo.Contains(names, proc.Name) ||
+			lo.Some(tags, proc.Tags) ||
+			lo.Contains(statuses, proc.Status.Status) ||
+			lo.Contains(ids, proc.ID) ||
+			lo.Contains(generic, proc.Name) ||
+			lo.Some(generic, proc.Tags) ||
+			lo.Contains(genericIDs, proc.ID)
+	})
 }
