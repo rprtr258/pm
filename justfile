@@ -28,3 +28,8 @@ PM := "go run cmd/main.go"
 # list db keys
 @db-keys:
   bbolt keys ~/.pm/pm.db main
+
+# TODO: remove
+# run "long running" task
+run-task:
+  {{PM}} start --name qmen24-$(date +'%H:%M:%S') sleep 10
