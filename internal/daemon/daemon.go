@@ -65,7 +65,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		execCmd.Stdout = stdoutLogFile
 		execCmd.Stderr = stderrLogFile
 
-		if err := execCmd.Start(); err != nil {
+		if err := execCmd.Run(); err != nil {
 			return nil, err
 		}
 	}
