@@ -23,14 +23,13 @@ const (
 
 var _mainBucket = []byte("main")
 
-// TODO: json tags
 type Status struct {
-	Status _status
+	Status _status `json:"status"`
 	// nulls if not running
-	Pid       uint64
-	StartTime time.Time
-	Cpu       uint64 // round(cpu usage in % * 100)
-	Memory    uint64 // in bytes
+	Pid       uint64    `json:"pid"`
+	StartTime time.Time `json:"start_time"`
+	Cpu       uint64    `json:"cpu"`    // round(cpu usage in % * 100)
+	Memory    uint64    `json:"memory"` // in bytes
 }
 
 type ProcID uint64
