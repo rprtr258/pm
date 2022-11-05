@@ -215,14 +215,14 @@ func (handle DBHandle) List() ([]ProcData, error) {
 	return res, err
 }
 
-func (handle DBHandle) SetStatus(procID uint64, newStatus ProcStatus) error {
+func (handle DBHandle) SetStatus(procID ProcID, newStatus ProcStatus) error {
 	return handle.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(_mainBucket)
 		if bucket == nil {
 			return errors.New("main bucket does not exist")
 		}
 
-		key := encodeUintKey(procID)
+		key := encodeUintKey(uint64(procID))
 		metadata, err := get[ProcData](bucket, key)
 		if err != nil {
 			return err

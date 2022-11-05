@@ -59,10 +59,20 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		execCmd.Stdout = stdoutLogFile
 		execCmd.Stderr = stderrLogFile
 
-		// TODO: update statuses
+		if err := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusRunning); err != nil {
+			return nil, err
+		}
 
 		// TODO: run in goroutine/syscall.ForkExec()/os.StartProcess
 		if err := execCmd.Run(); err != nil {
+			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusErrored); err2 != nil {
+				return nil, err2
+			}
+
+			return nil, err
+		}
+
+		if err := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusStopped); err != nil {
 			return nil, err
 		}
 	}
@@ -77,7 +87,7 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, e
 
 	for _, id := range procsToStop {
 		// TODO: actually stop proc
-		if err := dbHandle.SetStatus(id, db.StatusStopped); err != nil {
+		if err := dbHandle.SetStatus(db.ProcID(id), db.StatusStopped); err != nil {
 			return nil, status.Errorf(codes.DataLoss, err.Error())
 		}
 	}
