@@ -61,7 +61,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 
 		// TODO: update statuses
 
-		// TODO: run in goroutine/syscall.ForkExec()
+		// TODO: run in goroutine/syscall.ForkExec()/os.StartProcess
 		if err := execCmd.Run(); err != nil {
 			return nil, err
 		}
