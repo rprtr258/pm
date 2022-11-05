@@ -34,6 +34,7 @@ var StopCmd = &cli.Command{
 			Name:  "no-treekill",
 			Usage: "Only kill the main process, not detached children",
 		},
+		// TODO: -i/... to confirm which procs will be stopped
 	},
 	Action: func(ctx *cli.Context) error {
 		client, deferFunc, err := NewGrpcClient()
