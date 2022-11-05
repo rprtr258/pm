@@ -17,6 +17,7 @@ var DaemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "manage daemon",
 	Subcommands: []*cli.Command{
+		// TODO: restart
 		{
 			Name:  "start",
 			Usage: "launch daemon process",
