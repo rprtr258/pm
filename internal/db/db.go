@@ -11,10 +11,10 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-type _status int // TODO: rename
+type procStatus int
 
 const (
-	StatusInvalid _status = iota
+	StatusInvalid procStatus = iota
 	StatusStarting
 	StatusRunning
 	StatusStopped
@@ -24,7 +24,7 @@ const (
 var _mainBucket = []byte("main")
 
 type Status struct {
-	Status _status `json:"status"`
+	Status procStatus `json:"status"`
 	// nulls if not running
 	Pid       uint64    `json:"pid"`
 	StartTime time.Time `json:"start_time"`
@@ -211,7 +211,7 @@ func (handle DBHandle) List() ([]ProcData, error) {
 	return res, err
 }
 
-func (handle DBHandle) SetStatus(procID uint64, newStatus _status) error {
+func (handle DBHandle) SetStatus(procID uint64, newStatus procStatus) error {
 	return handle.update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(_mainBucket)
 		if bucket == nil {
