@@ -82,7 +82,6 @@ var ListCmd = &cli.Command{
 		t := table.New(os.Stdout)
 		t.SetRowLines(!ctx.Bool("compact"))
 		t.SetDividers(table.UnicodeRoundedDividers)
-		// t.SetAutoMerge(true)
 		t.SetHeaders("id", "name", "status", "tags", "cpu", "memory", "cmd")
 		t.SetHeaderStyle(table.StyleBold)
 		t.SetLineStyle(table.StyleDim)
