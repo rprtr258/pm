@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/daemon"
@@ -30,6 +31,15 @@ var DeleteCmd = &cli.Command{
 
 		procIDs := []uint64{} // TODO: implement
 
+		for _, arg := range args {
+			procID, err := strconv.ParseUint(arg, 10, 64)
+			if err != nil {
+				return err
+			}
+
+			procIDs = append(procIDs, procID)
+		}
+
 		if _, err := client.Stop(ctx.Context, &api.IDs{Ids: procIDs}); err != nil {
 			return err
 		}
@@ -41,8 +51,10 @@ var DeleteCmd = &cli.Command{
 		defer db.Close()
 
 		if err := db.Delete(procIDs); err != nil {
-			return err // TODO: add errs descriptions
+			return err // TODO: add errs descriptions, loggings
 		}
+
+		// TODO: delete log files too
 
 		return nil
 	},
