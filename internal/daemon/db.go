@@ -173,22 +173,25 @@ func (db *DB) SetStatus(procID uint64, newStatus _status) error {
 	})
 }
 
-func (db *DB) Delete(procID uint64) error {
+// TODO: batch
+func (db *DB) Delete(procIDs []uint64) error {
 	return db.db.Update(func(tx *bbolt.Tx) error {
 		mainBucket := tx.Bucket(_mainBucket)
 		if mainBucket == nil {
 			return errors.New("main bucket was not found")
 		}
 
-		key := encodeUintKey(procID)
+		for _, procID := range procIDs {
+			key := encodeUintKey(procID)
 
-		// proc, err := get[ProcData](mainBucket, key)
-		// if err != nil {
-		// 	return fmt.Errorf("failed getting proc with id %d: %w", procID, err)
-		// }
+			// proc, err := get[ProcData](mainBucket, key)
+			// if err != nil {
+			// 	return fmt.Errorf("failed getting proc with id %d: %w", procID, err)
+			// }
 
-		if err := mainBucket.Delete(key); err != nil {
-			return fmt.Errorf("failed deleting proc with id %d: %w", procID, err)
+			if err := mainBucket.Delete(key); err != nil {
+				return fmt.Errorf("failed deleting proc with id %d: %w", procID, err)
+			}
 		}
 
 		return nil
@@ -199,6 +202,7 @@ func (db *DB) Close() error {
 	return db.db.Close()
 }
 
+// TODO: move out to "db" package
 func New(dbFile string) (*DB, error) {
 	db, err := bbolt.Open(dbFile, 0600, nil)
 	if err != nil {
