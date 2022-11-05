@@ -69,7 +69,6 @@ func decodeJSON[T any](value []byte) (T, error) {
 	return res, nil
 }
 
-// TODO: template key type
 func get[V any](bucket *bbolt.Bucket, key []byte) (V, error) {
 	// keyBytes, err := encodeUintKey(key)
 	bytes := bucket.Get(key)
@@ -81,7 +80,6 @@ func get[V any](bucket *bbolt.Bucket, key []byte) (V, error) {
 }
 
 // TODO: serialize/deserialize protobuffers
-// TODO: template key type
 func put[V any](bucket *bbolt.Bucket, key []byte, value V) error {
 	bytes, err := encodeJSON(value)
 	if err != nil {

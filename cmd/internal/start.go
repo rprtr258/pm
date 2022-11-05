@@ -31,7 +31,7 @@ var StartCmd = &cli.Command{
 			Name:     "name",
 			Aliases:  []string{"n"},
 			Usage:    "set a name for the process",
-			Required: false, // TODO: gen name if not provided
+			Required: false,
 		},
 		&cli.StringSliceFlag{
 			Name:  "tags",
@@ -41,7 +41,6 @@ var StartCmd = &cli.Command{
 			Name:  "cwd",
 			Usage: "set working directory",
 		},
-		// TODO: script + names..?
 		// &cli.BoolFlag{Name:        "only", Usage: "with json declaration, allow to only act on one application"},
 		// &cli.BoolFlag{Name:        "watch", Usage: "Watch folder for changes"},
 		// &cli.StringSliceFlag{Name: "watch", Usage: "watch application folder for changes"},
@@ -68,10 +67,9 @@ var StartCmd = &cli.Command{
 		// &cli.StringSliceFlag{Name: "ignore-watch", Usage: "List of paths to ignore (name or regex)"},
 		// &cli.BoolFlag{Name:        "no-autorestart", Usage: "start an app without automatic restart"},
 		// &cli.DurationFlag{Name:    "restart-delay", Usage: "specify a delay between restarts"},
-		// &cli.BoolFlag{Name:        "instances <number>", Aliases: []string{"i"}, Usage: "launch [number] instances (for networked app)(load balanced)"}, // TODO: remove
 		// &cli.BoolFlag{Name:        "merge-logs", Usage: "merge logs from different instances but keep error and out separated"},
-		// &cli.StringFlag{Name:      "interpreter", Usage: "set a specific interpreter to use for executing app", Value: "node"}, // TODO: remove
-		// &cli.StringSliceFlag{Name: "interpreter-args", Usage: "set arguments to pass to the interpreter"}, // TODO: remove
+		// &cli.StringFlag{Name:      "interpreter", Usage: "set a specific interpreter to use for executing app", Value: "node"},
+		// &cli.StringSliceFlag{Name: "interpreter-args", Usage: "set arguments to pass to the interpreter"},
 		// &cli.BoolFlag{Name:        "fresh", Usage: "Rebuild Dockerfile"},
 		// &cli.BoolFlag{Name:        "daemon", Usage: "Run container in Daemon mode (debug purposes)"},
 		// &cli.BoolFlag{Name:        "container", Usage: "Start application in container mode"},
@@ -89,7 +87,6 @@ var StartCmd = &cli.Command{
 
 		name := ctx.String("name")
 
-		// TODO: do more smartly
 		args := ctx.Args().Slice()
 		if len(args) < 1 {
 			return errors.New("command expected")

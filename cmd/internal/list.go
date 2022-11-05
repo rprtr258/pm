@@ -23,7 +23,6 @@ func mapStatus(status db.Status) string {
 	case db.StatusStarting:
 		return color.YellowString("starting")
 	case db.StatusRunning:
-		// TODO: separate
 		return color.GreenString(
 			"running(pid=%d,uptime=%v)",
 			status.Pid,
@@ -104,7 +103,6 @@ var ListCmd = &cli.Command{
 	},
 }
 
-// TODO: any other filters?
 func filterProcs(
 	procs []db.ProcData,
 	generic, names, tags []string,

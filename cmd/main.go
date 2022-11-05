@@ -43,7 +43,7 @@ func main() {
 				Usage:   "print pm version",
 				// TODO: implement
 			},
-		),
+		 ,
 		Before: func(*cli.Context) error {
 			// TODO: run daemon if not running
 			if _, err := os.Stat(internal.HomeDir); os.IsNotExist(err) {
