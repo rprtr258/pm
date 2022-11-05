@@ -42,6 +42,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		return nil, err
 	}
 
+	// TODO: if ~home/logs does not exist - create
+
 	for _, proc := range procs {
 		procIDStr := strconv.FormatUint(uint64(proc.ID), 10)
 		logsDir := path.Join(srv.homeDir, "logs")
@@ -52,7 +54,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		}
 		defer stdoutLogFile.Close()
 
-		stderrLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		stderrLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr+".stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return nil, err
 		}
@@ -67,8 +69,6 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 			return nil, err
 		}
 	}
-
-	fmt.Println(procs)
 
 	return &emptypb.Empty{}, nil
 }
