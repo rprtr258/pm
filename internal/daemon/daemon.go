@@ -23,78 +23,75 @@ type daemonServer struct {
 }
 
 // TODO: use grpc status codes
-// func (srv *daemonServer) Start(ctx context.Context, req *pb.StartReq) (*pb.StartResp, error) {
-// 	db, err := New(srv.dbFile)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer db.Close()
+func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
+	db, err := New(srv.dbFile)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
 
-// 	// startParamsProto := req.GetProcess()
-// 	// TODO: move to client
-// 	// switch /*startParams :=*/ startParamsProto.(type) {
-// 	// case *pb.StartReq_Cmd:
-// 	// 	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-// 	// 	if err != nil {
-// 	// 		return nil, err
-// 	// 	}
-// 	// 	defer stdoutLogFile.Close()
+	// startParamsProto := req.GetProcess()
+	// TODO: move to client
+	// switch /*startParams :=*/ startParamsProto.(type) {
+	// case *pb.StartReq_Cmd:
+	// 	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	defer stdoutLogFile.Close()
 
-// 	// 	stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-// 	// 	if err != nil {
-// 	// 		return nil, err
-// 	// 	}
-// 	// 	defer stderrLogFile.Close()
+	// 	stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	defer stderrLogFile.Close()
 
-// 	// 	pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
-// 	// 	if err != nil {
-// 	// 		return nil, err
-// 	// 	}
-// 	// 	defer pidFile.Close()
+	// 	pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	defer pidFile.Close()
 
-// 	// 	// TODO: syscall.ForkExec()
-// 	// 	execCmd := exec.CommandContext(context.TODO(), cmd, startParamsProto...)
-// 	// 	execCmd.Stdout = stdoutLogFile
-// 	// 	execCmd.Stderr = stderrLogFile
-// 	// 	if err := execCmd.Start(); err != nil {
-// 	// 		return nil, err
-// 	// 	}
+	// 	// TODO: syscall.ForkExec()
+	// 	execCmd := exec.CommandContext(context.TODO(), cmd, startParamsProto...)
+	// 	execCmd.Stdout = stdoutLogFile
+	// 	execCmd.Stderr = stderrLogFile
+	// 	if err := execCmd.Start(); err != nil {
+	// 		return nil, err
+	// 	}
 
-// 	// 	if _, err := pidFile.WriteString(strconv.Itoa(execCmd.Process.Pid)); err != nil {
-// 	// 		return nil, err
-// 	// 	}
-// 	// // Processes[name] = execCmd.Process.Pid
-// 	// return &pb.StartResp{
-// 	// 	Id:  0,
-// 	// 	Pid: int64(execCmd.Process.Pid),
-// 	// }, nil
-// 	// case *pb.StartReq_Shell:
-// 	// case *pb.StartReq_Config:
-// 	// }
+	// 	if _, err := pidFile.WriteString(strconv.Itoa(execCmd.Process.Pid)); err != nil {
+	// 		return nil, err
+	// 	}
+	// // Processes[name] = execCmd.Process.Pid
+	// return &pb.StartResp{
+	// 	Id:  0,
+	// 	Pid: int64(execCmd.Process.Pid),
+	// }, nil
+	// case *pb.StartReq_Shell:
+	// case *pb.StartReq_Config:
+	// }
 
-// 	metadata := ProcMetadata{
-// 		Name: req.GetName(),
-// 		Cmd:  req.GetCmd(),
-// 		Status: Status{
-// 			Status:    _statusRunning,
-// 			Pid:       1,
-// 			StartTime: time.Now(),
-// 			Cpu:       0,
-// 			Memory:    0,
-// 		},
-// 		Tags: lo.Uniq(append(req.GetTags().GetTags(), "all")),
-// 	}
+	// metadata := ProcMetadata{
+	// 	Name: req.GetName(),
+	// 	Cmd:  req.GetCmd(),
+	// 	Status: Status{
+	// 		Status:    _statusRunning,
+	// 		Pid:       1,
+	// 		StartTime: time.Now(),
+	// 		Cpu:       0,
+	// 		Memory:    0,
+	// 	},
+	// 	Tags: lo.Uniq(append(req.GetTags().GetTags(), "all")),
+	// }
 
-// 	procID, err := db.AddProc(metadata)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// procID, err := db.AddProc(metadata)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-// 	return &pb.StartResp{
-// 		Id:  procID,
-// 		Pid: 1,
-// 	}, nil
-// }
+	return &emptypb.Empty{}, nil
+}
 
 // func mapStatus(status _status) func(*pb.ListRespEntry) {
 // 	switch status {
