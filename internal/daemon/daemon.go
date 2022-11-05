@@ -7,6 +7,9 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
+	"path"
+	"strconv"
 
 	"github.com/samber/lo"
 	"github.com/sevlyar/go-daemon"
@@ -20,7 +23,8 @@ import (
 
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
-	dbFile string
+	dbFile  string
+	homeDir string
 }
 
 // TODO: use grpc status codes
@@ -36,6 +40,32 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 	}))
 	if err != nil {
 		return nil, err
+	}
+
+	for _, proc := range procs {
+		procIDStr := strconv.FormatUint(uint64(proc.ID), 10)
+		logsDir := path.Join(srv.homeDir, "logs")
+
+		stdoutLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr+".stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			return nil, err
+		}
+		defer stdoutLogFile.Close()
+
+		stderrLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		if err != nil {
+			return nil, err
+		}
+		defer stderrLogFile.Close()
+
+		// TODO: syscall.ForkExec()
+		execCmd := exec.CommandContext(ctx, "/usr/bin/bash", []string{"-c", proc.Cmd}...)
+		execCmd.Stdout = stdoutLogFile
+		execCmd.Stderr = stderrLogFile
+
+		if err := execCmd.Start(); err != nil {
+			return nil, err
+		}
 	}
 
 	fmt.Println(procs)
@@ -91,7 +121,7 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, e
 // TODO: fix "reborn failed: daemon: Resource temporarily unavailable" on start when
 // daemon is already running
 // Run daemon
-func Run(rpcSocket, dbFile string) error {
+func Run(rpcSocket, dbFile, homeDir string) error {
 	sock, err := net.Listen("unix", rpcSocket)
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)
@@ -104,7 +134,8 @@ func Run(rpcSocket, dbFile string) error {
 
 	srv := grpc.NewServer()
 	pb.RegisterDaemonServer(srv, &daemonServer{
-		dbFile: dbFile,
+		dbFile:  dbFile,
+		homeDir: homeDir,
 	})
 
 	log.Printf("daemon started at %v", sock.Addr())

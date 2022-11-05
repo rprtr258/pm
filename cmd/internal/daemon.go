@@ -47,7 +47,7 @@ var DaemonCmd = &cli.Command{
 
 				defer daemonCtx.Release()
 
-				return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile)
+				return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile, HomeDir)
 			},
 		},
 		{
@@ -71,7 +71,7 @@ var DaemonCmd = &cli.Command{
 			Name:  "run",
 			Usage: "run daemon, DON'T USE BY HAND IF YOU DON'T KNOW WHAT YOU ARE DOING",
 			Action: func(ctx *cli.Context) error {
-				return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile)
+				return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile, HomeDir)
 			},
 		},
 	},
