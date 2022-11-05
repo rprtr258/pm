@@ -38,6 +38,7 @@ var DeleteCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 
 		if err := db.Delete(procIDs); err != nil {
 			return err // TODO: add errs descriptions

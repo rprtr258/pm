@@ -173,7 +173,6 @@ func (db *DB) SetStatus(procID uint64, newStatus _status) error {
 	})
 }
 
-// TODO: batch
 func (db *DB) Delete(procIDs []uint64) error {
 	return db.db.Update(func(tx *bbolt.Tx) error {
 		mainBucket := tx.Bucket(_mainBucket)
