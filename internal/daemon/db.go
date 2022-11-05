@@ -111,6 +111,7 @@ func (db *DB) AddProc(metadata ProcData) (ProcID, error) {
 		}
 
 		procID = id
+		metadata.ID = ProcID(id)
 
 		if err := put(mainBucket, encodeUintKey(id), metadata); err != nil {
 			return fmt.Errorf("putting proc metadata failed: %w", err)
@@ -122,6 +123,40 @@ func (db *DB) AddProc(metadata ProcData) (ProcID, error) {
 	}
 
 	return ProcID(procID), nil
+}
+
+func (db *DB) GetProcs(ids []ProcID) ([]ProcData, error) {
+	var res []ProcData
+
+	if err := db.db.View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket(_mainBucket)
+		if bucket == nil {
+			return errors.New("main bucket does not exist")
+		}
+
+		if err := bucket.ForEach(func(_, value []byte) error {
+			procData, err := decodeJSON[ProcData](value)
+			if err != nil {
+				return err
+			}
+
+			if !lo.Contains(ids, procData.ID) {
+				return nil
+			}
+
+			res = append(res, procData)
+
+			return nil
+		}); err != nil {
+			return err
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func (db *DB) List() ([]ProcData, error) {

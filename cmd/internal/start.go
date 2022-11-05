@@ -105,6 +105,46 @@ var StartCmd = &cli.Command{
 			Cmd:  strings.Join(args, " "),
 		}
 
+		// switch /*startParams :=*/ startParamsProto.(type) {
+		// case *pb.StartReq_Cmd:
+		// 	stdoutLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	defer stdoutLogFile.Close()
+
+		// 	stderrLogFile, err := os.OpenFile(path.Join(HomeDir, name, "stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	defer stderrLogFile.Close()
+
+		// 	pidFile, err := os.OpenFile(path.Join(HomeDir, name, "pid"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		// 	if err != nil {
+		// 		return nil, err
+		// 	}
+		// 	defer pidFile.Close()
+
+		// 	// TODO: syscall.ForkExec()
+		// 	execCmd := exec.CommandContext(context.TODO(), cmd, startParamsProto...)
+		// 	execCmd.Stdout = stdoutLogFile
+		// 	execCmd.Stderr = stderrLogFile
+		// 	if err := execCmd.Start(); err != nil {
+		// 		return nil, err
+		// 	}
+
+		// 	if _, err := pidFile.WriteString(strconv.Itoa(execCmd.Process.Pid)); err != nil {
+		// 		return nil, err
+		// 	}
+		// // Processes[name] = execCmd.Process.Pid
+		// return &pb.StartResp{
+		// 	Id:  0,
+		// 	Pid: int64(execCmd.Process.Pid),
+		// }, nil
+		// case *pb.StartReq_Shell:
+		// case *pb.StartReq_Config:
+		// }
+
 		// TODO: make prettier/adjust db api so no new/close needed
 		if err := func() error {
 			db, err := daemon.New(_daemonDBFile)
@@ -125,11 +165,14 @@ var StartCmd = &cli.Command{
 			return err
 		}
 
-		if _, err := client.Start(ctx.Context, &pb.IDs{Ids: []uint64{uint64(procData.ID)}}); err != nil {
+		procIDs := []uint64{uint64(procData.ID)}
+
+		if _, err := client.Start(ctx.Context, &pb.IDs{Ids: procIDs}); err != nil {
 			return err
 		}
 
 		fmt.Println(procData.ID)
+
 		return nil
 	},
 }
