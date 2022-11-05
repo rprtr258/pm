@@ -68,6 +68,7 @@ var ListCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer db.Close()
 
 		resp, err := db.List()
 		if err != nil {
