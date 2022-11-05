@@ -60,11 +60,11 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		}
 		defer stderrLogFile.Close()
 
-		// TODO: syscall.ForkExec()
 		execCmd := exec.CommandContext(ctx, "/usr/bin/bash", []string{"-c", proc.Cmd}...)
 		execCmd.Stdout = stdoutLogFile
 		execCmd.Stderr = stderrLogFile
 
+		// TODO: run in goroutine/syscall.ForkExec()
 		if err := execCmd.Run(); err != nil {
 			return nil, err
 		}
