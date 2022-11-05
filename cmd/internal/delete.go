@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal/daemon"
+	"github.com/rprtr258/pm/internal/db"
 	"github.com/urfave/cli/v2"
 )
 
@@ -44,13 +44,7 @@ var DeleteCmd = &cli.Command{
 			return err
 		}
 
-		db, err := daemon.New(_daemonDBFile)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
-
-		if err := db.Delete(procIDs); err != nil {
+		if err := db.New(_daemonDBFile).Delete(procIDs); err != nil {
 			return err // TODO: add errs descriptions, loggings
 		}
 

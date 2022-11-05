@@ -19,6 +19,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/db"
 )
 
 type daemonServer struct {
@@ -29,14 +30,8 @@ type daemonServer struct {
 
 // TODO: use grpc status codes
 func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	db, err := New(srv.dbFile)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	procs, err := db.GetProcs(lo.Map(req.GetIds(), func(id uint64, _ int) ProcID {
-		return ProcID(id)
+	procs, err := db.New(srv.dbFile).GetProcs(lo.Map(req.GetIds(), func(id uint64, _ int) db.ProcID {
+		return db.ProcID(id)
 	}))
 	if err != nil {
 		return nil, err
@@ -64,6 +59,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		execCmd.Stdout = stdoutLogFile
 		execCmd.Stderr = stderrLogFile
 
+		// TODO: update statuses
+
 		// TODO: run in goroutine/syscall.ForkExec()
 		if err := execCmd.Run(); err != nil {
 			return nil, err
@@ -73,44 +70,14 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 	return &emptypb.Empty{}, nil
 }
 
-// func mapStatus(status _status) func(*pb.ListRespEntry) {
-// 	switch status {
-// 	case _statusRunning:
-// 		return func(lre *pb.ListRespEntry) {
-// 			lre.Status = &pb.ListRespEntry_Running{
-// 				Running: &pb.RunningInfo{
-// 					Pid:    0,
-// 					Uptime: durationpb.New(0),
-// 				},
-// 			}
-// 		}
-// 	case _statusStopped:
-// 		return func(lre *pb.ListRespEntry) {
-// 			lre.Status = &pb.ListRespEntry_Stopped{}
-// 		}
-// 	case _statusErrored:
-// 		return func(lre *pb.ListRespEntry) {
-// 			lre.Status = &pb.ListRespEntry_Errored{}
-// 		}
-// 	default:
-// 		return func(lre *pb.ListRespEntry) {
-// 			lre.Status = &pb.ListRespEntry_Invalid{Invalid: status}
-// 		}
-// 	}
-// }
-
 func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	db, err := New(srv.dbFile)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
+	dbHandle := db.New(srv.dbFile)
 
 	procsToStop := req.GetIds()
 
 	for _, id := range procsToStop {
 		// TODO: actually stop proc
-		if err := db.SetStatus(id, StatusStopped); err != nil {
+		if err := dbHandle.SetStatus(id, db.StatusStopped); err != nil {
 			return nil, status.Errorf(codes.DataLoss, err.Error())
 		}
 	}
@@ -128,7 +95,7 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 	}
 	defer sock.Close()
 
-	if err := DBInit(dbFile); err != nil {
+	if err := db.New(dbFile).Init(); err != nil {
 		return err
 	}
 

@@ -1,4 +1,4 @@
-package daemon
+package db
 
 import (
 	"encoding/json"
@@ -23,6 +23,7 @@ const (
 
 var _mainBucket = []byte("main")
 
+// TODO: json tags
 type Status struct {
 	Status _status
 	// nulls if not running
@@ -44,8 +45,8 @@ type ProcData struct {
 	Watch  []string `json:"watch"`
 }
 
-type DB struct {
-	db bbolt.DB
+type DBHandle struct {
+	dbFilename string
 }
 
 func encodeUintKey(procID uint64) []byte {
@@ -95,10 +96,34 @@ func put[V any](bucket *bbolt.Bucket, key []byte, value V) error {
 	return nil
 }
 
-// TODO: store pid in db
-func (db *DB) AddProc(metadata ProcData) (ProcID, error) {
+func New(dbFile string) DBHandle {
+	return DBHandle{
+		dbFilename: dbFile,
+	}
+}
+
+func (handle DBHandle) execute(statement func(*bbolt.DB) error) error {
+	db, err := bbolt.Open(handle.dbFilename, 0600, nil)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	return statement(db)
+}
+
+func (handle DBHandle) update(statement func(*bbolt.Tx) error) error {
+	return handle.execute(func(db *bbolt.DB) error {
+		return db.Update(func(tx *bbolt.Tx) error {
+			return statement(tx)
+		})
+	})
+}
+
+func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 	var procID uint64
-	if err := db.db.Update(func(tx *bbolt.Tx) error {
+
+	err := handle.update(func(tx *bbolt.Tx) error {
 		mainBucket := tx.Bucket(_mainBucket)
 		if mainBucket == nil {
 			return errors.New("main bucket was not found")
@@ -118,79 +143,77 @@ func (db *DB) AddProc(metadata ProcData) (ProcID, error) {
 		}
 
 		return nil
-	}); err != nil {
-		return 0, err
-	}
+	})
 
-	return ProcID(procID), nil
+	return ProcID(procID), err
 }
 
-func (db *DB) GetProcs(ids []ProcID) ([]ProcData, error) {
+func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 	var res []ProcData
 
-	if err := db.db.View(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket(_mainBucket)
-		if bucket == nil {
-			return errors.New("main bucket does not exist")
-		}
-
-		if err := bucket.ForEach(func(_, value []byte) error {
-			procData, err := decodeJSON[ProcData](value)
-			if err != nil {
-				return err
+	err := handle.execute(func(db *bbolt.DB) error {
+		return db.View(func(tx *bbolt.Tx) error {
+			bucket := tx.Bucket(_mainBucket)
+			if bucket == nil {
+				return errors.New("main bucket does not exist")
 			}
 
-			if !lo.Contains(ids, procData.ID) {
+			if err := bucket.ForEach(func(_, value []byte) error {
+				procData, err := decodeJSON[ProcData](value)
+				if err != nil {
+					return err
+				}
+
+				if !lo.Contains(ids, procData.ID) {
+					return nil
+				}
+
+				res = append(res, procData)
+
 				return nil
-			}
-
-			res = append(res, procData)
-
-			return nil
-		}); err != nil {
-			return err
-		}
-
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return res, nil
-}
-
-func (db *DB) List() ([]ProcData, error) {
-	var res []ProcData
-
-	if err := db.db.View(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket(_mainBucket)
-		if bucket == nil {
-			return errors.New("main bucket does not exist")
-		}
-
-		if err := bucket.ForEach(func(_, value []byte) error {
-			procData, err := decodeJSON[ProcData](value)
-			if err != nil {
+			}); err != nil {
 				return err
 			}
 
-			res = append(res, procData)
-
 			return nil
-		}); err != nil {
-			return err
-		}
+		})
+	})
 
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return res, err
 }
 
-func (db *DB) SetStatus(procID uint64, newStatus _status) error {
-	return db.db.Update(func(tx *bbolt.Tx) error {
+func (handle DBHandle) List() ([]ProcData, error) {
+	var res []ProcData
+
+	err := handle.execute(func(db *bbolt.DB) error {
+		return db.View(func(tx *bbolt.Tx) error {
+			bucket := tx.Bucket(_mainBucket)
+			if bucket == nil {
+				return errors.New("main bucket does not exist")
+			}
+
+			if err := bucket.ForEach(func(_, value []byte) error {
+				procData, err := decodeJSON[ProcData](value)
+				if err != nil {
+					return err
+				}
+
+				res = append(res, procData)
+
+				return nil
+			}); err != nil {
+				return err
+			}
+
+			return nil
+		})
+	})
+
+	return res, err
+}
+
+func (handle DBHandle) SetStatus(procID uint64, newStatus _status) error {
+	return handle.update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(_mainBucket)
 		if bucket == nil {
 			return errors.New("main bucket does not exist")
@@ -208,8 +231,8 @@ func (db *DB) SetStatus(procID uint64, newStatus _status) error {
 	})
 }
 
-func (db *DB) Delete(procIDs []uint64) error {
-	return db.db.Update(func(tx *bbolt.Tx) error {
+func (handle DBHandle) Delete(procIDs []uint64) error {
+	return handle.update(func(tx *bbolt.Tx) error {
 		mainBucket := tx.Bucket(_mainBucket)
 		if mainBucket == nil {
 			return errors.New("main bucket was not found")
@@ -232,36 +255,13 @@ func (db *DB) Delete(procIDs []uint64) error {
 	})
 }
 
-func (db *DB) Close() error {
-	return db.db.Close()
-}
-
-// TODO: move out to "db" package
-func New(dbFile string) (*DB, error) {
-	db, err := bbolt.Open(dbFile, 0600, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DB{db: *db}, nil
-}
-
-func DBInit(dbFile string) error {
-	db, err := bbolt.Open(dbFile, 0600, nil)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	if err := db.Update(func(tx *bbolt.Tx) error {
+// Init - init buckets
+func (handle DBHandle) Init() error {
+	return handle.update(func(tx *bbolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists(_mainBucket); err != nil {
 			return err
 		}
 
 		return nil
-	}); err != nil {
-		return err
-	}
-
-	return nil
+	})
 }

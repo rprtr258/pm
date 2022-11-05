@@ -10,29 +10,29 @@ import (
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
-	"github.com/rprtr258/pm/internal/daemon"
+	"github.com/rprtr258/pm/internal/db"
 )
 
 func init() {
 	AllCmds = append(AllCmds, ListCmd)
 }
 
-func mapStatus(status daemon.Status) string {
+func mapStatus(status db.Status) string {
 	switch status.Status {
-	case daemon.StatusStarting:
+	case db.StatusStarting:
 		return color.YellowString("starting")
-	case daemon.StatusRunning:
+	case db.StatusRunning:
 		// TODO: separate
 		return color.GreenString(
 			"running(pid=%d,uptime=%v)",
 			status.Pid,
 			time.Since(status.StartTime),
 		)
-	case daemon.StatusStopped:
+	case db.StatusStopped:
 		return color.YellowString("stopped")
-	case daemon.StatusErrored:
+	case db.StatusErrored:
 		return color.RedString("errored")
-	case daemon.StatusInvalid:
+	case db.StatusInvalid:
 		return color.RedString("invalid(%T)", status)
 	default:
 		return color.RedString("BROKEN(%T)", status)
@@ -64,13 +64,7 @@ var ListCmd = &cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		db, err := daemon.New(_daemonDBFile)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
-
-		resp, err := db.List()
+		resp, err := db.New(_daemonDBFile).List()
 		if err != nil {
 			return err
 		}
@@ -83,7 +77,7 @@ var ListCmd = &cli.Command{
 		t.SetHeaderStyle(table.StyleBold)
 		t.SetLineStyle(table.StyleDim)
 
-		lo.ForEach(resp, func(item daemon.ProcData, _ int) {
+		lo.ForEach(resp, func(item db.ProcData, _ int) {
 			t.AddRow(
 				color.New(color.FgCyan, color.Bold).Sprint(item.ID),
 				item.Name,

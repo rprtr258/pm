@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	pb "github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal/daemon"
+	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
@@ -95,9 +95,9 @@ var StartCmd = &cli.Command{
 			return errors.New("command expected")
 		}
 
-		procData := daemon.ProcData{
-			Status: daemon.Status{
-				Status: daemon.StatusStarting,
+		procData := db.ProcData{
+			Status: db.Status{
+				Status: db.StatusStarting,
 			},
 			Name: name,
 			Cwd:  ".",
@@ -105,15 +105,8 @@ var StartCmd = &cli.Command{
 			Cmd:  strings.Join(args, " "),
 		}
 
-		// TODO: make prettier/adjust db api so no new/close needed
 		if err := func() error {
-			db, err := daemon.New(_daemonDBFile)
-			if err != nil {
-				return err
-			}
-			defer db.Close()
-
-			procID, err := db.AddProc(procData)
+			procID, err := db.New(_daemonDBFile).AddProc(procData)
 			if err != nil {
 				return err
 			}
