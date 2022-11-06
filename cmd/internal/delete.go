@@ -49,6 +49,14 @@ var DeleteCmd = &cli.Command{
 		}
 
 		// TODO: delete log files too
+// 	_, err := os.Stat(string(*f))
+// 	if err != nil {
+// 		return true
+// 	}
+// 	err = os.Remove(string(*f))
+// 	return err == nil
+// }
+
 
 		return nil
 	},

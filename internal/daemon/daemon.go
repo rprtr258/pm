@@ -43,13 +43,13 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		procIDStr := strconv.FormatUint(uint64(proc.ID), 10)
 		logsDir := path.Join(srv.homeDir, "logs")
 
-		stdoutLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr+".stdout"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		stdoutLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr+".stdout"), os.O_APPEND|os.O_RDWR|os.O_CREATE, 0660)
 		if err != nil {
 			return nil, err
 		}
 		defer stdoutLogFile.Close()
 
-		stderrLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr+".stderr"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+		stderrLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr+".stderr"), os.O_APPEND|os.O_RDWR|os.O_CREATE, 0660)
 		if err != nil {
 			return nil, err
 		}
