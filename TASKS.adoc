@@ -10,6 +10,7 @@
 * serialize/deserialize protobuffers into database
 * manage ids ourself, leveraging minimal not used id for new proc
 * run procs using `goroutine`/`syscall.ForkExec()`/`os.StartProcess`
+* try https://github.com/dgraph-io/badger
 
 === features
 * config file with process definitions
