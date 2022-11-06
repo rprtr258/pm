@@ -26,6 +26,7 @@
 * `pm start` recognizing cmd&args vs ids/names/tags of processes in pm list to run
 * add "smart filtering"" to delete and stop cmds
 * `-i/...` flag to confirm which procs will be stopped
+* bash autocomplete
 
 === bugfixes
 * fix "reborn failed: daemon: Resource temporarily unavailable" on start when daemon is already running
@@ -33,21 +34,63 @@
 * actually stop proc on server.Stop method
 * delete cmd must also delete log files
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+pm2 can't:
+  show only namespace ps
+  use envs from dotenv
+  reload processes based on config diff, fix watch
+    https://github.com/fsnotify/fsnotify
+    https://github.com/cortesi/modd
+    https://github.com/eradman/entr
+    https://github.com/cespare/reflex
+    https://github.com/cosmtrek/air
+  run and attach, stop on Ctrl-C
+  show logs of several proccesses simultanuously
+  specify cwd
+  start only particular services from config file (actually it can w/ --only flag)
+pm2 breaks watching after process restart
+stupid create, restart, stop, delete flow, might be customized (e.g. with docker)
+tags instead of namespaces
+name?
+  pm
+  pocker
+jsonnet config
+  runsit
+    For instance I use following config (nginx.json) for nginx:
+      echo "daemon off;" >> /etc/nginx/nginx.conf
+      { "user": ["_env", "${USER}"], "cwd": "/var/www", "standardEnv": true, "numFiles": 1024, "binary": "/usr/sbin/nginx" }
+    And php-fpm.json:
+      { "user": ["_env", "${USER}"], "cwd": "/usr/sbin", "standardEnv": true, "numFiles": 1024, "binary": "php-fpm", "args": [ "-F" ] }
+store data in(?):
+  https://github.com/etcd-io/bbolt#getting-started
+logrotaion:
+  https://github.com/natefinch/lumberjack
+dashboard:
+  https://github.com/VividCortex/pm-web
+existing projects:
+  https://github.com/ddollar/foreman#ports
+  js:
+    https://github.com/keymetrics/pm2-logrotate
+    https://github.com/keymetrics/pm2-server-monit
+    https://github.com/keymetrics/pm2-io-agent-node
+    https://github.com/keymetrics/pm2-io-agent
+    https://github.com/keymetrics/pm2-io-js-api
+    https://github.com/keymetrics/pm2-io-apm
+    https://github.com/Unitech/pm2-dev
+    https://github.com/Unitech/pm2-deploy
+  go:
+    https://github.com/mattn/goreman
+    https://github.com/gwoo/goforever
+    https://github.com/deref/exo
+    https://github.com/ionrock/procs
+    https://github.com/prasanthmj/qup
+    https://github.com/struCoder/pmgo
+    https://github.com/topfreegames/apm
+    https://github.com/ShinyTrinkets/overseer
+    https://github.com/hmdsefi/gowl
+    https://github.com/bradfitz/runsit
+    https://github.com/skanehira/pst
+    https://github.com/godpm/godpm
+    https://github.com/VividCortex/pm
+  ruby:
+    https://github.com/ddollar/foreman
+      http://ddollar.github.io/foreman/
