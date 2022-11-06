@@ -64,8 +64,10 @@ echo "daemon off;" >> /etc/nginx/nginx.conf
 * show logs of several proccesses simultanuously
 * logrotaion:
 ** https://github.com/natefinch/lumberjack
+** https://github.com/keymetrics/pm2-logrotate
 * dashboard:
 ** https://github.com/VividCortex/pm-web
+** https://github.com/keymetrics/pm2-server-monit
 
 === bugfixes
 * fix "reborn failed: daemon: Resource temporarily unavailable" on start when daemon is already running
@@ -76,8 +78,6 @@ echo "daemon off;" >> /etc/nginx/nginx.conf
 === existing projects:
 * https://github.com/ddollar/foreman#ports
 * js:
-** https://github.com/keymetrics/pm2-logrotate
-** https://github.com/keymetrics/pm2-server-monit
 ** https://github.com/keymetrics/pm2-io-agent-node
 ** https://github.com/keymetrics/pm2-io-agent
 ** https://github.com/keymetrics/pm2-io-js-api
