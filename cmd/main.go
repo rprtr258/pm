@@ -47,7 +47,7 @@ func main() {
 		Before: func(*cli.Context) error {
 			// TODO: run daemon if not running
 			if _, err := os.Stat(internal.HomeDir); os.IsNotExist(err) {
-				os.Mkdir(internal.HomeDir, 0755)
+				return os.Mkdir(internal.HomeDir, 0755)
 			}
 
 			return nil
