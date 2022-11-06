@@ -37,11 +37,19 @@ type ProcID uint64
 type ProcData struct {
 	ID     ProcID   `json:"id"`
 	Name   string   `json:"name"`
-	Cmd    string   `json:"cmd"`
+	Cmd    string   `json:"cmd"` // TODO: change to command & args
+	// Command  string
+	// Args     []string
 	Status Status   `json:"status"`
 	Tags   []string `json:"tags"`
 	Cwd    string   `json:"cwd"`
 	Watch  []string `json:"watch"`
+	// StdoutFile  string
+	// StderrFile  string
+	// RestartTries int
+	// RestartDelay    time.Duration
+	// Pid      int
+	// Respawns int
 }
 
 type DBHandle struct {

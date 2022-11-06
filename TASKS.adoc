@@ -18,6 +18,30 @@
 ** jsonnet config
 *** runsit
 *** For instance I use following config (nginx.json) for nginx:
+```toml
+pidfile = "goforever.pid"
+logfile = "goforever.log"
+errfile = "goforever.log"
+
+[[process]]
+name = "example-panic"
+command = "./example/example-panic"
+pidfile = "example/example-panic.pid"
+logfile = "example/logs/example-panic.debug.log"
+errfile = "example/logs/example-panic.errors.log"
+respawn = 1
+delay = "1m"
+ping = "30s"
+
+[[process]]
+name = "example"
+command = "./example/example"
+args = ["-name=foo"]
+pidfile = "example/example.pid"
+logfile = "example/logs/example.debug.log"
+errfile = "example/logs/example.errors.log"
+respawn = 1
+```
 ```json
 echo "daemon off;" >> /etc/nginx/nginx.conf
 {
@@ -86,7 +110,6 @@ echo "daemon off;" >> /etc/nginx/nginx.conf
 ** https://github.com/Unitech/pm2-deploy
 * go:
 ** https://github.com/mattn/goreman
-** https://github.com/gwoo/goforever
 ** https://github.com/deref/exo
 ** https://github.com/ionrock/procs
 ** https://github.com/prasanthmj/qup
