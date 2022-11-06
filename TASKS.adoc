@@ -68,6 +68,7 @@ echo "daemon off;" >> /etc/nginx/nginx.conf
 * dashboard:
 ** https://github.com/VividCortex/pm-web
 ** https://github.com/keymetrics/pm2-server-monit
+** https://github.com/Unitech/pm2-dev
 
 === bugfixes
 * fix "reborn failed: daemon: Resource temporarily unavailable" on start when daemon is already running
@@ -82,7 +83,6 @@ echo "daemon off;" >> /etc/nginx/nginx.conf
 ** https://github.com/keymetrics/pm2-io-agent
 ** https://github.com/keymetrics/pm2-io-js-api
 ** https://github.com/keymetrics/pm2-io-apm
-** https://github.com/Unitech/pm2-dev
 ** https://github.com/Unitech/pm2-deploy
 * go:
 ** https://github.com/mattn/goreman
