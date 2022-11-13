@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/aquasecurity/table v1.8.0
+	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.13.0
 	github.com/samber/lo v1.34.0
 	github.com/sevlyar/go-daemon v0.1.6
