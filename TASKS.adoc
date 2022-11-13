@@ -2,7 +2,6 @@
 
 === technical debt
 * make `executable + arguments` run options be available
-* add error messages and loggings to all error places
 * run daemon if not running before executing (almost) any command
 * self autoupdate
 * use grpc status codes for server response errors

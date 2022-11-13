@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -46,8 +47,11 @@ func main() {
 		),
 		Before: func(*cli.Context) error {
 			// TODO: run daemon if not running
-			if _, err := os.Stat(internal.HomeDir); os.IsNotExist(err) {
+			_, err := os.Stat(internal.HomeDir)
+			if os.IsNotExist(err) {
 				return os.Mkdir(internal.HomeDir, 0755)
+			} else if err != nil {
+				return fmt.Errorf("os.Stat(home dir) failed: %w", err)
 			}
 
 			return nil
@@ -66,6 +70,6 @@ func main() {
 	// });
 
 	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		log.Fatal("program stopped unexpectedly", err)
 	}
 }

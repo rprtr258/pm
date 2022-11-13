@@ -118,7 +118,7 @@ var StartCmd = &cli.Command{
 		procIDs := []uint64{uint64(procData.ID)}
 
 		if _, err := client.Start(ctx.Context, &pb.IDs{Ids: procIDs}); err != nil {
-			return err
+			return fmt.Errorf("client.Start failed: %w", err)
 		}
 
 		fmt.Println(procData.ID)

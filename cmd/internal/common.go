@@ -2,7 +2,7 @@ package internal
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net"
 	"os"
 	"path"
@@ -37,8 +37,7 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 		}),
 	)
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("connecting to grpc server failed: %w", err)
 	}
 
 	return pb.NewDaemonClient(conn), conn.Close, nil

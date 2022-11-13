@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/rprtr258/pm/api"
@@ -34,14 +35,14 @@ var DeleteCmd = &cli.Command{
 		for _, arg := range args {
 			procID, err := strconv.ParseUint(arg, 10, 64)
 			if err != nil {
-				return err
+				return fmt.Errorf("%q is not uint: %w", arg, err)
 			}
 
 			procIDs = append(procIDs, procID)
 		}
 
 		if _, err := client.Stop(ctx.Context, &api.IDs{Ids: procIDs}); err != nil {
-			return err
+			return fmt.Errorf("client.Stop failed: %w", err)
 		}
 
 		if err := db.New(_daemonDBFile).Delete(procIDs); err != nil {
@@ -49,14 +50,13 @@ var DeleteCmd = &cli.Command{
 		}
 
 		// TODO: delete log files too
-// 	_, err := os.Stat(string(*f))
-// 	if err != nil {
-// 		return true
-// 	}
-// 	err = os.Remove(string(*f))
-// 	return err == nil
-// }
-
+		// 	_, err := os.Stat(string(*f))
+		// 	if err != nil {
+		// 		return true
+		// 	}
+		// 	err = os.Remove(string(*f))
+		// 	return err == nil
+		// }
 
 		return nil
 	},

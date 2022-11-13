@@ -34,12 +34,12 @@ var DaemonCmd = &cli.Command{
 				}
 
 				if err := pm_daemon.Kill(daemonCtx, _daemonRpcSocket); err != nil {
-					return err
+					return fmt.Errorf("killing daemon failed: %w", err)
 				}
 
 				d, err := daemonCtx.Reborn()
 				if err != nil {
-					return fmt.Errorf("reborn failed: %w", err)
+					return fmt.Errorf("reborn daemon failed: %w", err)
 				}
 
 				if d != nil {
@@ -81,6 +81,6 @@ var DaemonCmd = &cli.Command{
 
 func deferErr(close func() error) {
 	if err := close(); err != nil {
-		log.Println(err)
+		log.Println("some defer action failed:", err)
 	}
 }

@@ -35,9 +35,9 @@ type Status struct {
 type ProcID uint64
 
 type ProcData struct {
-	ID     ProcID   `json:"id"`
-	Name   string   `json:"name"`
-	Cmd    string   `json:"cmd"` // TODO: change to command & args
+	ID   ProcID `json:"id"`
+	Name string `json:"name"`
+	Cmd  string `json:"cmd"` // TODO: change to command & args
 	// Command  string
 	// Args     []string
 	Status Status   `json:"status"`
@@ -95,7 +95,7 @@ func put[V any](bucket *bbolt.Bucket, key []byte, value V) error {
 	}
 
 	if err := bucket.Put(key, bytes); err != nil {
-		return err
+		return fmt.Errorf("bucket.Put failed: %w", err)
 	}
 
 	return nil
@@ -110,7 +110,7 @@ func New(dbFile string) DBHandle {
 func (handle DBHandle) execute(statement func(*bbolt.DB) error) error {
 	db, err := bbolt.Open(handle.dbFilename, 0600, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("bbolt.Open failed: %w", err)
 	}
 	defer db.Close()
 
@@ -145,20 +145,20 @@ func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 		// TODO: manage ids myself
 		id, err := mainBucket.NextSequence()
 		if err != nil {
-			return fmt.Errorf("next id generating failed: %w", err)
+			return fmt.Errorf("bucket.NextSequence failed: %w", err)
 		}
 
 		procID = id
 		metadata.ID = ProcID(id)
 
 		if err := put(mainBucket, encodeUintKey(id), metadata); err != nil {
-			return fmt.Errorf("putting proc metadata failed: %w", err)
+			return err
 		}
 
 		return nil
 	})
 
-	return ProcID(procID), err
+	return ProcID(procID), fmt.Errorf("db.AddProc failed: %w", err)
 }
 
 func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
@@ -184,13 +184,13 @@ func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 
 			return nil
 		}); err != nil {
-			return err
+			return fmt.Errorf("bucket.ForEach failed: %w", err)
 		}
 
 		return nil
 	})
 
-	return res, err
+	return res, fmt.Errorf("db.GetProcs failed: %w", err)
 }
 
 func (handle DBHandle) List() ([]ProcData, error) {
@@ -212,13 +212,13 @@ func (handle DBHandle) List() ([]ProcData, error) {
 
 			return nil
 		}); err != nil {
-			return err
+			return fmt.Errorf("bucket.ForEach failed: %w", err)
 		}
 
 		return nil
 	})
 
-	return res, err
+	return res, fmt.Errorf("db.List failed: %w", err)
 }
 
 func (handle DBHandle) SetStatus(procID ProcID, newStatus ProcStatus) error {
@@ -231,7 +231,7 @@ func (handle DBHandle) SetStatus(procID ProcID, newStatus ProcStatus) error {
 		key := encodeUintKey(uint64(procID))
 		metadata, err := get[ProcData](bucket, key)
 		if err != nil {
-			return err
+			return fmt.Errorf("set status failed: %w", err)
 		}
 
 		metadata.Status.Status = newStatus
@@ -268,7 +268,7 @@ func (handle DBHandle) Delete(procIDs []uint64) error {
 func (handle DBHandle) Init() error {
 	return handle.Update(func(tx *bbolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists(_mainBucket); err != nil {
-			return err
+			return fmt.Errorf("bucket creating failed: %w", err)
 		}
 
 		return nil

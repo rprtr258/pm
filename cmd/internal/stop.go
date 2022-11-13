@@ -49,7 +49,7 @@ var StopCmd = &cli.Command{
 		}
 
 		if _, err := client.Stop(ctx.Context, &api.IDs{Ids: []uint64{}}); err != nil {
-			return err
+			return fmt.Errorf("client.Stop failed: %w", err)
 		}
 
 		for _, id := range []uint64{} {

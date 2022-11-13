@@ -34,7 +34,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		return db.ProcID(id)
 	}))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("daemon.Start failed: %w", err)
 	}
 
 	// TODO: if ~home/logs does not exist - create
@@ -43,15 +43,17 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		procIDStr := strconv.FormatUint(uint64(proc.ID), 10)
 		logsDir := path.Join(srv.homeDir, "logs")
 
-		stdoutLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr+".stdout"), os.O_APPEND|os.O_RDWR|os.O_CREATE, 0660)
+		stdoutLogFilename := path.Join(logsDir, procIDStr+".stdout")
+		stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0660)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("os.OpenFile(%s) failed: %w", stdoutLogFilename, err)
 		}
 		defer stdoutLogFile.Close()
 
-		stderrLogFile, err := os.OpenFile(path.Join(logsDir, procIDStr+".stderr"), os.O_APPEND|os.O_RDWR|os.O_CREATE, 0660)
+		stderrLogFilename := path.Join(logsDir, procIDStr+".stderr")
+		stderrLogFile, err := os.OpenFile(stderrLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0660)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("os.OpenFile(%s) failed: %w", stderrLogFilename, err)
 		}
 		defer stderrLogFile.Close()
 
@@ -64,25 +66,25 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		}
 
 		// TODO: run in goroutine/syscall.ForkExec()/os.StartProcess
-	// wd, _ := os.Getwd()
-	// proc := &os.ProcAttr{
-	// 	Dir: wd,
-	// 	Env: os.Environ(),
-	// 	Files: []*os.File{
-	// 		os.Stdin,
-	// 		NewLog(p.Logfile),
-	// 		NewLog(p.Errfile),
-	// 	},
-	// }
-	// args := append([]string{p.Name}, p.Args...)
-	// process, err := os.StartProcess(p.Command, args, proc)
-	// process.Pid
+		// wd, _ := os.Getwd()
+		// proc := &os.ProcAttr{
+		// 	Dir: wd,
+		// 	Env: os.Environ(),
+		// 	Files: []*os.File{
+		// 		os.Stdin,
+		// 		NewLog(p.Logfile),
+		// 		NewLog(p.Errfile),
+		// 	},
+		// }
+		// args := append([]string{p.Name}, p.Args...)
+		// process, err := os.StartProcess(p.Command, args, proc)
+		// process.Pid
 		if err := execCmd.Run(); err != nil {
 			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusErrored); err2 != nil {
-				return nil, err2
+				return nil, fmt.Errorf("running failed: %w; setting errored status failed: %w", err, err2)
 			}
 
-			return nil, err
+			return nil, fmt.Errorf("running failed: %w", err)
 		}
 
 		if err := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusStopped); err != nil {
@@ -116,7 +118,7 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, e
 func Run(rpcSocket, dbFile, homeDir string) error {
 	sock, err := net.Listen("unix", rpcSocket)
 	if err != nil {
-		return fmt.Errorf("failed to listen: %w", err)
+		return fmt.Errorf("net.Listen failed: %w", err)
 	}
 	defer sock.Close()
 
@@ -132,7 +134,7 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 
 	log.Printf("daemon started at %v", sock.Addr())
 	if err := srv.Serve(sock); err != nil {
-		return fmt.Errorf("failed to serve: %w", err)
+		return fmt.Errorf("serve failed: %w", err)
 	}
 
 	return nil
@@ -141,17 +143,17 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 // Kill daemon
 func Kill(daemonCtx *daemon.Context, rpcSocket string) error {
 	if err := os.Remove(rpcSocket); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("error removing socket file: %w", err)
+		return fmt.Errorf("removing socket file failed: %w", err)
 	}
 
 	proc, err := daemonCtx.Search()
 	if err != nil {
-		return fmt.Errorf("failed searching daemon: %w", err)
+		return fmt.Errorf("searching daemon failed: %w", err)
 	}
 
 	if proc != nil {
 		if err := proc.Kill(); err != nil {
-			return fmt.Errorf("failed killing daemon: %w", err)
+			return fmt.Errorf("killing daemon failed: %w", err)
 		}
 	}
 
