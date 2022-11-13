@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"strings"
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
@@ -108,8 +109,8 @@ var StartCmd = &cli.Command{
 			Name:    name,
 			Cwd:     ".",
 			Tags:    lo.Uniq(append(ctx.StringSlice("tags"), "all")),
-			Command: bashExecutable, // TODO: clarify
-			Args:    append([]string{"-c"}, args...),
+			Command: bashExecutable,                                  // TODO: clarify
+			Args:    append([]string{"-c"}, strings.Join(args, " ")), // TODO: escape
 		}
 
 		if err := func() error {

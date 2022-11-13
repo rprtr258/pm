@@ -3,6 +3,7 @@ package internal
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/urfave/cli/v2"
@@ -48,7 +49,15 @@ var StopCmd = &cli.Command{
 			return errors.New("what to stop expected")
 		}
 
-		if _, err := client.Stop(ctx.Context, &api.IDs{Ids: []uint64{}}); err != nil {
+		ids := make([]uint64, len(args))
+		for i, arg := range args {
+			ids[i], err = strconv.ParseUint(arg, 10, 64)
+			if err != nil {
+				return fmt.Errorf("incorrect id=%s: %w", arg, err)
+			}
+		}
+
+		if _, err := client.Stop(ctx.Context, &api.IDs{Ids: ids}); err != nil {
 			return fmt.Errorf("client.Stop failed: %w", err)
 		}
 

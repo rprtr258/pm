@@ -34,6 +34,7 @@ type Status struct {
 
 type ProcID uint64
 
+// TODO: implement String()
 type ProcData struct {
 	ID   ProcID `json:"id"`
 	Name string `json:"name"`

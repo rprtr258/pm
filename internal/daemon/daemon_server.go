@@ -4,17 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"strconv"
+	"syscall"
 	"time"
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+// TODO: logs for daemon everywhere
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
 	dbFile  string
@@ -66,6 +71,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 				stdoutLogFile,
 				stderrLogFile,
 			},
+			Sys: &syscall.SysProcAttr{},
 		}
 		// args := append([]string{p.Name}, p.Args...)
 
@@ -94,18 +100,41 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 // Stop - stop processes by their ids in database
 // TODO: change to sending signals
 func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	// dbHandle := db.New(srv.dbFile)
+	dbHandle := db.New(srv.dbFile)
 
-	procsToStop := req.GetIds()
+	procsToStop := lo.Map(req.GetIds(), func(id uint64, _ int) db.ProcID {
+		return db.ProcID(id)
+	})
 
-	for range /*_, id :=*/ procsToStop {
+	procsWeHaveAmongRequested, err := dbHandle.GetProcs(procsToStop)
+	if err != nil {
+		return nil, fmt.Errorf("getting procs to stop from db failed: %w", err)
+	}
+
+	for _, proc := range procsWeHaveAmongRequested {
+		if proc.Status.Status != db.StatusRunning {
+			// TODO: structured logging, INFO here
+			log.Printf("proc %+v was asked to be stopped, but not running\n", proc)
+			continue
+		}
+
 		// TODO: actually stop proc
-		// os.FindProcess()
-		// proc.Release()
-		return nil, errors.New("not implemented")
-		// if err := dbHandle.SetStatus(db.ProcID(id), db.Status{Status: db.StatusStopped}); err != nil {
-		// 	return nil, status.Errorf(codes.DataLoss, err.Error())
-		// }
+		process, err := os.FindProcess(proc.Status.Pid)
+		if err != nil {
+			return nil, fmt.Errorf("getting process by pid=%d failed: %w", proc.Status.Pid, err)
+		}
+
+		if err := process.Kill(); err != nil {
+			if errors.Is(err, os.ErrProcessDone) {
+				log.Printf("[WARN] finished process %+v with running status", proc)
+			} else {
+				return nil, fmt.Errorf("killing process with pid=%d failed: %w", process.Pid, err)
+			}
+		}
+
+		if err := dbHandle.SetStatus(proc.ID, db.Status{Status: db.StatusStopped}); err != nil {
+			return nil, status.Errorf(codes.DataLoss, fmt.Errorf("updating status of process %+v failed: %w", proc, err).Error())
+		}
 	}
 
 	return &emptypb.Empty{}, nil
