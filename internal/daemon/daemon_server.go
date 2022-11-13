@@ -68,7 +68,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		// args := append([]string{p.Name}, p.Args...)
 		// process, err := os.StartProcess(p.Command, args, proc)
 		// process.Pid
-		_ /*process*/, err /*:*/ = os.StartProcess("/usr/bin/bash", []string{"-c", proc.Cmd}, &procAttr)
+		// TODO: find bash
+		_ /*process*/, err /*:*/ = os.StartProcess("/usr/bin/bash", []string{"/usr/bin/bash", "-c", proc.Cmd}, &procAttr)
 		if err != nil {
 			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusErrored); err2 != nil {
 				return nil, fmt.Errorf("running failed: %w; setting errored status failed: %w", err, err2)
@@ -77,6 +78,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 			return nil, fmt.Errorf("running failed: %w", err)
 		}
 
+		// TODO: add pid
 		if err := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusRunning); err != nil {
 			return nil, err
 		}
