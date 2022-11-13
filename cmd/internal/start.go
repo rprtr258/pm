@@ -86,10 +86,14 @@ var StartCmd = &cli.Command{
 		defer deferErr(deferFunc)
 
 		name := ctx.String("name")
-
 		args := ctx.Args().Slice()
+
 		if len(args) < 1 {
 			return errors.New("command expected")
+		}
+
+		if name == "" {
+			return errors.New("name required") // TODO: remove
 		}
 
 		procData := db.ProcData{

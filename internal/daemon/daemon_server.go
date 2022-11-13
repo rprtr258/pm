@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"strconv"
 
@@ -50,31 +49,27 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		if err != nil {
 			return nil, fmt.Errorf("os.OpenFile(%s) failed: %w", stderrLogFilename, err)
 		}
-		defer stderrLogFile.Close()
+		defer stderrLogFile.Close() // TODO: wrap
 
-		execCmd := exec.CommandContext(ctx, "/usr/bin/bash", []string{"-c", proc.Cmd}...)
-		execCmd.Stdout = stdoutLogFile
-		execCmd.Stderr = stderrLogFile
-
-		if err := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusRunning); err != nil {
-			return nil, err
+		cwd, err := os.Getwd() // TODO: ???
+		if err != nil {
+			return nil, fmt.Errorf("os.Getwd failed: %w", err)
 		}
 
-		// TODO: run in goroutine/syscall.ForkExec()/os.StartProcess
-		// wd, _ := os.Getwd()
-		// proc := &os.ProcAttr{
-		// 	Dir: wd,
-		// 	Env: os.Environ(),
-		// 	Files: []*os.File{
-		// 		os.Stdin,
-		// 		NewLog(p.Logfile),
-		// 		NewLog(p.Errfile),
-		// 	},
-		// }
+		procAttr := os.ProcAttr{
+			Dir: cwd,
+			Env: os.Environ(), // TODO: ???
+			Files: []*os.File{
+				os.Stdin,
+				stdoutLogFile,
+				stderrLogFile,
+			},
+		}
 		// args := append([]string{p.Name}, p.Args...)
 		// process, err := os.StartProcess(p.Command, args, proc)
 		// process.Pid
-		if err := execCmd.Run(); err != nil {
+		_ /*process*/, err /*:*/ = os.StartProcess("/usr/bin/bash", []string{"-c", proc.Cmd}, &procAttr)
+		if err != nil {
 			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusErrored); err2 != nil {
 				return nil, fmt.Errorf("running failed: %w; setting errored status failed: %w", err, err2)
 			}
@@ -82,7 +77,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 			return nil, fmt.Errorf("running failed: %w", err)
 		}
 
-		if err := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusStopped); err != nil {
+		if err := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusRunning); err != nil {
 			return nil, err
 		}
 	}
