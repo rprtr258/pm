@@ -14,6 +14,7 @@
 * administrative tasks for processes: pull repo, seed db, etc.
 * config file with process definitions
 ** run specific processes from config
+** pause/return processes
 ** specify cwd
 ** jsonnet config
 *** runsit
