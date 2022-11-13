@@ -218,7 +218,11 @@ func (handle DBHandle) List() ([]ProcData, error) {
 		return nil
 	})
 
-	return res, fmt.Errorf("db.List failed: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("db.List failed: %w", err)
+	}
+
+	return res, nil
 }
 
 func (handle DBHandle) SetStatus(procID ProcID, newStatus ProcStatus) error {
