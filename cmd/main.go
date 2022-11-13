@@ -70,6 +70,6 @@ func main() {
 	// });
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal("program stopped unexpectedly", err)
+		log.Fatalln("program stopped unexpectedly:", err)
 	}
 }
