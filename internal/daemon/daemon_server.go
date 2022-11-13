@@ -31,11 +31,13 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		return nil, fmt.Errorf("daemon.Start failed: %w", err)
 	}
 
-	// TODO: if ~home/logs does not exist - create
-
 	for _, proc := range procs {
 		procIDStr := strconv.FormatUint(uint64(proc.ID), 10)
 		logsDir := path.Join(srv.homeDir, "logs")
+
+		if err := os.Mkdir(logsDir, os.ModePerm); err != nil && !errors.Is(err, os.ErrExist) {
+			return nil, fmt.Errorf("mkdir %s failed: %w", logsDir, err)
+		}
 
 		stdoutLogFilename := path.Join(logsDir, procIDStr+".stdout")
 		stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0660)

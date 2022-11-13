@@ -94,7 +94,7 @@ var ListCmd = &cli.Command{
 				lo.If(pid == nil, "").
 					ElseF(func() string { return strconv.Itoa(*pid) }),
 				lo.If(pid == nil, "").
-					Else(uptime.String()),
+					Else(uptime.Truncate(time.Second).String()),
 				fmt.Sprint(item.Tags),
 				fmt.Sprint(item.Status.Cpu),
 				fmt.Sprint(item.Status.Memory),
