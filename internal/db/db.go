@@ -37,9 +37,10 @@ type ProcID uint64
 type ProcData struct {
 	ID   ProcID `json:"id"`
 	Name string `json:"name"`
-	Cmd  string `json:"cmd"` // TODO: change to command & args
-	// Command  string
-	// Args     []string
+	// Command - executable to run
+	Command string `json:"command"`
+	// Args - arguments for executable, not including executable itself as first argument
+	Args   []string `json:"args"`
 	Status Status   `json:"status"`
 	Tags   []string `json:"tags"`
 	Cwd    string   `json:"cwd"`

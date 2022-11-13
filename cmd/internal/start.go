@@ -3,7 +3,7 @@ package internal
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"os/exec"
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
@@ -96,14 +96,20 @@ var StartCmd = &cli.Command{
 			return errors.New("name required") // TODO: remove
 		}
 
+		bashExecutable, err := exec.LookPath("bash")
+		if err != nil {
+			return fmt.Errorf("could not find bash executable: %w", err)
+		}
+
 		procData := db.ProcData{
 			Status: db.Status{
 				Status: db.StatusStarting,
 			},
-			Name: name,
-			Cwd:  ".",
-			Tags: lo.Uniq(append(ctx.StringSlice("tags"), "all")),
-			Cmd:  strings.Join(args, " "),
+			Name:    name,
+			Cwd:     ".",
+			Tags:    lo.Uniq(append(ctx.StringSlice("tags"), "all")),
+			Command: bashExecutable, // TODO: clarify
+			Args:    append([]string{"-c"}, args...),
 		}
 
 		if err := func() error {

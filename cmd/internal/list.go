@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aquasecurity/table"
@@ -97,7 +98,7 @@ var ListCmd = &cli.Command{
 				fmt.Sprint(item.Tags),
 				fmt.Sprint(item.Status.Cpu),
 				fmt.Sprint(item.Status.Memory),
-				item.Cmd,
+				fmt.Sprintf("%s %s", item.Command, strings.Join(item.Args, " ")), // TODO: escape args
 			)
 		}
 
