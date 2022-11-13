@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
@@ -46,7 +47,7 @@ var DaemonCmd = &cli.Command{
 					return nil
 				}
 
-				defer daemonCtx.Release()
+				defer deferErr(daemonCtx.Release)
 
 				return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile, HomeDir)
 			},
@@ -76,4 +77,10 @@ var DaemonCmd = &cli.Command{
 			},
 		},
 	},
+}
+
+func deferErr(close func() error) {
+	if err := close(); err != nil {
+		log.Println(err)
+	}
 }

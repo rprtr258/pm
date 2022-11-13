@@ -41,7 +41,7 @@ var StopCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer deferFunc()
+		defer deferErr(deferFunc)
 
 		args := ctx.Args().Slice()
 		if len(args) < 1 {

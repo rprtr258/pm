@@ -83,7 +83,7 @@ var StartCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		defer deferFunc()
+		defer deferErr(deferFunc)
 
 		name := ctx.String("name")
 
