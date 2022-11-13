@@ -66,14 +66,15 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		procAttr := os.ProcAttr{
 			Dir: cwd,
 			Env: os.Environ(), // TODO: ???
-			Files: []*os.File{
+			Files: []*os.File{ // TODO: pid file is somehow passes to child
 				os.Stdin,
 				stdoutLogFile,
 				stderrLogFile,
 			},
-			Sys: &syscall.SysProcAttr{},
+			Sys: &syscall.SysProcAttr{
+				Setpgid: true,
+			},
 		}
-		// args := append([]string{p.Name}, p.Args...)
 
 		process, err := os.StartProcess(proc.Command, append([]string{proc.Command}, proc.Args...), &procAttr)
 		if err != nil {
@@ -124,13 +125,21 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, e
 			return nil, fmt.Errorf("getting process by pid=%d failed: %w", proc.Status.Pid, err)
 		}
 
-		if err := process.Kill(); err != nil {
+		// TODO: kill after timeout
+		if err := syscall.Kill(-process.Pid, syscall.SIGTERM); err != nil {
 			if errors.Is(err, os.ErrProcessDone) {
 				log.Printf("[WARN] finished process %+v with running status", proc)
 			} else {
 				return nil, fmt.Errorf("killing process with pid=%d failed: %w", process.Pid, err)
 			}
 		}
+
+		state, err := process.Wait()
+		if err != nil {
+			return nil, fmt.Errorf("releasing process %+v failed: %w", proc, err)
+		}
+
+		fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
 
 		if err := dbHandle.SetStatus(proc.ID, db.Status{Status: db.StatusStopped}); err != nil {
 			return nil, status.Errorf(codes.DataLoss, fmt.Errorf("updating status of process %+v failed: %w", proc, err).Error())
