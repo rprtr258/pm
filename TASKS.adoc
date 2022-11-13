@@ -7,7 +7,6 @@
 * use grpc status codes for server response errors
 * serialize/deserialize protobuffers into database
 * manage ids ourself, leveraging minimal not used id for new proc
-* run procs using `goroutine`/`syscall.ForkExec()`/`os.StartProcess`
 * try https://github.com/dgraph-io/badger
 * draw processes states/transitions diagrams
 * fix not showing error on failed start tests/main.go second time

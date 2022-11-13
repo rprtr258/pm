@@ -19,7 +19,7 @@ func init() {
 	AllCmds = append(AllCmds, ListCmd)
 }
 
-func mapStatus(status db.Status) (string, *uint64, time.Duration) {
+func mapStatus(status db.Status) (string, *int, time.Duration) {
 	switch status.Status {
 	case db.StatusStarting:
 		return color.YellowString("starting"), nil, 0
@@ -92,7 +92,7 @@ var ListCmd = &cli.Command{
 				item.Name,
 				status,
 				lo.If(pid == nil, "").
-					ElseF(func() string { return strconv.FormatUint(*pid, 10) }),
+					ElseF(func() string { return strconv.Itoa(*pid) }),
 				lo.If(pid == nil, "").
 					Else(uptime.String()),
 				fmt.Sprint(item.Tags),

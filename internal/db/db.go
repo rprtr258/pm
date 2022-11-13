@@ -26,7 +26,7 @@ var _mainBucket = []byte("main")
 type Status struct {
 	Status ProcStatus `json:"status"`
 	// nulls if not running
-	Pid       uint64    `json:"pid"`
+	Pid       int       `json:"pid"`
 	StartTime time.Time `json:"start_time"`
 	Cpu       uint64    `json:"cpu"`    // round(cpu usage in % * 100)
 	Memory    uint64    `json:"memory"` // in bytes
@@ -234,7 +234,7 @@ func (handle DBHandle) List() ([]ProcData, error) {
 	return res, nil
 }
 
-func (handle DBHandle) SetStatus(procID ProcID, newStatus ProcStatus) error {
+func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) error {
 	return handle.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(_mainBucket)
 		if bucket == nil {
@@ -247,7 +247,7 @@ func (handle DBHandle) SetStatus(procID ProcID, newStatus ProcStatus) error {
 			return fmt.Errorf("set status failed: %w", err)
 		}
 
-		metadata.Status.Status = newStatus
+		metadata.Status = newStatus
 
 		return put(bucket, key, metadata)
 	})

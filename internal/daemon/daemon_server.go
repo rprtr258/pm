@@ -2,16 +2,16 @@ package daemon
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
 	"strconv"
+	"time"
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -67,17 +67,21 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		}
 		// args := append([]string{p.Name}, p.Args...)
 
-		_ /*process*/, err /*:*/ = os.StartProcess(proc.Command, append([]string{proc.Command}, proc.Args...), &procAttr)
+		process, err := os.StartProcess(proc.Command, append([]string{proc.Command}, proc.Args...), &procAttr)
 		if err != nil {
-			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusErrored); err2 != nil {
+			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.Status{Status: db.StatusErrored}); err2 != nil {
 				return nil, fmt.Errorf("running failed: %w; setting errored status failed: %w", err, err2)
 			}
 
 			return nil, fmt.Errorf("running failed: %w", err)
 		}
 
-		// TODO: add pid
-		if err := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusRunning); err != nil {
+		runningStatus := db.Status{
+			Status:    db.StatusRunning,
+			Pid:       process.Pid,
+			StartTime: time.Now(),
+		}
+		if err := db.New(srv.dbFile).SetStatus(proc.ID, runningStatus); err != nil {
 			return nil, err
 		}
 	}
@@ -88,17 +92,18 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 // Stop - stop processes by their ids in database
 // TODO: change to sending signals
 func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	dbHandle := db.New(srv.dbFile)
+	// dbHandle := db.New(srv.dbFile)
 
 	procsToStop := req.GetIds()
 
-	for _, id := range procsToStop {
+	for range /*_, id :=*/ procsToStop {
 		// TODO: actually stop proc
 		// os.FindProcess()
 		// proc.Release()
-		if err := dbHandle.SetStatus(db.ProcID(id), db.StatusStopped); err != nil {
-			return nil, status.Errorf(codes.DataLoss, err.Error())
-		}
+		return nil, errors.New("not implemented")
+		// if err := dbHandle.SetStatus(db.ProcID(id), db.Status{Status: db.StatusStopped}); err != nil {
+		// 	return nil, status.Errorf(codes.DataLoss, err.Error())
+		// }
 	}
 
 	return &emptypb.Empty{}, nil
