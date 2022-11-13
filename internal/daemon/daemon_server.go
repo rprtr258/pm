@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"strconv"
 
@@ -56,6 +57,11 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 			return nil, fmt.Errorf("os.Getwd failed: %w", err)
 		}
 
+		bashExecutable, err := exec.LookPath("bash")
+		if err != nil {
+			return nil, fmt.Errorf("could not find bash executable: %w", err)
+		}
+
 		procAttr := os.ProcAttr{
 			Dir: cwd,
 			Env: os.Environ(), // TODO: ???
@@ -66,10 +72,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 			},
 		}
 		// args := append([]string{p.Name}, p.Args...)
-		// process, err := os.StartProcess(p.Command, args, proc)
-		// process.Pid
-		// TODO: find bash
-		_ /*process*/, err /*:*/ = os.StartProcess("/usr/bin/bash", []string{"/usr/bin/bash", "-c", proc.Cmd}, &procAttr)
+
+		_ /*process*/, err /*:*/ = os.StartProcess(bashExecutable, []string{bashExecutable, "-c", proc.Cmd}, &procAttr)
 		if err != nil {
 			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.StatusErrored); err2 != nil {
 				return nil, fmt.Errorf("running failed: %w; setting errored status failed: %w", err, err2)
