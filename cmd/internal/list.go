@@ -41,6 +41,7 @@ var ListCmd = &cli.Command{
 	Usage:   "list processes",
 	Flags: []cli.Flag{
 		// TODO: list as json
+		// TODO: show as tree -t,--tree
 		&cli.BoolFlag{ // TODO: ???
 			Name:    "mini-list",
 			Aliases: []string{"m"},
