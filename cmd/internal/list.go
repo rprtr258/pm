@@ -18,24 +18,20 @@ func init() {
 	AllCmds = append(AllCmds, ListCmd)
 }
 
-func mapStatus(status db.Status) string {
+func mapStatus(status db.Status) (string, *uint64, time.Duration) {
 	switch status.Status {
 	case db.StatusStarting:
-		return color.YellowString("starting")
+		return color.YellowString("starting"), nil, 0
 	case db.StatusRunning:
-		return color.GreenString(
-			"running(pid=%d,uptime=%v)",
-			status.Pid,
-			time.Since(status.StartTime),
-		)
+		return color.GreenString("running"), &status.Pid, time.Since(status.StartTime)
 	case db.StatusStopped:
-		return color.YellowString("stopped")
+		return color.YellowString("stopped"), nil, 0
 	case db.StatusErrored:
-		return color.RedString("errored")
+		return color.RedString("errored"), nil, 0
 	case db.StatusInvalid:
-		return color.RedString("invalid(%T)", status)
+		return color.RedString("invalid(%T)", status), nil, 0
 	default:
-		return color.RedString("BROKEN(%T)", status)
+		return color.RedString("BROKEN(%T)", status), nil, 0
 	}
 }
 
@@ -81,15 +77,20 @@ var ListCmd = &cli.Command{
 		t := table.New(os.Stdout)
 		t.SetRowLines(!ctx.Bool("compact"))
 		t.SetDividers(table.UnicodeRoundedDividers)
-		t.SetHeaders("id", "name", "status", "tags", "cpu", "memory", "cmd")
+		t.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
 		t.SetHeaderStyle(table.StyleBold)
 		t.SetLineStyle(table.StyleDim)
 
 		for _, item := range procsToShow {
+			status, pid, uptime := mapStatus(item.Status)
 			t.AddRow(
 				color.New(color.FgCyan, color.Bold).Sprint(item.ID),
 				item.Name,
-				mapStatus(item.Status),
+				status,
+				lo.If(pid == nil, "").
+					ElseF(func() string { return strconv.FormatUint(*pid, 10) }),
+				lo.If(pid == nil, "").
+					Else(uptime.String()),
 				fmt.Sprint(item.Tags),
 				fmt.Sprint(item.Status.Cpu),
 				fmt.Sprint(item.Status.Memory),
