@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -70,6 +69,7 @@ func main() {
 	// });
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatalln("program stopped unexpectedly:", err)
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
