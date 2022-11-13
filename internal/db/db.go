@@ -158,7 +158,11 @@ func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 		return nil
 	})
 
-	return ProcID(procID), fmt.Errorf("db.AddProc failed: %w", err)
+	if err != nil {
+		return 0, fmt.Errorf("db.AddProc failed: %w", err)
+	}
+
+	return ProcID(procID), nil
 }
 
 func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
@@ -190,7 +194,11 @@ func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 		return nil
 	})
 
-	return res, fmt.Errorf("db.GetProcs failed: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("db.GetProcs failed: %w", err)
+	}
+
+	return res, nil
 }
 
 func (handle DBHandle) List() ([]ProcData, error) {
