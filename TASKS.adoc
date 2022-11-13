@@ -11,6 +11,7 @@
 * try https://github.com/dgraph-io/badger
 
 === features
+* administrative tasks for processes: pull repo, seed db, etc.
 * config file with process definitions
 ** run specific processes from config
 ** specify cwd

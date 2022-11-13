@@ -47,29 +47,21 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 
 // { Name: "deploy", Usage:     "deploy your json", ArgsUsage: "<file|environment>", .action(function(cmd) { pm2.deploy(cmd, commander); },
 
-// { Name: "startOrRestart", Usage:     "start or restart JSON file", ArgsUsage: "<json>", .action(function(file) { pm2._startJson(file, commander, 'restartProcessId'); },
+// { Name: "id", commander.command('id <name>') .description('get process id by name') .action(function(name) { pm2.getProcessIdByName(name); }); },
+// { Name: "pid", commander.command('[app_name]') .description('return pid of [app_name] or all') .action(function(app) { pm2.getPID(app); },
+// { Name: "create", .description('return pid of [app_name] or all') .action(function() { pm2.boilerplate() },
 
+// { Name: "startOrRestart", Usage:     "start or restart JSON file", ArgsUsage: "<json>", .action(function(file) { pm2._startJson(file, commander, 'restartProcessId'); },
 // { Name: "startOrReload", Usage:     "start or gracefully reload JSON file", ArgsUsage: "<json>", .action(function(file) { pm2._startJson(file, commander, 'reloadProcessId'); },
 
-// { Name: "pid", commander.command('[app_name]') .description('return pid of [app_name] or all') .action(function(app) { pm2.getPID(app); },
-
-// { Name: "create", .description('return pid of [app_name] or all') .action(function() { pm2.boilerplate() },
+// { Name: "restart", commander.command('restart <id|name|namespace|all|json|stdin...>') .option('--watch', 'Toggle watching folder for changes') .description('restart a process') .action(function(param) { Commander.js patch param = patchCommanderArg(param); let acc = [] forEachLimit(param, 1, function(script, next) { pm2.restart(script, commander, (err, apps) => { acc = acc.concat(apps) next(err) }); }, function(err) { pm2.speedList(err ? 1 : 0, acc); }); }); },
+// { Name: "reload", commander.command('reload <id|name|namespace|all>') .description('reload processes (note that its for app using HTTP/HTTPS)') .action(function(pm2_id) { pm2.reload(pm2_id, commander); }); },
+// { Name: "scale", commander.command('scale <app_name> <number>') .description('scale up/down a process in cluster mode depending on total_number param') .action(function(app_name, number) { pm2.scale(app_name, number); }); },
 
 // { Name: "startOrGracefulReload", commander.command('startOrGracefulReload <json>') .description('start or gracefully reload JSON file') .action(function(file) { pm2._startJson(file, commander, 'reloadProcessId'); }); },
 
-// { Name: "restart", commander.command('restart <id|name|namespace|all|json|stdin...>') .option('--watch', 'Toggle watching folder for changes') .description('restart a process') .action(function(param) { Commander.js patch param = patchCommanderArg(param); let acc = [] forEachLimit(param, 1, function(script, next) { pm2.restart(script, commander, (err, apps) => { acc = acc.concat(apps) next(err) }); }, function(err) { pm2.speedList(err ? 1 : 0, acc); }); }); },
-
-// { Name: "scale", commander.command('scale <app_name> <number>') .description('scale up/down a process in cluster mode depending on total_number param') .action(function(app_name, number) { pm2.scale(app_name, number);
-//   });
-// },
-
 // { Name: "profile:mem", commander.command('profile:mem [time]') .description('Sample PM2 heap memory') .action(function(time) { pm2.profile('mem', time); }); },
-
 // { Name: "profile:cpu", commander.command('profile:cpu [time]') .description('Profile PM2 cpu') .action(function(time) { pm2.profile('cpu', time); }); },
-
-// { Name: "reload", commander.command('reload <id|name|namespace|all>') .description('reload processes (note that its for app using HTTP/HTTPS)') .action(function(pm2_id) { pm2.reload(pm2_id, commander); }); },
-
-// { Name: "id", commander.command('id <name>') .description('get process id by name') .action(function(name) { pm2.getProcessIdByName(name); }); },
 
 // { Name: "inspect", commander.command('inspect <name>') .description('inspect a process') .action(function(cmd) { pm2.inspect(cmd, commander); }); },
 
@@ -133,54 +125,6 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 //   .description('stop and uninstall a module')
 //   .action(function(plugin_name) {
 //     pm2.uninstall(plugin_name);
-//   });
-// },
-
-// { Name: "set",
-// commander.command('set [key] [value]')
-//   .description('sets the specified config <key> <value>')
-//   .action(function(key, value) {
-//     pm2.set(key, value);
-//   });
-// },
-
-// { Name: "multiset",
-// commander.command('multiset <value>')
-//   .description('multiset eg "key1 val1 key2 val2')
-//   .action(function(str) {
-//     pm2.multiset(str);
-//   });
-// },
-
-// { Name: "get",
-// commander.command('get [key]')
-//   .description('get value for <key>')
-//   .action(function(key) {
-//     pm2.get(key);
-//   });
-// },
-
-// { Name: "conf",
-// commander.command('conf [key] [value]')
-//   .description('get / set module config values')
-//   .action(function(key, value) {
-//     pm2.get()
-//   });
-// },
-
-// { Name: "config",
-// commander.command('config <key> [value]')
-//   .description('get / set module config values')
-//   .action(function(key, value) {
-//     pm2.conf(key, value);
-//   });
-// },
-
-// { Name: "unset",
-// commander.command('unset <key>')
-//   .description('clears the specified config <key>')
-//   .action(function(key) {
-//     pm2.unset(key);
 //   });
 // },
 
@@ -280,6 +224,14 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 //   }));
 // },
 
+// { Name: "resurrect",
+//   .description('resurrect previously dumped processes')
+//   .action(failOnUnknown(function() {
+//     console.log(cst.PREFIX_MSG + 'Resurrecting');
+//     pm2.resurrect();
+//   }));
+// },
+
 // { Name: "send",
 // commander.command('send <pm_id> <line>')
 //   .description('send stdin to <pm_id>')
@@ -296,14 +248,6 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 //   .action(function(pm_id, separator) {
 //     pm2.attach(pm_id, separator);
 //   });
-// },
-
-// { Name: "resurrect",
-//   .description('resurrect previously dumped processes')
-//   .action(failOnUnknown(function() {
-//     console.log(cst.PREFIX_MSG + 'Resurrecting');
-//     pm2.resurrect();
-//   }));
 // },
 
 // { Name: "unstartup",
@@ -354,30 +298,7 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 // { Name: "describe",
 // commander.command('describe <name|id>')
 //   .description('describe all parameters of a process')
-//   .action(function(proc_id) {
-//     pm2.describe(proc_id);
-//   });
-// },
-
-// { Name: "desc",
-// commander.command('desc <name|id>')
-//   .description('(alias) describe all parameters of a process')
-//   .action(function(proc_id) {
-//     pm2.describe(proc_id);
-//   });
-// },
-
-// { Name: "info",
-// commander.command('info <name|id>')
-//   .description('(alias) describe all parameters of a process')
-//   .action(function(proc_id) {
-//     pm2.describe(proc_id);
-//   });
-// },
-
-// { Name: "show",
-// commander.command('show <name|id>')
-//   .description('(alias) describe all parameters of a process')
+//   .alias("desc", "info", "show")
 //   .action(function(proc_id) {
 //     pm2.describe(proc_id);
 //   });
@@ -391,42 +312,11 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 //   });
 // },
 
-// { Name:    "list",
-// 	Aliases: []string{"ls", "l", "ps", "status"},
-//   .description('list all processes')
-//   .action(function() {
-//     pm2.list(commander)
-//   });
-// },
-
-// { Name: "jlist",
-//   .description('list all processes in JSON format')
-//   .action(function() {
-//     pm2.jlist()
-//   });
-// },
-
 // { Name: "sysmonit",
 //   .description('start system monitoring daemon')
 //   .action(function() {
 //     pm2.launchSysMonitoring()
 //   })
-// },
-
-// { Name: "slist",
-//   .alias('sysinfos')
-//   .option('-t --tree', 'show as tree')
-//   .description('list system infos in JSON')
-//   .action(function(opts) {
-//     pm2.slist(opts.tree)
-//   })
-// },
-
-// { Name: "prettylist",
-//   .description('print json in a prettified JSON')
-//   .action(failOnUnknown(function() {
-//     pm2.jlist(true);
-//   }));
 // },
 
 // { Name: "monit",
@@ -565,7 +455,3 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 //   .action(function (path, port, cmd) {
 //     pm2.serve(path, port || cmd.port, cmd, commander);
 // },}
-
-// { Name: "autoinstall",
-//     pm2.autoinstall()
-// },

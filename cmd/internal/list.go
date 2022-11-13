@@ -37,8 +37,10 @@ func mapStatus(status db.Status) (string, *uint64, time.Duration) {
 
 var ListCmd = &cli.Command{
 	Name:    "list",
-	Aliases: []string{"l"},
+	Aliases: []string{"l", "ls", "ps", "status"},
+	Usage:   "list processes",
 	Flags: []cli.Flag{
+		// TODO: list as json
 		&cli.BoolFlag{ // TODO: ???
 			Name:    "mini-list",
 			Aliases: []string{"m"},
