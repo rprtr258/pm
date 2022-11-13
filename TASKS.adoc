@@ -11,6 +11,7 @@
 * draw processes states/transitions diagrams
 * fix not showing error on failed start tests/main.go second time
 * fix someone holding $home/pm.pid file on daemon restart
+* fix writing,creating pid file for the first time
 
 === features
 * administrative tasks for processes: pull repo, seed db, etc.
