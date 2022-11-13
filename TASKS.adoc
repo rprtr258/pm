@@ -9,6 +9,7 @@
 * manage ids ourself, leveraging minimal not used id for new proc
 * run procs using `goroutine`/`syscall.ForkExec()`/`os.StartProcess`
 * try https://github.com/dgraph-io/badger
+* draw processes states/transitions diagrams
 
 === features
 * administrative tasks for processes: pull repo, seed db, etc.
