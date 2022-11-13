@@ -16,8 +16,9 @@ func init() {
 
 var DeleteCmd = &cli.Command{
 	Name:      "delete",
+	Aliases:   []string{"del"},
 	Usage:     "stop and remove process",
-	ArgsUsage: "<id|name|namespace|all|json>...",
+	ArgsUsage: "<name|id|namespace|tag|json>...",
 	Action: func(ctx *cli.Context) error {
 		client, deferFunc, err := NewGrpcClient()
 		if err != nil {

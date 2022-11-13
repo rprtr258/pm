@@ -73,8 +73,6 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 
 // { Name: "inspect", commander.command('inspect <name>') .description('inspect a process') .action(function(cmd) { pm2.inspect(cmd, commander); }); },
 
-// { Name: "delete", commander.command('delete <name|id|namespace|script|all|json|stdin...>') .alias('del') .description('stop and delete a process from pm2 process list') .action(function(name) { if (name == "-") { process.stdin.resume(); process.stdin.setEncoding('utf8'); process.stdin.on('data', function (param) { process.stdin.pause(); pm2.delete(param, 'pipe'); }); } else forEachLimit(name, 1, function(script, next) { pm2.delete(script,'', next); }, function(err) { pm2.speedList(err ? 1 : 0); }); }); },
-
 // { Name: "sendSignal", commander.command('sendSignal <signal> <pm2_id|name>') .description('send a system signal to the target process') .action(function(signal, pm2_id) { if (isNaN(parseInt(pm2_id))) { console.log(cst.PREFIX_MSG + 'Sending signal to process name ' + pm2_id); pm2.sendSignalToProcessName(signal, pm2_id); } else { console.log(cst.PREFIX_MSG + 'Sending signal to process id ' + pm2_id); pm2.sendSignalToProcessId(signal, pm2_id); } }); },
 
 // { Name: "ping",
