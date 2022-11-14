@@ -1,11 +1,8 @@
 package daemon
 
 import (
-	"errors"
 	"os"
 )
-
-var errNotSupported = errors.New("daemon: Non-POSIX OS is not supported")
 
 // Mark of daemon process - system environment variable _GO_DAEMON=1
 const (

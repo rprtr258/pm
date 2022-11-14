@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // A Context describes daemon context.
@@ -244,7 +246,7 @@ func (d *Context) child() (err error) {
 		}()
 	}
 
-	if err = syscallDup(3, 0); err != nil {
+	if err = unix.Dup2(3, 0); err != nil {
 		return
 	}
 

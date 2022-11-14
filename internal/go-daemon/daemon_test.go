@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"syscall"
-	"time"
 )
 
 func Example() {
@@ -56,9 +55,8 @@ func Example() {
 
 	// Run main operation
 	go func() {
-		for {
-			time.Sleep(0)
-		}
+		var ch chan struct{}
+		<-ch
 	}()
 
 	err = ServeSignals()
