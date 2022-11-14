@@ -46,7 +46,7 @@ var DaemonCmd = &cli.Command{
 
 				if d != nil {
 					fmt.Println(d.Pid)
-					return nil
+					return daemonCtx.Release()
 				}
 
 				defer deferErr(daemonCtx.Release)
