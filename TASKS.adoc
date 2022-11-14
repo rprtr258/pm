@@ -8,6 +8,7 @@
 * serialize/deserialize protobuffers into database
 * manage ids ourself, leveraging minimal not used id for new proc
 * try https://github.com/dgraph-io/badger
+    https://dgraph.io/docs/badger/get-started/
 * draw processes states/transitions diagrams
 * fix not showing error on failed start tests/main.go second time
 * fix someone holding $home/pm.pid file on daemon restart
