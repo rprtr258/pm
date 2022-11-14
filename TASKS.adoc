@@ -11,9 +11,6 @@
 * try https://github.com/dgraph-io/badger
     https://dgraph.io/docs/badger/get-started/
 * draw processes states/transitions diagrams
-* fix not showing error on failed start tests/main.go second time
-* fix someone holding $home/pm.pid file on daemon restart
-* fix writing,creating pid file for the first time
 
 === features
 * administrative tasks for processes: pull repo, seed db, etc.
@@ -101,24 +98,10 @@ echo "daemon off;" >> /etc/nginx/nginx.conf
 ** https://github.com/Unitech/pm2-dev
 
 === bugfixes
-* fix "reborn failed: daemon: Resource temporarily unavailable" on start when daemon is already running
-    https://ieftimov.com/posts/four-steps-daemonize-your-golang-programs/
-    https://groups.google.com/g/golang-nuts/c/othxUDO-EoE
-    https://gist.github.com/nxghtmvrx/daf25008acab9f099517e21f8ad80e15
-    http://git.musl-libc.org/cgit/musl/tree/src/legacy/daemon.c
-    https://github.com/fiorix/go-daemon/blob/master/god.c
-    https://topic.alibabacloud.com/a/golang-service-program-daemon-pit-record_1_38_30917603.html
-    https://github.com/Iwark/godaemon
-    https://github.com/chaten/go-daemon
-    https://github.com/mephux/envdb
-    https://habr.com/ru/post/586604/
-    https://habr.com/ru/post/187668/
-    https://web.archive.org/web/20201025151134/https://habr.com/ru/post/129207/
-    https://github.com/sevlyar/go-daemon/
-    https://github.com/VividCortex/godaemon
-* if `~home/logs` does not exist - create
-* actually stop proc on server.Stop method
 * delete cmd must also delete log files
+* fix not showing error on failed start tests/main.go second time
+* fix someone holding $home/pm.pid file on daemon restart
+* fix writing,creating pid file for the first time
 
 === existing projects:
 * https://github.com/ddollar/foreman#ports

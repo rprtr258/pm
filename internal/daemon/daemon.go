@@ -7,7 +7,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/sevlyar/go-daemon"
+	"github.com/rprtr258/pm/internal/go-daemon"
 	"google.golang.org/grpc"
 
 	pb "github.com/rprtr258/pm/api"
@@ -55,8 +55,13 @@ func Kill(daemonCtx *daemon.Context, rpcSocket string) error {
 	}
 
 	if proc != nil {
-		if err := proc.Kill(); err != nil {
-			return fmt.Errorf("killing daemon process failed: %w", err)
+		for {
+			if err := proc.Kill(); err != nil {
+				if err == os.ErrProcessDone {
+					break
+				}
+				return fmt.Errorf("killing daemon process failed: %w", err)
+			}
 		}
 	}
 

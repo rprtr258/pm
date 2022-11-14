@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/sevlyar/go-daemon"
 	"github.com/urfave/cli/v2"
 
 	pm_daemon "github.com/rprtr258/pm/internal/daemon"
+	"github.com/rprtr258/pm/internal/go-daemon"
 )
 
 func init() {
@@ -55,8 +55,9 @@ var DaemonCmd = &cli.Command{
 			},
 		},
 		{
-			Name:  "stop",
-			Usage: "stop daemon process",
+			Name:    "stop",
+			Aliases: []string{"kill"},
+			Usage:   "stop daemon process",
 			Action: func(ctx *cli.Context) error {
 				daemonCtx := &daemon.Context{
 					PidFileName: _daemonPidFile,

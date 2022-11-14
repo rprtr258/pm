@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"go.uber.org/multierr"
 	"golang.org/x/sys/unix"
 )
 
@@ -55,42 +56,15 @@ type Context struct {
 	rpipe, wpipe *os.File
 }
 
-func (d *Context) reborn() (child *os.Process, err error) {
-	if !WasReborn() {
-		child, err = d.parent()
-	} else {
-		err = d.child()
-	}
-	return
-}
-
-func (d *Context) search() (daemon *os.Process, err error) {
-	if len(d.PidFileName) > 0 {
-		var pid int
-		if pid, err = ReadPidFile(d.PidFileName); err != nil {
-			return
-		}
-		daemon, err = os.FindProcess(pid)
-		if err == nil && daemon != nil {
-			// Send a test signal to test if this daemon is actually alive or dead
-			// An error means it is dead
-			if daemon.Signal(syscall.Signal(0)) != nil {
-				daemon = nil
-			}
-		}
-	}
-	return
-}
-
-func (d *Context) parent() (child *os.Process, err error) {
-	if err = d.prepareEnv(); err != nil {
-		return
+func (d *Context) parent() (*os.Process, error) {
+	if err := d.prepareEnv(); err != nil {
+		return nil, err
 	}
 
+	if err := d.openFiles(); err != nil {
+		return nil, err
+	}
 	defer d.closeFiles()
-	if err = d.openFiles(); err != nil {
-		return
-	}
 
 	attr := &os.ProcAttr{
 		Dir:   d.WorkDir,
@@ -103,23 +77,39 @@ func (d *Context) parent() (child *os.Process, err error) {
 		},
 	}
 
-	if child, err = os.StartProcess(d.abspath, d.Args, attr); err != nil {
+	child, err := os.StartProcess(d.abspath, d.Args, attr)
+	if err != nil {
+		err = fmt.Errorf("StartProcess failed: %w", err)
+
 		if d.pidFile != nil {
-			d.pidFile.Remove()
+			err2 := d.pidFile.Remove()
+			if err2 != nil {
+				err2 = fmt.Errorf("pidFile.Remove failed: %w", err2)
+			}
+
+			return nil, multierr.Combine(err, err2)
 		}
-		return
+
+		return nil, err
 	}
 
-	d.rpipe.Close()
+	if err := d.rpipe.Close(); err != nil {
+		return nil, fmt.Errorf("rpipe.Close failed: %w", err)
+	}
+
 	encoder := json.NewEncoder(d.wpipe)
 	if err = encoder.Encode(d); err != nil {
-		return
+		return nil, fmt.Errorf("json encode failed: %w", err)
 	}
-	_, err = fmt.Fprint(d.wpipe, "\n\n")
-	return
+
+	if _, err := fmt.Fprint(d.wpipe, "\n\n"); err != nil {
+		return nil, fmt.Errorf("print '\n\n' to wpipe failed: %w", err)
+	}
+
+	return child, nil
 }
 
-func (d *Context) openFiles() (err error) {
+func (d *Context) openFiles() error {
 	if d.PidFilePerm == 0 {
 		d.PidFilePerm = FILE_PERM
 	}
@@ -127,24 +117,25 @@ func (d *Context) openFiles() (err error) {
 		d.LogFilePerm = FILE_PERM
 	}
 
+	var err error
 	if d.nullFile, err = os.Open(os.DevNull); err != nil {
-		return
+		return fmt.Errorf("open(devNull) failed: %w", err)
 	}
 
 	if len(d.PidFileName) > 0 {
 		if d.PidFileName, err = filepath.Abs(d.PidFileName); err != nil {
-			return err
+			return fmt.Errorf("abs(pidFile) failed: %w", err)
 		}
 		if d.pidFile, err = OpenLockFile(d.PidFileName, d.PidFilePerm); err != nil {
-			return
+			return fmt.Errorf("OpenLockFile(pidFile) failed: %w", err)
 		}
 		if err = d.pidFile.Lock(); err != nil {
-			return
+			return fmt.Errorf("pidFile.Lock() failed: %w", err)
 		}
 		if len(d.Chroot) > 0 {
 			// Calculate PID-file absolute path in child's environment
 			if d.PidFileName, err = filepath.Rel(d.Chroot, d.PidFileName); err != nil {
-				return err
+				return fmt.Errorf("Rel(%s, pidFile) failed: %w", d.Chroot, err)
 			}
 			d.PidFileName = "/" + d.PidFileName
 		}
@@ -155,14 +146,17 @@ func (d *Context) openFiles() (err error) {
 			d.logFile = os.Stdout
 		} else if d.LogFileName == "/dev/stderr" {
 			d.logFile = os.Stderr
-		} else if d.logFile, err = os.OpenFile(d.LogFileName,
-			os.O_WRONLY|os.O_CREATE|os.O_APPEND, d.LogFilePerm); err != nil {
-			return
+		} else if d.logFile, err = os.OpenFile(d.LogFileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, d.LogFilePerm); err != nil {
+			return fmt.Errorf("OpenFile(logFile, perms=%v) failed: %w", d.LogFilePerm, err)
 		}
 	}
 
 	d.rpipe, d.wpipe, err = os.Pipe()
-	return
+	if err != nil {
+		return fmt.Errorf("os.Pipe() failed: %w", err)
+	}
+
+	return nil
 }
 
 func (d *Context) closeFiles() (err error) {
@@ -184,7 +178,7 @@ func (d *Context) closeFiles() (err error) {
 }
 
 func (d *Context) prepareEnv() (err error) {
-	if d.abspath, err = osExecutable(); err != nil {
+	if d.abspath, err = os.Executable(); err != nil {
 		return
 	}
 
