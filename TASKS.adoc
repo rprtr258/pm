@@ -4,6 +4,7 @@
 * make `executable + arguments` run options be available
 * run daemon if not running before executing (almost) any command
 * self autoupdate
+    https://developers.redhat.com/articles/2022/11/14/3-ways-embed-commit-hash-go-programs
 * use grpc status codes for server response errors
 * serialize/deserialize protobuffers into database
 * manage ids ourself, leveraging minimal not used id for new proc
