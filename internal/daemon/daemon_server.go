@@ -57,6 +57,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 			return nil, fmt.Errorf("os.OpenFile(%s) failed: %w", stderrLogFilename, err)
 		}
 		defer stderrLogFile.Close() // TODO: wrap
+		// TODO: syscall.CloseOnExec(pidFile.Fd()) or just close pid file
 
 		cwd, err := os.Getwd() // TODO: ???
 		if err != nil {

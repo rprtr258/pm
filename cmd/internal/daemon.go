@@ -23,6 +23,8 @@ var DaemonCmd = &cli.Command{
 			Name:  "start",
 			Usage: "launch daemon process",
 			Action: func(ctx *cli.Context) error {
+				// TODO: move to internal
+				// TODO: leave only flags getting & validation in cli command handlers
 				daemonCtx := &daemon.Context{
 					PidFileName: _daemonPidFile,
 					PidFilePerm: 0644,
