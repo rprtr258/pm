@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"syscall"
 )
 
 var (
+	// TODO: fix message
 	// ErrWouldBlock indicates on locking pid-file by another process.
 	ErrWouldBlock = errors.New("daemon: Resource temporarily unavailable")
 )
@@ -50,12 +52,24 @@ func OpenLockFile(name string, perm os.FileMode) (lock *LockFile, err error) {
 
 // Lock apply exclusive lock on an open file. If file already locked, returns error.
 func (file *LockFile) Lock() error {
-	return lockFile(file.Fd())
+	fd := file.Fd()
+	err := syscall.Flock(int(fd), syscall.LOCK_EX|syscall.LOCK_NB)
+	if err == syscall.EWOULDBLOCK {
+		return ErrWouldBlock
+	}
+
+	return err
 }
 
 // Unlock remove exclusive lock on an open file.
 func (file *LockFile) Unlock() error {
-	return unlockFile(file.Fd())
+	fd := file.Fd()
+	err := syscall.Flock(int(fd), syscall.LOCK_UN)
+	if err == syscall.EWOULDBLOCK {
+		return ErrWouldBlock
+	}
+
+	return err
 }
 
 // ReadPidFile reads process id from file with give name and returns pid.

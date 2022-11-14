@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
@@ -72,13 +73,16 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 				os.Stdin,
 				stdoutLogFile,
 				stderrLogFile,
+				// TODO: very fucking dirty hack not to inherit pid (and possibly other fds from daemon)
+				// because I tried different variants, none of them worked out, including setting O_CLOEXEC on
+				// pid file open and fcntl FD_CLOEXEC on already opened pid file fd
+				nil, nil, nil, nil, nil, nil, nil, nil,
 			},
 			Sys: &syscall.SysProcAttr{
 				Setpgid: true,
 			},
 		}
 
-		// TODO: try exec.Command again
 		process, err := os.StartProcess(proc.Command, append([]string{proc.Command}, proc.Args...), &procAttr)
 		if err != nil {
 			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.Status{Status: db.StatusErrored}); err2 != nil {
@@ -138,11 +142,16 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, e
 		}
 
 		state, err := process.Wait()
+		var errno syscall.Errno
 		if err != nil {
-			return nil, fmt.Errorf("releasing process %+v failed: %w", proc, err)
+			if errors.As(err, &errno); errno != 10 {
+				return nil, fmt.Errorf("releasing process %+v failed: %w %#v", proc, err, spew.Sdump(err))
+			} else {
+				fmt.Printf("[INFO] process %+v is not a child", proc)
+			}
+		} else {
+			fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
 		}
-
-		fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
 
 		if err := dbHandle.SetStatus(proc.ID, db.Status{Status: db.StatusStopped}); err != nil {
 			return nil, status.Errorf(codes.DataLoss, fmt.Errorf("updating status of process %+v failed: %w", proc, err).Error())
