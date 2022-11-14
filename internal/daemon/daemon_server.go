@@ -14,6 +14,7 @@ import (
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
+	"go.uber.org/multierr"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -81,7 +82,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		process, err := os.StartProcess(proc.Command, append([]string{proc.Command}, proc.Args...), &procAttr)
 		if err != nil {
 			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.Status{Status: db.StatusErrored}); err2 != nil {
-				return nil, fmt.Errorf("running failed: %w; setting errored status failed: %w", err, err2)
+				return nil, fmt.Errorf("running failed, setting errored status failed: %w", multierr.Combine(err, err2))
 			}
 
 			return nil, fmt.Errorf("running failed: %w", err)

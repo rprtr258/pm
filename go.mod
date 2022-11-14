@@ -19,6 +19,7 @@ require (
 require (
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
 	github.com/sevlyar/go-daemon v0.1.6
+	go.uber.org/multierr v1.8.0
 	golang.org/x/sys v0.2.0
 )
 
@@ -31,6 +32,7 @@ require (
 	github.com/rivo/uniseg v0.4.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/exp v0.0.0-20221114191408-850992195362 // indirect
 	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/term v0.2.0 // indirect
