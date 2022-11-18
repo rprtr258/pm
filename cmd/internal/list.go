@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -69,7 +70,7 @@ var ListCmd = &cli.Command{
 			return err
 		}
 
-		procsToShow := filterProcs(
+		procIDsToShow := filterProcs(
 			resp,
 			ctx.Args().Slice(),
 			[]string{},
@@ -78,6 +79,11 @@ var ListCmd = &cli.Command{
 			[]db.ProcID{},
 		)
 
+		procsToShow := mapDict(procIDsToShow, resp)
+		sort.Slice(procsToShow, func(i, j int) bool {
+			return procsToShow[i].ID < procsToShow[j].ID
+		})
+
 		t := table.New(os.Stdout)
 		t.SetRowLines(!ctx.Bool("compact"))
 		t.SetDividers(table.UnicodeRoundedDividers)
@@ -85,20 +91,21 @@ var ListCmd = &cli.Command{
 		t.SetHeaderStyle(table.StyleBold)
 		t.SetLineStyle(table.StyleDim)
 
-		for _, item := range procsToShow {
-			status, pid, uptime := mapStatus(item.Status)
+		// TODO: sort
+		for _, proc := range procsToShow {
+			status, pid, uptime := mapStatus(proc.Status)
 			t.AddRow(
-				color.New(color.FgCyan, color.Bold).Sprint(item.ID),
-				item.Name,
+				color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
+				proc.Name,
 				status,
 				lo.If(pid == nil, "").
 					ElseF(func() string { return strconv.Itoa(*pid) }),
 				lo.If(pid == nil, "").
 					Else(uptime.Truncate(time.Second).String()),
-				fmt.Sprint(item.Tags),
-				fmt.Sprint(item.Status.Cpu),
-				fmt.Sprint(item.Status.Memory),
-				fmt.Sprintf("%s %s", item.Command, strings.Join(item.Args, " ")), // TODO: escape args
+				fmt.Sprint(proc.Tags),
+				fmt.Sprint(proc.Status.Cpu),
+				fmt.Sprint(proc.Status.Memory),
+				fmt.Sprintf("%s %s", proc.Command, strings.Join(proc.Args, " ")), // TODO: escape args
 			)
 		}
 
@@ -109,18 +116,18 @@ var ListCmd = &cli.Command{
 }
 
 func filterProcs(
-	procs []db.ProcData,
+	procs map[db.ProcID]db.ProcData,
 	generic, names, tags []string,
 	statuses []db.ProcStatus,
 	ids []db.ProcID,
-) []db.ProcData {
+) []db.ProcID {
 	// if no filters, return all
 	if len(generic) == 0 &&
 		len(names) == 0 &&
 		len(tags) == 0 &&
 		len(statuses) == 0 &&
 		len(ids) == 0 {
-		return procs
+		return lo.Keys(procs)
 	}
 
 	genericIDs := lo.FilterMap(generic, func(filter string, _ int) (db.ProcID, bool) {
@@ -132,8 +139,8 @@ func filterProcs(
 		return db.ProcID(id), true
 	})
 
-	return lo.Filter(procs, func(proc db.ProcData, _ int) bool {
-		return lo.Contains(names, proc.Name) ||
+	return filterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (db.ProcID, bool) {
+		return procID, lo.Contains(names, proc.Name) ||
 			lo.Some(tags, proc.Tags) ||
 			lo.Contains(statuses, proc.Status.Status) ||
 			lo.Contains(ids, proc.ID) ||
@@ -141,4 +148,28 @@ func filterProcs(
 			lo.Some(generic, proc.Tags) ||
 			lo.Contains(genericIDs, proc.ID)
 	})
+}
+
+func filterMapToSlice[K comparable, V, R any](in map[K]V, iteratee func(key K, value V) (R, bool)) []R {
+	result := make([]R, 0, len(in))
+
+	for k, v := range in {
+		y, ok := iteratee(k, v)
+		if !ok {
+			continue
+		}
+		result = append(result, y)
+	}
+
+	return result
+}
+
+func mapDict[T comparable, R any](collection []T, dict map[T]R) []R {
+	result := make([]R, len(collection))
+
+	for i, item := range collection {
+		result[i] = dict[item]
+	}
+
+	return result
 }

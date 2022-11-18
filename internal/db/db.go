@@ -189,8 +189,8 @@ func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 	return res, nil
 }
 
-func (handle DBHandle) List() ([]ProcData, error) {
-	var res []ProcData
+func (handle DBHandle) List() (map[ProcID]ProcData, error) {
+	res := map[ProcID]ProcData{}
 
 	if err := handle.View(func(tx *badger.Txn) error {
 		it := tx.NewIterator(badger.DefaultIteratorOptions)
@@ -204,7 +204,7 @@ func (handle DBHandle) List() ([]ProcData, error) {
 				return err
 			}
 
-			res = append(res, procData)
+			res[procData.ID] = procData
 		}
 
 		return nil
