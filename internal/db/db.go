@@ -1,14 +1,13 @@
 package db
 
 import (
+	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/samber/lo"
-	"go.etcd.io/bbolt"
 )
 
 type ProcStatus int
@@ -20,8 +19,6 @@ const (
 	StatusStopped
 	StatusErrored
 )
-
-var _mainBucket = []byte("main")
 
 type Status struct {
 	Status ProcStatus `json:"status"`
@@ -58,102 +55,92 @@ type DBHandle struct {
 	dbFilename string
 }
 
-func encodeUintKey(procID uint64) []byte {
-	return []byte(strconv.FormatUint(procID, 10))
+func encodeUint64(procID uint64) []byte {
+	keyBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(keyBytes, procID)
+	return keyBytes
 }
-
-// func decodeUintKey(key []byte) (uint64, error) {
-// 	return strconv.ParseUint(string(key), 10, 64)
-// }
 
 func encodeJSON[T any](proc T) ([]byte, error) {
 	return json.Marshal(proc)
 }
 
-func decodeJSON[T any](value []byte) (T, error) {
+func decodeJSON[T any](item *badger.Item) (T, error) {
 	var res T
-	if err := json.Unmarshal(value, &res); err != nil {
-		return lo.Empty[T](), fmt.Errorf("failed decoding value of type %T: %w", res, err)
+	if err := item.Value(func(valueBuffer []byte) error {
+		if err := json.Unmarshal(valueBuffer, &res); err != nil {
+			return fmt.Errorf("failed decoding value=%v: %w", valueBuffer, err)
+		}
+		return nil
+	}); err != nil {
+		return lo.Empty[T](), err
 	}
 
 	return res, nil
 }
 
-func get[V any](bucket *bbolt.Bucket, key []byte) (V, error) {
-	// keyBytes, err := encodeUintKey(key)
-	bytes := bucket.Get(key)
-	if bytes == nil {
-		return lo.Empty[V](), nil // fmt.Errorf("value not found by key %v", key)
-	}
-
-	return decodeJSON[V](bytes)
-}
-
 // TODO: serialize/deserialize protobuffers
-func put[V any](bucket *bbolt.Bucket, key []byte, value V) error {
-	bytes, err := encodeJSON(value)
+func putProcMetadata(tx *badger.Txn, procID uint64, value ProcData) error {
+	keyBytes := encodeUint64(procID)
+
+	valueBytes, err := encodeJSON(value)
 	if err != nil {
 		return err
 	}
 
-	if err := bucket.Put(key, bytes); err != nil {
-		return fmt.Errorf("bucket.Put failed: %w", err)
+	if err := tx.Set(keyBytes, valueBytes); err != nil {
+		return fmt.Errorf("tx.Set failed: %w", err)
 	}
 
 	return nil
 }
 
+// TODO: must call db.Close after this
 func New(dbFile string) DBHandle {
 	return DBHandle{
 		dbFilename: dbFile,
 	}
 }
 
-func (handle DBHandle) execute(statement func(*bbolt.DB) error) error {
-	db, err := bbolt.Open(handle.dbFilename, 0600, nil)
+func (handle DBHandle) Update(statement func(*badger.Txn) error) error {
+	db, err := badger.Open(badger.DefaultOptions(handle.dbFilename))
 	if err != nil {
 		return fmt.Errorf("bbolt.Open failed: %w", err)
 	}
 	defer db.Close()
 
-	return statement(db)
+	return db.Update(statement)
 }
 
-func (handle DBHandle) Update(statement func(*bbolt.Tx) error) error {
-	return handle.execute(func(db *bbolt.DB) error {
-		return db.Update(func(tx *bbolt.Tx) error {
-			return statement(tx)
-		})
-	})
-}
+func (handle DBHandle) View(statement func(*badger.Txn) error) error {
+	db, err := badger.Open(badger.DefaultOptions(handle.dbFilename))
+	if err != nil {
+		return fmt.Errorf("bbolt.Open failed: %w", err)
+	}
+	defer db.Close()
 
-func (handle DBHandle) View(statement func(*bbolt.Tx) error) error {
-	return handle.execute(func(db *bbolt.DB) error {
-		return db.View(func(tx *bbolt.Tx) error {
-			return statement(tx)
-		})
-	})
+	return db.View(statement)
 }
 
 func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
-	var procID uint64
+	var newProcID uint64
 
-	err := handle.Update(func(tx *bbolt.Tx) error {
-		mainBucket := tx.Bucket(_mainBucket)
-		if mainBucket == nil {
-			return errors.New("main bucket was not found")
+	err := handle.Update(func(tx *badger.Txn) error {
+		it := tx.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+
+		procIDs := map[uint64]struct{}{}
+		for it.Rewind(); it.Valid(); it.Next() {
+			procID := binary.BigEndian.Uint64(it.Item().Key())
+			procIDs[procID] = struct{}{}
 		}
 
-		// TODO: manage ids myself
-		id, err := mainBucket.NextSequence()
-		if err != nil {
-			return fmt.Errorf("bucket.NextSequence failed: %w", err)
-		}
+		newProcID = mex(procIDs)
 
-		procID = id
-		metadata.ID = ProcID(id)
+		// TODO: remove mutation?
+		metadata.ID = ProcID(newProcID)
 
-		if err := put(mainBucket, encodeUintKey(id), metadata); err != nil {
+		if err := putProcMetadata(tx, newProcID, metadata); err != nil {
 			return err
 		}
 
@@ -164,39 +151,35 @@ func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 		return 0, fmt.Errorf("db.AddProc failed: %w", err)
 	}
 
-	return ProcID(procID), nil
+	return ProcID(newProcID), nil
 }
 
 func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 	var res []ProcData
 
-	err := handle.View(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket(_mainBucket)
-		if bucket == nil {
-			return errors.New("main bucket does not exist")
-		}
+	if err := handle.View(func(tx *badger.Txn) error {
+		var err error
+		res, err = MapErr(ids, func(procID ProcID, _ int) (ProcData, error) {
+			keyBuffer := encodeUint64(uint64(procID))
 
-		if err := bucket.ForEach(func(_, value []byte) error {
-			procData, err := decodeJSON[ProcData](value)
+			item, err := tx.Get(keyBuffer)
 			if err != nil {
-				return err
+				return ProcData{}, fmt.Errorf("failed getting id=%d: %w", procID, err)
 			}
 
-			if !lo.Contains(ids, procData.ID) {
-				return nil
+			procData, err := decodeJSON[ProcData](item)
+			if err != nil {
+				return ProcData{}, fmt.Errorf("decoding procID=%d failed: %w", procID, err)
 			}
 
-			res = append(res, procData)
-
-			return nil
-		}); err != nil {
-			return fmt.Errorf("bucket.ForEach failed: %w", err)
+			return procData, nil
+		})
+		if err != nil {
+			return fmt.Errorf("scanning failed: %w", err)
 		}
 
 		return nil
-	})
-
-	if err != nil {
+	}); err != nil {
 		return nil, fmt.Errorf("db.GetProcs failed: %w", err)
 	}
 
@@ -206,29 +189,23 @@ func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 func (handle DBHandle) List() ([]ProcData, error) {
 	var res []ProcData
 
-	err := handle.View(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket(_mainBucket)
-		if bucket == nil {
-			return errors.New("main bucket does not exist")
-		}
+	if err := handle.View(func(tx *badger.Txn) error {
+		it := tx.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
 
-		if err := bucket.ForEach(func(_, value []byte) error {
-			procData, err := decodeJSON[ProcData](value)
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+
+			procData, err := decodeJSON[ProcData](item)
 			if err != nil {
 				return err
 			}
 
 			res = append(res, procData)
-
-			return nil
-		}); err != nil {
-			return fmt.Errorf("bucket.ForEach failed: %w", err)
 		}
 
 		return nil
-	})
-
-	if err != nil {
+	}); err != nil {
 		return nil, fmt.Errorf("db.List failed: %w", err)
 	}
 
@@ -236,41 +213,42 @@ func (handle DBHandle) List() ([]ProcData, error) {
 }
 
 func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) error {
-	return handle.Update(func(tx *bbolt.Tx) error {
-		bucket := tx.Bucket(_mainBucket)
-		if bucket == nil {
-			return errors.New("main bucket does not exist")
-		}
+	return handle.Update(func(tx *badger.Txn) error {
+		key := encodeUint64(uint64(procID))
 
-		key := encodeUintKey(uint64(procID))
-		metadata, err := get[ProcData](bucket, key)
+		item, err := tx.Get(key)
 		if err != nil {
-			return fmt.Errorf("set status failed: %w", err)
+			return fmt.Errorf("reading procID=%v failed: %w", procID, err)
 		}
 
-		metadata.Status = newStatus
+		var procData ProcData
+		item.Value(func(valueBuffer []byte) error {
+			return json.Unmarshal(valueBuffer, &procData)
+		})
 
-		return put(bucket, key, metadata)
+		// TODO: remove mutation?
+		procData.Status = newStatus
+
+		newValueBytes, err := encodeJSON(procData)
+		if err != nil {
+			return err
+		}
+
+		if err := tx.Set(key, newValueBytes); err != nil {
+			return fmt.Errorf("writing procID=%v failed: %w", procID, err)
+		}
+
+		return nil
 	})
 }
 
 func (handle DBHandle) Delete(procIDs []uint64) error {
-	return handle.Update(func(tx *bbolt.Tx) error {
-		mainBucket := tx.Bucket(_mainBucket)
-		if mainBucket == nil {
-			return errors.New("main bucket was not found")
-		}
-
+	return handle.Update(func(tx *badger.Txn) error {
 		for _, procID := range procIDs {
-			key := encodeUintKey(procID)
+			key := encodeUint64(procID)
 
-			// proc, err := get[ProcData](mainBucket, key)
-			// if err != nil {
-			// 	return fmt.Errorf("failed getting proc with id %d: %w", procID, err)
-			// }
-
-			if err := mainBucket.Delete(key); err != nil {
-				return fmt.Errorf("failed deleting proc with id %d: %w", procID, err)
+			if err := tx.Delete(key); err != nil {
+				return fmt.Errorf("deleting procID=%d failed: %w", procID, err)
 			}
 		}
 
@@ -278,13 +256,29 @@ func (handle DBHandle) Delete(procIDs []uint64) error {
 	})
 }
 
-// Init - init buckets
 func (handle DBHandle) Init() error {
-	return handle.Update(func(tx *bbolt.Tx) error {
-		if _, err := tx.CreateBucketIfNotExists(_mainBucket); err != nil {
-			return fmt.Errorf("bucket creating failed: %w", err)
-		}
+	// TODO: any seeding?
+	return nil
+}
 
-		return nil
-	})
+// mex - find (m)inimal number (ex)cluded from set
+func mex(set map[uint64]struct{}) uint64 {
+	for i := uint64(0); ; i++ {
+		if _, ok := set[i]; !ok {
+			return i
+		}
+	}
+}
+
+// MapErr - like lo.Map but returns first error occured
+func MapErr[T, R any](collection []T, iteratee func(T, int) (R, error)) ([]R, error) {
+	results := make([]R, len(collection))
+	for i, item := range collection {
+		res, err := iteratee(item, i)
+		if err != nil {
+			return nil, fmt.Errorf("MapErr on i=%d: %w", i, err)
+		}
+		results = append(results, res)
+	}
+	return results, nil
 }

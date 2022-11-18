@@ -4,7 +4,6 @@
 
 - [ ] use grpc status codes for server response errors  
 - [ ] serialize/deserialize protobuffers into database  
-- [ ] manage ids ourself, leveraging minimal not used id for new proc  
 - [ ] draw processes states/transitions diagrams  
 
 ### Bugfixes
@@ -44,6 +43,7 @@
 ### Doing
 
 - [ ] try [badger-db](https://github.com/dgraph-io/badger) [get-started](https://dgraph.io/docs/badger/get-started/)  
+- [ ] manage ids ourself, leveraging minimal not used id for new proc  
 
 ### Done
 
