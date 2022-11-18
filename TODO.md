@@ -5,6 +5,7 @@
 - [ ] use grpc status codes for server response errors  
 - [ ] serialize/deserialize protobuffers into database  
 - [ ] draw processes states/transitions diagrams  
+- [ ] https://dgraph.io/docs/badger/get-started/#garbage-collection
 
 ### Bugfixes
 
