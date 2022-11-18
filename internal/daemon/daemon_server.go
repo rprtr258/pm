@@ -89,7 +89,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 				return nil, fmt.Errorf("running failed, setting errored status failed: %w", multierr.Combine(err, err2))
 			}
 
-			return nil, fmt.Errorf("running failed: %w", err)
+			return nil, fmt.Errorf("running failed process=%s: %w", spew.Sdump(proc), err)
 		}
 
 		runningStatus := db.Status{
