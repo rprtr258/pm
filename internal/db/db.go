@@ -127,14 +127,16 @@ func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 	var newProcID uint64
 
 	err := handle.Update(func(tx *badger.Txn) error {
-		it := tx.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-
 		procIDs := map[uint64]struct{}{}
-		for it.Rewind(); it.Valid(); it.Next() {
-			procID := binary.BigEndian.Uint64(it.Item().Key())
-			procIDs[procID] = struct{}{}
-		}
+		func() {
+			it := tx.NewIterator(badger.DefaultIteratorOptions)
+			defer it.Close()
+
+			for it.Rewind(); it.Valid(); it.Next() {
+				procID := binary.BigEndian.Uint64(it.Item().Key())
+				procIDs[procID] = struct{}{}
+			}
+		}()
 
 		newProcID = mex(procIDs)
 
@@ -279,7 +281,7 @@ func MapErr[T, R any](collection []T, iteratee func(T, int) (R, error)) ([]R, er
 		if err != nil {
 			return nil, fmt.Errorf("MapErr on i=%d: %w", i, err)
 		}
-		results = append(results, res)
+		results[i] = res
 	}
 	return results, nil
 }

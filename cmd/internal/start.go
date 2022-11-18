@@ -113,18 +113,13 @@ var StartCmd = &cli.Command{
 			Args:    append([]string{"-c"}, strings.Join(args, " ")), // TODO: escape
 		}
 
-		if err := func() error {
-			procID, err := db.New(_daemonDBFile).AddProc(procData)
-			if err != nil {
-				return err
-			}
+		procID, err := db.New(_daemonDBFile).AddProc(procData)
 
-			procData.ID = procID
-
-			return nil
-		}(); err != nil {
+		if err != nil {
 			return err
 		}
+
+		procData.ID = procID
 
 		procIDs := []uint64{uint64(procData.ID)}
 
