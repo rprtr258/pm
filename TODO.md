@@ -26,8 +26,6 @@
 - [ ] daemon restart commands  
 - [ ] implement different list formats: table, short list, json, go format template  
 - [ ] gen name if not provided  
-- [ ] pm start recognizing cmd&args vs ids/names/tags of processes in pm list to run  
-- [ ] add "smart filtering" to delete and stop cmds  
 - [ ] -i/... flag to confirm which procs will be stopped  
 - [ ] bash autocomplete  
 - [ ] provide envs from dotenv/...  
@@ -37,13 +35,15 @@
 - [ ] show logs of several proccesses simultanuously  
 - [ ] logrotaion: [lumberjack](https://github.com/natefinch/lumberjack) [pm2-logrotate](https://github.com/keymetrics/pm2-logrotate)  
 - [ ] dashboard: [pm-web](https://github.com/VividCortex/pm-web) [pm2-server-monit](https://github.com/keymetrics/pm2-server-monit) [pm2-dev](https://github.com/Unitech/pm2-dev)  
-- [ ] make executable + arguments run options be available  
 - [ ] run daemon if not running before executing (almost) any command  
 - [ ] [self autoupdate](https://developers.redhat.com/articles/2022/11/14/3-ways-embed-commit-hash-go-programs)  
 - [ ] if command failed to run/restart in 2s, show it to client  
 
 ### Doing
 
+- [ ] make executable + arguments run options be available  
+- [ ] pm start recognizing cmd&args vs ids/names/tags of processes in pm list to run  
+- [ ] add "smart filtering" to delete and stop cmds  
 
 ### Done
 
