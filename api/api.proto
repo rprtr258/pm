@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/rprtr258/pm/api";
+
+package api;
+
+service Daemon {
+    rpc Start(IDs) returns (google.protobuf.Empty);
+    rpc Stop(IDs) returns (google.protobuf.Empty);
+}
+
+message IDs {
+    repeated uint64 ids = 1;
+}

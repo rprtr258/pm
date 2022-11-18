@@ -1,8 +1,0 @@
-{
-  "script":"examples/child.js",
-  "name":"SERVERONE",
-  "instances":10,
-  "error_file":"errfile.log",
-  "out_file":"outfile.log",
-  "pid_file":"pidfile.pid"
-}
