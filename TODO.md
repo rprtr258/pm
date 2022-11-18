@@ -10,7 +10,7 @@
 ### Bugfixes
 
 - [ ] delete cmd must also delete log files  
-- [ ] fix not showing error on failed start tests/main.go second time  
+- [ ] fix not showing error on failed start tests/main.go second time, collecting child zombies  
 - [ ] fix someone holding $home/pm.pid file on daemon restart  
 - [ ] fix writing,creating pid file for the first time  
 
@@ -40,6 +40,7 @@
 - [ ] make executable + arguments run options be available  
 - [ ] run daemon if not running before executing (almost) any command  
 - [ ] [self autoupdate](https://developers.redhat.com/articles/2022/11/14/3-ways-embed-commit-hash-go-programs)  
+- [ ] if command failed to run/restart in 2s, show it to client  
 
 ### Doing
 
