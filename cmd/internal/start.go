@@ -76,7 +76,6 @@ var StartCmd = &cli.Command{
 		// &cli.BoolFlag{Name:        "container", Usage: "Start application in container mode"},
 		// &cli.BoolFlag{Name:        "dist", Usage: "with --container; change local Dockerfile to containerize all files in current directory"},
 		// &cli.StringFlag{Name:      "image-name", Usage: "with --dist; set the exported image name"},
-		// &cli.BoolFlag{Name:        "node-version", Usage: "with --container, set a specific major Node.js version"},
 		// &cli.BoolFlag{Name:        "dockerdaemon", Usage: "for debugging purpose"},
 	},
 	Action: func(ctx *cli.Context) error {
