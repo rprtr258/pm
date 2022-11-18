@@ -103,7 +103,8 @@ func New(dbFile string) DBHandle {
 }
 
 func (handle DBHandle) Update(statement func(*badger.Txn) error) error {
-	db, err := badger.Open(badger.DefaultOptions(handle.dbFilename))
+	// TODO: in dev,daemon change log level
+	db, err := badger.Open(badger.DefaultOptions(handle.dbFilename).WithLoggingLevel(badger.ERROR))
 	if err != nil {
 		return fmt.Errorf("bbolt.Open failed: %w", err)
 	}
@@ -113,7 +114,7 @@ func (handle DBHandle) Update(statement func(*badger.Txn) error) error {
 }
 
 func (handle DBHandle) View(statement func(*badger.Txn) error) error {
-	db, err := badger.Open(badger.DefaultOptions(handle.dbFilename))
+	db, err := badger.Open(badger.DefaultOptions(handle.dbFilename).WithLoggingLevel(badger.ERROR))
 	if err != nil {
 		return fmt.Errorf("bbolt.Open failed: %w", err)
 	}
