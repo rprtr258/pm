@@ -98,8 +98,7 @@ var ListCmd = &cli.Command{
 				color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
 				proc.Name,
 				status,
-				lo.If(pid == nil, "").
-					ElseF(func() string { return strconv.Itoa(*pid) }),
+				ifNotNil(pid, strconv.Itoa),
 				lo.If(pid == nil, "").
 					Else(uptime.Truncate(time.Second).String()),
 				fmt.Sprint(proc.Tags),
@@ -172,4 +171,11 @@ func mapDict[T comparable, R any](collection []T, dict map[T]R) []R {
 	}
 
 	return result
+}
+
+func ifNotNil[T, R any](ptr *T, call func(T) R) R {
+	if ptr == nil {
+		return lo.Empty[R]()
+	}
+	return call(*ptr)
 }
