@@ -228,16 +228,3 @@ func (handle DBHandle) Init() error {
 
 	return nil
 }
-
-// MapErr - like lo.Map but returns first error occured
-func MapErr[T, R any](collection []T, iteratee func(T, int) (R, error)) ([]R, error) {
-	results := make([]R, len(collection))
-	for i, item := range collection {
-		res, err := iteratee(item, i)
-		if err != nil {
-			return nil, fmt.Errorf("MapErr on i=%d: %w", i, err)
-		}
-		results[i] = res
-	}
-	return results, nil
-}

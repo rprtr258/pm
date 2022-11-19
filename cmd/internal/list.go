@@ -64,16 +64,65 @@ var ListCmd = &cli.Command{
 		// 	Aliases: []string{"f"},
 		// 	Usage:   "Go template string to use for formatting",
 		// },
+		// FILTER FLAGS
+		&cli.StringSliceFlag{
+			Name:  "name",
+			Usage: "name(s) of process(es) to stop",
+		},
+		&cli.StringSliceFlag{
+			Name:  "tag",
+			Usage: "tag(s) of process(es) to stop",
+		},
+		&cli.Uint64SliceFlag{
+			Name:  "id",
+			Usage: "id(s) of process(es) to stop",
+		},
+		&cli.StringSliceFlag{
+			Name:  "status",
+			Usage: "status(es) of process(es) to stop",
+		},
 	},
 	Action: func(ctx *cli.Context) error {
+		statuses, err := internal.MapErr(ctx.StringSlice("status"), func(status string, _ int) (db.ProcStatus, error) {
+			switch status {
+			case "invalid":
+				return db.StatusInvalid, nil
+			case "starting":
+				return db.StatusStarting, nil
+			case "running":
+				return db.StatusRunning, nil
+			case "stopped":
+				return db.StatusStopped, nil
+			case "errored":
+				return db.StatusErrored, nil
+			default:
+				return lo.Empty[db.ProcStatus](), fmt.Errorf("unknown status %q", status)
+			}
+		})
+		if err != nil {
+			return fmt.Errorf("invalid status provided: %w", err)
+		}
+
 		return list(
 			ctx.Args().Slice(),
 			ctx.Bool("compact"),
+			ctx.StringSlice("name"),
+			ctx.StringSlice("tags"),
+			statuses,
+			lo.Map(ctx.Uint64Slice("id"), func(id uint64, _ int) db.ProcID {
+				return db.ProcID(id)
+			}),
 		)
 	},
 }
 
-func list(args []string, compact bool) error {
+func list(
+	args []string,
+	compact bool,
+	names, tags []string,
+	statuses []db.ProcStatus,
+	ids []db.ProcID,
+) error {
 	resp, err := db.New(_daemonDBFile).List()
 	if err != nil {
 		return err
@@ -82,10 +131,10 @@ func list(args []string, compact bool) error {
 	procIDsToShow := internal.FilterProcs(
 		resp,
 		args,
-		[]string{},
-		[]string{},
-		[]db.ProcStatus{},
-		[]db.ProcID{},
+		names,
+		tags,
+		statuses,
+		ids,
 	)
 
 	procsToShow := internal.MapDict(procIDsToShow, resp)

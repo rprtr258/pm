@@ -1,6 +1,10 @@
 package internal
 
-import "github.com/samber/lo"
+import (
+	"fmt"
+
+	"github.com/samber/lo"
+)
 
 func MapDict[T comparable, R any](collection []T, dict map[T]R) []R {
 	result := make([]R, len(collection))
@@ -31,4 +35,17 @@ func FilterMapToSlice[K comparable, V, R any](in map[K]V, mapper func(key K, val
 	}
 
 	return result
+}
+
+// MapErr - like lo.Map but returns first error occured
+func MapErr[T, R any](collection []T, iteratee func(T, int) (R, error)) ([]R, error) {
+	results := make([]R, len(collection))
+	for i, item := range collection {
+		res, err := iteratee(item, i)
+		if err != nil {
+			return nil, fmt.Errorf("MapErr on i=%d: %w", i, err)
+		}
+		results[i] = res
+	}
+	return results, nil
 }

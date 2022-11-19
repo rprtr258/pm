@@ -8,6 +8,7 @@ import (
 	"github.com/rprtr258/pm/internal/db"
 )
 
+// TODO: options api
 func FilterProcs(
 	procs db.DB,
 	generic, names, tags []string,
