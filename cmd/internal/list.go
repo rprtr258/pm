@@ -64,7 +64,6 @@ var ListCmd = &cli.Command{
 		// 	Aliases: []string{"f"},
 		// 	Usage:   "Go template string to use for formatting",
 		// },
-		// FILTER FLAGS
 		&cli.StringSliceFlag{
 			Name:  "name",
 			Usage: "name(s) of process(es) to stop",

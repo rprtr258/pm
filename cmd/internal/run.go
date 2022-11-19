@@ -2,7 +2,10 @@ package internal
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os/exec"
+	"strings"
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
@@ -12,14 +15,29 @@ import (
 )
 
 func init() {
-	AllCmds = append(AllCmds, StartCmd)
+	AllCmds = append(AllCmds, RunCmd)
 }
 
-var StartCmd = &cli.Command{
-	Name:      "start",
-	ArgsUsage: "<name|tag|id|status>...",
-	Usage:     "start process and manage it",
+var RunCmd = &cli.Command{
+	Name:      "run",
+	ArgsUsage: "cmd args...",
+	Usage:     "run new process and manage it",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "name",
+			Aliases:  []string{"n"},
+			Usage:    "set a name for the process",
+			Required: false,
+		},
+		&cli.StringSliceFlag{
+			Name:    "tag",
+			Aliases: []string{"t"},
+			Usage:   "add specified tag",
+		},
+		&cli.StringFlag{
+			Name:  "cwd",
+			Usage: "set working directory",
+		},
 		// &cli.BoolFlag{Name:        "only", Usage: "with json declaration, allow to only act on one application"},
 		// &cli.BoolFlag{Name:        "watch", Usage: "Watch folder for changes"},
 		// &cli.StringSliceFlag{Name: "watch", Usage: "watch application folder for changes"},
@@ -55,66 +73,73 @@ var StartCmd = &cli.Command{
 		// &cli.BoolFlag{Name:        "dist", Usage: "with --container; change local Dockerfile to containerize all files in current directory"},
 		// &cli.StringFlag{Name:      "image-name", Usage: "with --dist; set the exported image name"},
 		// &cli.BoolFlag{Name:        "dockerdaemon", Usage: "for debugging purpose"},
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to stop",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to stop",
-		},
-		&cli.Uint64SliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to stop",
-		},
-		&cli.StringSliceFlag{
-			Name:  "status",
-			Usage: "status(es) of process(es) to stop",
-		},
 	},
 	Action: func(ctx *cli.Context) error {
-		return start(
+		args := ctx.Args().Slice()
+		if len(args) < 1 {
+			return errors.New("command expected")
+		}
+
+		name := ctx.String("name")
+		return run(
 			ctx.Context,
-			ctx.Args().Slice(),
-			ctx.StringSlice("name"),
-			ctx.StringSlice("tags"),
-			ctx.StringSlice("status"),
-			ctx.Uint64Slice("id"),
+			args,
+			lo.If(name != "", internal.Valid(name)).
+				Else(internal.Invalid[string]()),
+			ctx.StringSlice("tag"),
 		)
 	},
 }
 
-func start(
+func run(
 	ctx context.Context,
-	genericFilters, nameFilters, tagFilters, statusFilters []string,
-	idFilters []uint64,
+	args []string,
+	name internal.Optional[string],
+	tags []string,
 ) error {
-	resp, err := db.New(_daemonDBFile).List()
-	if err != nil {
-		return err
-	}
-
-	procIDsToStart := internal.FilterProcs[uint64](
-		resp,
-		internal.WithAllIfNoFilters,
-		internal.WithGeneric(genericFilters),
-		internal.WithIDs(idFilters),
-		internal.WithNames(nameFilters),
-		internal.WithStatuses(statusFilters),
-		internal.WithTags(tagFilters),
-	)
-
 	client, deferFunc, err := NewGrpcClient()
 	if err != nil {
 		return err
 	}
 	defer deferErr(deferFunc)
 
-	if _, err := client.Start(ctx, &pb.IDs{Ids: procIDsToStart}); err != nil {
+	if !name.Valid {
+		return errors.New("name required") // TODO: remove
+	}
+
+	bashExecutable, err := exec.LookPath("bash")
+	if err != nil {
+		return fmt.Errorf("could not find bash executable: %w", err)
+	}
+
+	procData := db.ProcData{
+		Status: db.Status{
+			Status: db.StatusStarting,
+		},
+		Name:    name.Value,
+		Cwd:     ".",
+		Tags:    lo.Uniq(append(tags, "all")),
+		Command: bashExecutable, // TODO: clarify
+		// TODO: escape, check args = ['a b' 'c'] becomes '"a b" c', not 'a b c'
+		Args: append([]string{"-c"}, strings.Join(args, " ")),
+	}
+
+	procID, err := db.New(_daemonDBFile).AddProc(procData)
+
+	if err != nil {
+		return err
+	}
+
+	procData.ID = procID
+
+	procIDs := []uint64{uint64(procData.ID)}
+
+	if _, err := client.Start(ctx, &pb.IDs{Ids: procIDs}); err != nil {
 		return fmt.Errorf("client.Start failed: %w", err)
 	}
 
-	fmt.Println(lo.ToAnySlice(procIDsToStart)...)
+	fmt.Println(procData.ID)
 
 	return nil
+
 }
