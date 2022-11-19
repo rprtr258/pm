@@ -9,7 +9,7 @@
 
 ### Bugfixes
 
-- [ ] daemon start leaves pm.pid empty
+- [ ] daemon start leaves pm.pid empty  
 - [ ] delete cmd must also delete log files  
 - [ ] fix not showing error on failed start tests/main.go second time, collecting child zombies  
 - [ ] fix someone holding $home/pm.pid file on daemon restart  
@@ -17,7 +17,7 @@
 
 ### Features
 
-- [ ] daemon method to update statuses in db
+- [ ] daemon method to update statuses in db  
 - [ ] administrative tasks for processes: pull repo, seed db, etc.  
 - [ ] config file with process definitions  
 - [ ] run specific processes from config  
@@ -43,12 +43,12 @@
 
 ### Doing
 
-- [ ] make executable + arguments run options be available  
-- [ ] pm start recognizing cmd&args vs ids/names/tags of processes in pm list to run  
-- [ ] add "smart filtering" to delete and stop cmds  
 
 ### Done
 
 - [ ] try [badger-db](https://github.com/dgraph-io/badger) [get-started](https://dgraph.io/docs/badger/get-started/)  
 - [ ] manage ids ourself, leveraging minimal not used id for new proc  
+- [ ] make executable + arguments run options be available  
+- [ ] pm start recognizing cmd&args vs ids/names/tags of processes in pm list to run  
+- [ ] add "smart filtering" to delete and stop cmds  
 
