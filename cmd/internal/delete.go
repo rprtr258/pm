@@ -22,15 +22,15 @@ var DeleteCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "name",
-			Usage: "name(s) of process(es) to stop",
+			Usage: "name(s) of process(es) to stop and remove",
 		},
 		&cli.StringSliceFlag{
 			Name:  "tag",
-			Usage: "tag(s) of process(es) to stop",
+			Usage: "tag(s) of process(es) to stop and remove",
 		},
 		&cli.Uint64SliceFlag{
 			Name:  "id",
-			Usage: "id(s) of process(es) to stop",
+			Usage: "id(s) of process(es) to stop and remove",
 		},
 	},
 	Action: func(ctx *cli.Context) error {

@@ -38,7 +38,11 @@ var RunCmd = &cli.Command{
 			Name:  "cwd",
 			Usage: "set working directory",
 		},
-		// &cli.BoolFlag{Name:        "only", Usage: "with json declaration, allow to only act on one application"},
+		&cli.StringFlag{
+			Name:    "interpreter",
+			Aliases: []string{"i"},
+			Usage:   "set interpreter to executing command",
+		},
 		// &cli.BoolFlag{Name:        "watch", Usage: "Watch folder for changes"},
 		// &cli.StringSliceFlag{Name: "watch", Usage: "watch application folder for changes"},
 		// &cli.StringSliceFlag{Name: "ext", Usage: "watch only this file extensions"},
@@ -65,7 +69,6 @@ var RunCmd = &cli.Command{
 		// &cli.BoolFlag{Name:        "no-autorestart", Usage: "start an app without automatic restart"},
 		// &cli.DurationFlag{Name:    "restart-delay", Usage: "specify a delay between restarts"},
 		// &cli.BoolFlag{Name:        "merge-logs", Usage: "merge logs from different instances but keep error and out separated"},
-		// &cli.StringFlag{Name:      "interpreter", Usage: "set a specific interpreter to use for executing app", Value: "node"},
 		// &cli.StringSliceFlag{Name: "interpreter-args", Usage: "set arguments to pass to the interpreter"},
 		// &cli.BoolFlag{Name:        "fresh", Usage: "Rebuild Dockerfile"},
 		// &cli.BoolFlag{Name:        "daemon", Usage: "Run container in Daemon mode (debug purposes)"},
@@ -75,15 +78,34 @@ var RunCmd = &cli.Command{
 		// &cli.BoolFlag{Name:        "dockerdaemon", Usage: "for debugging purpose"},
 	},
 	Action: func(ctx *cli.Context) error {
+		interpreter := ctx.String("interpreter")
 		args := ctx.Args().Slice()
-		if len(args) < 1 {
+
+		var toRunArgs []string
+		switch {
+		case interpreter == "" && len(args) == 0:
 			return errors.New("command expected")
+		case interpreter != "" && len(args) != 1:
+			return fmt.Errorf("interpreter %q set, thats why only single arg must be provided (but there were %d provided)", interpreter, len(args))
+		case interpreter == "":
+			toRunArgs = args
+		case interpreter != "":
+			toRunArgs = append(toRunArgs, strings.Split(interpreter, " ")...)
+			toRunArgs = append(toRunArgs, args[0])
+		default:
+			return fmt.Errorf("unknown situation, interpreter=%q args=%v", interpreter, args)
+		}
+
+		var err error
+		toRunArgs[0], err = exec.LookPath(toRunArgs[0])
+		if err != nil {
+			return fmt.Errorf("could not find executable %q: %w", toRunArgs[0], err)
 		}
 
 		name := ctx.String("name")
 		return run(
 			ctx.Context,
-			args,
+			toRunArgs,
 			lo.If(name != "", internal.Valid(name)).
 				Else(internal.Invalid[string]()),
 			ctx.StringSlice("tag"),
@@ -97,19 +119,8 @@ func run(
 	name internal.Optional[string],
 	tags []string,
 ) error {
-	client, deferFunc, err := NewGrpcClient()
-	if err != nil {
-		return err
-	}
-	defer deferErr(deferFunc)
-
 	if !name.Valid {
 		return errors.New("name required") // TODO: remove
-	}
-
-	bashExecutable, err := exec.LookPath("bash")
-	if err != nil {
-		return fmt.Errorf("could not find bash executable: %w", err)
 	}
 
 	procData := db.ProcData{
@@ -119,9 +130,8 @@ func run(
 		Name:    name.Value,
 		Cwd:     ".",
 		Tags:    lo.Uniq(append(tags, "all")),
-		Command: bashExecutable, // TODO: clarify
-		// TODO: escape, check args = ['a b' 'c'] becomes '"a b" c', not 'a b c'
-		Args: append([]string{"-c"}, strings.Join(args, " ")),
+		Command: args[0], // TODO: clarify
+		Args:    args[1:],
 	}
 
 	procID, err := db.New(_daemonDBFile).AddProc(procData)
@@ -133,6 +143,12 @@ func run(
 	procData.ID = procID
 
 	procIDs := []uint64{uint64(procData.ID)}
+
+	client, deferFunc, err := NewGrpcClient()
+	if err != nil {
+		return err
+	}
+	defer deferErr(deferFunc)
 
 	if _, err := client.Start(ctx, &pb.IDs{Ids: procIDs}); err != nil {
 		return fmt.Errorf("client.Start failed: %w", err)

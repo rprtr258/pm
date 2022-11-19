@@ -66,19 +66,19 @@ var ListCmd = &cli.Command{
 		// },
 		&cli.StringSliceFlag{
 			Name:  "name",
-			Usage: "name(s) of process(es) to stop",
+			Usage: "name(s) of process(es) to list",
 		},
 		&cli.StringSliceFlag{
 			Name:  "tag",
-			Usage: "tag(s) of process(es) to stop",
+			Usage: "tag(s) of process(es) to list",
 		},
 		&cli.Uint64SliceFlag{
 			Name:  "id",
-			Usage: "id(s) of process(es) to stop",
+			Usage: "id(s) of process(es) to list",
 		},
 		&cli.StringSliceFlag{
 			Name:  "status",
-			Usage: "status(es) of process(es) to stop",
+			Usage: "status(es) of process(es) to list",
 		},
 	},
 	Action: func(ctx *cli.Context) error {
