@@ -125,8 +125,9 @@ func run(
 		Name:    name.Value,
 		Cwd:     ".",
 		Tags:    lo.Uniq(append(tags, "all")),
-		Command: bashExecutable,                                  // TODO: clarify
-		Args:    append([]string{"-c"}, strings.Join(args, " ")), // TODO: escape
+		Command: bashExecutable, // TODO: clarify
+		// TODO: escape, check args = ['a b' 'c'] becomes '"a b" c', not 'a b c'
+		Args: append([]string{"-c"}, strings.Join(args, " ")),
 	}
 
 	procID, err := db.New(_daemonDBFile).AddProc(procData)
