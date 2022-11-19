@@ -1,7 +1,6 @@
 package db
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -58,12 +57,6 @@ type DBHandle struct {
 	dbFilename string
 }
 
-func encodeUint64(procID uint64) []byte {
-	keyBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(keyBytes, procID)
-	return keyBytes
-}
-
 func encodeJSON[T any](proc T) ([]byte, error) {
 	return json.Marshal(proc)
 }
@@ -93,7 +86,7 @@ func (handle DBHandle) Update(statement func(DB) error) error {
 	}
 
 	res, err := decodeJSON[DB](db)
-	if err := json.Unmarshal(db, &res); err != nil {
+	if err != nil {
 		return fmt.Errorf("can't decode db file: %w", err)
 	}
 
@@ -120,7 +113,7 @@ func (handle DBHandle) View(statement func(DB) error) error {
 	}
 
 	res, err := decodeJSON[DB](db)
-	if err := json.Unmarshal(db, &res); err != nil {
+	if err != nil {
 		return fmt.Errorf("can't decode db file: %w", err)
 	}
 
@@ -217,17 +210,21 @@ func (handle DBHandle) Delete(procIDs []uint64) error {
 }
 
 func (handle DBHandle) Init() error {
+	_, err := os.Stat(handle.dbFilename)
+	if err == nil {
+		return nil
+	} else if err != os.ErrNotExist {
+		return fmt.Errorf("os.Stat failed: %w", err)
+	}
+
 	file, err := os.Create(handle.dbFilename)
 	if err != nil {
 		return fmt.Errorf("creating db failed: %w", err)
 	}
+	defer file.Close()
 
 	if _, err := file.WriteString("{}"); err != nil {
 		return fmt.Errorf("seeding db failed: %w", err)
-	}
-
-	if err := file.Close(); err != nil {
-		return fmt.Errorf("closing db file after creating failed: %w", err)
 	}
 
 	return nil
