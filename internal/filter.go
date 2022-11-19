@@ -76,9 +76,9 @@ func WithStatuses(args []string) filterOption {
 	}
 }
 
-func WithIDs(args []uint64) filterOption {
+func WithIDs[T uint64](args []T) filterOption {
 	return func(cfg *filterConfig) {
-		cfg.filter.IDs = append(cfg.filter.IDs, lo.Map(args, func(id uint64, _ int) db.ProcID {
+		cfg.filter.IDs = append(cfg.filter.IDs, lo.Map(args, func(id T, _ int) db.ProcID {
 			return db.ProcID(id)
 		})...)
 	}
@@ -88,7 +88,7 @@ func WithAllIfNoFilters(cfg *filterConfig) {
 	cfg.allIfNoFilters = true
 }
 
-func FilterProcs(procs db.DB, opts ...filterOption) []db.ProcID {
+func FilterProcs[T ~uint64](procs db.DB, opts ...filterOption) []T {
 	cfg := filterConfig{}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -100,14 +100,16 @@ func FilterProcs(procs db.DB, opts ...filterOption) []db.ProcID {
 		len(cfg.filter.Statuses) == 0 &&
 		len(cfg.filter.IDs) == 0 {
 		if cfg.allIfNoFilters {
-			return lo.Keys(procs)
+			return lo.Map(lo.Keys(procs), func(id db.ProcID, _ int) T {
+				return T(id)
+			})
 		} else {
 			return nil
 		}
 	}
 
-	return FilterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (db.ProcID, bool) {
-		return procID, lo.Contains(cfg.filter.Names, proc.Name) ||
+	return FilterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (T, bool) {
+		return T(procID), lo.Contains(cfg.filter.Names, proc.Name) ||
 			lo.Some(cfg.filter.Tags, proc.Tags) ||
 			lo.Contains(cfg.filter.Statuses, proc.Status.Status) ||
 			lo.Contains(cfg.filter.IDs, proc.ID)

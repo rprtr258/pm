@@ -7,7 +7,6 @@ import (
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -78,15 +77,13 @@ func stop(
 		return err
 	}
 
-	ids := lo.Map(internal.FilterProcs(
+	ids := internal.FilterProcs[uint64](
 		resp,
 		internal.WithGeneric(genericFilters),
 		internal.WithIDs(idFilters),
 		internal.WithNames(nameFilters),
 		internal.WithTags(tagFilters),
-	), func(id db.ProcID, _ int) uint64 {
-		return uint64(id)
-	})
+	)
 
 	if _, err := client.Stop(ctx, &api.IDs{Ids: ids}); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)

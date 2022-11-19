@@ -104,7 +104,7 @@ func list(
 		return err
 	}
 
-	procIDsToShow := internal.FilterProcs(
+	procIDsToShow := internal.FilterProcs[db.ProcID](
 		resp,
 		internal.WithAllIfNoFilters,
 		internal.WithGeneric(genericFilters),
