@@ -2,11 +2,12 @@ package internal
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal"
+	"github.com/rprtr258/pm/internal/db"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -49,38 +50,43 @@ var StopCmd = &cli.Command{
 			Name:  "id",
 			Usage: "id(s) of process(es) to stop",
 		},
-		&cli.StringSliceFlag{
-			Name:  "status",
-			Usage: "status(es) of process(es) to stop",
-		},
 	},
 	Action: func(ctx *cli.Context) error {
-		args := ctx.Args().Slice()
-		if len(args) < 1 {
-			return errors.New("what to stop expected")
-		}
-
 		return stop(
 			ctx.Context,
-			args,
+			ctx.Args().Slice(),
+			ctx.StringSlice("name"),
+			ctx.StringSlice("tags"),
+			ctx.Uint64Slice("id"),
 		)
 	},
 }
 
-func stop(ctx context.Context, args []string) error {
+func stop(
+	ctx context.Context,
+	genericFilters, nameFilters, tagFilters []string,
+	idFilters []uint64,
+) error {
 	client, deferFunc, err := NewGrpcClient()
 	if err != nil {
 		return err
 	}
 	defer deferErr(deferFunc)
 
-	ids := make([]uint64, len(args))
-	for i, arg := range args {
-		ids[i], err = strconv.ParseUint(arg, 10, 64)
-		if err != nil {
-			return fmt.Errorf("incorrect id=%s: %w", arg, err)
-		}
+	resp, err := db.New(_daemonDBFile).List()
+	if err != nil {
+		return err
 	}
+
+	ids := lo.Map(internal.FilterProcs(
+		resp,
+		internal.WithGeneric(genericFilters),
+		internal.WithIDs(idFilters),
+		internal.WithNames(nameFilters),
+		internal.WithTags(tagFilters),
+	), func(id db.ProcID, _ int) uint64 {
+		return uint64(id)
+	})
 
 	if _, err := client.Stop(ctx, &api.IDs{Ids: ids}); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)

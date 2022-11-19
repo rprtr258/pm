@@ -9,8 +9,7 @@ import (
 	"github.com/rprtr258/pm/internal/db"
 )
 
-type Filter struct {
-	Generic  []string
+type filter struct {
 	Names    []string
 	Tags     []string
 	Statuses []db.ProcStatus
@@ -18,15 +17,26 @@ type Filter struct {
 }
 
 type filterConfig struct {
-	filter         Filter
+	filter         filter
 	allIfNoFilters bool
 }
 
 type filterOption func(*filterConfig)
 
 func WithGeneric(args []string) filterOption {
+	ids := lo.FilterMap(args, func(id string, _ int) (db.ProcID, bool) {
+		procID, err := strconv.ParseUint(id, 10, 64)
+		if err != nil {
+			return 0, false
+		}
+
+		return db.ProcID(procID), true
+	})
+
 	return func(cfg *filterConfig) {
-		cfg.filter.Generic = append(cfg.filter.Generic, args...)
+		cfg.filter.IDs = append(cfg.filter.IDs, ids...)
+		cfg.filter.Names = append(cfg.filter.Names, args...)
+		cfg.filter.Tags = append(cfg.filter.Tags, args...)
 	}
 }
 
@@ -78,7 +88,6 @@ func WithAllIfNoFilters(cfg *filterConfig) {
 	cfg.allIfNoFilters = true
 }
 
-// TODO: options api
 func FilterProcs(procs db.DB, opts ...filterOption) []db.ProcID {
 	cfg := filterConfig{}
 	for _, opt := range opts {
@@ -86,8 +95,7 @@ func FilterProcs(procs db.DB, opts ...filterOption) []db.ProcID {
 	}
 
 	// if no filters, return all
-	if len(cfg.filter.Generic) == 0 &&
-		len(cfg.filter.Names) == 0 &&
+	if len(cfg.filter.Names) == 0 &&
 		len(cfg.filter.Tags) == 0 &&
 		len(cfg.filter.Statuses) == 0 &&
 		len(cfg.filter.IDs) == 0 {
@@ -98,22 +106,10 @@ func FilterProcs(procs db.DB, opts ...filterOption) []db.ProcID {
 		}
 	}
 
-	genericIDs := lo.FilterMap(cfg.filter.Generic, func(filter string, _ int) (db.ProcID, bool) {
-		id, err := strconv.ParseUint(filter, 10, 64)
-		if err != nil {
-			return 0, false
-		}
-
-		return db.ProcID(id), true
-	})
-
 	return FilterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (db.ProcID, bool) {
 		return procID, lo.Contains(cfg.filter.Names, proc.Name) ||
 			lo.Some(cfg.filter.Tags, proc.Tags) ||
 			lo.Contains(cfg.filter.Statuses, proc.Status.Status) ||
-			lo.Contains(cfg.filter.IDs, proc.ID) ||
-			lo.Contains(cfg.filter.Generic, proc.Name) ||
-			lo.Some(cfg.filter.Generic, proc.Tags) ||
-			lo.Contains(genericIDs, proc.ID)
+			lo.Contains(cfg.filter.IDs, proc.ID)
 	})
 }
