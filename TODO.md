@@ -17,6 +17,7 @@
 
 ### Features
 
+- [ ] daemon method to update statuses in db
 - [ ] administrative tasks for processes: pull repo, seed db, etc.  
 - [ ] config file with process definitions  
 - [ ] run specific processes from config  
