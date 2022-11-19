@@ -83,45 +83,21 @@ var ListCmd = &cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		statuses, err := internal.MapErr(ctx.StringSlice("status"), func(status string, _ int) (db.ProcStatus, error) {
-			switch status {
-			case "invalid":
-				return db.StatusInvalid, nil
-			case "starting":
-				return db.StatusStarting, nil
-			case "running":
-				return db.StatusRunning, nil
-			case "stopped":
-				return db.StatusStopped, nil
-			case "errored":
-				return db.StatusErrored, nil
-			default:
-				return lo.Empty[db.ProcStatus](), fmt.Errorf("unknown status %q", status)
-			}
-		})
-		if err != nil {
-			return fmt.Errorf("invalid status provided: %w", err)
-		}
-
 		return list(
 			ctx.Args().Slice(),
-			ctx.Bool("compact"),
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
-			statuses,
-			lo.Map(ctx.Uint64Slice("id"), func(id uint64, _ int) db.ProcID {
-				return db.ProcID(id)
-			}),
+			ctx.StringSlice("status"),
+			ctx.Uint64Slice("id"),
+			ctx.Bool("compact"),
 		)
 	},
 }
 
 func list(
-	args []string,
+	genericFilters, nameFilters, tagFilters, statusFilters []string,
+	idFilters []uint64,
 	compact bool,
-	names, tags []string,
-	statuses []db.ProcStatus,
-	ids []db.ProcID,
 ) error {
 	resp, err := db.New(_daemonDBFile).List()
 	if err != nil {
@@ -130,11 +106,12 @@ func list(
 
 	procIDsToShow := internal.FilterProcs(
 		resp,
-		args,
-		names,
-		tags,
-		statuses,
-		ids,
+		internal.WithAllIfNoFilters,
+		internal.WithGeneric(genericFilters),
+		internal.WithIDs(idFilters),
+		internal.WithNames(nameFilters),
+		internal.WithStatuses(statusFilters),
+		internal.WithTags(tagFilters),
 	)
 
 	procsToShow := internal.MapDict(procIDsToShow, resp)
