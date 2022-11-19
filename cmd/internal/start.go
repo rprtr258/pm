@@ -1,12 +1,14 @@
 package internal
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
 
 	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
@@ -35,7 +37,7 @@ var StartCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.StringSliceFlag{
-			Name:  "tags",
+			Name:  "tag",
 			Usage: "assign specified tags",
 		},
 		&cli.StringFlag{
@@ -79,55 +81,70 @@ var StartCmd = &cli.Command{
 		// &cli.BoolFlag{Name:        "dockerdaemon", Usage: "for debugging purpose"},
 	},
 	Action: func(ctx *cli.Context) error {
-		client, deferFunc, err := NewGrpcClient()
-		if err != nil {
-			return err
-		}
-		defer deferErr(deferFunc)
-
-		name := ctx.String("name")
 		args := ctx.Args().Slice()
-
 		if len(args) < 1 {
 			return errors.New("command expected")
 		}
 
-		if name == "" {
-			return errors.New("name required") // TODO: remove
-		}
-
-		bashExecutable, err := exec.LookPath("bash")
-		if err != nil {
-			return fmt.Errorf("could not find bash executable: %w", err)
-		}
-
-		procData := db.ProcData{
-			Status: db.Status{
-				Status: db.StatusStarting,
-			},
-			Name:    name,
-			Cwd:     ".",
-			Tags:    lo.Uniq(append(ctx.StringSlice("tags"), "all")),
-			Command: bashExecutable,                                  // TODO: clarify
-			Args:    append([]string{"-c"}, strings.Join(args, " ")), // TODO: escape
-		}
-
-		procID, err := db.New(_daemonDBFile).AddProc(procData)
-
-		if err != nil {
-			return err
-		}
-
-		procData.ID = procID
-
-		procIDs := []uint64{uint64(procData.ID)}
-
-		if _, err := client.Start(ctx.Context, &pb.IDs{Ids: procIDs}); err != nil {
-			return fmt.Errorf("client.Start failed: %w", err)
-		}
-
-		fmt.Println(procData.ID)
-
-		return nil
+		name := ctx.String("name")
+		return run(
+			ctx.Context,
+			args,
+			lo.If(name != "", internal.Valid(name)).
+				Else(internal.Invalid[string]()),
+			ctx.StringSlice("tag"),
+		)
 	},
+}
+
+func run(
+	ctx context.Context,
+	args []string,
+	name internal.Optional[string],
+	tags []string,
+) error {
+	client, deferFunc, err := NewGrpcClient()
+	if err != nil {
+		return err
+	}
+	defer deferErr(deferFunc)
+
+	if !name.Valid {
+		return errors.New("name required") // TODO: remove
+	}
+
+	bashExecutable, err := exec.LookPath("bash")
+	if err != nil {
+		return fmt.Errorf("could not find bash executable: %w", err)
+	}
+
+	procData := db.ProcData{
+		Status: db.Status{
+			Status: db.StatusStarting,
+		},
+		Name:    name.Value,
+		Cwd:     ".",
+		Tags:    lo.Uniq(append(tags, "all")),
+		Command: bashExecutable,                                  // TODO: clarify
+		Args:    append([]string{"-c"}, strings.Join(args, " ")), // TODO: escape
+	}
+
+	procID, err := db.New(_daemonDBFile).AddProc(procData)
+
+	if err != nil {
+		return err
+	}
+
+	procData.ID = procID
+
+	procIDs := []uint64{uint64(procData.ID)}
+
+	if _, err := client.Start(ctx, &pb.IDs{Ids: procIDs}); err != nil {
+		return fmt.Errorf("client.Start failed: %w", err)
+	}
+
+	fmt.Println(procData.ID)
+
+	return nil
+
 }
