@@ -28,7 +28,7 @@ var StartCmd = &cli.Command{
 	//         string config = 13; // all procs described in config
 	//     };
 	ArgsUsage: "cmd args...",
-	Usage:     "start and daemonize an app",
+	Usage:     "start process and manage it",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "name",
@@ -87,7 +87,7 @@ var StartCmd = &cli.Command{
 		}
 
 		name := ctx.String("name")
-		return run(
+		return start(
 			ctx.Context,
 			args,
 			lo.If(name != "", internal.Valid(name)).
@@ -97,7 +97,7 @@ var StartCmd = &cli.Command{
 	},
 }
 
-func run(
+func start(
 	ctx context.Context,
 	args []string,
 	name internal.Optional[string],
