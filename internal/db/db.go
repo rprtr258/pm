@@ -217,7 +217,19 @@ func (handle DBHandle) Delete(procIDs []uint64) error {
 }
 
 func (handle DBHandle) Init() error {
-	// TODO: any seeding?
+	file, err := os.Create(handle.dbFilename)
+	if err != nil {
+		return fmt.Errorf("creating db failed: %w", err)
+	}
+
+	if _, err := file.WriteString("{}"); err != nil {
+		return fmt.Errorf("seeding db failed: %w", err)
+	}
+
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("closing db file after creating failed: %w", err)
+	}
+
 	return nil
 }
 
