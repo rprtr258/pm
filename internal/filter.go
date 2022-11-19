@@ -32,7 +32,7 @@ func FilterProcs(
 		return db.ProcID(id), true
 	})
 
-	return filterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (db.ProcID, bool) {
+	return FilterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (db.ProcID, bool) {
 		return procID, lo.Contains(names, proc.Name) ||
 			lo.Some(tags, proc.Tags) ||
 			lo.Contains(statuses, proc.Status.Status) ||
@@ -41,18 +41,4 @@ func FilterProcs(
 			lo.Some(generic, proc.Tags) ||
 			lo.Contains(genericIDs, proc.ID)
 	})
-}
-
-func filterMapToSlice[K comparable, V, R any](in map[K]V, iteratee func(key K, value V) (R, bool)) []R {
-	result := make([]R, 0, len(in))
-
-	for k, v := range in {
-		y, ok := iteratee(k, v)
-		if !ok {
-			continue
-		}
-		result = append(result, y)
-	}
-
-	return result
 }

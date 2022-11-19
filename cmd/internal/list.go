@@ -66,7 +66,10 @@ var ListCmd = &cli.Command{
 		// },
 	},
 	Action: func(ctx *cli.Context) error {
-		return list(ctx.Args().Slice(), ctx.Bool("compact"))
+		return list(
+			ctx.Args().Slice(),
+			ctx.Bool("compact"),
+		)
 	},
 }
 
@@ -85,7 +88,7 @@ func list(args []string, compact bool) error {
 		[]db.ProcID{},
 	)
 
-	procsToShow := mapDict(procIDsToShow, resp)
+	procsToShow := internal.MapDict(procIDsToShow, resp)
 	sort.Slice(procsToShow, func(i, j int) bool {
 		return procsToShow[i].ID < procsToShow[j].ID
 	})
@@ -104,7 +107,7 @@ func list(args []string, compact bool) error {
 			color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
 			proc.Name,
 			status,
-			ifNotNil(pid, strconv.Itoa),
+			internal.IfNotNil(pid, strconv.Itoa),
 			lo.If(pid == nil, "").
 				Else(uptime.Truncate(time.Second).String()),
 			fmt.Sprint(proc.Tags),
@@ -117,22 +120,4 @@ func list(args []string, compact bool) error {
 	t.Render()
 
 	return nil
-
-}
-
-func mapDict[T comparable, R any](collection []T, dict map[T]R) []R {
-	result := make([]R, len(collection))
-
-	for i, item := range collection {
-		result[i] = dict[item]
-	}
-
-	return result
-}
-
-func ifNotNil[T, R any](ptr *T, call func(T) R) R {
-	if ptr == nil {
-		return lo.Empty[R]()
-	}
-	return call(*ptr)
 }
