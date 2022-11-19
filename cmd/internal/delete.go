@@ -56,7 +56,9 @@ func delete(
 	}
 	defer deferErr(deferFunc)
 
-	resp, err := db.New(_daemonDBFile).List()
+	dbHandle := db.New(_daemonDBFile)
+
+	resp, err := dbHandle.List()
 	if err != nil {
 		return err
 	}
@@ -75,7 +77,7 @@ func delete(
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
 
-	if err := db.New(_daemonDBFile).Delete(procIDs); err != nil {
+	if err := dbHandle.Delete(procIDs); err != nil {
 		return err // TODO: add errs descriptions, loggings
 	}
 
