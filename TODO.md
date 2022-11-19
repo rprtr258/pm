@@ -9,6 +9,7 @@
 
 ### Bugfixes
 
+- [ ] daemon start leaves pm.pid empty
 - [ ] delete cmd must also delete log files  
 - [ ] fix not showing error on failed start tests/main.go second time, collecting child zombies  
 - [ ] fix someone holding $home/pm.pid file on daemon restart  

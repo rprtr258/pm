@@ -1,12 +1,12 @@
 package db
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
-	"github.com/dgraph-io/badger/v3"
 	"github.com/samber/lo"
 )
 
@@ -30,6 +30,8 @@ type Status struct {
 }
 
 type ProcID uint64
+
+type DB map[ProcID]ProcData
 
 // TODO: implement String()
 type ProcData struct {
@@ -55,45 +57,20 @@ type DBHandle struct {
 	dbFilename string
 }
 
-func encodeUint64(procID uint64) []byte {
-	keyBytes := make([]byte, 8)
-	binary.BigEndian.PutUint64(keyBytes, procID)
-	return keyBytes
-}
-
 func encodeJSON[T any](proc T) ([]byte, error) {
 	return json.Marshal(proc)
 }
 
-func decodeJSON[T any](item *badger.Item) (T, error) {
+func decodeJSON[T any](data []byte) (T, error) {
 	var res T
-	if err := item.Value(func(valueBuffer []byte) error {
-		if err := json.Unmarshal(valueBuffer, &res); err != nil {
-			return fmt.Errorf("failed decoding value=%v: %w", valueBuffer, err)
-		}
-		return nil
-	}); err != nil {
-		return lo.Empty[T](), err
+	if err := json.Unmarshal(data, &res); err != nil {
+		return lo.Empty[T](), fmt.Errorf("failed decoding: %w", err)
 	}
 
 	return res, nil
 }
 
 // TODO: serialize/deserialize protobuffers
-func putProcMetadata(tx *badger.Txn, procID uint64, value ProcData) error {
-	keyBytes := encodeUint64(procID)
-
-	valueBytes, err := encodeJSON(value)
-	if err != nil {
-		return err
-	}
-
-	if err := tx.Set(keyBytes, valueBytes); err != nil {
-		return fmt.Errorf("tx.Set failed: %w", err)
-	}
-
-	return nil
-}
 
 // TODO: must call db.Close after this
 func New(dbFile string) DBHandle {
@@ -102,50 +79,62 @@ func New(dbFile string) DBHandle {
 	}
 }
 
-func (handle DBHandle) Update(statement func(*badger.Txn) error) error {
-	// TODO: in dev,daemon change log level
-	db, err := badger.Open(badger.DefaultOptions(handle.dbFilename).WithLoggingLevel(badger.ERROR))
+func (handle DBHandle) Update(statement func(DB) error) error {
+	db, err := os.ReadFile(handle.dbFilename)
 	if err != nil {
-		return fmt.Errorf("bbolt.Open failed: %w", err)
+		return fmt.Errorf("os.ReadFile failed: %w", err)
 	}
-	defer db.Close()
 
-	return db.Update(statement)
+	res, err := decodeJSON[DB](db)
+	if err != nil {
+		return fmt.Errorf("can't decode db file: %w", err)
+	}
+
+	if err := statement(res); err != nil {
+		return fmt.Errorf("update failed: %w", err)
+	}
+
+	toWrite, err := encodeJSON(res)
+	if err != nil {
+		return fmt.Errorf("update failed: %w", err)
+	}
+
+	if err := os.WriteFile(handle.dbFilename, toWrite, 0o640); err != nil {
+		return fmt.Errorf("database write failed: %w", err)
+	}
+
+	return nil
 }
 
-func (handle DBHandle) View(statement func(*badger.Txn) error) error {
-	db, err := badger.Open(badger.DefaultOptions(handle.dbFilename).WithLoggingLevel(badger.ERROR))
+func (handle DBHandle) View(statement func(DB) error) error {
+	db, err := os.ReadFile(handle.dbFilename)
 	if err != nil {
-		return fmt.Errorf("bbolt.Open failed: %w", err)
+		return fmt.Errorf("os.ReadFile failed: %w", err)
 	}
-	defer db.Close()
 
-	return db.View(statement)
+	res, err := decodeJSON[DB](db)
+	if err != nil {
+		return fmt.Errorf("can't decode db file: %w", err)
+	}
+
+	return statement(res)
 }
 
 func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 	var newProcID uint64
 
-	err := handle.Update(func(tx *badger.Txn) error {
-		procIDs := map[uint64]struct{}{}
-		func() {
-			it := tx.NewIterator(badger.DefaultIteratorOptions)
-			defer it.Close()
-
-			for it.Rewind(); it.Valid(); it.Next() {
-				procID := binary.BigEndian.Uint64(it.Item().Key())
-				procIDs[procID] = struct{}{}
+	err := handle.Update(func(db DB) error {
+		newProcID := ProcID(0)
+		for {
+			if _, ok := db[newProcID]; !ok {
+				break
 			}
-		}()
-
-		newProcID = mex(procIDs)
+			newProcID++
+		}
 
 		// TODO: remove mutation?
 		metadata.ID = ProcID(newProcID)
-
-		if err := putProcMetadata(tx, newProcID, metadata); err != nil {
-			return err
-		}
+		db[newProcID] = metadata
 
 		return nil
 	})
@@ -158,27 +147,16 @@ func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 }
 
 func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
-	var res []ProcData
+	res := make([]ProcData, 0, len(ids))
 
-	if err := handle.View(func(tx *badger.Txn) error {
-		var err error
-		res, err = MapErr(ids, func(procID ProcID, _ int) (ProcData, error) {
-			keyBuffer := encodeUint64(uint64(procID))
-
-			item, err := tx.Get(keyBuffer)
-			if err != nil {
-				return ProcData{}, fmt.Errorf("failed getting id=%d: %w", procID, err)
+	if err := handle.View(func(db DB) error {
+		for _, procID := range ids {
+			proc, ok := db[procID]
+			if !ok {
+				log.Printf("[WARN] can't find proc by id %d\n", procID)
 			}
 
-			procData, err := decodeJSON[ProcData](item)
-			if err != nil {
-				return ProcData{}, fmt.Errorf("decoding procID=%d failed: %w", procID, err)
-			}
-
-			return procData, nil
-		})
-		if err != nil {
-			return fmt.Errorf("scanning failed: %w", err)
+			res = append(res, proc)
 		}
 
 		return nil
@@ -192,21 +170,8 @@ func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 func (handle DBHandle) List() (map[ProcID]ProcData, error) {
 	res := map[ProcID]ProcData{}
 
-	if err := handle.View(func(tx *badger.Txn) error {
-		it := tx.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-
-			procData, err := decodeJSON[ProcData](item)
-			if err != nil {
-				return err
-			}
-
-			res[procData.ID] = procData
-		}
-
+	if err := handle.View(func(db DB) error {
+		res = db
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("db.List failed: %w", err)
@@ -216,43 +181,28 @@ func (handle DBHandle) List() (map[ProcID]ProcData, error) {
 }
 
 func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) error {
-	return handle.Update(func(tx *badger.Txn) error {
-		key := encodeUint64(uint64(procID))
-
-		item, err := tx.Get(key)
-		if err != nil {
-			return fmt.Errorf("reading procID=%v failed: %w", procID, err)
+	return handle.Update(func(db DB) error {
+		procData, ok := db[procID]
+		if !ok {
+			return fmt.Errorf("procID=%d not found", procID)
 		}
-
-		var procData ProcData
-		item.Value(func(valueBuffer []byte) error {
-			return json.Unmarshal(valueBuffer, &procData)
-		})
 
 		// TODO: remove mutation?
 		procData.Status = newStatus
-
-		newValueBytes, err := encodeJSON(procData)
-		if err != nil {
-			return err
-		}
-
-		if err := tx.Set(key, newValueBytes); err != nil {
-			return fmt.Errorf("writing procID=%v failed: %w", procID, err)
-		}
+		db[procID] = procData
 
 		return nil
 	})
 }
 
 func (handle DBHandle) Delete(procIDs []uint64) error {
-	return handle.Update(func(tx *badger.Txn) error {
+	return handle.Update(func(db DB) error {
 		for _, procID := range procIDs {
-			key := encodeUint64(procID)
-
-			if err := tx.Delete(key); err != nil {
-				return fmt.Errorf("deleting procID=%d failed: %w", procID, err)
+			if _, ok := db[ProcID(procID)]; !ok {
+				log.Printf("[WARN] procID=%d not found\n", procID)
 			}
+
+			delete(db, ProcID(procID))
 		}
 
 		return nil
@@ -260,17 +210,24 @@ func (handle DBHandle) Delete(procIDs []uint64) error {
 }
 
 func (handle DBHandle) Init() error {
-	// TODO: any seeding?
-	return nil
-}
-
-// mex - find (m)inimal number (ex)cluded from set
-func mex(set map[uint64]struct{}) uint64 {
-	for i := uint64(0); ; i++ {
-		if _, ok := set[i]; !ok {
-			return i
-		}
+	_, err := os.Stat(handle.dbFilename)
+	if err == nil {
+		return nil
+	} else if err != os.ErrNotExist {
+		return fmt.Errorf("os.Stat failed: %w", err)
 	}
+
+	file, err := os.Create(handle.dbFilename)
+	if err != nil {
+		return fmt.Errorf("creating db failed: %w", err)
+	}
+	defer file.Close()
+
+	if _, err := file.WriteString("{}"); err != nil {
+		return fmt.Errorf("seeding db failed: %w", err)
+	}
+
+	return nil
 }
 
 // MapErr - like lo.Map but returns first error occured
