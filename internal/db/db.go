@@ -121,10 +121,9 @@ func (handle DBHandle) View(statement func(DB) error) error {
 }
 
 func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
-	var newProcID uint64
+	newProcID := ProcID(0)
 
 	err := handle.Update(func(db DB) error {
-		newProcID := ProcID(0)
 		for {
 			if _, ok := db[newProcID]; !ok {
 				break

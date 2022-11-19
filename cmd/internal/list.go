@@ -50,69 +50,74 @@ var ListCmd = &cli.Command{
 			Aliases: []string{"m"},
 			Usage:   "display a compacted list without formatting",
 		},
-		&cli.BoolFlag{
-			Name:  "sort",
-			Usage: "sort <id|name|pid>:<inc|dec> sort process according to field value",
-		},
+		// &cli.BoolFlag{
+		// 	Name:  "sort",
+		// 	Usage: "sort <id|name|pid>:<inc|dec> sort process according to field value",
+		// },
 		&cli.BoolFlag{
 			Name:  "compact",
 			Usage: "show compact table",
 			Value: false,
 		},
-		&cli.StringFlag{
-			Name:    "format",
-			Aliases: []string{"f"},
-			Usage:   "Go template string to use for formatting",
-		},
+		// &cli.StringFlag{
+		// 	Name:    "format",
+		// 	Aliases: []string{"f"},
+		// 	Usage:   "Go template string to use for formatting",
+		// },
 	},
 	Action: func(ctx *cli.Context) error {
-		resp, err := db.New(_daemonDBFile).List()
-		if err != nil {
-			return err
-		}
-
-		procIDsToShow := internal.FilterProcs(
-			resp,
-			ctx.Args().Slice(),
-			[]string{},
-			[]string{},
-			[]db.ProcStatus{},
-			[]db.ProcID{},
-		)
-
-		procsToShow := mapDict(procIDsToShow, resp)
-		sort.Slice(procsToShow, func(i, j int) bool {
-			return procsToShow[i].ID < procsToShow[j].ID
-		})
-
-		t := table.New(os.Stdout)
-		t.SetRowLines(!ctx.Bool("compact"))
-		t.SetDividers(table.UnicodeRoundedDividers)
-		t.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
-		t.SetHeaderStyle(table.StyleBold)
-		t.SetLineStyle(table.StyleDim)
-
-		// TODO: sort
-		for _, proc := range procsToShow {
-			status, pid, uptime := mapStatus(proc.Status)
-			t.AddRow(
-				color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
-				proc.Name,
-				status,
-				ifNotNil(pid, strconv.Itoa),
-				lo.If(pid == nil, "").
-					Else(uptime.Truncate(time.Second).String()),
-				fmt.Sprint(proc.Tags),
-				fmt.Sprint(proc.Status.Cpu),
-				fmt.Sprint(proc.Status.Memory),
-				fmt.Sprintf("%s %s", proc.Command, strings.Join(proc.Args, " ")), // TODO: escape args
-			)
-		}
-
-		t.Render()
-
-		return nil
+		return list(ctx.Args().Slice(), ctx.Bool("compact"))
 	},
+}
+
+func list(args []string, compact bool) error {
+	resp, err := db.New(_daemonDBFile).List()
+	if err != nil {
+		return err
+	}
+
+	procIDsToShow := internal.FilterProcs(
+		resp,
+		args,
+		[]string{},
+		[]string{},
+		[]db.ProcStatus{},
+		[]db.ProcID{},
+	)
+
+	procsToShow := mapDict(procIDsToShow, resp)
+	sort.Slice(procsToShow, func(i, j int) bool {
+		return procsToShow[i].ID < procsToShow[j].ID
+	})
+
+	t := table.New(os.Stdout)
+	t.SetRowLines(!compact)
+	t.SetDividers(table.UnicodeRoundedDividers)
+	t.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
+	t.SetHeaderStyle(table.StyleBold)
+	t.SetLineStyle(table.StyleDim)
+
+	// TODO: sort
+	for _, proc := range procsToShow {
+		status, pid, uptime := mapStatus(proc.Status)
+		t.AddRow(
+			color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
+			proc.Name,
+			status,
+			ifNotNil(pid, strconv.Itoa),
+			lo.If(pid == nil, "").
+				Else(uptime.Truncate(time.Second).String()),
+			fmt.Sprint(proc.Tags),
+			fmt.Sprint(proc.Status.Cpu),
+			fmt.Sprint(proc.Status.Memory),
+			fmt.Sprintf("%s %s", proc.Command, strings.Join(proc.Args, " ")), // TODO: escape args
+		)
+	}
+
+	t.Render()
+
+	return nil
+
 }
 
 func mapDict[T comparable, R any](collection []T, dict map[T]R) []R {
