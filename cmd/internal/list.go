@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
+	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
 )
 
@@ -48,97 +50,99 @@ var ListCmd = &cli.Command{
 			Aliases: []string{"m"},
 			Usage:   "display a compacted list without formatting",
 		},
-		&cli.BoolFlag{
-			Name:  "sort",
-			Usage: "sort <id|name|pid>:<inc|dec> sort process according to field value",
-		},
+		// &cli.BoolFlag{
+		// 	Name:  "sort",
+		// 	Usage: "sort <id|name|pid>:<inc|dec> sort process according to field value",
+		// },
 		&cli.BoolFlag{
 			Name:  "compact",
 			Usage: "show compact table",
 			Value: false,
 		},
-		&cli.StringFlag{
-			Name:    "format",
-			Aliases: []string{"f"},
-			Usage:   "Go template string to use for formatting",
+		// &cli.StringFlag{
+		// 	Name:    "format",
+		// 	Aliases: []string{"f"},
+		// 	Usage:   "Go template string to use for formatting",
+		// },
+		&cli.StringSliceFlag{
+			Name:  "name",
+			Usage: "name(s) of process(es) to list",
+		},
+		&cli.StringSliceFlag{
+			Name:  "tag",
+			Usage: "tag(s) of process(es) to list",
+		},
+		&cli.Uint64SliceFlag{
+			Name:  "id",
+			Usage: "id(s) of process(es) to list",
+		},
+		&cli.StringSliceFlag{
+			Name:  "status",
+			Usage: "status(es) of process(es) to list",
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		resp, err := db.New(_daemonDBFile).List()
-		if err != nil {
-			return err
-		}
-
-		procsToShow := filterProcs(
-			resp,
+		return list(
 			ctx.Args().Slice(),
-			[]string{},
-			[]string{},
-			[]db.ProcStatus{},
-			[]db.ProcID{},
+			ctx.StringSlice("name"),
+			ctx.StringSlice("tags"),
+			ctx.StringSlice("status"),
+			ctx.Uint64Slice("id"),
+			ctx.Bool("compact"),
 		)
-
-		t := table.New(os.Stdout)
-		t.SetRowLines(!ctx.Bool("compact"))
-		t.SetDividers(table.UnicodeRoundedDividers)
-		t.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
-		t.SetHeaderStyle(table.StyleBold)
-		t.SetLineStyle(table.StyleDim)
-
-		for _, item := range procsToShow {
-			status, pid, uptime := mapStatus(item.Status)
-			t.AddRow(
-				color.New(color.FgCyan, color.Bold).Sprint(item.ID),
-				item.Name,
-				status,
-				lo.If(pid == nil, "").
-					ElseF(func() string { return strconv.Itoa(*pid) }),
-				lo.If(pid == nil, "").
-					Else(uptime.Truncate(time.Second).String()),
-				fmt.Sprint(item.Tags),
-				fmt.Sprint(item.Status.Cpu),
-				fmt.Sprint(item.Status.Memory),
-				fmt.Sprintf("%s %s", item.Command, strings.Join(item.Args, " ")), // TODO: escape args
-			)
-		}
-
-		t.Render()
-
-		return nil
 	},
 }
 
-func filterProcs(
-	procs []db.ProcData,
-	generic, names, tags []string,
-	statuses []db.ProcStatus,
-	ids []db.ProcID,
-) []db.ProcData {
-	// if no filters, return all
-	if len(generic) == 0 &&
-		len(names) == 0 &&
-		len(tags) == 0 &&
-		len(statuses) == 0 &&
-		len(ids) == 0 {
-		return procs
+func list(
+	genericFilters, nameFilters, tagFilters, statusFilters []string,
+	idFilters []uint64,
+	compact bool,
+) error {
+	resp, err := db.New(_daemonDBFile).List()
+	if err != nil {
+		return err
 	}
 
-	genericIDs := lo.FilterMap(generic, func(filter string, _ int) (db.ProcID, bool) {
-		id, err := strconv.ParseUint(filter, 10, 64)
-		if err != nil {
-			return 0, false
-		}
+	procIDsToShow := internal.FilterProcs[db.ProcID](
+		resp,
+		internal.WithAllIfNoFilters,
+		internal.WithGeneric(genericFilters),
+		internal.WithIDs(idFilters),
+		internal.WithNames(nameFilters),
+		internal.WithStatuses(statusFilters),
+		internal.WithTags(tagFilters),
+	)
 
-		return db.ProcID(id), true
+	procsToShow := internal.MapDict(procIDsToShow, resp)
+	sort.Slice(procsToShow, func(i, j int) bool {
+		return procsToShow[i].ID < procsToShow[j].ID
 	})
 
-	return lo.Filter(procs, func(proc db.ProcData, _ int) bool {
-		return lo.Contains(names, proc.Name) ||
-			lo.Some(tags, proc.Tags) ||
-			lo.Contains(statuses, proc.Status.Status) ||
-			lo.Contains(ids, proc.ID) ||
-			lo.Contains(generic, proc.Name) ||
-			lo.Some(generic, proc.Tags) ||
-			lo.Contains(genericIDs, proc.ID)
-	})
+	t := table.New(os.Stdout)
+	t.SetRowLines(!compact)
+	t.SetDividers(table.UnicodeRoundedDividers)
+	t.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
+	t.SetHeaderStyle(table.StyleBold)
+	t.SetLineStyle(table.StyleDim)
+
+	// TODO: sort
+	for _, proc := range procsToShow {
+		status, pid, uptime := mapStatus(proc.Status)
+		t.AddRow(
+			color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
+			proc.Name,
+			status,
+			internal.IfNotNil(pid, strconv.Itoa),
+			lo.If(pid == nil, "").
+				Else(uptime.Truncate(time.Second).String()),
+			fmt.Sprint(proc.Tags),
+			fmt.Sprint(proc.Status.Cpu),
+			fmt.Sprint(proc.Status.Memory),
+			fmt.Sprintf("%s %s", proc.Command, strings.Join(proc.Args, " ")), // TODO: escape args
+		)
+	}
+
+	t.Render()
+
+	return nil
 }

@@ -10,7 +10,6 @@ import (
 )
 
 func main() {
-
 	app := &cli.App{
 		Name:  "pm",
 		Usage: "manage running processes",

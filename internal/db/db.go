@@ -121,10 +121,9 @@ func (handle DBHandle) View(statement func(DB) error) error {
 }
 
 func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
-	var newProcID uint64
+	newProcID := ProcID(0)
 
 	err := handle.Update(func(db DB) error {
-		newProcID := ProcID(0)
 		for {
 			if _, ok := db[newProcID]; !ok {
 				break
@@ -167,11 +166,11 @@ func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 	return res, nil
 }
 
-func (handle DBHandle) List() ([]ProcData, error) {
-	var res []ProcData
+func (handle DBHandle) List() (map[ProcID]ProcData, error) {
+	res := map[ProcID]ProcData{}
 
 	if err := handle.View(func(db DB) error {
-		res = lo.Values(db)
+		res = db
 		return nil
 	}); err != nil {
 		return nil, fmt.Errorf("db.List failed: %w", err)
@@ -228,17 +227,4 @@ func (handle DBHandle) Init() error {
 	}
 
 	return nil
-}
-
-// MapErr - like lo.Map but returns first error occured
-func MapErr[T, R any](collection []T, iteratee func(T, int) (R, error)) ([]R, error) {
-	results := make([]R, len(collection))
-	for i, item := range collection {
-		res, err := iteratee(item, i)
-		if err != nil {
-			return nil, fmt.Errorf("MapErr on i=%d: %w", i, err)
-		}
-		results[i] = res
-	}
-	return results, nil
 }
