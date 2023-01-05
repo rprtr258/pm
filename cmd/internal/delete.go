@@ -3,6 +3,8 @@ package internal
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
@@ -78,13 +80,36 @@ func delete(
 		return err // TODO: add errs descriptions, loggings
 	}
 
-	// TODO: delete log files too
-	// 	_, err := os.Stat(string(*f))
-	// 	if err != nil {
-	// 		return true
-	// 	}
-	// 	err = os.Remove(string(*f))
+	for _, procID := range procIDs {
+		if err := removeLogFiles(procID); err != nil {
+			return err
+		}
+	}
 
 	return nil
+}
 
+func removeLogFiles(procID uint64) error {
+	stdoutFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stdout", procID))
+	if err := removeFile(stdoutFilename); err != nil {
+		return err
+	}
+
+	stderrFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stderr", procID))
+	if err := removeFile(stderrFilename); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removeFile(name string) error {
+	_, err := os.Stat(name)
+	if err == os.ErrNotExist {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	return os.Remove(name)
 }

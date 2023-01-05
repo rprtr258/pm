@@ -24,6 +24,7 @@ var (
 	_daemonLogFile   = path.Join(HomeDir, "pm.log")
 	_daemonRpcSocket = path.Join(HomeDir, "rpc.sock")
 	_daemonDBFile    = path.Join(HomeDir, "pm.db")
+	_daemonLogsDir   = path.Join(HomeDir, "logs")
 
 	AllCmds []*cli.Command
 )
