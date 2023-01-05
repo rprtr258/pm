@@ -17,7 +17,7 @@ func init() {
 var DeleteCmd = &cli.Command{
 	Name:      "delete",
 	Aliases:   []string{"del", "rm"},
-	Usage:     "stop and remove process",
+	Usage:     "stop and remove process(es)",
 	ArgsUsage: "<name|id|namespace|tag|json>...",
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
