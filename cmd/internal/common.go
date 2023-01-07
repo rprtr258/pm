@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
@@ -67,8 +68,52 @@ func (c Client) Create(ctx context.Context, r *pb.ProcessOptions) (uint64, error
 	return resp.GetId(), nil
 }
 
-func (c Client) List(ctx context.Context) (*pb.ProcessesList, error) {
-	return c.client.List(ctx, &emptypb.Empty{})
+func (c Client) List(ctx context.Context) (db.DB, error) {
+	resp, err := c.client.List(ctx, &emptypb.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	return lo.SliceToMap(
+		resp.GetList(),
+		func(proc *pb.Process) (db.ProcID, db.ProcData) {
+			procID := db.ProcID(proc.GetId().GetId())
+			return procID, db.ProcData{
+				ID:      procID,
+				Name:    proc.GetName(),
+				Command: proc.GetCommand(),
+				Args:    proc.GetArgs(),
+				Status:  mapPbStatus(proc.GetStatus()),
+				Tags:    proc.GetTags(),
+				Cwd:     proc.GetCwd(),
+				Watch:   nil,
+			}
+		},
+	), nil
+}
+
+func mapPbStatus(status *pb.ProcessStatus) db.Status {
+	switch {
+	case status.GetErrored() != nil:
+		return db.Status{Status: db.StatusErrored}
+	case status.GetInvalid() != nil:
+		return db.Status{Status: db.StatusInvalid}
+	case status.GetStarting() != nil:
+		return db.Status{Status: db.StatusStarting}
+	case status.GetStopped() != nil:
+		return db.Status{Status: db.StatusStopped}
+	case status.GetRunning() != nil:
+		st := status.GetRunning()
+		return db.Status{
+			Status:    db.StatusRunning,
+			Pid:       int(st.GetPid()),
+			StartTime: st.GetStartTime().AsTime(),
+			Cpu:       st.GetCpu(),
+			Memory:    st.GetMemory(),
+		}
+	default:
+		return db.Status{Status: db.StatusInvalid}
+	}
 }
 
 func (c Client) Start(ctx context.Context, ids []uint64) error {

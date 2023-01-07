@@ -58,7 +58,7 @@ func delete(
 
 	dbHandle := db.New(_daemonDBFile)
 
-	resp, err := dbHandle.List()
+	resp, err := client.List(ctx)
 	if err != nil {
 		return err
 	}

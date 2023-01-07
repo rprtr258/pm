@@ -162,6 +162,26 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, e
 	return &emptypb.Empty{}, nil
 }
 
+func (srv *daemonServer) Create(ctx context.Context, r *pb.ProcessOptions) (*pb.ProcessID, error) {
+	procData := db.ProcData{
+		Status: db.Status{
+			Status: db.StatusStarting,
+		},
+		Name:    *r.Name,
+		Cwd:     ".",
+		Tags:    lo.Uniq(append(r.GetTags(), "all")),
+		Command: r.GetCommand(),
+		Args:    r.GetArgs(),
+	}
+
+	procID, err := db.New(srv.dbFile).AddProc(procData)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ProcessID{Id: uint64(procID)}, nil
+}
+
 func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
 	dbHandle := db.New(srv.dbFile)
 
@@ -186,26 +206,6 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 			},
 		),
 	}, nil
-}
-
-func (srv *daemonServer) Create(ctx context.Context, r *pb.ProcessOptions) (*pb.ProcessID, error) {
-	procData := db.ProcData{
-		Status: db.Status{
-			Status: db.StatusStarting,
-		},
-		Name:    *r.Name,
-		Cwd:     ".",
-		Tags:    lo.Uniq(append(r.GetTags(), "all")),
-		Command: r.GetCommand(),
-		Args:    r.GetArgs(),
-	}
-
-	procID, err := db.New(srv.dbFile).AddProc(procData)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pb.ProcessID{Id: uint64(procID)}, nil
 }
 
 func mapStatus(status db.Status) *pb.ProcessStatus {

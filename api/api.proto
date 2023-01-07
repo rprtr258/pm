@@ -13,6 +13,7 @@ service Daemon {
 
     rpc Create(ProcessOptions) returns (ProcessID);
     rpc List(google.protobuf.Empty) returns (ProcessesList);
+    rpc Delete(IDs) returns (google.protobuf.Empty);
 }
 
 message ProcessID {
