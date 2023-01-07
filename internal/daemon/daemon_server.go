@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -20,6 +21,12 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+var (
+	_userHome      = os.Getenv("HOME")
+	HomeDir        = path.Join(_userHome, ".pm")
+	_daemonLogsDir = path.Join(HomeDir, "logs")
 )
 
 // TODO: logs for daemon everywhere
@@ -231,4 +238,51 @@ func mapStatus(status db.Status) *pb.ProcessStatus {
 	default:
 		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Invalid{}}
 	}
+}
+
+func (srv *daemonServer) Delete(ctx context.Context, r *pb.IDs) (*emptypb.Empty, error) {
+	dbHandle := db.New(srv.dbFile)
+	ids := lo.Map(
+		r.GetIds(),
+		func(procID *pb.ProcessID, _ int) uint64 {
+			return procID.GetId()
+		},
+	)
+	if err := dbHandle.Delete(ids); err != nil {
+		return nil, err // TODO: add errs descriptions, loggings
+	}
+
+	// TODO: stop everything that can be stopped
+	for _, procID := range ids {
+		if err := removeLogFiles(procID); err != nil {
+			return nil, err
+		}
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func removeLogFiles(procID uint64) error {
+	stdoutFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stdout", procID))
+	if err := removeFile(stdoutFilename); err != nil {
+		return err
+	}
+
+	stderrFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stderr", procID))
+	if err := removeFile(stderrFilename); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func removeFile(name string) error {
+	_, err := os.Stat(name)
+	if err == os.ErrNotExist {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	return os.Remove(name)
 }

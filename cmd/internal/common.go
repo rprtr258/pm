@@ -116,6 +116,11 @@ func mapPbStatus(status *pb.ProcessStatus) db.Status {
 	}
 }
 
+func (c Client) Delete(ctx context.Context, ids []uint64) error {
+	_, err := c.client.Delete(ctx, mapIDs(ids))
+	return err
+}
+
 func (c Client) Start(ctx context.Context, ids []uint64) error {
 	_, err := c.client.Start(ctx, mapIDs(ids))
 	return err

@@ -3,11 +3,8 @@ package internal
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/rprtr258/pm/internal"
-	"github.com/rprtr258/pm/internal/db"
 	"github.com/urfave/cli/v2"
 )
 
@@ -56,8 +53,6 @@ func delete(
 	}
 	defer deferErr(client.Close)
 
-	dbHandle := db.New(_daemonDBFile)
-
 	resp, err := client.List(ctx)
 	if err != nil {
 		return err
@@ -75,40 +70,5 @@ func delete(
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
 
-	if err := dbHandle.Delete(procIDs); err != nil {
-		return err // TODO: add errs descriptions, loggings
-	}
-
-	for _, procID := range procIDs {
-		if err := removeLogFiles(procID); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func removeLogFiles(procID uint64) error {
-	stdoutFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stdout", procID))
-	if err := removeFile(stdoutFilename); err != nil {
-		return err
-	}
-
-	stderrFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stderr", procID))
-	if err := removeFile(stderrFilename); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func removeFile(name string) error {
-	_, err := os.Stat(name)
-	if err == os.ErrNotExist {
-		return nil
-	} else if err != nil {
-		return err
-	}
-
-	return os.Remove(name)
+	return client.Delete(ctx, procIDs)
 }
