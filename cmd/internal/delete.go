@@ -66,6 +66,13 @@ func delete(
 		internal.WithTags(tagFilters),
 	)
 
+	if len(procIDs) == 0 {
+		fmt.Println("Nothing to stop, leaving")
+		return nil
+	}
+
+	fmt.Printf("Stopping and removing: %v\n", procIDs)
+
 	if err := client.Stop(ctx, procIDs); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
