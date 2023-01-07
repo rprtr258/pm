@@ -56,14 +56,16 @@ func Kill(daemonCtx *daemon.Context, rpcSocket string) error {
 		return fmt.Errorf("searching daemon failed: %w", err)
 	}
 
-	if proc != nil {
-		for {
-			if err := proc.Kill(); err != nil {
-				if err == os.ErrProcessDone {
-					break
-				}
-				return fmt.Errorf("killing daemon process failed: %w", err)
+	if proc == nil {
+		return nil
+	}
+
+	for {
+		if err := proc.Kill(); err != nil {
+			if err == os.ErrProcessDone {
+				break
 			}
+			return fmt.Errorf("killing daemon process failed: %w", err)
 		}
 	}
 
