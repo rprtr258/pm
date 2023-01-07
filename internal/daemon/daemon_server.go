@@ -119,57 +119,62 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 // Stop - stop processes by their ids in database
 // TODO: change to sending signals
 func (srv *daemonServer) Stop(_ context.Context, req *api.IDs) (*emptypb.Empty, error) {
-	dbHandle := srv.db
-
 	procsToStop := lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) db.ProcID {
 		return db.ProcID(id.GetId())
 	})
 
-	procsWeHaveAmongRequested, err := dbHandle.GetProcs(procsToStop)
+	procsWeHaveAmongRequested, err := srv.db.GetProcs(procsToStop)
 	if err != nil {
 		return nil, fmt.Errorf("getting procs to stop from db failed: %w", err)
 	}
 
+	var merr error
 	for _, proc := range procsWeHaveAmongRequested {
-		if proc.Status.Status != db.StatusRunning {
-			// TODO: structured logging, INFO here
-			log.Printf("proc %+v was asked to be stopped, but not running\n", proc)
-			continue
-		}
+		multierr.AppendInto(&merr, srv.stop(proc))
+	}
 
-		// TODO: actually stop proc
-		process, err := os.FindProcess(proc.Status.Pid)
-		if err != nil {
-			return nil, fmt.Errorf("getting process by pid=%d failed: %w", proc.Status.Pid, err)
-		}
+	return &emptypb.Empty{}, merr
+}
 
-		// TODO: kill after timeout
-		if err := syscall.Kill(-process.Pid, syscall.SIGTERM); err != nil {
-			if errors.Is(err, os.ErrProcessDone) {
-				log.Printf("[WARN] finished process %+v with running status", proc)
-			} else {
-				return nil, fmt.Errorf("killing process with pid=%d failed: %w", process.Pid, err)
-			}
-		}
+func (srv *daemonServer) stop(proc db.ProcData) error {
+	if proc.Status.Status != db.StatusRunning {
+		// TODO: structured logging, INFO here
+		log.Printf("proc %+v was asked to be stopped, but not running\n", proc)
+		return nil
+	}
 
-		state, err := process.Wait()
-		var errno syscall.Errno
-		if err != nil {
-			if errors.As(err, &errno); errno != 10 {
-				return nil, fmt.Errorf("releasing process %+v failed: %w %#v", proc, err, spew.Sdump(err))
-			} else {
-				fmt.Printf("[INFO] process %+v is not a child", proc)
-			}
+	// TODO: actually stop proc
+	process, err := os.FindProcess(proc.Status.Pid)
+	if err != nil {
+		return fmt.Errorf("getting process by pid=%d failed: %w", proc.Status.Pid, err)
+	}
+
+	// TODO: kill after timeout
+	if err := syscall.Kill(-process.Pid, syscall.SIGTERM); err != nil {
+		if errors.Is(err, os.ErrProcessDone) {
+			log.Printf("[WARN] finished process %+v with running status", proc)
 		} else {
-			fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
-		}
-
-		if err := dbHandle.SetStatus(proc.ID, db.Status{Status: db.StatusStopped}); err != nil {
-			return nil, status.Errorf(codes.DataLoss, fmt.Errorf("updating status of process %+v failed: %w", proc, err).Error())
+			return fmt.Errorf("killing process with pid=%d failed: %w", process.Pid, err)
 		}
 	}
 
-	return &emptypb.Empty{}, nil
+	state, err := process.Wait()
+	var errno syscall.Errno
+	if err != nil {
+		if errors.As(err, &errno); errno != 10 {
+			return fmt.Errorf("releasing process %+v failed: %w %#v", proc, err, spew.Sdump(err))
+		} else {
+			fmt.Printf("[INFO] process %+v is not a child", proc)
+		}
+	} else {
+		fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
+	}
+
+	if err := srv.db.SetStatus(proc.ID, db.Status{Status: db.StatusStopped}); err != nil {
+		return status.Errorf(codes.DataLoss, fmt.Errorf("updating status of process %+v failed: %w", proc, err).Error())
+	}
+
+	return nil
 }
 
 func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*api.ProcessID, error) {
@@ -258,14 +263,14 @@ func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty
 		return nil, err // TODO: add errs descriptions, loggings
 	}
 
-	// TODO: stop everything that can be stopped
+	var merr error
 	for _, procID := range ids {
 		if err := removeLogFiles(procID); err != nil {
-			return nil, err
+			multierr.AppendInto(&merr, fmt.Errorf("couldn't delete proc #%d: %w", procID, err))
 		}
 	}
 
-	return &emptypb.Empty{}, nil
+	return &emptypb.Empty{}, merr
 }
 
 func removeLogFiles(procID uint64) error {

@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/urfave/cli/v2"
 
@@ -75,7 +76,7 @@ func delete(
 	fmt.Printf("Stopping and removing: %v\n", procIDs)
 
 	if err := client.Stop(ctx, procIDs); err != nil {
-		return fmt.Errorf("client.Stop failed: %w", err)
+		log.Println(fmt.Errorf("client.Stop failed: %w", err).Error())
 	}
 
 	return client.Delete(ctx, procIDs)
