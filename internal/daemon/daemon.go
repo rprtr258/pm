@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"google.golang.org/grpc"
@@ -14,6 +16,7 @@ import (
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
 	"github.com/rprtr258/pm/internal/go-daemon"
+	"github.com/samber/lo"
 )
 
 // TODO: fix "reborn failed: daemon: Resource temporarily unavailable" on start when
@@ -41,6 +44,53 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 	})
 
 	log.Printf("daemon started at %v", sock.Addr())
+
+	go func() {
+		c := make(chan os.Signal, 10)
+		signal.Notify(c, syscall.SIGCHLD)
+		for range c {
+			for {
+				var status syscall.WaitStatus
+				var rusage syscall.Rusage
+				pid, err := syscall.Wait4(-1, &status, 0, &rusage)
+				if pid < 0 {
+					break
+				}
+				if err != nil {
+					log.Println("waitpid failed", err.Error())
+					continue
+				}
+
+				dbStatus := lo.If(
+					status.ExitStatus() == 0,
+					db.StatusStopped,
+				).Else(
+					db.StatusErrored,
+				)
+
+				ls, err := dbHandle.List()
+				if err != nil {
+					log.Println(err.Error())
+					continue
+				}
+
+				procID, ok := lo.FindKeyBy(
+					ls,
+					func(_ db.ProcID, procData db.ProcData) bool {
+						return procData.Status.Status == db.StatusRunning &&
+							procData.Status.Pid == pid
+					},
+				)
+				if !ok {
+					continue
+				}
+
+				if err := dbHandle.SetStatus(procID, db.Status{Status: dbStatus}); err != nil {
+					log.Println(err.Error())
+				}
+			}
+		}
+	}()
 
 	if err := srv.Serve(sock); err != nil {
 		return fmt.Errorf("serve failed: %w", err)

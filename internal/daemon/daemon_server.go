@@ -93,7 +93,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 			},
 		}
 
-		process, err := os.StartProcess(proc.Command, append([]string{proc.Command}, proc.Args...), &procAttr)
+		args := append([]string{proc.Command}, proc.Args...)
+		process, err := os.StartProcess(proc.Command, args, &procAttr)
 		if err != nil {
 			if err2 := srv.db.SetStatus(proc.ID, db.Status{Status: db.StatusErrored}); err2 != nil {
 				return nil, fmt.Errorf("running failed, setting errored status failed: %w", multierr.Combine(err, err2))
