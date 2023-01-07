@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -12,7 +13,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
+	"google.golang.org/protobuf/types/known/emptypb"
 
+	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
 )
@@ -35,6 +38,30 @@ func mapStatus(status db.Status) (string, *int, time.Duration) {
 		return color.RedString("invalid(%T)", status), nil, 0
 	default:
 		return color.RedString("BROKEN(%T)", status), nil, 0
+	}
+}
+
+func mapPbStatus(status *pb.ProcessStatus) db.Status {
+	switch {
+	case status.GetErrored() != nil:
+		return db.Status{Status: db.StatusErrored}
+	case status.GetInvalid() != nil:
+		return db.Status{Status: db.StatusInvalid}
+	case status.GetStarting() != nil:
+		return db.Status{Status: db.StatusStarting}
+	case status.GetStopped() != nil:
+		return db.Status{Status: db.StatusStopped}
+	case status.GetRunning() != nil:
+		st := status.GetRunning()
+		return db.Status{
+			Status:    db.StatusRunning,
+			Pid:       int(st.GetPid()),
+			StartTime: st.GetStartTime().AsTime(),
+			Cpu:       st.GetCpu(),
+			Memory:    st.GetMemory(),
+		}
+	default:
+		return db.Status{Status: db.StatusInvalid}
 	}
 }
 
@@ -83,6 +110,7 @@ var ListCmd = &cli.Command{
 	},
 	Action: func(ctx *cli.Context) error {
 		return list(
+			ctx.Context,
 			ctx.Args().Slice(),
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
@@ -94,14 +122,38 @@ var ListCmd = &cli.Command{
 }
 
 func list(
+	ctx context.Context,
 	genericFilters, nameFilters, tagFilters, statusFilters []string,
 	idFilters []uint64,
 	compact bool,
 ) error {
-	resp, err := db.New(_daemonDBFile).List()
+	client, deferFunc, err := NewGrpcClient()
 	if err != nil {
 		return err
 	}
+	defer deferErr(deferFunc)
+
+	procs, err := client.List(ctx, &emptypb.Empty{})
+	if err != nil {
+		return err
+	}
+
+	resp := lo.SliceToMap(
+		procs.GetList(),
+		func(proc *pb.Process) (db.ProcID, db.ProcData) {
+			procID := db.ProcID(proc.GetId())
+			return procID, db.ProcData{
+				ID:      procID,
+				Name:    proc.GetName(),
+				Command: proc.GetCommand(),
+				Args:    proc.GetArgs(),
+				Status:  mapPbStatus(proc.GetStatus()),
+				Tags:    proc.GetTags(),
+				Cwd:     proc.GetCwd(),
+				Watch:   nil,
+			}
+		},
+	)
 
 	procIDsToShow := internal.FilterProcs[db.ProcID](
 		resp,
