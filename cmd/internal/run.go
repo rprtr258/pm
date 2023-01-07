@@ -7,10 +7,11 @@ import (
 	"os/exec"
 	"strings"
 
-	pb "github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
+
+	"github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal"
 )
 
 func init() {
@@ -124,7 +125,7 @@ func run(
 	}
 	defer deferErr(client.Close)
 
-	procID, err := client.Create(ctx, &pb.ProcessOptions{
+	procID, err := client.Create(ctx, &api.ProcessOptions{
 		Command: args[0],
 		Args:    args[1:],
 		Name:    name.Ptr(),

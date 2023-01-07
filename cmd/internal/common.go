@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/samber/lo"
+	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
-	"github.com/samber/lo"
-	"github.com/urfave/cli/v2"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 )
 
 type Client struct {
-	client pb.DaemonClient
+	client api.DaemonClient
 	conn   *grpc.ClientConn
 }
 
@@ -37,7 +37,7 @@ func NewGrpcClient() (Client, error) {
 	}
 
 	return Client{
-		client: pb.NewDaemonClient(conn),
+		client: api.NewDaemonClient(conn),
 		conn:   conn,
 	}, nil
 }
@@ -46,7 +46,7 @@ func (c Client) Close() error {
 	return c.conn.Close()
 }
 
-func (c Client) Create(ctx context.Context, r *pb.ProcessOptions) (uint64, error) {
+func (c Client) Create(ctx context.Context, r *api.ProcessOptions) (uint64, error) {
 	resp, err := c.client.Create(ctx, r)
 	if err != nil {
 		return 0, err
@@ -63,7 +63,7 @@ func (c Client) List(ctx context.Context) (db.DB, error) {
 
 	return lo.SliceToMap(
 		resp.GetList(),
-		func(proc *pb.Process) (db.ProcID, db.ProcData) {
+		func(proc *api.Process) (db.ProcID, db.ProcData) {
 			procID := db.ProcID(proc.GetId().GetId())
 			return procID, db.ProcData{
 				ID:      procID,
@@ -79,7 +79,7 @@ func (c Client) List(ctx context.Context) (db.DB, error) {
 	), nil
 }
 
-func mapPbStatus(status *pb.ProcessStatus) db.Status {
+func mapPbStatus(status *api.ProcessStatus) db.Status {
 	switch {
 	case status.GetErrored() != nil:
 		return db.Status{Status: db.StatusErrored}
@@ -118,12 +118,12 @@ func (c Client) Stop(ctx context.Context, ids []uint64) error {
 	return err
 }
 
-func mapIDs(ids []uint64) *pb.IDs {
-	return &pb.IDs{
+func mapIDs(ids []uint64) *api.IDs {
+	return &api.IDs{
 		Ids: lo.Map(
 			ids,
-			func(procID uint64, _ int) *pb.ProcessID {
-				return &pb.ProcessID{
+			func(procID uint64, _ int) *api.ProcessID {
+				return &api.ProcessID{
 					Id: procID,
 				}
 			},

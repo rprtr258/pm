@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rprtr258/pm/internal"
 	"github.com/urfave/cli/v2"
+
+	"github.com/rprtr258/pm/internal"
 )
 
 func init() {

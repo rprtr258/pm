@@ -7,11 +7,11 @@ import (
 	"net"
 	"os"
 
-	"github.com/rprtr258/pm/internal/go-daemon"
 	"google.golang.org/grpc"
 
-	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/pm/internal/go-daemon"
 )
 
 // TODO: fix "reborn failed: daemon: Resource temporarily unavailable" on start when
@@ -31,7 +31,7 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 	}
 
 	srv := grpc.NewServer()
-	pb.RegisterDaemonServer(srv, &daemonServer{
+	api.RegisterDaemonServer(srv, &daemonServer{
 		db:      dbHandle,
 		homeDir: homeDir,
 	})

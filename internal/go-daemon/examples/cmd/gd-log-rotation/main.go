@@ -2,11 +2,12 @@ package main
 
 import (
 	"flag"
-	"github.com/sevlyar/go-daemon"
 	"log"
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/sevlyar/go-daemon"
 )
 
 var (

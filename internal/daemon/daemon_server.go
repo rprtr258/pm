@@ -13,14 +13,15 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	pb "github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
 	"go.uber.org/multierr"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/db"
 )
 
 var (
@@ -31,15 +32,15 @@ var (
 
 // TODO: logs for daemon everywhere
 type daemonServer struct {
-	pb.UnimplementedDaemonServer
+	api.UnimplementedDaemonServer
 	db      db.DBHandle
 	homeDir string
 }
 
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
-func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	procs, err := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) db.ProcID {
+func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empty, error) {
+	procs, err := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) db.ProcID {
 		return db.ProcID(id.GetId())
 	}))
 	if err != nil {
@@ -115,10 +116,10 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 
 // Stop - stop processes by their ids in database
 // TODO: change to sending signals
-func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, error) {
+func (srv *daemonServer) Stop(_ context.Context, req *api.IDs) (*emptypb.Empty, error) {
 	dbHandle := srv.db
 
-	procsToStop := lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) db.ProcID {
+	procsToStop := lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) db.ProcID {
 		return db.ProcID(id.GetId())
 	})
 
@@ -169,7 +170,7 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, e
 	return &emptypb.Empty{}, nil
 }
 
-func (srv *daemonServer) Create(ctx context.Context, r *pb.ProcessOptions) (*pb.ProcessID, error) {
+func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*api.ProcessID, error) {
 	procData := db.ProcData{
 		Status: db.Status{
 			Status: db.StatusStarting,
@@ -186,21 +187,21 @@ func (srv *daemonServer) Create(ctx context.Context, r *pb.ProcessOptions) (*pb.
 		return nil, err
 	}
 
-	return &pb.ProcessID{Id: uint64(procID)}, nil
+	return &api.ProcessID{Id: uint64(procID)}, nil
 }
 
-func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
+func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.ProcessesList, error) {
 	list, err := srv.db.List()
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.ProcessesList{
+	return &api.ProcessesList{
 		List: lo.MapToSlice(
 			list,
-			func(id db.ProcID, proc db.ProcData) *pb.Process {
-				return &pb.Process{
-					Id:      &pb.ProcessID{Id: uint64(id)},
+			func(id db.ProcID, proc db.ProcData) *api.Process {
+				return &api.Process{
+					Id:      &api.ProcessID{Id: uint64(id)},
 					Status:  mapStatus(proc.Status),
 					Name:    proc.Name,
 					Cwd:     proc.Cwd,
@@ -213,20 +214,20 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 	}, nil
 }
 
-func mapStatus(status db.Status) *pb.ProcessStatus {
+func mapStatus(status db.Status) *api.ProcessStatus {
 	switch status.Status {
 	case db.StatusInvalid:
-		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Invalid{}}
+		return &api.ProcessStatus{Status: &api.ProcessStatus_Invalid{}}
 	case db.StatusErrored:
 		// TODO: exit status code
-		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Errored{}}
+		return &api.ProcessStatus{Status: &api.ProcessStatus_Errored{}}
 	case db.StatusStarting:
-		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Starting{}}
+		return &api.ProcessStatus{Status: &api.ProcessStatus_Starting{}}
 	case db.StatusStopped:
-		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Stopped{}}
+		return &api.ProcessStatus{Status: &api.ProcessStatus_Stopped{}}
 	case db.StatusRunning:
-		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Running{
-			Running: &pb.RunningProcessStatus{
+		return &api.ProcessStatus{Status: &api.ProcessStatus_Running{
+			Running: &api.RunningProcessStatus{
 				Pid:       int64(status.Pid),
 				StartTime: timestamppb.New(status.StartTime),
 				Cpu:       status.Cpu,
@@ -234,14 +235,14 @@ func mapStatus(status db.Status) *pb.ProcessStatus {
 			},
 		}}
 	default:
-		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Invalid{}}
+		return &api.ProcessStatus{Status: &api.ProcessStatus_Invalid{}}
 	}
 }
 
-func (srv *daemonServer) Delete(ctx context.Context, r *pb.IDs) (*emptypb.Empty, error) {
+func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty, error) {
 	ids := lo.Map(
 		r.GetIds(),
-		func(procID *pb.ProcessID, _ int) uint64 {
+		func(procID *api.ProcessID, _ int) uint64 {
 			return procID.GetId()
 		},
 	)
