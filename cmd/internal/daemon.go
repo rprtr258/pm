@@ -3,11 +3,23 @@ package internal
 import (
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 
 	pm_daemon "github.com/rprtr258/pm/internal/daemon"
 	"github.com/rprtr258/pm/internal/go-daemon"
+)
+
+var (
+	_userHome        = os.Getenv("HOME")
+	HomeDir          = filepath.Join(_userHome, ".pm")
+	_daemonPidFile   = filepath.Join(HomeDir, "pm.pid")
+	_daemonLogFile   = filepath.Join(HomeDir, "pm.log")
+	_daemonRpcSocket = filepath.Join(HomeDir, "rpc.sock")
+	_daemonLogsDir   = filepath.Join(HomeDir, "logs")
+	_daemonDBFile    = filepath.Join(HomeDir, "pm.db")
 )
 
 func init() {

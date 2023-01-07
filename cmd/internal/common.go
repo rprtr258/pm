@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
-	"path"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -18,17 +16,6 @@ import (
 )
 
 var (
-	// Processes - proc name -> pid
-	// Processes map[string]int = make(map[string]int)
-
-	_userHome        = os.Getenv("HOME")
-	HomeDir          = path.Join(_userHome, ".pm")
-	_daemonPidFile   = path.Join(HomeDir, "pm.pid")
-	_daemonLogFile   = path.Join(HomeDir, "pm.log")
-	_daemonRpcSocket = path.Join(HomeDir, "rpc.sock")
-	_daemonDBFile    = path.Join(HomeDir, "pm.db")
-	_daemonLogsDir   = path.Join(HomeDir, "logs")
-
 	AllCmds []*cli.Command
 )
 
