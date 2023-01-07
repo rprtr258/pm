@@ -25,6 +25,7 @@ const _ = grpc.SupportPackageIsVersion7
 type DaemonClient interface {
 	Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
 }
 
 type daemonClient struct {
@@ -53,12 +54,22 @@ func (c *daemonClient) Stop(ctx context.Context, in *IDs, opts ...grpc.CallOptio
 	return out, nil
 }
 
+func (c *daemonClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error) {
+	out := new(ProcessesList)
+	err := c.cc.Invoke(ctx, "/api.Daemon/List", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DaemonServer is the server API for Daemon service.
 // All implementations must embed UnimplementedDaemonServer
 // for forward compatibility
 type DaemonServer interface {
 	Start(context.Context, *IDs) (*emptypb.Empty, error)
 	Stop(context.Context, *IDs) (*emptypb.Empty, error)
+	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
 	mustEmbedUnimplementedDaemonServer()
 }
 
@@ -71,6 +82,9 @@ func (UnimplementedDaemonServer) Start(context.Context, *IDs) (*emptypb.Empty, e
 }
 func (UnimplementedDaemonServer) Stop(context.Context, *IDs) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
+}
+func (UnimplementedDaemonServer) List(context.Context, *emptypb.Empty) (*ProcessesList, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
 func (UnimplementedDaemonServer) mustEmbedUnimplementedDaemonServer() {}
 
@@ -121,6 +135,24 @@ func _Daemon_Stop_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Daemon_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DaemonServer).List(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.Daemon/List",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DaemonServer).List(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Daemon_ServiceDesc is the grpc.ServiceDesc for Daemon service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -135,6 +167,10 @@ var Daemon_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Stop",
 			Handler:    _Daemon_Stop_Handler,
+		},
+		{
+			MethodName: "List",
+			Handler:    _Daemon_List_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

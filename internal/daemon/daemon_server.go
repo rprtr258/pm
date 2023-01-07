@@ -19,6 +19,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // TODO: logs for daemon everywhere
@@ -159,4 +160,55 @@ func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, e
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
+	dbHandle := db.New(srv.dbFile)
+
+	list, err := dbHandle.List()
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ProcessesList{
+		List: lo.MapToSlice(
+			list,
+			func(id db.ProcID, proc db.ProcData) *pb.Process {
+				return &pb.Process{
+					Id:      uint64(id),
+					Status:  mapStatus(proc.Status),
+					Name:    proc.Name,
+					Cwd:     proc.Cwd,
+					Tags:    proc.Tags,
+					Command: proc.Command,
+					Args:    proc.Args,
+				}
+			},
+		),
+	}, nil
+}
+
+func mapStatus(status db.Status) *pb.ProcessStatus {
+	switch status.Status {
+	case db.StatusInvalid:
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Invalid{}}
+	case db.StatusErrored:
+		// TODO: exit status code
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Errored{}}
+	case db.StatusStarting:
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Starting{}}
+	case db.StatusStopped:
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Stopped{}}
+	case db.StatusRunning:
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Running{
+			Running: &pb.RunningProcessStatus{
+				Pid:       int64(status.Pid),
+				StartTime: timestamppb.New(status.StartTime),
+				Cpu:       status.Cpu,
+				Memory:    status.Memory,
+			},
+		}}
+	default:
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Invalid{}}
+	}
 }

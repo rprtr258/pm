@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/rprtr258/pm/api";
 
@@ -9,6 +10,39 @@ package api;
 service Daemon {
     rpc Start(IDs) returns (google.protobuf.Empty);
     rpc Stop(IDs) returns (google.protobuf.Empty);
+
+    rpc List(google.protobuf.Empty) returns (ProcessesList);
+}
+
+message ProcessesList {
+    repeated Process list = 1;
+}
+
+message Process {
+    uint64 id = 1;
+    ProcessStatus status = 2;
+    string name = 3;
+    string cwd = 4;
+    repeated string tags = 5;
+    string command = 6;
+    repeated string args = 7;
+}
+
+message ProcessStatus {
+    oneof status {
+        google.protobuf.Empty Invalid = 1;
+        google.protobuf.Empty Starting = 2;
+        RunningProcessStatus Running = 3;
+        google.protobuf.Empty Stopped = 4;
+        google.protobuf.Empty Errored = 5;
+    };
+}
+
+message RunningProcessStatus {
+    int64 pid = 1;
+    google.protobuf.Timestamp start_time = 2;
+    uint64 cpu = 3;
+    uint64 memory = 4;
 }
 
 message IDs {
