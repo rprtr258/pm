@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"os"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -30,6 +32,8 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 		return err
 	}
 
+	rand.Seed(time.Now().UnixNano())
+
 	srv := grpc.NewServer()
 	api.RegisterDaemonServer(srv, &daemonServer{
 		db:      dbHandle,
@@ -37,6 +41,7 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 	})
 
 	log.Printf("daemon started at %v", sock.Addr())
+
 	if err := srv.Serve(sock); err != nil {
 		return fmt.Errorf("serve failed: %w", err)
 	}

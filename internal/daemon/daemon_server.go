@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	petname "github.com/dustinkirkland/golang-petname"
 	"github.com/samber/lo"
 	"go.uber.org/multierr"
 	"google.golang.org/grpc/codes"
@@ -171,11 +172,13 @@ func (srv *daemonServer) Stop(_ context.Context, req *api.IDs) (*emptypb.Empty, 
 }
 
 func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*api.ProcessID, error) {
+	name := lo.IfF(r.Name != nil, r.GetName).ElseF(genName)
+
 	procData := db.ProcData{
 		Status: db.Status{
 			Status: db.StatusStarting,
 		},
-		Name:    *r.Name,
+		Name:    name,
 		Cwd:     ".",
 		Tags:    lo.Uniq(append(r.GetTags(), "all")),
 		Command: r.GetCommand(),
@@ -188,6 +191,10 @@ func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*ap
 	}
 
 	return &api.ProcessID{Id: uint64(procID)}, nil
+}
+
+func genName() string {
+	return petname.Generate(2, "-")
 }
 
 func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.ProcessesList, error) {
