@@ -51,8 +51,7 @@ func Kill(daemonCtx *daemon.Context, rpcSocket string) error {
 	}
 
 	proc, err := daemonCtx.Search()
-	// TODO: rewrite checking pid file not found error
-	if err != nil && err.Error() != "open /home/rprtr258/.pm/pm.pid: no such file or directory" {
+	if err != nil && err != os.ErrNotExist {
 		return fmt.Errorf("searching daemon failed: %w", err)
 	}
 

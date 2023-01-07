@@ -35,35 +35,7 @@ var DaemonCmd = &cli.Command{
 			Aliases: []string{"restart"},
 			Usage:   "launch daemon process",
 			Action: func(ctx *cli.Context) error {
-				// TODO: move to internal
-				// TODO: leave only flags getting & validation in cli command handlers
-				daemonCtx := &daemon.Context{
-					PidFileName: _daemonPidFile,
-					PidFilePerm: 0644,
-					LogFileName: _daemonLogFile,
-					LogFilePerm: 0640,
-					WorkDir:     "./",
-					Umask:       027,
-					Args:        []string{"pm", "daemon", "start"},
-				}
-
-				if err := pm_daemon.Kill(daemonCtx, _daemonRpcSocket); err != nil {
-					return fmt.Errorf("killing daemon failed: %w", err)
-				}
-
-				d, err := daemonCtx.Reborn()
-				if err != nil {
-					return fmt.Errorf("reborn daemon failed: %w", err)
-				}
-
-				if d != nil {
-					fmt.Println(d.Pid)
-					return daemonCtx.Release()
-				}
-
-				defer deferErr(daemonCtx.Release)
-
-				return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile, HomeDir)
+				return daemonStart()
 			},
 		},
 		{
@@ -71,27 +43,66 @@ var DaemonCmd = &cli.Command{
 			Aliases: []string{"kill"},
 			Usage:   "stop daemon process",
 			Action: func(ctx *cli.Context) error {
-				daemonCtx := &daemon.Context{
-					PidFileName: _daemonPidFile,
-					PidFilePerm: 0644,
-					LogFileName: _daemonLogFile,
-					LogFilePerm: 0640,
-					WorkDir:     "./",
-					Umask:       027,
-					Args:        []string{"pm", "daemon", "start"},
-				}
-
-				return pm_daemon.Kill(daemonCtx, _daemonRpcSocket)
+				return daemonStop()
 			},
 		},
 		{
 			Name:  "run",
 			Usage: "run daemon, DON'T USE BY HAND IF YOU DON'T KNOW WHAT YOU ARE DOING",
 			Action: func(ctx *cli.Context) error {
-				return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile, HomeDir)
+				return daemonRun()
 			},
 		},
 	},
+}
+
+func daemonStart() error {
+	// TODO: move to internal
+	daemonCtx := &daemon.Context{
+		PidFileName: _daemonPidFile,
+		PidFilePerm: 0644,
+		LogFileName: _daemonLogFile,
+		LogFilePerm: 0640,
+		WorkDir:     "./",
+		Umask:       027,
+		Args:        []string{"pm", "daemon", "start"},
+	}
+
+	if err := pm_daemon.Kill(daemonCtx, _daemonRpcSocket); err != nil {
+		return fmt.Errorf("killing daemon failed: %w", err)
+	}
+
+	d, err := daemonCtx.Reborn()
+	if err != nil {
+		return fmt.Errorf("reborn daemon failed: %w", err)
+	}
+
+	if d != nil {
+		fmt.Println(d.Pid)
+		return daemonCtx.Release()
+	}
+
+	defer deferErr(daemonCtx.Release)
+
+	return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile, HomeDir)
+}
+
+func daemonStop() error {
+	daemonCtx := &daemon.Context{
+		PidFileName: _daemonPidFile,
+		PidFilePerm: 0644,
+		LogFileName: _daemonLogFile,
+		LogFilePerm: 0640,
+		WorkDir:     "./",
+		Umask:       027,
+		Args:        []string{"pm", "daemon", "start"},
+	}
+
+	return pm_daemon.Kill(daemonCtx, _daemonRpcSocket)
+}
+
+func daemonRun() error {
+	return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile, HomeDir)
 }
 
 func deferErr(close func() error) {
