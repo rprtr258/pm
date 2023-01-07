@@ -32,8 +32,8 @@ type daemonServer struct {
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	procs, err := db.New(srv.dbFile).GetProcs(lo.Map(req.GetIds(), func(id uint64, _ int) db.ProcID {
-		return db.ProcID(id)
+	procs, err := db.New(srv.dbFile).GetProcs(lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) db.ProcID {
+		return db.ProcID(id.GetId())
 	}))
 	if err != nil {
 		return nil, fmt.Errorf("daemon.Start failed: %w", err)
@@ -111,8 +111,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, error) {
 	dbHandle := db.New(srv.dbFile)
 
-	procsToStop := lo.Map(req.GetIds(), func(id uint64, _ int) db.ProcID {
-		return db.ProcID(id)
+	procsToStop := lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) db.ProcID {
+		return db.ProcID(id.GetId())
 	})
 
 	procsWeHaveAmongRequested, err := dbHandle.GetProcs(procsToStop)
@@ -175,7 +175,7 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 			list,
 			func(id db.ProcID, proc db.ProcData) *pb.Process {
 				return &pb.Process{
-					Id:      uint64(id),
+					Id:      &pb.ProcessID{Id: uint64(id)},
 					Status:  mapStatus(proc.Status),
 					Name:    proc.Name,
 					Cwd:     proc.Cwd,
@@ -186,6 +186,26 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 			},
 		),
 	}, nil
+}
+
+func (srv *daemonServer) Create(ctx context.Context, r *pb.ProcessOptions) (*pb.ProcessID, error) {
+	procData := db.ProcData{
+		Status: db.Status{
+			Status: db.StatusStarting,
+		},
+		Name:    *r.Name,
+		Cwd:     ".",
+		Tags:    lo.Uniq(append(r.GetTags(), "all")),
+		Command: r.GetCommand(),
+		Args:    r.GetArgs(),
+	}
+
+	procID, err := db.New(srv.dbFile).AddProc(procData)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.ProcessID{Id: uint64(procID)}, nil
 }
 
 func mapStatus(status db.Status) *pb.ProcessStatus {

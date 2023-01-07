@@ -9,6 +9,7 @@ import (
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -72,7 +73,15 @@ func delete(
 		internal.WithTags(tagFilters),
 	)
 
-	if _, err := client.Stop(ctx, &api.IDs{Ids: procIDs}); err != nil {
+	req := &api.IDs{
+		Ids: lo.Map(
+			procIDs,
+			func(procID uint64, _ int) *api.ProcessID {
+				return &api.ProcessID{Id: procID}
+			},
+		),
+	}
+	if _, err := client.Stop(ctx, req); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
 

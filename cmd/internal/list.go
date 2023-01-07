@@ -141,7 +141,7 @@ func list(
 	resp := lo.SliceToMap(
 		procs.GetList(),
 		func(proc *pb.Process) (db.ProcID, db.ProcData) {
-			procID := db.ProcID(proc.GetId())
+			procID := db.ProcID(proc.GetId().GetId())
 			return procID, db.ProcData{
 				ID:      procID,
 				Name:    proc.GetName(),

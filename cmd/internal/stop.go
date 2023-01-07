@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rprtr258/pm/api"
+	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -85,7 +86,15 @@ func stop(
 		internal.WithTags(tagFilters),
 	)
 
-	if _, err := client.Stop(ctx, &api.IDs{Ids: ids}); err != nil {
+	req := &pb.IDs{
+		Ids: lo.Map(
+			ids,
+			func(procID uint64, _ int) *pb.ProcessID {
+				return &pb.ProcessID{Id: procID}
+			},
+		),
+	}
+	if _, err := client.Stop(ctx, req); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
 

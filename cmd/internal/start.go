@@ -76,7 +76,15 @@ func start(
 	}
 	defer deferErr(deferFunc)
 
-	if _, err := client.Start(ctx, &pb.IDs{Ids: procIDsToStart}); err != nil {
+	req := &pb.IDs{
+		Ids: lo.Map(
+			procIDsToStart,
+			func(procID uint64, _ int) *pb.ProcessID {
+				return &pb.ProcessID{Id: procID}
+			},
+		),
+	}
+	if _, err := client.Start(ctx, req); err != nil {
 		return fmt.Errorf("client.Start failed: %w", err)
 	}
 

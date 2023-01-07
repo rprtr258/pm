@@ -25,6 +25,7 @@ const _ = grpc.SupportPackageIsVersion7
 type DaemonClient interface {
 	Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Create(ctx context.Context, in *ProcessOptions, opts ...grpc.CallOption) (*ProcessID, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
 }
 
@@ -54,6 +55,15 @@ func (c *daemonClient) Stop(ctx context.Context, in *IDs, opts ...grpc.CallOptio
 	return out, nil
 }
 
+func (c *daemonClient) Create(ctx context.Context, in *ProcessOptions, opts ...grpc.CallOption) (*ProcessID, error) {
+	out := new(ProcessID)
+	err := c.cc.Invoke(ctx, "/api.Daemon/Create", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *daemonClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error) {
 	out := new(ProcessesList)
 	err := c.cc.Invoke(ctx, "/api.Daemon/List", in, out, opts...)
@@ -69,6 +79,7 @@ func (c *daemonClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc
 type DaemonServer interface {
 	Start(context.Context, *IDs) (*emptypb.Empty, error)
 	Stop(context.Context, *IDs) (*emptypb.Empty, error)
+	Create(context.Context, *ProcessOptions) (*ProcessID, error)
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
 	mustEmbedUnimplementedDaemonServer()
 }
@@ -82,6 +93,9 @@ func (UnimplementedDaemonServer) Start(context.Context, *IDs) (*emptypb.Empty, e
 }
 func (UnimplementedDaemonServer) Stop(context.Context, *IDs) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
+}
+func (UnimplementedDaemonServer) Create(context.Context, *ProcessOptions) (*ProcessID, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
 func (UnimplementedDaemonServer) List(context.Context, *emptypb.Empty) (*ProcessesList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
@@ -135,6 +149,24 @@ func _Daemon_Stop_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Daemon_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProcessOptions)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DaemonServer).Create(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.Daemon/Create",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DaemonServer).Create(ctx, req.(*ProcessOptions))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Daemon_List_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(emptypb.Empty)
 	if err := dec(in); err != nil {
@@ -167,6 +199,10 @@ var Daemon_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Stop",
 			Handler:    _Daemon_Stop_Handler,
+		},
+		{
+			MethodName: "Create",
+			Handler:    _Daemon_Create_Handler,
 		},
 		{
 			MethodName: "List",

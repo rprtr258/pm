@@ -9,7 +9,6 @@ import (
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
-	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
@@ -119,42 +118,31 @@ func run(
 	name internal.Optional[string],
 	tags []string,
 ) error {
-	if !name.Valid {
-		return errors.New("name required") // TODO: remove
-	}
-
-	procData := db.ProcData{
-		Status: db.Status{
-			Status: db.StatusStarting,
-		},
-		Name:    name.Value,
-		Cwd:     ".",
-		Tags:    lo.Uniq(append(tags, "all")),
-		Command: args[0], // TODO: clarify
-		Args:    args[1:],
-	}
-
-	procID, err := db.New(_daemonDBFile).AddProc(procData)
-
-	if err != nil {
-		return err
-	}
-
-	procData.ID = procID
-
-	procIDs := []uint64{uint64(procData.ID)}
-
 	client, deferFunc, err := NewGrpcClient()
 	if err != nil {
 		return err
 	}
 	defer deferErr(deferFunc)
 
-	if _, err := client.Start(ctx, &pb.IDs{Ids: procIDs}); err != nil {
+	procID, err := client.Create(ctx, &pb.ProcessOptions{
+		Command: args[0],
+		Args:    args[1:],
+		Name:    name.Ptr(),
+		Cwd:     lo.ToPtr("."),
+		Tags:    tags,
+	})
+	if err != nil {
+		return err
+	}
+
+	req := &pb.IDs{
+		Ids: []*pb.ProcessID{procID},
+	}
+	if _, err := client.Start(ctx, req); err != nil {
 		return fmt.Errorf("client.Start failed: %w", err)
 	}
 
-	fmt.Println(procData.ID)
+	fmt.Println(procID)
 
 	return nil
 }
