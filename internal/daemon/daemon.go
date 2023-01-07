@@ -24,13 +24,15 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 	}
 	defer sock.Close()
 
-	if err := db.New(dbFile).Init(); err != nil {
+	dbHandle := db.New(dbFile)
+
+	if err := dbHandle.Init(); err != nil {
 		return err
 	}
 
 	srv := grpc.NewServer()
 	pb.RegisterDaemonServer(srv, &daemonServer{
-		dbFile:  dbFile,
+		db:      dbHandle,
 		homeDir: homeDir,
 	})
 

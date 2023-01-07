@@ -32,14 +32,14 @@ var (
 // TODO: logs for daemon everywhere
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
-	dbFile  string
+	db      db.DBHandle
 	homeDir string
 }
 
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	procs, err := db.New(srv.dbFile).GetProcs(lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) db.ProcID {
+	procs, err := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) db.ProcID {
 		return db.ProcID(id.GetId())
 	}))
 	if err != nil {
@@ -93,7 +93,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 
 		process, err := os.StartProcess(proc.Command, append([]string{proc.Command}, proc.Args...), &procAttr)
 		if err != nil {
-			if err2 := db.New(srv.dbFile).SetStatus(proc.ID, db.Status{Status: db.StatusErrored}); err2 != nil {
+			if err2 := srv.db.SetStatus(proc.ID, db.Status{Status: db.StatusErrored}); err2 != nil {
 				return nil, fmt.Errorf("running failed, setting errored status failed: %w", multierr.Combine(err, err2))
 			}
 
@@ -105,7 +105,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 			Pid:       process.Pid,
 			StartTime: time.Now(),
 		}
-		if err := db.New(srv.dbFile).SetStatus(proc.ID, runningStatus); err != nil {
+		if err := srv.db.SetStatus(proc.ID, runningStatus); err != nil {
 			return nil, err
 		}
 	}
@@ -116,7 +116,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 // Stop - stop processes by their ids in database
 // TODO: change to sending signals
 func (srv *daemonServer) Stop(_ context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	dbHandle := db.New(srv.dbFile)
+	dbHandle := srv.db
 
 	procsToStop := lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) db.ProcID {
 		return db.ProcID(id.GetId())
@@ -181,7 +181,7 @@ func (srv *daemonServer) Create(ctx context.Context, r *pb.ProcessOptions) (*pb.
 		Args:    r.GetArgs(),
 	}
 
-	procID, err := db.New(srv.dbFile).AddProc(procData)
+	procID, err := srv.db.AddProc(procData)
 	if err != nil {
 		return nil, err
 	}
@@ -190,9 +190,7 @@ func (srv *daemonServer) Create(ctx context.Context, r *pb.ProcessOptions) (*pb.
 }
 
 func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
-	dbHandle := db.New(srv.dbFile)
-
-	list, err := dbHandle.List()
+	list, err := srv.db.List()
 	if err != nil {
 		return nil, err
 	}
@@ -241,14 +239,13 @@ func mapStatus(status db.Status) *pb.ProcessStatus {
 }
 
 func (srv *daemonServer) Delete(ctx context.Context, r *pb.IDs) (*emptypb.Empty, error) {
-	dbHandle := db.New(srv.dbFile)
 	ids := lo.Map(
 		r.GetIds(),
 		func(procID *pb.ProcessID, _ int) uint64 {
 			return procID.GetId()
 		},
 	)
-	if err := dbHandle.Delete(ids); err != nil {
+	if err := srv.db.Delete(ids); err != nil {
 		return nil, err // TODO: add errs descriptions, loggings
 	}
 
