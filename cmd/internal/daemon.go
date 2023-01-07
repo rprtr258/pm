@@ -30,10 +30,10 @@ var DaemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "manage daemon",
 	Subcommands: []*cli.Command{
-		// TODO: restart
 		{
-			Name:  "start",
-			Usage: "launch daemon process",
+			Name:    "start",
+			Aliases: []string{"restart"},
+			Usage:   "launch daemon process",
 			Action: func(ctx *cli.Context) error {
 				// TODO: move to internal
 				// TODO: leave only flags getting & validation in cli command handlers
