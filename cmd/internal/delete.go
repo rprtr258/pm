@@ -6,10 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -52,11 +50,11 @@ func delete(
 	genericFilters, nameFilters, tagFilters []string,
 	idFilters []uint64,
 ) error {
-	client, deferFunc, err := NewGrpcClient()
+	client, err := NewGrpcClient()
 	if err != nil {
 		return err
 	}
-	defer deferErr(deferFunc)
+	defer deferErr(client.Close)
 
 	dbHandle := db.New(_daemonDBFile)
 
@@ -73,15 +71,7 @@ func delete(
 		internal.WithTags(tagFilters),
 	)
 
-	req := &api.IDs{
-		Ids: lo.Map(
-			procIDs,
-			func(procID uint64, _ int) *api.ProcessID {
-				return &api.ProcessID{Id: procID}
-			},
-		),
-	}
-	if _, err := client.Stop(ctx, req); err != nil {
+	if err := client.Stop(ctx, procIDs); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
 

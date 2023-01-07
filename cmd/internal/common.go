@@ -9,8 +9,10 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/rprtr258/pm/api"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -29,7 +31,12 @@ var (
 	AllCmds []*cli.Command
 )
 
-func NewGrpcClient() (pb.DaemonClient, func() error, error) {
+type Client struct {
+	client pb.DaemonClient
+	conn   *grpc.ClientConn
+}
+
+func NewGrpcClient() (Client, error) {
 	conn, err := grpc.Dial(
 		_daemonRpcSocket,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -38,10 +45,53 @@ func NewGrpcClient() (pb.DaemonClient, func() error, error) {
 		}),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("connecting to grpc server failed: %w", err)
+		return Client{}, fmt.Errorf("connecting to grpc server failed: %w", err)
 	}
 
-	return pb.NewDaemonClient(conn), conn.Close, nil
+	return Client{
+		client: pb.NewDaemonClient(conn),
+		conn:   conn,
+	}, nil
+}
+
+func (c Client) Close() error {
+	return c.conn.Close()
+}
+
+func (c Client) Create(ctx context.Context, r *pb.ProcessOptions) (uint64, error) {
+	resp, err := c.client.Create(ctx, r)
+	if err != nil {
+		return 0, err
+	}
+
+	return resp.GetId(), nil
+}
+
+func (c Client) List(ctx context.Context) (*pb.ProcessesList, error) {
+	return c.client.List(ctx, &emptypb.Empty{})
+}
+
+func (c Client) Start(ctx context.Context, ids []uint64) error {
+	_, err := c.client.Start(ctx, mapIDs(ids))
+	return err
+}
+
+func (c Client) Stop(ctx context.Context, ids []uint64) error {
+	_, err := c.client.Stop(ctx, mapIDs(ids))
+	return err
+}
+
+func mapIDs(ids []uint64) *pb.IDs {
+	return &pb.IDs{
+		Ids: lo.Map(
+			ids,
+			func(procID uint64, _ int) *pb.ProcessID {
+				return &pb.ProcessID{
+					Id: procID,
+				}
+			},
+		),
+	}
 }
 
 // { Name: "trigger", Usage:     "trigger process action", ArgsUsage: "<id|proc_name|namespace|all> <action_name> [params]", .action(function(pm_id, action_name, params) { pm2.trigger(pm_id, action_name, params); },

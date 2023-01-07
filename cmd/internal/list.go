@@ -13,7 +13,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
@@ -127,13 +126,13 @@ func list(
 	idFilters []uint64,
 	compact bool,
 ) error {
-	client, deferFunc, err := NewGrpcClient()
+	client, err := NewGrpcClient()
 	if err != nil {
 		return err
 	}
-	defer deferErr(deferFunc)
+	defer deferErr(client.Close)
 
-	procs, err := client.List(ctx, &emptypb.Empty{})
+	procs, err := client.List(ctx)
 	if err != nil {
 		return err
 	}

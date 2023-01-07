@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 )
 
@@ -67,11 +65,11 @@ func stop(
 	genericFilters, nameFilters, tagFilters []string,
 	idFilters []uint64,
 ) error {
-	client, deferFunc, err := NewGrpcClient()
+	client, err := NewGrpcClient()
 	if err != nil {
 		return err
 	}
-	defer deferErr(deferFunc)
+	defer deferErr(client.Close)
 
 	resp, err := db.New(_daemonDBFile).List()
 	if err != nil {
@@ -86,15 +84,7 @@ func stop(
 		internal.WithTags(tagFilters),
 	)
 
-	req := &pb.IDs{
-		Ids: lo.Map(
-			ids,
-			func(procID uint64, _ int) *pb.ProcessID {
-				return &pb.ProcessID{Id: procID}
-			},
-		),
-	}
-	if _, err := client.Stop(ctx, req); err != nil {
+	if err := client.Stop(ctx, ids); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
 

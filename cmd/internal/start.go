@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
 	"github.com/samber/lo"
@@ -70,21 +69,13 @@ func start(
 		internal.WithTags(tagFilters),
 	)
 
-	client, deferFunc, err := NewGrpcClient()
+	client, err := NewGrpcClient()
 	if err != nil {
 		return err
 	}
-	defer deferErr(deferFunc)
+	defer deferErr(client.Close)
 
-	req := &pb.IDs{
-		Ids: lo.Map(
-			procIDsToStart,
-			func(procID uint64, _ int) *pb.ProcessID {
-				return &pb.ProcessID{Id: procID}
-			},
-		),
-	}
-	if _, err := client.Start(ctx, req); err != nil {
+	if err := client.Start(ctx, procIDsToStart); err != nil {
 		return fmt.Errorf("client.Start failed: %w", err)
 	}
 

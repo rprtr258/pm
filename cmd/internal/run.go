@@ -118,11 +118,11 @@ func run(
 	name internal.Optional[string],
 	tags []string,
 ) error {
-	client, deferFunc, err := NewGrpcClient()
+	client, err := NewGrpcClient()
 	if err != nil {
 		return err
 	}
-	defer deferErr(deferFunc)
+	defer deferErr(client.Close)
 
 	procID, err := client.Create(ctx, &pb.ProcessOptions{
 		Command: args[0],
@@ -135,10 +135,7 @@ func run(
 		return err
 	}
 
-	req := &pb.IDs{
-		Ids: []*pb.ProcessID{procID},
-	}
-	if _, err := client.Start(ctx, req); err != nil {
+	if err := client.Start(ctx, []uint64{procID}); err != nil {
 		return fmt.Errorf("client.Start failed: %w", err)
 	}
 
