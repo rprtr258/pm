@@ -131,20 +131,12 @@ var RunCmd = &cli.Command{
 			}
 
 			if isConfigFile(args[0]) {
-				vm := jsonnet.MakeVM()
-				vm.ExtVar("now", time.Now().Format("15:04:05"))
-
-				jsonText, err := vm.EvaluateFile(args[0])
+				configs, err := loadConfig(args[0])
 				if err != nil {
 					return err
 				}
 
-				var config []RunConfig
-				if err := json.Unmarshal([]byte(jsonText), &config); err != nil {
-					return err
-				}
-
-				return runConfigs(ctx.Context, config, args[1:])
+				return runConfigs(ctx.Context, configs, args[1:])
 			}
 
 			toRunArgs = args
@@ -176,6 +168,23 @@ var RunCmd = &cli.Command{
 		}
 		return run(ctx.Context, config)
 	},
+}
+
+func loadConfig(filename string) ([]RunConfig, error) {
+	vm := jsonnet.MakeVM()
+	vm.ExtVar("now", time.Now().Format("15:04:05"))
+
+	jsonText, err := vm.EvaluateFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	var configs []RunConfig
+	if err := json.Unmarshal([]byte(jsonText), &configs); err != nil {
+		return nil, err
+	}
+
+	return configs, nil
 }
 
 func isConfigFile(arg string) bool {

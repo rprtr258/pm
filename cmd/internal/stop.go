@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal"
@@ -52,9 +53,22 @@ var StopCmd = &cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		return stop(
+		args := ctx.Args().Slice()
+
+		if len(args) > 0 && isConfigFile(args[0]) {
+			return stopConfig(
+				ctx.Context,
+				args[0],
+				args[1:],
+				ctx.StringSlice("name"),
+				ctx.StringSlice("tags"),
+				ctx.Uint64Slice("id"),
+			)
+		}
+
+		return defaultStop(
 			ctx.Context,
-			ctx.Args().Slice(),
+			args,
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
 			ctx.Uint64Slice("id"),
@@ -62,7 +76,55 @@ var StopCmd = &cli.Command{
 	},
 }
 
-func stop(
+func stopConfig(
+	ctx context.Context,
+	configFilename string,
+	genericFilters, nameFilters, tagFilters []string,
+	idFilters []uint64,
+) error {
+	configs, err := loadConfig(configFilename)
+	if err != nil {
+		return err
+	}
+
+	names := make([]string, len(configs))
+	for _, config := range configs {
+		if !config.Name.Valid {
+			continue
+		}
+		names = append(names, config.Name.Value)
+	}
+
+	client, err := client.NewGrpcClient()
+	if err != nil {
+		return err
+	}
+	defer deferErr(client.Close)
+
+	list, err := client.List(ctx)
+	if err != nil {
+		return err
+	}
+
+	configList := lo.PickBy(
+		list,
+		func(_ db.ProcID, procData db.ProcData) bool {
+			return lo.Contains(names, procData.Name)
+		},
+	)
+
+	return stop(
+		ctx,
+		configList,
+		client,
+		genericFilters,
+		nameFilters,
+		tagFilters,
+		idFilters,
+	)
+}
+
+func defaultStop(
 	ctx context.Context,
 	genericFilters, nameFilters, tagFilters []string,
 	idFilters []uint64,
@@ -78,12 +140,29 @@ func stop(
 		return err
 	}
 
+	return stop(
+		ctx,
+		resp,
+		client,
+		genericFilters, nameFilters, tagFilters,
+		idFilters,
+	)
+}
+
+func stop(
+	ctx context.Context,
+	resp db.DB,
+	client client.Client,
+	genericFilters, nameFilters, tagFilters []string,
+	idFilters []uint64,
+) error {
 	ids := internal.FilterProcs[uint64](
 		resp,
 		internal.WithGeneric(genericFilters),
 		internal.WithIDs(idFilters),
 		internal.WithNames(nameFilters),
 		internal.WithTags(tagFilters),
+		internal.WithAllIfNoFilters,
 	)
 
 	if len(ids) == 0 {
