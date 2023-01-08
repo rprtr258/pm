@@ -86,6 +86,11 @@ func stop(
 		internal.WithTags(tagFilters),
 	)
 
+	if len(ids) == 0 {
+		fmt.Println("nothing to stop")
+		return nil
+	}
+
 	if err := client.Stop(ctx, ids); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
