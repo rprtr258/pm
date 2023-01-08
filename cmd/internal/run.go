@@ -2,11 +2,14 @@ package internal
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
+	jsonnet "github.com/google/go-jsonnet"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
@@ -83,18 +86,41 @@ var RunCmd = &cli.Command{
 		args := ctx.Args().Slice()
 
 		var toRunArgs []string
-		switch {
-		case interpreter == "" && len(args) == 0:
-			return errors.New("command expected")
-		case interpreter != "" && len(args) != 1:
-			return fmt.Errorf("interpreter %q set, thats why only single arg must be provided (but there were %d provided)", interpreter, len(args))
-		case interpreter == "":
+		if interpreter == "" {
+			if len(args) == 0 {
+				return errors.New("command expected")
+			}
+
+			if len(args) == 1 && isConfigFile(args[0]) {
+				vm := jsonnet.MakeVM()
+
+				jsonText, err := vm.EvaluateFile(args[0])
+				if err != nil {
+					return err
+				}
+
+				var config map[string]any
+				if err := json.Unmarshal([]byte(jsonText), &config); err != nil {
+					return err
+				}
+
+				fmt.Printf("%#v", config)
+
+				return nil
+			}
+
 			toRunArgs = args
-		case interpreter != "":
+		} else {
+			if len(args) != 1 {
+				return fmt.Errorf(
+					"interpreter %q set, thats why only single arg must be provided (but there were %d provided)",
+					interpreter,
+					len(args),
+				)
+			}
+
 			toRunArgs = append(toRunArgs, strings.Split(interpreter, " ")...)
 			toRunArgs = append(toRunArgs, args[0])
-		default:
-			return fmt.Errorf("unknown situation, interpreter=%q args=%v", interpreter, args)
 		}
 
 		var err error
@@ -112,6 +138,15 @@ var RunCmd = &cli.Command{
 			ctx.StringSlice("tag"),
 		)
 	},
+}
+
+func isConfigFile(arg string) bool {
+	stat, err := os.Stat(arg)
+	if err != nil {
+		return false
+	}
+
+	return !stat.IsDir()
 }
 
 func run(
