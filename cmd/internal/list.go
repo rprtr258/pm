@@ -15,6 +15,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal"
+	"github.com/rprtr258/pm/internal/client"
 	"github.com/rprtr258/pm/internal/db"
 )
 
@@ -101,7 +102,7 @@ func list(
 	idFilters []uint64,
 	compact bool,
 ) error {
-	client, err := NewGrpcClient()
+	client, err := client.NewGrpcClient()
 	if err != nil {
 		return err
 	}

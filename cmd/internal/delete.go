@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal"
+	"github.com/rprtr258/pm/internal/client"
 )
 
 func init() {
@@ -49,7 +50,7 @@ func delete(
 	genericFilters, nameFilters, tagFilters []string,
 	idFilters []uint64,
 ) error {
-	client, err := NewGrpcClient()
+	client, err := client.NewGrpcClient()
 	if err != nil {
 		return err
 	}

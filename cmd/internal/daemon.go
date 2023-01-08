@@ -3,23 +3,13 @@ package internal
 import (
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/rprtr258/pm/internal"
+	"github.com/rprtr258/pm/internal/client"
 	pm_daemon "github.com/rprtr258/pm/internal/daemon"
 	"github.com/rprtr258/pm/internal/go-daemon"
-)
-
-var (
-	_userHome        = os.Getenv("HOME")
-	HomeDir          = filepath.Join(_userHome, ".pm")
-	_daemonPidFile   = filepath.Join(HomeDir, "pm.pid")
-	_daemonLogFile   = filepath.Join(HomeDir, "pm.log")
-	_daemonRpcSocket = filepath.Join(HomeDir, "rpc.sock")
-	_daemonLogsDir   = filepath.Join(HomeDir, "logs")
-	_daemonDBFile    = filepath.Join(HomeDir, "pm.db")
 )
 
 func init() {
@@ -53,22 +43,42 @@ var DaemonCmd = &cli.Command{
 				return daemonRun()
 			},
 		},
+		{
+			Name:    "status",
+			Usage:   "check daemon status",
+			Aliases: []string{"ps"},
+			Action: func(ctx *cli.Context) error {
+				client, err := client.NewGrpcClient()
+				if err != nil {
+					return err
+				}
+
+				// TODO: print daemon process info
+
+				if err := client.HealthCheck(ctx.Context); err != nil {
+					return err
+				}
+
+				fmt.Println("ok")
+				return nil
+			},
+		},
 	},
 }
 
 func daemonStart() error {
 	// TODO: move to internal
 	daemonCtx := &daemon.Context{
-		PidFileName: _daemonPidFile,
+		PidFileName: internal.FileDaemonPid,
 		PidFilePerm: 0644,
-		LogFileName: _daemonLogFile,
+		LogFileName: internal.FileDaemonLog,
 		LogFilePerm: 0640,
 		WorkDir:     "./",
 		Umask:       027,
 		Args:        []string{"pm", "daemon", "start"},
 	}
 
-	if err := pm_daemon.Kill(daemonCtx, _daemonRpcSocket); err != nil {
+	if err := pm_daemon.Kill(daemonCtx, internal.SocketDaemonRpc); err != nil {
 		return fmt.Errorf("killing daemon failed: %w", err)
 	}
 
@@ -84,25 +94,25 @@ func daemonStart() error {
 
 	defer deferErr(daemonCtx.Release)
 
-	return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile, HomeDir)
+	return daemonRun()
 }
 
 func daemonStop() error {
 	daemonCtx := &daemon.Context{
-		PidFileName: _daemonPidFile,
+		PidFileName: internal.FileDaemonPid,
 		PidFilePerm: 0644,
-		LogFileName: _daemonLogFile,
+		LogFileName: internal.FileDaemonLog,
 		LogFilePerm: 0640,
 		WorkDir:     "./",
 		Umask:       027,
 		Args:        []string{"pm", "daemon", "start"},
 	}
 
-	return pm_daemon.Kill(daemonCtx, _daemonRpcSocket)
+	return pm_daemon.Kill(daemonCtx, internal.SocketDaemonRpc)
 }
 
 func daemonRun() error {
-	return pm_daemon.Run(_daemonRpcSocket, _daemonDBFile, HomeDir)
+	return pm_daemon.Run(internal.SocketDaemonRpc, internal.FileDaemonDB, internal.DirHome)
 }
 
 func deferErr(close func() error) {

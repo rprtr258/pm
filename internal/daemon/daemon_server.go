@@ -297,3 +297,7 @@ func removeFile(name string) error {
 
 	return os.Remove(name)
 }
+
+func (srv *daemonServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}

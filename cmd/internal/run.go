@@ -12,6 +12,7 @@ import (
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
+	"github.com/rprtr258/pm/internal/client"
 )
 
 func init() {
@@ -119,7 +120,7 @@ func run(
 	name internal.Optional[string],
 	tags []string,
 ) error {
-	client, err := NewGrpcClient()
+	client, err := client.NewGrpcClient()
 	if err != nil {
 		return err
 	}

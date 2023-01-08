@@ -7,6 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/cmd/internal"
+	internal2 "github.com/rprtr258/pm/internal"
 )
 
 func main() {
@@ -45,9 +46,9 @@ func main() {
 		),
 		Before: func(*cli.Context) error {
 			// TODO: run daemon if not running
-			_, err := os.Stat(internal.HomeDir)
+			_, err := os.Stat(internal2.DirHome)
 			if os.IsNotExist(err) {
-				return os.Mkdir(internal.HomeDir, 0755)
+				return os.Mkdir(internal2.DirHome, 0755)
 			} else if err != nil {
 				return fmt.Errorf("os.Stat(home dir) failed: %w", err)
 			}

@@ -23,11 +23,14 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DaemonClient interface {
+	// process management
 	Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// CRUD operations
 	Create(ctx context.Context, in *ProcessOptions, opts ...grpc.CallOption) (*ProcessID, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
 	Delete(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type daemonClient struct {
@@ -83,15 +86,27 @@ func (c *daemonClient) Delete(ctx context.Context, in *IDs, opts ...grpc.CallOpt
 	return out, nil
 }
 
+func (c *daemonClient) HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, "/api.Daemon/HealthCheck", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DaemonServer is the server API for Daemon service.
 // All implementations must embed UnimplementedDaemonServer
 // for forward compatibility
 type DaemonServer interface {
+	// process management
 	Start(context.Context, *IDs) (*emptypb.Empty, error)
 	Stop(context.Context, *IDs) (*emptypb.Empty, error)
+	// CRUD operations
 	Create(context.Context, *ProcessOptions) (*ProcessID, error)
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
 	Delete(context.Context, *IDs) (*emptypb.Empty, error)
+	HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedDaemonServer()
 }
 
@@ -113,6 +128,9 @@ func (UnimplementedDaemonServer) List(context.Context, *emptypb.Empty) (*Process
 }
 func (UnimplementedDaemonServer) Delete(context.Context, *IDs) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
+}
+func (UnimplementedDaemonServer) HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
 }
 func (UnimplementedDaemonServer) mustEmbedUnimplementedDaemonServer() {}
 
@@ -217,6 +235,24 @@ func _Daemon_Delete_Handler(srv interface{}, ctx context.Context, dec func(inter
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Daemon_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DaemonServer).HealthCheck(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/api.Daemon/HealthCheck",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DaemonServer).HealthCheck(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Daemon_ServiceDesc is the grpc.ServiceDesc for Daemon service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -243,6 +279,10 @@ var Daemon_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Delete",
 			Handler:    _Daemon_Delete_Handler,
+		},
+		{
+			MethodName: "HealthCheck",
+			Handler:    _Daemon_HealthCheck_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal"
+	"github.com/rprtr258/pm/internal/client"
 	"github.com/rprtr258/pm/internal/db"
 )
 
@@ -55,7 +56,7 @@ func start(
 	genericFilters, nameFilters, tagFilters, statusFilters []string,
 	idFilters []uint64,
 ) error {
-	resp, err := db.New(_daemonDBFile).List()
+	resp, err := db.New(internal.FileDaemonDB).List()
 	if err != nil {
 		return err
 	}
@@ -70,7 +71,7 @@ func start(
 		internal.WithTags(tagFilters),
 	)
 
-	client, err := NewGrpcClient()
+	client, err := client.NewGrpcClient()
 	if err != nil {
 		return err
 	}
