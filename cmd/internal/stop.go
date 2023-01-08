@@ -51,15 +51,21 @@ var StopCmd = &cli.Command{
 			Name:  "id",
 			Usage: "id(s) of process(es) to stop",
 		},
+		&cli.StringFlag{
+			Name:      "config",
+			Usage:     "config file to use",
+			Aliases:   []string{"f"},
+			TakesFile: true,
+		},
 	},
 	Action: func(ctx *cli.Context) error {
 		args := ctx.Args().Slice()
 
-		if len(args) > 0 && isConfigFile(args[0]) {
+		if ctx.IsSet("config") && isConfigFile(ctx.String("config")) {
 			return stopConfig(
 				ctx.Context,
-				args[0],
-				args[1:],
+				ctx.String("config"),
+				args,
 				ctx.StringSlice("name"),
 				ctx.StringSlice("tags"),
 				ctx.Uint64Slice("id"),
@@ -117,9 +123,7 @@ func stopConfig(
 		ctx,
 		configList,
 		client,
-		genericFilters,
-		nameFilters,
-		tagFilters,
+		genericFilters, nameFilters, tagFilters,
 		idFilters,
 	)
 }

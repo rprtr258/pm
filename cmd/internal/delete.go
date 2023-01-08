@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
+	"github.com/rprtr258/pm/internal/db"
 )
 
 func init() {
@@ -33,9 +35,26 @@ var DeleteCmd = &cli.Command{
 			Name:  "id",
 			Usage: "id(s) of process(es) to stop and remove",
 		},
+		&cli.StringFlag{
+			Name:      "config",
+			Usage:     "config file to use",
+			Aliases:   []string{"f"},
+			TakesFile: true,
+		},
 	},
 	Action: func(ctx *cli.Context) error {
-		return delete(
+		if ctx.IsSet("config") && isConfigFile(ctx.String("config")) {
+			return deleteConfig(
+				ctx.Context,
+				ctx.String("config"),
+				ctx.Args().Slice(),
+				ctx.StringSlice("name"),
+				ctx.StringSlice("tags"),
+				ctx.Uint64Slice("id"),
+			)
+		}
+
+		return defaultDelete(
 			ctx.Context,
 			ctx.Args().Slice(),
 			ctx.StringSlice("name"),
@@ -45,7 +64,53 @@ var DeleteCmd = &cli.Command{
 	},
 }
 
-func delete(
+func deleteConfig(
+	ctx context.Context,
+	configFilename string,
+	genericFilters, nameFilters, tagFilters []string,
+	idFilters []uint64,
+) error {
+	configs, err := loadConfig(configFilename)
+	if err != nil {
+		return err
+	}
+
+	names := make([]string, len(configs))
+	for _, config := range configs {
+		if !config.Name.Valid {
+			continue
+		}
+		names = append(names, config.Name.Value)
+	}
+
+	client, err := client.NewGrpcClient()
+	if err != nil {
+		return err
+	}
+	defer deferErr(client.Close)
+
+	list, err := client.List(ctx)
+	if err != nil {
+		return err
+	}
+
+	configList := lo.PickBy(
+		list,
+		func(_ db.ProcID, procData db.ProcData) bool {
+			return lo.Contains(names, procData.Name)
+		},
+	)
+
+	return delete(
+		ctx,
+		configList,
+		client,
+		genericFilters, nameFilters, tagFilters,
+		idFilters,
+	)
+}
+
+func defaultDelete(
 	ctx context.Context,
 	genericFilters, nameFilters, tagFilters []string,
 	idFilters []uint64,
@@ -61,12 +126,27 @@ func delete(
 		return err
 	}
 
+	return delete(
+		ctx,
+		resp, client,
+		genericFilters, nameFilters, tagFilters,
+		idFilters,
+	)
+}
+
+func delete(
+	ctx context.Context,
+	resp db.DB, client client.Client,
+	genericFilters, nameFilters, tagFilters []string,
+	idFilters []uint64,
+) error {
 	procIDs := internal.FilterProcs[uint64](
 		resp,
 		internal.WithGeneric(genericFilters),
 		internal.WithIDs(idFilters),
 		internal.WithNames(nameFilters),
 		internal.WithTags(tagFilters),
+		internal.WithAllIfNoFilters,
 	)
 
 	if len(procIDs) == 0 {

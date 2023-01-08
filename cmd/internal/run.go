@@ -86,6 +86,13 @@ var RunCmd = &cli.Command{
 			Aliases: []string{"i"},
 			Usage:   "set interpreter to executing command",
 		},
+		// TODO: interpreter args
+		&cli.StringFlag{
+			Name:      "config",
+			Usage:     "config file to use",
+			Aliases:   []string{"f"},
+			TakesFile: true,
+		},
 		// &cli.BoolFlag{Name:        "watch", Usage: "Watch folder for changes"},
 		// &cli.StringSliceFlag{Name: "watch", Usage: "watch application folder for changes"},
 		// &cli.StringSliceFlag{Name: "ext", Usage: "watch only this file extensions"},
@@ -126,17 +133,17 @@ var RunCmd = &cli.Command{
 
 		var toRunArgs []string
 		if interpreter == "" {
-			if len(args) == 0 {
-				return errors.New("command expected")
-			}
-
-			if isConfigFile(args[0]) {
-				configs, err := loadConfig(args[0])
+			if ctx.IsSet("config") && isConfigFile(ctx.String("config")) {
+				configs, err := loadConfig(ctx.String("config"))
 				if err != nil {
 					return err
 				}
 
-				return runConfigs(ctx.Context, configs, args[1:])
+				return runConfigs(ctx.Context, configs, args)
+			}
+
+			if len(args) == 0 {
+				return errors.New("command expected")
 			}
 
 			toRunArgs = args
