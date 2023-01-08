@@ -5,8 +5,9 @@
     "args": [10],
   },
   {
-    "name": "ls.",
-    "command": "ls",
+    "name": "xdd",
+    "command": "echo",
+    "args": ["1"],
   },
   {
     "name": "ls2",

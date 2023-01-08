@@ -190,7 +190,23 @@ func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*ap
 				return procData.Name == r.GetName()
 			},
 		); ok {
-			// TODO: update proc if it changed
+			procData := db.ProcData{
+				ID: procID,
+				Status: db.Status{
+					Status: db.StatusStarting,
+				},
+				Name:    r.GetName(),
+				Cwd:     r.GetCwd(),
+				Tags:    lo.Uniq(append(r.GetTags(), "all")),
+				Command: r.GetCommand(),
+				Args:    r.GetArgs(),
+				Watch:   nil,
+			}
+
+			if err := srv.db.UpdateProc(procID, procData); err != nil {
+				return nil, err
+			}
+
 			return &api.ProcessID{Id: uint64(procID)}, nil
 		}
 	}
@@ -206,6 +222,7 @@ func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*ap
 		Tags:    lo.Uniq(append(r.GetTags(), "all")),
 		Command: r.GetCommand(),
 		Args:    r.GetArgs(),
+		Watch:   nil,
 	}
 
 	procID, err := srv.db.AddProc(procData)

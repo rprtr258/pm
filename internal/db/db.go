@@ -145,6 +145,13 @@ func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 	return ProcID(newProcID), nil
 }
 
+func (handle DBHandle) UpdateProc(id ProcID, metadata ProcData) error {
+	return handle.Update(func(db DB) error {
+		db[id] = metadata
+		return nil
+	})
+}
+
 func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 	res := make([]ProcData, 0, len(ids))
 
