@@ -178,8 +178,23 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 }
 
 func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*api.ProcessID, error) {
+	if r.Name != nil {
+		procs, err := srv.db.List()
+		if err != nil {
+			return nil, err
+		}
+
+		if procID, ok := lo.FindKeyBy(
+			procs,
+			func(_ db.ProcID, procData db.ProcData) bool {
+				return procData.Name == r.GetName()
+			},
+		); ok {
+			return &api.ProcessID{Id: uint64(procID)}, nil
+		}
+	}
+
 	name := lo.IfF(r.Name != nil, r.GetName).ElseF(genName)
-	// TODO: do not create proc if proc with such name exists already
 
 	procData := db.ProcData{
 		Status: db.Status{
