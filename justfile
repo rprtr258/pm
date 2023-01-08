@@ -3,6 +3,10 @@ PM := "go run cmd/main.go"
 @_help:
   just --list --unsorted
 
+# open database
+@db:
+  fx ~/.pm/pm.db
+
 # bump dependencies
 @bump:
   go get -u ./...

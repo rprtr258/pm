@@ -5,9 +5,13 @@
     "args": [10],
   },
   {
-    "name": "named",
-    "command": "sleep",
-    "args": [20],
+    "name": "ls.",
+    "command": "ls",
+  },
+  {
+    "name": "ls2",
+    "command": "ls",
+    "cwd": "..",
   },
   {
     "command": "sleep",

@@ -71,13 +71,13 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		defer stderrLogFile.Close() // TODO: wrap
 		// TODO: syscall.CloseOnExec(pidFile.Fd()) or just close pid file
 
-		cwd, err := os.Getwd() // TODO: ???
+		cwd, err := os.Getwd()
 		if err != nil {
 			return nil, fmt.Errorf("os.Getwd failed: %w", err)
 		}
 
 		procAttr := os.ProcAttr{
-			Dir: cwd,
+			Dir: filepath.Join(cwd, proc.Cwd),
 			Env: os.Environ(), // TODO: ???
 			Files: []*os.File{ // TODO: pid file is somehow passes to child
 				os.Stdin,
@@ -190,6 +190,7 @@ func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*ap
 				return procData.Name == r.GetName()
 			},
 		); ok {
+			// TODO: update proc if it changed
 			return &api.ProcessID{Id: uint64(procID)}, nil
 		}
 	}
@@ -201,7 +202,7 @@ func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*ap
 			Status: db.StatusStarting,
 		},
 		Name:    name,
-		Cwd:     ".",
+		Cwd:     r.GetCwd(),
 		Tags:    lo.Uniq(append(r.GetTags(), "all")),
 		Command: r.GetCommand(),
 		Args:    r.GetArgs(),

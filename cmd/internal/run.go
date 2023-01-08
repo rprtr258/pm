@@ -29,11 +29,13 @@ type RunConfig struct {
 	Command string
 	Args    []string
 	Tags    []string
+	Cwd     internal.Optional[string]
 }
 
 func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 	var tmp struct {
 		Name    *string  `json:"name"`
+		Cwd     *string  `json:"cwd"`
 		Command string   `json:"command"`
 		Args    []any    `json:"args"`
 		Tags    []string `json:"tags"`
@@ -45,6 +47,7 @@ func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 
 	*cfg = RunConfig{
 		Name:    internal.FromPtr(tmp.Name),
+		Cwd:     internal.FromPtr(tmp.Cwd),
 		Command: tmp.Command,
 		Args: lo.Map(
 			tmp.Args,
@@ -141,7 +144,7 @@ var RunCmd = &cli.Command{
 					return err
 				}
 
-				return runConfig(ctx.Context, config, args[1:])
+				return runConfigs(ctx.Context, config, args[1:])
 			}
 
 			toRunArgs = args
@@ -184,7 +187,7 @@ func isConfigFile(arg string) bool {
 	return !stat.IsDir()
 }
 
-func runConfig(
+func runConfigs(
 	ctx context.Context,
 	configs []RunConfig,
 	names []string,
@@ -241,7 +244,7 @@ func run(
 		Command: command,
 		Args:    config.Args,
 		Name:    config.Name.Ptr(),
-		Cwd:     lo.ToPtr("."),
+		Cwd:     lo.ToPtr(internal.OrDefault(".", config.Cwd)),
 		Tags:    config.Tags,
 	})
 	if err != nil {
