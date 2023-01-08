@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	jsonnet "github.com/google/go-jsonnet"
 	"github.com/samber/lo"
@@ -20,6 +21,40 @@ import (
 
 func init() {
 	AllCmds = append(AllCmds, RunCmd)
+}
+
+type RunConfig struct {
+	Name    internal.Optional[string]
+	Command string
+	Args    []string
+	Tags    []string
+}
+
+func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
+	var tmp struct {
+		Name    *string  `json:"name"`
+		Command string   `json:"command"`
+		Args    []any    `json:"args"`
+		Tags    []string `json:"tags"`
+	}
+
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+
+	*cfg = RunConfig{
+		Name:    internal.FromPtr(tmp.Name),
+		Command: tmp.Command,
+		Args: lo.Map(
+			tmp.Args,
+			func(elem any, _ int) string {
+				return fmt.Sprint(elem)
+			},
+		),
+		Tags: tmp.Tags,
+	}
+
+	return nil
 }
 
 var RunCmd = &cli.Command{
@@ -93,20 +128,19 @@ var RunCmd = &cli.Command{
 
 			if len(args) == 1 && isConfigFile(args[0]) {
 				vm := jsonnet.MakeVM()
+				vm.ExtVar("now", time.Now().Format("15:04:05"))
 
 				jsonText, err := vm.EvaluateFile(args[0])
 				if err != nil {
 					return err
 				}
 
-				var config map[string]any
+				var config []RunConfig
 				if err := json.Unmarshal([]byte(jsonText), &config); err != nil {
 					return err
 				}
 
-				fmt.Printf("%#v", config)
-
-				return nil
+				return runConfig(ctx.Context, config)
 			}
 
 			toRunArgs = args
@@ -147,6 +181,14 @@ func isConfigFile(arg string) bool {
 	}
 
 	return !stat.IsDir()
+}
+
+func runConfig(
+	ctx context.Context,
+	config []RunConfig,
+) error {
+	fmt.Println(config)
+	return nil
 }
 
 func run(

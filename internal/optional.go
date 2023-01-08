@@ -20,6 +20,14 @@ func Invalid[T any]() Optional[T] {
 	}
 }
 
+func FromPtr[T any](ptr *T) Optional[T] {
+	if ptr == nil {
+		return Invalid[T]()
+	}
+
+	return Valid(*ptr)
+}
+
 func (opt Optional[T]) Ptr() *T {
 	if !opt.Valid {
 		return nil
