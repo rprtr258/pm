@@ -5,6 +5,11 @@
     "args": [10],
   },
   {
+    "name": "named",
+    "command": "sleep",
+    "args": [20],
+  },
+  {
     "command": "sleep",
     "args": [20],
   },

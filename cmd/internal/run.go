@@ -127,7 +127,7 @@ var RunCmd = &cli.Command{
 				return errors.New("command expected")
 			}
 
-			if len(args) == 1 && isConfigFile(args[0]) {
+			if isConfigFile(args[0]) {
 				vm := jsonnet.MakeVM()
 				vm.ExtVar("now", time.Now().Format("15:04:05"))
 
@@ -141,7 +141,7 @@ var RunCmd = &cli.Command{
 					return err
 				}
 
-				return runConfig(ctx.Context, config)
+				return runConfig(ctx.Context, config, args[1:])
 			}
 
 			toRunArgs = args
@@ -187,9 +187,36 @@ func isConfigFile(arg string) bool {
 func runConfig(
 	ctx context.Context,
 	configs []RunConfig,
+	names []string,
 ) error {
+	if len(names) == 0 {
+		var merr error
+		for _, config := range configs {
+			multierr.AppendInto(&merr, run(ctx, config))
+		}
+		return merr
+	}
+
+	configsByName := make(map[string]RunConfig, len(names))
+	for _, cfg := range configs {
+		if !cfg.Name.Valid || !lo.Contains(names, cfg.Name.Value) {
+			continue
+		}
+
+		configsByName[cfg.Name.Value] = cfg
+	}
+
 	var merr error
-	for _, config := range configs {
+	for _, name := range names {
+		if _, ok := configsByName[name]; !ok {
+			multierr.AppendInto(&merr, fmt.Errorf("unknown name of proc: %s", name))
+		}
+	}
+	if merr != nil {
+		return merr
+	}
+
+	for _, config := range configsByName {
 		multierr.AppendInto(&merr, run(ctx, config))
 	}
 	return merr
