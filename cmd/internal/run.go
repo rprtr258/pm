@@ -13,6 +13,7 @@ import (
 	jsonnet "github.com/google/go-jsonnet"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
@@ -164,13 +165,14 @@ var RunCmd = &cli.Command{
 		}
 
 		name := ctx.String("name")
-		return run(
-			ctx.Context,
-			toRunArgs,
-			lo.If(name != "", internal.Valid(name)).
+		config := RunConfig{
+			Command: toRunArgs[0],
+			Args:    toRunArgs[1:],
+			Name: lo.If(name != "", internal.Valid(name)).
 				Else(internal.Invalid[string]()),
-			ctx.StringSlice("tag"),
-		)
+			Tags: ctx.StringSlice("tag"),
+		}
+		return run(ctx.Context, config)
 	},
 }
 
@@ -185,17 +187,18 @@ func isConfigFile(arg string) bool {
 
 func runConfig(
 	ctx context.Context,
-	config []RunConfig,
+	configs []RunConfig,
 ) error {
-	fmt.Println(config)
-	return nil
+	var merr error
+	for _, config := range configs {
+		multierr.AppendInto(&merr, run(ctx, config))
+	}
+	return merr
 }
 
 func run(
 	ctx context.Context,
-	args []string,
-	name internal.Optional[string],
-	tags []string,
+	config RunConfig,
 ) error {
 	client, err := client.NewGrpcClient()
 	if err != nil {
@@ -204,11 +207,11 @@ func run(
 	defer deferErr(client.Close)
 
 	procID, err := client.Create(ctx, &api.ProcessOptions{
-		Command: args[0],
-		Args:    args[1:],
-		Name:    name.Ptr(),
+		Command: config.Command,
+		Args:    config.Args,
+		Name:    config.Name.Ptr(),
 		Cwd:     lo.ToPtr("."),
-		Tags:    tags,
+		Tags:    config.Tags,
 	})
 	if err != nil {
 		return err
