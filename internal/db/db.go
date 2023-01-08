@@ -25,8 +25,10 @@ type Status struct {
 	// nulls if not running
 	Pid       int       `json:"pid"`
 	StartTime time.Time `json:"start_time"`
-	Cpu       uint64    `json:"cpu"`    // round(cpu usage in % * 100)
-	Memory    uint64    `json:"memory"` // in bytes
+	// Cpu usage percentage rounded to integer
+	Cpu uint64 `json:"cpu"`
+	// Memory usage in bytes
+	Memory uint64 `json:"memory"`
 }
 
 type ProcID uint64
