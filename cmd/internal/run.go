@@ -159,7 +159,6 @@ var RunCmd = &cli.Command{
 		}
 
 		var err error
-		toRunArgs[0], err = exec.LookPath(toRunArgs[0])
 		if err != nil {
 			return fmt.Errorf("could not find executable %q: %w", toRunArgs[0], err)
 		}
@@ -206,8 +205,13 @@ func run(
 	}
 	defer deferErr(client.Close)
 
+	command, err := exec.LookPath(config.Command)
+	if err != nil {
+		return err
+	}
+
 	procID, err := client.Create(ctx, &api.ProcessOptions{
-		Command: config.Command,
+		Command: command,
 		Args:    config.Args,
 		Name:    config.Name.Ptr(),
 		Cwd:     lo.ToPtr("."),
