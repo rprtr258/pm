@@ -11,56 +11,57 @@ import (
 )
 
 func init() {
-	AllCmds = append(AllCmds, StopCmd)
-}
-
-var StopCmd = &cli.Command{
-	Name:      "stop",
-	Usage:     "stop a process",
-	ArgsUsage: "<id|name|namespace|all|json>...",
-	Flags: []cli.Flag{
-		// &cli.BoolFlag{
-		// 	Name:  "watch",
-		// 	Usage: "stop watching for file changes",
-		// },
-		// &cli.BoolFlag{
-		// 	Name:  "kill",
-		// 	Usage: "kill process with SIGKILL instead of SIGINT",
-		// },
-		// &cli.DurationFlag{
-		// 	Name:    "kill-timeout",
-		// 	Aliases: []string{"k"},
-		// 	Usage:   "delay before sending final SIGKILL signal to process",
-		// },
-		// &cli.BoolFlag{
-		// 	Name:  "no-treekill",
-		// 	Usage: "Only kill the main process, not detached children",
-		// },
-		// TODO: -i/... to confirm which procs will be stopped
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to stop",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to stop",
-		},
-		&cli.Uint64SliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to stop",
-		},
-		configFlag,
-	},
-	Action: func(ctx *cli.Context) error {
-		return executeProcCommand(
-			ctx,
-			&stopCmd{
-				names: ctx.StringSlice("name"),
-				tags:  ctx.StringSlice("tag"),
-				ids:   ctx.Uint64Slice("id"),
+	AllCmds = append(
+		AllCmds,
+		&cli.Command{
+			Name:      "stop",
+			Usage:     "stop a process",
+			ArgsUsage: "<id|name|namespace|all|json>...",
+			Flags: []cli.Flag{
+				// &cli.BoolFlag{
+				// 	Name:  "watch",
+				// 	Usage: "stop watching for file changes",
+				// },
+				// &cli.BoolFlag{
+				// 	Name:  "kill",
+				// 	Usage: "kill process with SIGKILL instead of SIGINT",
+				// },
+				// &cli.DurationFlag{
+				// 	Name:    "kill-timeout",
+				// 	Aliases: []string{"k"},
+				// 	Usage:   "delay before sending final SIGKILL signal to process",
+				// },
+				// &cli.BoolFlag{
+				// 	Name:  "no-treekill",
+				// 	Usage: "Only kill the main process, not detached children",
+				// },
+				// TODO: -i/... to confirm which procs will be stopped
+				&cli.StringSliceFlag{
+					Name:  "name",
+					Usage: "name(s) of process(es) to stop",
+				},
+				&cli.StringSliceFlag{
+					Name:  "tag",
+					Usage: "tag(s) of process(es) to stop",
+				},
+				&cli.Uint64SliceFlag{
+					Name:  "id",
+					Usage: "id(s) of process(es) to stop",
+				},
+				configFlag,
 			},
-		)
-	},
+			Action: func(ctx *cli.Context) error {
+				return executeProcCommand(
+					ctx,
+					&stopCmd{
+						names: ctx.StringSlice("name"),
+						tags:  ctx.StringSlice("tag"),
+						ids:   ctx.Uint64Slice("id"),
+					},
+				)
+			},
+		},
+	)
 }
 
 type stopCmd struct {

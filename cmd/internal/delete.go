@@ -12,40 +12,40 @@ import (
 )
 
 func init() {
-	// TODO: inlines
-	AllCmds = append(AllCmds, DeleteCmd)
-}
-
-var DeleteCmd = &cli.Command{
-	Name:      "delete",
-	Aliases:   []string{"del", "rm"},
-	Usage:     "stop and remove process(es)",
-	ArgsUsage: "<name|id|namespace|tag|json>...",
-	Flags: []cli.Flag{
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to stop and remove",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to stop and remove",
-		},
-		&cli.Uint64SliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to stop and remove",
-		},
-		configFlag,
-	},
-	Action: func(ctx *cli.Context) error {
-		return executeProcCommand(
-			ctx,
-			&deleteCmd{
-				names: ctx.StringSlice("name"),
-				tags:  ctx.StringSlice("tag"),
-				ids:   ctx.Uint64Slice("id"),
+	AllCmds = append(
+		AllCmds,
+		&cli.Command{
+			Name:      "delete",
+			Aliases:   []string{"del", "rm"},
+			Usage:     "stop and remove process(es)",
+			ArgsUsage: "<name|id|namespace|tag|json>...",
+			Flags: []cli.Flag{
+				&cli.StringSliceFlag{
+					Name:  "name",
+					Usage: "name(s) of process(es) to stop and remove",
+				},
+				&cli.StringSliceFlag{
+					Name:  "tag",
+					Usage: "tag(s) of process(es) to stop and remove",
+				},
+				&cli.Uint64SliceFlag{
+					Name:  "id",
+					Usage: "id(s) of process(es) to stop and remove",
+				},
+				configFlag,
 			},
-		)
-	},
+			Action: func(ctx *cli.Context) error {
+				return executeProcCommand(
+					ctx,
+					&deleteCmd{
+						names: ctx.StringSlice("name"),
+						tags:  ctx.StringSlice("tag"),
+						ids:   ctx.Uint64Slice("id"),
+					},
+				)
+			},
+		},
+	)
 }
 
 type deleteCmd struct {

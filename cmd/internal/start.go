@@ -12,44 +12,45 @@ import (
 )
 
 func init() {
-	AllCmds = append(AllCmds, StartCmd)
-}
-
-var StartCmd = &cli.Command{
-	Name:      "start",
-	ArgsUsage: "<name|tag|id|status>...",
-	Usage:     "start process and manage it",
-	Flags: []cli.Flag{
-		// &cli.BoolFlag{Name:        "only", Usage: "with json declaration, allow to only act on one application"},
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to run",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to run",
-		},
-		&cli.Uint64SliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to run",
-		},
-		&cli.StringSliceFlag{
-			Name:  "status",
-			Usage: "status(es) of process(es) to run",
-		},
-		configFlag,
-	},
-	Action: func(ctx *cli.Context) error {
-		return executeProcCommand(
-			ctx,
-			&startCmd{
-				names:    ctx.StringSlice("name"),
-				tags:     ctx.StringSlice("tags"),
-				statuses: ctx.StringSlice("status"),
-				ids:      ctx.Uint64Slice("id"),
+	AllCmds = append(
+		AllCmds,
+		&cli.Command{
+			Name:      "start",
+			ArgsUsage: "<name|tag|id|status>...",
+			Usage:     "start process and manage it",
+			Flags: []cli.Flag{
+				// &cli.BoolFlag{Name:        "only", Usage: "with json declaration, allow to only act on one application"},
+				&cli.StringSliceFlag{
+					Name:  "name",
+					Usage: "name(s) of process(es) to run",
+				},
+				&cli.StringSliceFlag{
+					Name:  "tag",
+					Usage: "tag(s) of process(es) to run",
+				},
+				&cli.Uint64SliceFlag{
+					Name:  "id",
+					Usage: "id(s) of process(es) to run",
+				},
+				&cli.StringSliceFlag{
+					Name:  "status",
+					Usage: "status(es) of process(es) to run",
+				},
+				configFlag,
 			},
-		)
-	},
+			Action: func(ctx *cli.Context) error {
+				return executeProcCommand(
+					ctx,
+					&startCmd{
+						names:    ctx.StringSlice("name"),
+						tags:     ctx.StringSlice("tags"),
+						statuses: ctx.StringSlice("status"),
+						ids:      ctx.Uint64Slice("id"),
+					},
+				)
+			},
+		},
+	)
 }
 
 type startCmd struct {
