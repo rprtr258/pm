@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/samber/lo"
@@ -60,7 +59,7 @@ type startCmd struct {
 	statuses []string
 }
 
-func (cmd *startCmd) Validate(configs []RunConfig) error {
+func (cmd *startCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
 	return nil
 }
 
@@ -71,34 +70,14 @@ func (cmd *startCmd) Run(
 	list db.DB,
 	configList db.DB,
 ) error {
-	// TODO: inline
-	return start(
-		ctx.Context,
-		configList,
-		client,
-		ctx.Args().Slice(),
-		cmd.names,
-		cmd.tags,
-		cmd.statuses,
-		cmd.ids,
-	)
-}
-
-func start(
-	ctx context.Context,
-	filteredDB db.DB,
-	client client.Client,
-	genericFilters, nameFilters, tagFilters, statusFilters []string,
-	idFilters []uint64,
-) error {
 	procIDsToStart := internal.FilterProcs[uint64](
-		filteredDB,
+		configList,
 		internal.WithAllIfNoFilters,
-		internal.WithGeneric(genericFilters),
-		internal.WithIDs(idFilters),
-		internal.WithNames(nameFilters),
-		internal.WithStatuses(statusFilters),
-		internal.WithTags(tagFilters),
+		internal.WithGeneric(ctx.Args().Slice()),
+		internal.WithIDs(cmd.ids),
+		internal.WithNames(cmd.names),
+		internal.WithStatuses(cmd.statuses),
+		internal.WithTags(cmd.tags),
 	)
 
 	if len(procIDsToStart) == 0 {
@@ -106,11 +85,12 @@ func start(
 		return nil
 	}
 
-	if err := client.Start(ctx, procIDsToStart); err != nil {
+	if err := client.Start(ctx.Context, procIDsToStart); err != nil {
 		return fmt.Errorf("client.Start failed: %w", err)
 	}
 
 	fmt.Println(lo.ToAnySlice(procIDsToStart)...)
 
 	return nil
+
 }

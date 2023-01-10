@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/urfave/cli/v2"
@@ -70,7 +69,7 @@ type stopCmd struct {
 	ids   []uint64
 }
 
-func (cmd *stopCmd) Validate(configs []RunConfig) error {
+func (cmd *stopCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
 	return nil
 }
 
@@ -78,34 +77,15 @@ func (cmd *stopCmd) Run(
 	ctx *cli.Context,
 	configs []RunConfig,
 	client client.Client,
-	list db.DB,
+	_ db.DB,
 	configList db.DB,
 ) error {
-	// TODO: inline
-	return stop(
-		ctx.Context,
-		configList,
-		client,
-		ctx.Args().Slice(),
-		cmd.names,
-		cmd.tags,
-		cmd.ids,
-	)
-}
-
-func stop(
-	ctx context.Context,
-	list db.DB,
-	client client.Client,
-	genericFilters, nameFilters, tagFilters []string,
-	idFilters []uint64,
-) error {
 	ids := internal.FilterProcs[uint64](
-		list,
-		internal.WithGeneric(genericFilters),
-		internal.WithIDs(idFilters),
-		internal.WithNames(nameFilters),
-		internal.WithTags(tagFilters),
+		configList,
+		internal.WithGeneric(ctx.Args().Slice()),
+		internal.WithIDs(cmd.ids),
+		internal.WithNames(cmd.names),
+		internal.WithTags(cmd.tags),
 		internal.WithAllIfNoFilters,
 	)
 
@@ -114,7 +94,7 @@ func stop(
 		return nil
 	}
 
-	if err := client.Stop(ctx, ids); err != nil {
+	if err := client.Stop(ctx.Context, ids); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
 

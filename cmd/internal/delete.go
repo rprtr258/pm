@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"fmt"
 	"log"
 
@@ -55,7 +54,7 @@ type deleteCmd struct {
 	ids   []uint64
 }
 
-func (cmd *deleteCmd) Validate(configs []RunConfig) error {
+func (cmd *deleteCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
 	return nil
 }
 
@@ -63,34 +62,15 @@ func (cmd *deleteCmd) Run(
 	ctx *cli.Context,
 	configs []RunConfig,
 	client client.Client,
-	list db.DB,
+	_ db.DB,
 	configList db.DB,
 ) error {
-	// TODO: inline
-	return delete(
-		ctx.Context,
-		configList,
-		client,
-		ctx.Args().Slice(),
-		cmd.names,
-		cmd.tags,
-		cmd.ids,
-	)
-}
-
-func delete(
-	ctx context.Context,
-	filteredDB db.DB,
-	client client.Client,
-	genericFilters, nameFilters, tagFilters []string,
-	idFilters []uint64,
-) error {
 	procIDs := internal.FilterProcs[uint64](
-		filteredDB,
-		internal.WithGeneric(genericFilters),
-		internal.WithIDs(idFilters),
-		internal.WithNames(nameFilters),
-		internal.WithTags(tagFilters),
+		configList,
+		internal.WithGeneric(ctx.Args().Slice()),
+		internal.WithIDs(cmd.ids),
+		internal.WithNames(cmd.names),
+		internal.WithTags(cmd.tags),
 		internal.WithAllIfNoFilters,
 	)
 
@@ -101,9 +81,9 @@ func delete(
 
 	fmt.Printf("Stopping and removing: %v\n", procIDs)
 
-	if err := client.Stop(ctx, procIDs); err != nil {
+	if err := client.Stop(ctx.Context, procIDs); err != nil {
 		log.Println(fmt.Errorf("client.Stop failed: %w", err).Error())
 	}
 
-	return client.Delete(ctx, procIDs)
+	return client.Delete(ctx.Context, procIDs)
 }

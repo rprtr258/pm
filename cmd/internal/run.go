@@ -105,7 +105,7 @@ type runCmd struct {
 	interpreter string
 }
 
-func (cmd *runCmd) Validate(configs []RunConfig) error {
+func (cmd *runCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
 	// TODO: validate params
 	return nil
 }

@@ -57,7 +57,7 @@ func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 type procCommand interface {
 	// Validate input parameters. Returns error if invalid parameters were found.
 	// configs is nill if no config file provided.
-	Validate(configs []RunConfig) error
+	Validate(ctx *cli.Context, configs []RunConfig) error
 	// Run command given all the input data.
 	Run(
 		ctx *cli.Context,
@@ -112,7 +112,7 @@ func executeProcCommand(
 	}
 
 	if !ctx.IsSet("config") {
-		if err := cmd.Validate(nil); err != nil {
+		if err := cmd.Validate(ctx, nil); err != nil {
 			return err
 		}
 	}
@@ -143,7 +143,7 @@ func executeProcCommand(
 		return err
 	}
 
-	if err := cmd.Validate(configs); err != nil {
+	if err := cmd.Validate(ctx, configs); err != nil {
 		return err
 	}
 
