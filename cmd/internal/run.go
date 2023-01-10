@@ -5,12 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
-	"time"
 
-	jsonnet "github.com/google/go-jsonnet"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/multierr"
@@ -87,12 +84,7 @@ var RunCmd = &cli.Command{
 			Usage:   "set interpreter to executing command",
 		},
 		// TODO: interpreter args
-		&cli.StringFlag{
-			Name:      "config",
-			Usage:     "config file to use",
-			Aliases:   []string{"f"},
-			TakesFile: true,
-		},
+		configFlag,
 		// &cli.BoolFlag{Name:        "watch", Usage: "Watch folder for changes"},
 		// &cli.StringSliceFlag{Name: "watch", Usage: "watch application folder for changes"},
 		// &cli.StringSliceFlag{Name: "ext", Usage: "watch only this file extensions"},
@@ -133,12 +125,7 @@ var RunCmd = &cli.Command{
 
 		var toRunArgs []string
 		if interpreter == "" {
-			if ctx.IsSet("config") && isConfigFile(ctx.String("config")) {
-				configs, err := loadConfig(ctx.String("config"))
-				if err != nil {
-					return err
-				}
-
+			if configs != nil {
 				return runConfigs(ctx.Context, configs, args)
 			}
 
@@ -148,6 +135,10 @@ var RunCmd = &cli.Command{
 
 			toRunArgs = args
 		} else {
+			if configs != nil {
+				return fmt.Errorf("either interpreter with cmd or config must be provided, not both")
+			}
+
 			if len(args) != 1 {
 				return fmt.Errorf(
 					"interpreter %q set, thats why only single arg must be provided (but there were %d provided)",
@@ -175,32 +166,6 @@ var RunCmd = &cli.Command{
 		}
 		return run(ctx.Context, config)
 	},
-}
-
-func loadConfig(filename string) ([]RunConfig, error) {
-	vm := jsonnet.MakeVM()
-	vm.ExtVar("now", time.Now().Format("15:04:05"))
-
-	jsonText, err := vm.EvaluateFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	var configs []RunConfig
-	if err := json.Unmarshal([]byte(jsonText), &configs); err != nil {
-		return nil, err
-	}
-
-	return configs, nil
-}
-
-func isConfigFile(arg string) bool {
-	stat, err := os.Stat(arg)
-	if err != nil {
-		return false
-	}
-
-	return !stat.IsDir()
 }
 
 func runConfigs(

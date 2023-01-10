@@ -1,12 +1,60 @@
 package internal
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"time"
+
+	jsonnet "github.com/google/go-jsonnet"
 	"github.com/urfave/cli/v2"
 )
 
 var (
 	AllCmds []*cli.Command
+
+	configs    []RunConfig
+	configFlag = &cli.StringFlag{
+		Name:      "config",
+		Usage:     "config file to use",
+		Aliases:   []string{"f"},
+		TakesFile: true,
+		Action: func(ctx *cli.Context, s string) error {
+			if !ctx.IsSet("config") {
+				return nil
+			}
+
+			configFilename := ctx.String("config")
+
+			if !isConfigFile(configFilename) {
+				return fmt.Errorf("%s is not a valid config file", configFilename)
+			}
+
+			return loadConfig(ctx.String("config"), &configs)
+		},
+	}
 )
+
+func isConfigFile(arg string) bool {
+	stat, err := os.Stat(arg)
+	if err != nil {
+		return false
+	}
+
+	return !stat.IsDir()
+}
+
+func loadConfig(filename string, configs *[]RunConfig) error {
+	vm := jsonnet.MakeVM()
+	vm.ExtVar("now", time.Now().Format("15:04:05"))
+
+	jsonText, err := vm.EvaluateFile(filename)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal([]byte(jsonText), &configs)
+}
 
 // { Name: "trigger", Usage:     "trigger process action", ArgsUsage: "<id|proc_name|namespace|all> <action_name> [params]", .action(function(pm_id, action_name, params) { pm2.trigger(pm_id, action_name, params); },
 

@@ -35,18 +35,13 @@ var DeleteCmd = &cli.Command{
 			Name:  "id",
 			Usage: "id(s) of process(es) to stop and remove",
 		},
-		&cli.StringFlag{
-			Name:      "config",
-			Usage:     "config file to use",
-			Aliases:   []string{"f"},
-			TakesFile: true,
-		},
+		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		if ctx.IsSet("config") && isConfigFile(ctx.String("config")) {
+		if configs != nil {
 			return deleteConfig(
 				ctx.Context,
-				ctx.String("config"),
+				configs,
 				ctx.Args().Slice(),
 				ctx.StringSlice("name"),
 				ctx.StringSlice("tags"),
@@ -66,15 +61,10 @@ var DeleteCmd = &cli.Command{
 
 func deleteConfig(
 	ctx context.Context,
-	configFilename string,
+	configs []RunConfig,
 	genericFilters, nameFilters, tagFilters []string,
 	idFilters []uint64,
 ) error {
-	configs, err := loadConfig(configFilename)
-	if err != nil {
-		return err
-	}
-
 	names := make([]string, len(configs))
 	for _, config := range configs {
 		if !config.Name.Valid {

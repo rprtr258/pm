@@ -38,18 +38,13 @@ var StartCmd = &cli.Command{
 			Name:  "status",
 			Usage: "status(es) of process(es) to run",
 		},
-		&cli.StringFlag{
-			Name:      "config",
-			Usage:     "config file to use",
-			Aliases:   []string{"f"},
-			TakesFile: true,
-		},
+		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
 		if ctx.IsSet("config") && isConfigFile(ctx.String("config")) {
 			return startConfig(
 				ctx.Context,
-				ctx.String("config"),
+				configs,
 				ctx.Args().Slice(),
 				ctx.StringSlice("name"),
 				ctx.StringSlice("tags"),
@@ -71,15 +66,10 @@ var StartCmd = &cli.Command{
 
 func startConfig(
 	ctx context.Context,
-	configFilename string,
+	configs []RunConfig,
 	genericFilters, nameFilters, tagFilters, statusFilters []string,
 	idFilters []uint64,
 ) error {
-	configs, err := loadConfig(configFilename)
-	if err != nil {
-		return err
-	}
-
 	names := make([]string, len(configs))
 	for _, config := range configs {
 		if !config.Name.Valid {
