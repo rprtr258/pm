@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal"
-	"github.com/rprtr258/pm/internal/client"
-	"github.com/rprtr258/pm/internal/db"
 )
 
 func init() {
@@ -38,20 +35,10 @@ var DeleteCmd = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		if configs != nil {
-			return deleteConfig(
-				ctx.Context,
-				configs,
-				ctx.Args().Slice(),
-				ctx.StringSlice("name"),
-				ctx.StringSlice("tags"),
-				ctx.Uint64Slice("id"),
-			)
-		}
+		defer commonData.Close()
 
-		return defaultDelete(
+		return delete(
 			ctx.Context,
-			ctx.Args().Slice(),
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
 			ctx.Uint64Slice("id"),
@@ -59,79 +46,15 @@ var DeleteCmd = &cli.Command{
 	},
 }
 
-func deleteConfig(
-	ctx context.Context,
-	configs []RunConfig,
-	genericFilters, nameFilters, tagFilters []string,
-	idFilters []uint64,
-) error {
-	names := make([]string, len(configs))
-	for _, config := range configs {
-		if !config.Name.Valid {
-			continue
-		}
-		names = append(names, config.Name.Value)
-	}
-
-	client, err := client.NewGrpcClient()
-	if err != nil {
-		return err
-	}
-	defer deferErr(client.Close)
-
-	list, err := client.List(ctx)
-	if err != nil {
-		return err
-	}
-
-	configList := lo.PickBy(
-		list,
-		func(_ db.ProcID, procData db.ProcData) bool {
-			return lo.Contains(names, procData.Name)
-		},
-	)
-
-	return delete(
-		ctx,
-		configList,
-		client,
-		genericFilters, nameFilters, tagFilters,
-		idFilters,
-	)
-}
-
-func defaultDelete(
-	ctx context.Context,
-	genericFilters, nameFilters, tagFilters []string,
-	idFilters []uint64,
-) error {
-	client, err := client.NewGrpcClient()
-	if err != nil {
-		return err
-	}
-	defer deferErr(client.Close)
-
-	resp, err := client.List(ctx)
-	if err != nil {
-		return err
-	}
-
-	return delete(
-		ctx,
-		resp, client,
-		genericFilters, nameFilters, tagFilters,
-		idFilters,
-	)
-}
-
 func delete(
 	ctx context.Context,
-	resp db.DB, client client.Client,
-	genericFilters, nameFilters, tagFilters []string,
+	nameFilters, tagFilters []string,
 	idFilters []uint64,
 ) error {
+	genericFilters := commonData.args
+
 	procIDs := internal.FilterProcs[uint64](
-		resp,
+		commonData.filteredDB,
 		internal.WithGeneric(genericFilters),
 		internal.WithIDs(idFilters),
 		internal.WithNames(nameFilters),
@@ -146,9 +69,9 @@ func delete(
 
 	fmt.Printf("Stopping and removing: %v\n", procIDs)
 
-	if err := client.Stop(ctx, procIDs); err != nil {
+	if err := commonData.client.Stop(ctx, procIDs); err != nil {
 		log.Println(fmt.Errorf("client.Stop failed: %w", err).Error())
 	}
 
-	return client.Delete(ctx, procIDs)
+	return commonData.client.Delete(ctx, procIDs)
 }

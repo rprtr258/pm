@@ -125,8 +125,8 @@ var RunCmd = &cli.Command{
 
 		var toRunArgs []string
 		if interpreter == "" {
-			if configs != nil {
-				return runConfigs(ctx.Context, configs, args)
+			if commonData.configs != nil {
+				return runConfigs(ctx.Context)
 			}
 
 			if len(args) == 0 {
@@ -135,7 +135,7 @@ var RunCmd = &cli.Command{
 
 			toRunArgs = args
 		} else {
-			if configs != nil {
+			if commonData.configs != nil {
 				return fmt.Errorf("either interpreter with cmd or config must be provided, not both")
 			}
 
@@ -168,21 +168,19 @@ var RunCmd = &cli.Command{
 	},
 }
 
-func runConfigs(
-	ctx context.Context,
-	configs []RunConfig,
-	names []string,
-) error {
+func runConfigs(ctx context.Context) error {
+	names := commonData.args
+
 	if len(names) == 0 {
 		var merr error
-		for _, config := range configs {
+		for _, config := range commonData.configs {
 			multierr.AppendInto(&merr, run(ctx, config))
 		}
 		return merr
 	}
 
 	configsByName := make(map[string]RunConfig, len(names))
-	for _, cfg := range configs {
+	for _, cfg := range commonData.configs {
 		if !cfg.Name.Valid || !lo.Contains(names, cfg.Name.Value) {
 			continue
 		}

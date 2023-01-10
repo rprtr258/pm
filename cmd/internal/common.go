@@ -7,30 +7,91 @@ import (
 	"time"
 
 	jsonnet "github.com/google/go-jsonnet"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
+
+	"github.com/rprtr258/pm/internal/client"
+	"github.com/rprtr258/pm/internal/db"
 )
+
+type commonCmdData struct {
+	configs    []RunConfig
+	args       []string
+	client     client.Client
+	db         db.DB
+	filteredDB db.DB
+}
+
+func (c *commonCmdData) Close() {
+	deferErr(c.client.Close)
+}
 
 var (
 	AllCmds []*cli.Command
 
-	configs    []RunConfig
+	commonData commonCmdData
 	configFlag = &cli.StringFlag{
 		Name:      "config",
 		Usage:     "config file to use",
 		Aliases:   []string{"f"},
 		TakesFile: true,
 		Action: func(ctx *cli.Context, s string) error {
-			if !ctx.IsSet("config") {
-				return nil
-			}
-
 			configFilename := ctx.String("config")
 
-			if !isConfigFile(configFilename) {
+			if ctx.IsSet("config") && !isConfigFile(configFilename) {
 				return fmt.Errorf("%s is not a valid config file", configFilename)
 			}
 
-			return loadConfig(ctx.String("config"), &configs)
+			client, err := client.NewGrpcClient()
+			if err != nil {
+				return err
+			}
+
+			list, err := client.List(ctx.Context)
+			if err != nil {
+				return err
+			}
+
+			if !ctx.IsSet("config") {
+				commonData = commonCmdData{
+					configs:    nil,
+					args:       ctx.Args().Slice(),
+					client:     client,
+					db:         list,
+					filteredDB: list,
+				}
+
+				return nil
+			}
+
+			var configs []RunConfig
+			if err := loadConfig(ctx.String("config"), &configs); err != nil {
+				return err
+			}
+
+			names := lo.FilterMap(
+				configs,
+				func(cfg RunConfig, _ int) (string, bool) {
+					return cfg.Name.Value, cfg.Name.Valid
+				},
+			)
+
+			configList := lo.PickBy(
+				list,
+				func(_ db.ProcID, procData db.ProcData) bool {
+					return lo.Contains(names, procData.Name)
+				},
+			)
+
+			commonData = commonCmdData{
+				configs:    configs,
+				args:       ctx.Args().Slice(),
+				client:     client,
+				db:         list,
+				filteredDB: configList,
+			}
+
+			return nil
 		},
 	}
 )

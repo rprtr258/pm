@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal"
-	"github.com/rprtr258/pm/internal/client"
-	"github.com/rprtr258/pm/internal/db"
 )
 
 func init() {
@@ -54,22 +51,10 @@ var StopCmd = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		args := ctx.Args().Slice()
+		defer commonData.Close()
 
-		if configs != nil {
-			return stopConfig(
-				ctx.Context,
-				configs,
-				args,
-				ctx.StringSlice("name"),
-				ctx.StringSlice("tags"),
-				ctx.Uint64Slice("id"),
-			)
-		}
-
-		return defaultStop(
+		return stop(
 			ctx.Context,
-			args,
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
 			ctx.Uint64Slice("id"),
@@ -77,81 +62,15 @@ var StopCmd = &cli.Command{
 	},
 }
 
-func stopConfig(
-	ctx context.Context,
-	configs []RunConfig,
-	genericFilters, nameFilters, tagFilters []string,
-	idFilters []uint64,
-) error {
-	names := make([]string, len(configs))
-	for _, config := range configs {
-		if !config.Name.Valid {
-			continue
-		}
-		names = append(names, config.Name.Value)
-	}
-
-	client, err := client.NewGrpcClient()
-	if err != nil {
-		return err
-	}
-	defer deferErr(client.Close)
-
-	list, err := client.List(ctx)
-	if err != nil {
-		return err
-	}
-
-	configList := lo.PickBy(
-		list,
-		func(_ db.ProcID, procData db.ProcData) bool {
-			return lo.Contains(names, procData.Name)
-		},
-	)
-
-	return stop(
-		ctx,
-		configList,
-		client,
-		genericFilters, nameFilters, tagFilters,
-		idFilters,
-	)
-}
-
-func defaultStop(
-	ctx context.Context,
-	genericFilters, nameFilters, tagFilters []string,
-	idFilters []uint64,
-) error {
-	client, err := client.NewGrpcClient()
-	if err != nil {
-		return err
-	}
-	defer deferErr(client.Close)
-
-	resp, err := db.New(internal.FileDaemonDB).List()
-	if err != nil {
-		return err
-	}
-
-	return stop(
-		ctx,
-		resp,
-		client,
-		genericFilters, nameFilters, tagFilters,
-		idFilters,
-	)
-}
-
 func stop(
 	ctx context.Context,
-	resp db.DB,
-	client client.Client,
-	genericFilters, nameFilters, tagFilters []string,
+	nameFilters, tagFilters []string,
 	idFilters []uint64,
 ) error {
+	genericFilters := commonData.args
+
 	ids := internal.FilterProcs[uint64](
-		resp,
+		commonData.filteredDB,
 		internal.WithGeneric(genericFilters),
 		internal.WithIDs(idFilters),
 		internal.WithNames(nameFilters),
@@ -164,7 +83,7 @@ func stop(
 		return nil
 	}
 
-	if err := client.Stop(ctx, ids); err != nil {
+	if err := commonData.client.Stop(ctx, ids); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
 
