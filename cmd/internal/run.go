@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -15,47 +14,11 @@ import (
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
+	"github.com/rprtr258/pm/internal/db"
 )
 
 func init() {
 	AllCmds = append(AllCmds, RunCmd)
-}
-
-type RunConfig struct {
-	Name    internal.Optional[string]
-	Command string
-	Args    []string
-	Tags    []string
-	Cwd     internal.Optional[string]
-}
-
-func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
-	var tmp struct {
-		Name    *string  `json:"name"`
-		Cwd     *string  `json:"cwd"`
-		Command string   `json:"command"`
-		Args    []any    `json:"args"`
-		Tags    []string `json:"tags"`
-	}
-
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
-	}
-
-	*cfg = RunConfig{
-		Name:    internal.FromPtr(tmp.Name),
-		Cwd:     internal.FromPtr(tmp.Cwd),
-		Command: tmp.Command,
-		Args: lo.Map(
-			tmp.Args,
-			func(elem any, _ int) string {
-				return fmt.Sprint(elem)
-			},
-		),
-		Tags: tmp.Tags,
-	}
-
-	return nil
 }
 
 var RunCmd = &cli.Command{
@@ -120,67 +83,103 @@ var RunCmd = &cli.Command{
 		// &cli.BoolFlag{Name:        "dockerdaemon", Usage: "for debugging purpose"},
 	},
 	Action: func(ctx *cli.Context) error {
-		interpreter := ctx.String("interpreter")
-		args := ctx.Args().Slice()
-
-		var toRunArgs []string
-		if interpreter == "" {
-			if commonData.configs != nil {
-				return runConfigs(ctx.Context)
-			}
-
-			if len(args) == 0 {
-				return errors.New("command expected")
-			}
-
-			toRunArgs = args
-		} else {
-			if commonData.configs != nil {
-				return fmt.Errorf("either interpreter with cmd or config must be provided, not both")
-			}
-
-			if len(args) != 1 {
-				return fmt.Errorf(
-					"interpreter %q set, thats why only single arg must be provided (but there were %d provided)",
-					interpreter,
-					len(args),
-				)
-			}
-
-			toRunArgs = append(toRunArgs, strings.Split(interpreter, " ")...)
-			toRunArgs = append(toRunArgs, args[0])
-		}
-
-		var err error
-		if err != nil {
-			return fmt.Errorf("could not find executable %q: %w", toRunArgs[0], err)
-		}
-
-		name := ctx.String("name")
-		config := RunConfig{
-			Command: toRunArgs[0],
-			Args:    toRunArgs[1:],
-			Name: lo.If(name != "", internal.Valid(name)).
-				Else(internal.Invalid[string]()),
-			Tags: ctx.StringSlice("tag"),
-		}
-		return run(ctx.Context, config)
+		return executeProcCommand(
+			ctx,
+			&runCmd{
+				// TODO: change to destinations
+				name:        ctx.String("name"),
+				args:        ctx.Args().Slice(),
+				tags:        ctx.StringSlice("tag"),
+				cwd:         ctx.String("pwd"),
+				interpreter: ctx.String("interpreter"),
+			},
+		)
 	},
 }
 
-func runConfigs(ctx context.Context) error {
-	names := commonData.args
+var _ = procCommand(&runCmd{})
 
+type runCmd struct {
+	name        string
+	args        []string
+	tags        []string
+	cwd         string
+	interpreter string
+}
+
+func (cmd *runCmd) Validate(configs []RunConfig) error {
+	// TODO: validate params
+	return nil
+}
+
+func (cmd *runCmd) Run(
+	ctx *cli.Context,
+	configs []RunConfig,
+	client client.Client,
+	list db.DB,
+	configList db.DB,
+) error {
+	var toRunArgs []string
+	if cmd.interpreter == "" {
+		if configs != nil {
+			return runConfigs(ctx.Context, cmd.args, configs, client)
+		}
+
+		if len(cmd.args) == 0 {
+			return errors.New("command expected")
+		}
+
+		toRunArgs = cmd.args
+	} else {
+		if configs != nil {
+			return fmt.Errorf("either interpreter with cmd or config must be provided, not both")
+		}
+
+		if len(cmd.args) != 1 {
+			return fmt.Errorf(
+				"interpreter %q set, thats why only single arg must be provided (but there were %d provided)",
+				cmd.interpreter,
+				len(cmd.args),
+			)
+		}
+
+		toRunArgs = append(toRunArgs, strings.Split(cmd.interpreter, " ")...)
+		toRunArgs = append(toRunArgs, cmd.args[0])
+	}
+
+	var err error
+	if err != nil {
+		return fmt.Errorf("could not find executable %q: %w", toRunArgs[0], err)
+	}
+
+	name := ctx.String("name")
+	config := RunConfig{
+		Command: toRunArgs[0],
+		Args:    toRunArgs[1:],
+		Name: lo.If(name != "", internal.Valid(name)).
+			Else(internal.Invalid[string]()),
+		Tags: ctx.StringSlice("tag"),
+	}
+	return run(ctx.Context, config, client)
+
+}
+
+func runConfigs(
+	ctx context.Context,
+	names []string,
+	configs []RunConfig,
+	client client.Client,
+) error {
 	if len(names) == 0 {
 		var merr error
-		for _, config := range commonData.configs {
-			multierr.AppendInto(&merr, run(ctx, config))
+		for _, config := range configs {
+			multierr.AppendInto(&merr, run(ctx, config, client))
 		}
 		return merr
 	}
 
 	configsByName := make(map[string]RunConfig, len(names))
-	for _, cfg := range commonData.configs {
+	for _, cfg := range configs {
 		if !cfg.Name.Valid || !lo.Contains(names, cfg.Name.Value) {
 			continue
 		}
@@ -199,7 +198,7 @@ func runConfigs(ctx context.Context) error {
 	}
 
 	for _, config := range configsByName {
-		multierr.AppendInto(&merr, run(ctx, config))
+		multierr.AppendInto(&merr, run(ctx, config, client))
 	}
 	return merr
 }
@@ -207,13 +206,8 @@ func runConfigs(ctx context.Context) error {
 func run(
 	ctx context.Context,
 	config RunConfig,
+	client client.Client,
 ) error {
-	client, err := client.NewGrpcClient()
-	if err != nil {
-		return err
-	}
-	defer deferErr(client.Close)
-
 	command, err := exec.LookPath(config.Command)
 	if err != nil {
 		return err

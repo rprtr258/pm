@@ -8,9 +8,12 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal"
+	"github.com/rprtr258/pm/internal/client"
+	"github.com/rprtr258/pm/internal/db"
 )
 
 func init() {
+	// TODO: inlines
 	AllCmds = append(AllCmds, DeleteCmd)
 }
 
@@ -35,26 +38,57 @@ var DeleteCmd = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		defer commonData.Close()
-
-		return delete(
-			ctx.Context,
-			ctx.StringSlice("name"),
-			ctx.StringSlice("tags"),
-			ctx.Uint64Slice("id"),
+		return executeProcCommand(
+			ctx,
+			&deleteCmd{
+				names: ctx.StringSlice("name"),
+				tags:  ctx.StringSlice("tag"),
+				ids:   ctx.Uint64Slice("id"),
+			},
 		)
 	},
 }
 
+var _ = procCommand(&deleteCmd{})
+
+type deleteCmd struct {
+	names []string
+	tags  []string
+	ids   []uint64
+}
+
+func (cmd *deleteCmd) Validate(configs []RunConfig) error {
+	return nil
+}
+
+func (cmd *deleteCmd) Run(
+	ctx *cli.Context,
+	configs []RunConfig,
+	client client.Client,
+	list db.DB,
+	configList db.DB,
+) error {
+	// TODO: inline
+	return delete(
+		ctx.Context,
+		configList,
+		client,
+		ctx.Args().Slice(),
+		cmd.names,
+		cmd.tags,
+		cmd.ids,
+	)
+}
+
 func delete(
 	ctx context.Context,
-	nameFilters, tagFilters []string,
+	filteredDB db.DB,
+	client client.Client,
+	genericFilters, nameFilters, tagFilters []string,
 	idFilters []uint64,
 ) error {
-	genericFilters := commonData.args
-
 	procIDs := internal.FilterProcs[uint64](
-		commonData.filteredDB,
+		filteredDB,
 		internal.WithGeneric(genericFilters),
 		internal.WithIDs(idFilters),
 		internal.WithNames(nameFilters),
@@ -69,9 +103,9 @@ func delete(
 
 	fmt.Printf("Stopping and removing: %v\n", procIDs)
 
-	if err := commonData.client.Stop(ctx, procIDs); err != nil {
+	if err := client.Stop(ctx, procIDs); err != nil {
 		log.Println(fmt.Errorf("client.Stop failed: %w", err).Error())
 	}
 
-	return commonData.client.Delete(ctx, procIDs)
+	return client.Delete(ctx, procIDs)
 }
