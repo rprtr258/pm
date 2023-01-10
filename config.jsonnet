@@ -6,8 +6,8 @@
   },
   {
     "name": "xdd",
-    "command": "echo",
-    "args": ["1"],
+    "command": "sleep",
+    "args": ["1000"],
   },
   {
     "name": "ls2",

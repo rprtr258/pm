@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/urfave/cli/v2"
@@ -12,81 +11,91 @@ import (
 )
 
 func init() {
-	AllCmds = append(AllCmds, StopCmd)
+	AllCmds = append(
+		AllCmds,
+		&cli.Command{
+			Name:      "stop",
+			Usage:     "stop a process",
+			ArgsUsage: "<id|name|namespace|all|json>...",
+			Flags: []cli.Flag{
+				// &cli.BoolFlag{
+				// 	Name:  "watch",
+				// 	Usage: "stop watching for file changes",
+				// },
+				// &cli.BoolFlag{
+				// 	Name:  "kill",
+				// 	Usage: "kill process with SIGKILL instead of SIGINT",
+				// },
+				// &cli.DurationFlag{
+				// 	Name:    "kill-timeout",
+				// 	Aliases: []string{"k"},
+				// 	Usage:   "delay before sending final SIGKILL signal to process",
+				// },
+				// &cli.BoolFlag{
+				// 	Name:  "no-treekill",
+				// 	Usage: "Only kill the main process, not detached children",
+				// },
+				// TODO: -i/... to confirm which procs will be stopped
+				&cli.StringSliceFlag{
+					Name:  "name",
+					Usage: "name(s) of process(es) to stop",
+				},
+				&cli.StringSliceFlag{
+					Name:  "tag",
+					Usage: "tag(s) of process(es) to stop",
+				},
+				&cli.Uint64SliceFlag{
+					Name:  "id",
+					Usage: "id(s) of process(es) to stop",
+				},
+				configFlag,
+			},
+			Action: func(ctx *cli.Context) error {
+				return executeProcCommand(
+					ctx,
+					&stopCmd{
+						names: ctx.StringSlice("name"),
+						tags:  ctx.StringSlice("tag"),
+						ids:   ctx.Uint64Slice("id"),
+					},
+				)
+			},
+		},
+	)
 }
 
-var StopCmd = &cli.Command{
-	Name:      "stop",
-	Usage:     "stop a process",
-	ArgsUsage: "<id|name|namespace|all|json>...",
-	Flags: []cli.Flag{
-		// &cli.BoolFlag{
-		// 	Name:  "watch",
-		// 	Usage: "stop watching for file changes",
-		// },
-		// &cli.BoolFlag{
-		// 	Name:  "kill",
-		// 	Usage: "kill process with SIGKILL instead of SIGINT",
-		// },
-		// &cli.DurationFlag{
-		// 	Name:    "kill-timeout",
-		// 	Aliases: []string{"k"},
-		// 	Usage:   "delay before sending final SIGKILL signal to process",
-		// },
-		// &cli.BoolFlag{
-		// 	Name:  "no-treekill",
-		// 	Usage: "Only kill the main process, not detached children",
-		// },
-		// TODO: -i/... to confirm which procs will be stopped
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to stop",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to stop",
-		},
-		&cli.Uint64SliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to stop",
-		},
-	},
-	Action: func(ctx *cli.Context) error {
-		return stop(
-			ctx.Context,
-			ctx.Args().Slice(),
-			ctx.StringSlice("name"),
-			ctx.StringSlice("tags"),
-			ctx.Uint64Slice("id"),
-		)
-	},
+type stopCmd struct {
+	names []string
+	tags  []string
+	ids   []uint64
 }
 
-func stop(
-	ctx context.Context,
-	genericFilters, nameFilters, tagFilters []string,
-	idFilters []uint64,
+func (cmd *stopCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
+	return nil
+}
+
+func (cmd *stopCmd) Run(
+	ctx *cli.Context,
+	configs []RunConfig,
+	client client.Client,
+	_ db.DB,
+	configList db.DB,
 ) error {
-	client, err := client.NewGrpcClient()
-	if err != nil {
-		return err
-	}
-	defer deferErr(client.Close)
-
-	resp, err := db.New(internal.FileDaemonDB).List()
-	if err != nil {
-		return err
-	}
-
 	ids := internal.FilterProcs[uint64](
-		resp,
-		internal.WithGeneric(genericFilters),
-		internal.WithIDs(idFilters),
-		internal.WithNames(nameFilters),
-		internal.WithTags(tagFilters),
+		configList,
+		internal.WithGeneric(ctx.Args().Slice()),
+		internal.WithIDs(cmd.ids),
+		internal.WithNames(cmd.names),
+		internal.WithTags(cmd.tags),
+		internal.WithAllIfNoFilters,
 	)
 
-	if err := client.Stop(ctx, ids); err != nil {
+	if len(ids) == 0 {
+		fmt.Println("nothing to stop")
+		return nil
+	}
+
+	if err := client.Stop(ctx.Context, ids); err != nil {
 		return fmt.Errorf("client.Stop failed: %w", err)
 	}
 

@@ -1,12 +1,174 @@
 package internal
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"time"
+
+	jsonnet "github.com/google/go-jsonnet"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
+
+	"github.com/rprtr258/pm/internal"
+	"github.com/rprtr258/pm/internal/client"
+	"github.com/rprtr258/pm/internal/db"
 )
+
+type RunConfig struct {
+	Name    internal.Optional[string]
+	Command string
+	Args    []string
+	Tags    []string
+	Cwd     internal.Optional[string]
+}
+
+func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
+	var tmp struct {
+		Name    *string  `json:"name"`
+		Cwd     *string  `json:"cwd"`
+		Command string   `json:"command"`
+		Args    []any    `json:"args"`
+		Tags    []string `json:"tags"`
+	}
+
+	if err := json.Unmarshal(data, &tmp); err != nil {
+		return err
+	}
+
+	*cfg = RunConfig{
+		Name:    internal.FromPtr(tmp.Name),
+		Cwd:     internal.FromPtr(tmp.Cwd),
+		Command: tmp.Command,
+		Args: lo.Map(
+			tmp.Args,
+			func(elem any, _ int) string {
+				return fmt.Sprint(elem)
+			},
+		),
+		Tags: tmp.Tags,
+	}
+
+	return nil
+}
+
+// procCommand is any command changning procs state
+// e.g. start, stop, delete, etc.
+type procCommand interface {
+	// Validate input parameters. Returns error if invalid parameters were found.
+	// configs is nill if no config file provided.
+	Validate(ctx *cli.Context, configs []RunConfig) error
+	// Run command given all the input data.
+	Run(
+		ctx *cli.Context,
+		configs []RunConfig,
+		client client.Client,
+		list db.DB,
+		configList db.DB,
+	) error
+}
 
 var (
 	AllCmds []*cli.Command
+
+	configFlag = &cli.StringFlag{
+		Name:      "config",
+		Usage:     "config file to use",
+		Aliases:   []string{"f"},
+		TakesFile: true,
+	}
 )
+
+func isConfigFile(arg string) bool {
+	stat, err := os.Stat(arg)
+	if err != nil {
+		return false
+	}
+
+	return !stat.IsDir()
+}
+
+func loadConfig(filename string, configs *[]RunConfig) error {
+	vm := jsonnet.MakeVM()
+	vm.ExtVar("now", time.Now().Format("15:04:05"))
+
+	jsonText, err := vm.EvaluateFile(filename)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal([]byte(jsonText), &configs)
+}
+
+func executeProcCommand(
+	ctx *cli.Context,
+	cmd procCommand,
+) error {
+	// TODO: *string destination
+	configFilename := ctx.String("config")
+
+	if ctx.IsSet("config") && !isConfigFile(configFilename) {
+		return fmt.Errorf("%s is not a valid config file", configFilename)
+	}
+
+	if !ctx.IsSet("config") {
+		if err := cmd.Validate(ctx, nil); err != nil {
+			return err
+		}
+	}
+
+	client, err := client.NewGrpcClient()
+	if err != nil {
+		return err
+	}
+	defer deferErr(client.Close)
+
+	list, err := client.List(ctx.Context)
+	if err != nil {
+		return err
+	}
+
+	if !ctx.IsSet("config") {
+		return cmd.Run(
+			ctx,
+			nil,
+			client,
+			list,
+			list,
+		)
+	}
+
+	var configs []RunConfig
+	if err := loadConfig(ctx.String("config"), &configs); err != nil {
+		return err
+	}
+
+	if err := cmd.Validate(ctx, configs); err != nil {
+		return err
+	}
+
+	names := lo.FilterMap(
+		configs,
+		func(cfg RunConfig, _ int) (string, bool) {
+			return cfg.Name.Value, cfg.Name.Valid
+		},
+	)
+
+	configList := lo.PickBy(
+		list,
+		func(_ db.ProcID, procData db.ProcData) bool {
+			return lo.Contains(names, procData.Name)
+		},
+	)
+
+	return cmd.Run(
+		ctx,
+		configs,
+		client,
+		list,
+		configList,
+	)
+}
 
 // { Name: "trigger", Usage:     "trigger process action", ArgsUsage: "<id|proc_name|namespace|all> <action_name> [params]", .action(function(pm_id, action_name, params) { pm2.trigger(pm_id, action_name, params); },
 
