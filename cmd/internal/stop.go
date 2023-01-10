@@ -64,9 +64,6 @@ var StopCmd = &cli.Command{
 	},
 }
 
-// TODO: remove these
-var _ = procCommand(&stopCmd{})
-
 type stopCmd struct {
 	names []string
 	tags  []string

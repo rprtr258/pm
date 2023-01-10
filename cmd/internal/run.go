@@ -97,8 +97,6 @@ var RunCmd = &cli.Command{
 	},
 }
 
-var _ = procCommand(&runCmd{})
-
 type runCmd struct {
 	name        string
 	args        []string

@@ -53,8 +53,6 @@ var StartCmd = &cli.Command{
 	},
 }
 
-var _ = procCommand(&startCmd{})
-
 type startCmd struct {
 	names    []string
 	tags     []string

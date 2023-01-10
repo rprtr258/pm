@@ -49,8 +49,6 @@ var DeleteCmd = &cli.Command{
 	},
 }
 
-var _ = procCommand(&deleteCmd{})
-
 type deleteCmd struct {
 	names []string
 	tags  []string
