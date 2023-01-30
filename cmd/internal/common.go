@@ -99,9 +99,9 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	type configScanDTO struct {
-		Name    internal.Optional[string]
+		Name    *string
 		Command string
-		Args    []string
+		Args    []any
 		Tags    []string
 		Cwd     *string
 	}
@@ -119,11 +119,20 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 			}
 
 			return RunConfig{
-				Name:    config.Name,
+				Name:    internal.FromPtr(config.Name),
 				Command: config.Command,
-				Args:    config.Args,
-				Tags:    config.Args,
-				Cwd:     *cwd,
+				Args: lo.Map(
+					config.Args,
+					func(arg any, _ int) string {
+						if stringer, ok := arg.(fmt.Stringer); ok {
+							return stringer.String()
+						}
+						// TODO: check arg types
+						return fmt.Sprintf("%v", arg)
+					},
+				),
+				Tags: config.Tags,
+				Cwd:  *cwd,
 			}
 		},
 	)
