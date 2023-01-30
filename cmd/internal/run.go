@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -151,6 +152,11 @@ func (cmd *runCmd) Run(
 		return fmt.Errorf("could not find executable %q: %w", toRunArgs[0], err)
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("can't get cwd: %w", err)
+	}
+
 	name := ctx.String("name")
 	config := RunConfig{
 		Command: toRunArgs[0],
@@ -158,9 +164,9 @@ func (cmd *runCmd) Run(
 		Name: lo.If(name != "", internal.Valid(name)).
 			Else(internal.Invalid[string]()),
 		Tags: ctx.StringSlice("tag"),
+		Cwd:  cwd,
 	}
 	return run(ctx.Context, config, client)
-
 }
 
 func runConfigs(
@@ -216,7 +222,7 @@ func run(
 		Command: command,
 		Args:    config.Args,
 		Name:    config.Name.Ptr(),
-		Cwd:     lo.ToPtr(internal.OrDefault(".", config.Cwd)),
+		Cwd:     config.Cwd,
 		Tags:    config.Tags,
 	})
 	if err != nil {

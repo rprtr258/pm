@@ -28,7 +28,7 @@ message ProcessOptions {
     string command = 1;
     repeated string args = 2;
     optional string name = 3;
-    optional string cwd = 4;
+    string cwd = 4;
     repeated string tags = 5;
 }
 

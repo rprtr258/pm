@@ -18,4 +18,7 @@
     "command": "sleep",
     "args": [20],
   },
+  {
+    "command": "pwd",
+  },
 ]

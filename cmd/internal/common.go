@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	jsonnet "github.com/google/go-jsonnet"
@@ -20,13 +21,13 @@ type RunConfig struct {
 	Command string
 	Args    []string
 	Tags    []string
-	Cwd     internal.Optional[string]
+	Cwd     string
 }
 
 func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 	var tmp struct {
 		Name    *string  `json:"name"`
-		Cwd     *string  `json:"cwd"`
+		Cwd     string   `json:"cwd"`
 		Command string   `json:"command"`
 		Args    []any    `json:"args"`
 		Tags    []string `json:"tags"`
@@ -38,7 +39,7 @@ func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 
 	*cfg = RunConfig{
 		Name:    internal.FromPtr(tmp.Name),
-		Cwd:     internal.FromPtr(tmp.Cwd),
+		Cwd:     tmp.Cwd,
 		Command: tmp.Command,
 		Args: lo.Map(
 			tmp.Args,
@@ -88,16 +89,45 @@ func isConfigFile(arg string) bool {
 	return !stat.IsDir()
 }
 
-func loadConfig(filename string, configs *[]RunConfig) error {
+func loadConfigs(filename string) ([]RunConfig, error) {
 	vm := jsonnet.MakeVM()
 	vm.ExtVar("now", time.Now().Format("15:04:05"))
 
 	jsonText, err := vm.EvaluateFile(filename)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return json.Unmarshal([]byte(jsonText), &configs)
+	type configScanDTO struct {
+		Name    internal.Optional[string]
+		Command string
+		Args    []string
+		Tags    []string
+		Cwd     *string
+	}
+	var scannedConfigs []configScanDTO
+	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
+		return nil, err
+	}
+
+	configs := lo.Map(
+		scannedConfigs,
+		func(config configScanDTO, _ int) RunConfig {
+			cwd := config.Cwd
+			if cwd == nil {
+				cwd = lo.ToPtr(filepath.Dir(filename))
+			}
+
+			return RunConfig{
+				Name:    config.Name,
+				Command: config.Command,
+				Args:    config.Args,
+				Tags:    config.Args,
+				Cwd:     *cwd,
+			}
+		},
+	)
+	return configs, nil
 }
 
 func executeProcCommand(
@@ -138,8 +168,8 @@ func executeProcCommand(
 		)
 	}
 
-	var configs []RunConfig
-	if err := loadConfig(ctx.String("config"), &configs); err != nil {
+	configs, err := loadConfigs(configFilename)
+	if err != nil {
 		return err
 	}
 
