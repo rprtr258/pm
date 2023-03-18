@@ -339,10 +339,6 @@ func executeProcCommand(
 //   .option('--nostream', 'print logs without lauching the log stream')
 //   .option('--highlight [value]', 'highlights the given value')
 
-// { Name:  "kill",
-// 	Usage: "kill daemon",
-// },
-
 // { Name:      "serve",
 // 	Usage:     "serve a path over http",
 // 	ArgsUsage: "[path] [port]",
