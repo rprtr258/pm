@@ -122,7 +122,7 @@ func (d *Context) Search() (*os.Process, error) {
 	// Send a test signal to test if this daemon is actually alive or dead.
 	if err := daemon.Signal(syscall.Signal(0)); err != nil {
 		// An error means it is dead.
-		return nil, xerr.NewWM(err, "check daemon process")
+		return nil, nil
 	}
 
 	return daemon, nil

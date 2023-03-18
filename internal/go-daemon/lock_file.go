@@ -78,9 +78,11 @@ var ErrNoPIDFound = errors.New("no pid found")
 func ReadPidFile(name string) (int, error) {
 	file, err := os.OpenFile(name, os.O_RDONLY, 0o640)
 	if err != nil {
-		return 0, xerr.NewWM(err, "open file",
-			xerr.Field("filename", name),
-			xerr.Errors(ErrNoPIDFound))
+		if os.IsNotExist(err) {
+			return 0, ErrNoPIDFound
+		}
+
+		return 0, xerr.NewWM(err, "open file", xerr.Field("filename", name))
 	}
 	defer file.Close()
 
