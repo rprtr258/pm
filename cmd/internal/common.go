@@ -211,27 +211,12 @@ func executeProcCommand(
 	)
 }
 
-// { Name: "trigger", Usage:     "trigger process action", ArgsUsage: "<id|proc_name|namespace|all> <action_name> [params]", .action(function(pm_id, action_name, params) { pm2.trigger(pm_id, action_name, params); },
+// { Name: "pid", commander.command('[app_name]')
+// .description('return pid of [app_name] or all') .action(function(app) { pm2.getPID(app); },
 
-// { Name: "deploy", Usage:     "deploy your json", ArgsUsage: "<file|environment>", .action(function(cmd) { pm2.deploy(cmd, commander); },
+// Name: "restart", commander.command('restart <id|name|namespace|all|json|stdin...>') .description('restart a process')
 
-// { Name: "id", commander.command('id <name>') .description('get process id by name') .action(function(name) { pm2.getProcessIdByName(name); }); },
-// { Name: "pid", commander.command('[app_name]') .description('return pid of [app_name] or all') .action(function(app) { pm2.getPID(app); },
-// { Name: "create", .description('return pid of [app_name] or all') .action(function() { pm2.boilerplate() },
-
-// { Name: "startOrRestart", Usage:     "start or restart JSON file", ArgsUsage: "<json>", .action(function(file) { pm2._startJson(file, commander, 'restartProcessId'); },
-// { Name: "startOrReload", Usage:     "start or gracefully reload JSON file", ArgsUsage: "<json>", .action(function(file) { pm2._startJson(file, commander, 'reloadProcessId'); },
-
-// { Name: "restart", commander.command('restart <id|name|namespace|all|json|stdin...>') .option('--watch', 'Toggle watching folder for changes') .description('restart a process') .action(function(param) { Commander.js patch param = patchCommanderArg(param); let acc = [] forEachLimit(param, 1, function(script, next) { pm2.restart(script, commander, (err, apps) => { acc = acc.concat(apps) next(err) }); }, function(err) { pm2.speedList(err ? 1 : 0, acc); }); }); },
-// { Name: "reload", commander.command('reload <id|name|namespace|all>') .description('reload processes (note that its for app using HTTP/HTTPS)') .action(function(pm2_id) { pm2.reload(pm2_id, commander); }); },
-// { Name: "scale", commander.command('scale <app_name> <number>') .description('scale up/down a process in cluster mode depending on total_number param') .action(function(app_name, number) { pm2.scale(app_name, number); }); },
-
-// { Name: "startOrGracefulReload", commander.command('startOrGracefulReload <json>') .description('start or gracefully reload JSON file') .action(function(file) { pm2._startJson(file, commander, 'reloadProcessId'); }); },
-
-// { Name: "profile:mem", commander.command('profile:mem [time]') .description('Sample PM2 heap memory') .action(function(time) { pm2.profile('mem', time); }); },
-// { Name: "profile:cpu", commander.command('profile:cpu [time]') .description('Profile PM2 cpu') .action(function(time) { pm2.profile('cpu', time); }); },
-
-// { Name: "inspect", commander.command('inspect <name>') .description('inspect a process') .action(function(cmd) { pm2.inspect(cmd, commander); }); },
+// { Name: "inspect", commander.command('inspect <name>') .description('inspect a process')
 
 // { Name: "sendSignal", commander.command('sendSignal <signal> <pm2_id|name>') .description('send a system signal to the target process') .action(function(signal, pm2_id) { if (isNaN(parseInt(pm2_id))) { console.log(cst.PREFIX_MSG + 'Sending signal to process name ' + pm2_id); pm2.sendSignalToProcessName(signal, pm2_id); } else { console.log(cst.PREFIX_MSG + 'Sending signal to process id ' + pm2_id); pm2.sendSignalToProcessId(signal, pm2_id); } }); },
 

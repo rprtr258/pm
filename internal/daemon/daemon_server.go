@@ -164,9 +164,8 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 	}
 
 	state, err := process.Wait()
-	var errno syscall.Errno
 	if err != nil {
-		if errors.As(err, &errno); errno != 10 {
+		if errno, ok := xerr.As[syscall.Errno](err); !ok || errno != 10 {
 			return xerr.NewWM(err, "releasing process", xerr.Field("procData", proc))
 		}
 
@@ -182,14 +181,14 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 	return nil
 }
 
-func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*api.ProcessID, error) {
-	if r.Name != nil {
+func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOptions) (*api.ProcessID, error) {
+	if procOpts.Name != nil {
 		procs := srv.db.List()
 
 		if procID, ok := lo.FindKeyBy(
 			procs,
 			func(_ db.ProcID, procData db.ProcData) bool {
-				return procData.Name == r.GetName()
+				return procData.Name == procOpts.GetName()
 			},
 		); ok {
 			procData := db.ProcData{
@@ -197,11 +196,11 @@ func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*ap
 				Status: db.Status{
 					Status: db.StatusStarting,
 				},
-				Name:    r.GetName(),
-				Cwd:     r.GetCwd(),
-				Tags:    lo.Uniq(append(r.GetTags(), "all")),
-				Command: r.GetCommand(),
-				Args:    r.GetArgs(),
+				Name:    procOpts.GetName(),
+				Cwd:     procOpts.GetCwd(),
+				Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
+				Command: procOpts.GetCommand(),
+				Args:    procOpts.GetArgs(),
 				Watch:   nil,
 			}
 
@@ -211,30 +210,31 @@ func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*ap
 		}
 	}
 
-	name := lo.IfF(r.Name != nil, r.GetName).ElseF(genName)
+	name := lo.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(genName)
 
 	procData := db.ProcData{
 		Status: db.Status{
 			Status: db.StatusStarting,
 		},
 		Name:    name,
-		Cwd:     r.GetCwd(),
-		Tags:    lo.Uniq(append(r.GetTags(), "all")),
-		Command: r.GetCommand(),
-		Args:    r.GetArgs(),
+		Cwd:     procOpts.GetCwd(),
+		Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
+		Command: procOpts.GetCommand(),
+		Args:    procOpts.GetArgs(),
 		Watch:   nil,
 	}
 
 	procID, err := srv.db.AddProc(procData)
 	if err != nil {
-		return nil, err
+		return nil, xerr.NewWM(err, "save proc")
 	}
 
 	return &api.ProcessID{Id: uint64(procID)}, nil
 }
 
 func genName() string {
-	return petname.Generate(2, "-")
+	const words = 2
+	return petname.Generate(words, "-")
 }
 
 func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.ProcessesList, error) {
@@ -318,14 +318,20 @@ func removeLogFiles(procID uint64) error {
 }
 
 func removeFile(name string) error {
-	_, err := os.Stat(name)
-	if err == os.ErrNotExist {
-		return nil
-	} else if err != nil {
-		return err
+	if _, err := os.Stat(name); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return xerr.NewWM(err, "remove file, stat",
+			xerr.Field("filename", name))
 	}
 
-	return os.Remove(name)
+	if err := os.Remove(name); err != nil {
+		return xerr.NewWM(err, "remove file",
+			xerr.Field("filename", name))
+	}
+
+	return nil
 }
 
 func (srv *daemonServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {

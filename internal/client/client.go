@@ -25,8 +25,14 @@ func NewGrpcClient() (Client, error) {
 	conn, err := grpc.Dial(
 		internal.SocketDaemonRPC,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
-			return net.Dial("unix", s)
+		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
+			conn, err := net.Dial("unix", addr)
+			if err != nil {
+				return nil, xerr.NewWM(err, "dial unix socket",
+					xerr.Field("addr", addr))
+			}
+
+			return conn, nil
 		}),
 	)
 	if err != nil {
@@ -40,13 +46,17 @@ func NewGrpcClient() (Client, error) {
 }
 
 func (c Client) Close() error {
-	return c.conn.Close()
+	if err := c.conn.Close(); err != nil {
+		return xerr.NewWM(err, "close client")
+	}
+
+	return nil
 }
 
 func (c Client) Create(ctx context.Context, r *api.ProcessOptions) (uint64, error) {
 	resp, err := c.client.Create(ctx, r)
 	if err != nil {
-		return 0, err
+		return 0, xerr.NewWM(err, "server.create")
 	}
 
 	return resp.GetId(), nil
@@ -55,7 +65,7 @@ func (c Client) Create(ctx context.Context, r *api.ProcessOptions) (uint64, erro
 func (c Client) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
 	resp, err := c.client.List(ctx, &emptypb.Empty{})
 	if err != nil {
-		return nil, err
+		return nil, xerr.NewWM(err, "server.list")
 	}
 
 	return lo.SliceToMap(
@@ -101,18 +111,24 @@ func mapPbStatus(status *api.ProcessStatus) db.Status {
 }
 
 func (c Client) Delete(ctx context.Context, ids []uint64) error {
-	_, err := c.client.Delete(ctx, mapIDs(ids))
-	return err
+	if _, err := c.client.Delete(ctx, mapIDs(ids)); err != nil {
+		return xerr.NewWM(err, "server.delete", xerr.Field("ids", ids))
+	}
+	return nil
 }
 
 func (c Client) Start(ctx context.Context, ids []uint64) error {
-	_, err := c.client.Start(ctx, mapIDs(ids))
-	return err
+	if _, err := c.client.Start(ctx, mapIDs(ids)); err != nil {
+		return xerr.NewWM(err, "server.start", xerr.Field("ids", ids))
+	}
+	return nil
 }
 
 func (c Client) Stop(ctx context.Context, ids []uint64) error {
-	_, err := c.client.Stop(ctx, mapIDs(ids))
-	return err
+	if _, err := c.client.Stop(ctx, mapIDs(ids)); err != nil {
+		return xerr.NewWM(err, "server.stop", xerr.Field("ids", ids))
+	}
+	return nil
 }
 
 func mapIDs(ids []uint64) *api.IDs {
@@ -129,6 +145,8 @@ func mapIDs(ids []uint64) *api.IDs {
 }
 
 func (c Client) HealthCheck(ctx context.Context) error {
-	_, err := c.client.HealthCheck(ctx, &emptypb.Empty{})
-	return err
+	if _, err := c.client.HealthCheck(ctx, &emptypb.Empty{}); err != nil {
+		return xerr.NewW(err)
+	}
+	return nil
 }

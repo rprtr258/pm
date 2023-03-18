@@ -41,8 +41,9 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 
 	srv := grpc.NewServer()
 	api.RegisterDaemonServer(srv, &daemonServer{
-		db:      dbHandle,
-		homeDir: homeDir,
+		UnimplementedDaemonServer: api.UnimplementedDaemonServer{},
+		db:                        dbHandle,
+		homeDir:                   homeDir,
 	})
 
 	log.Printf("daemon started at %v", sock.Addr())
@@ -70,16 +71,16 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 					db.StatusErrored,
 				)
 
-				ls := dbHandle.List()
+				allProcs := dbHandle.List()
 
-				procID, ok := lo.FindKeyBy(
-					ls,
+				procID, procFound := lo.FindKeyBy(
+					allProcs,
 					func(_ db.ProcID, procData db.ProcData) bool {
 						return procData.Status.Status == db.StatusRunning &&
 							procData.Status.Pid == pid
 					},
 				)
-				if !ok {
+				if !procFound {
 					continue
 				}
 
