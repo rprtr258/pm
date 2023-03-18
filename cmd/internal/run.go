@@ -116,8 +116,8 @@ func (cmd *runCmd) Run(
 	ctx *cli.Context,
 	configs []RunConfig,
 	client client.Client,
-	list db.DB,
-	configList db.DB,
+	_ map[db.ProcID]db.ProcData,
+	_ map[db.ProcID]db.ProcData,
 ) error {
 	var toRunArgs []string
 	if cmd.interpreter == "" {

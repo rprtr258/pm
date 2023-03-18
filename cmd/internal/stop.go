@@ -78,8 +78,8 @@ func (cmd *stopCmd) Run(
 	ctx *cli.Context,
 	configs []RunConfig,
 	client client.Client,
-	_ db.DB,
-	configList db.DB,
+	_ map[db.ProcID]db.ProcData,
+	configList map[db.ProcID]db.ProcData,
 ) error {
 	ids := internal.FilterProcs[uint64](
 		configList,

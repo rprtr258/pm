@@ -64,8 +64,8 @@ type procCommand interface {
 		ctx *cli.Context,
 		configs []RunConfig,
 		client client.Client,
-		list db.DB,
-		configList db.DB,
+		list map[db.ProcID]db.ProcData,
+		configList map[db.ProcID]db.ProcData,
 	) error
 }
 

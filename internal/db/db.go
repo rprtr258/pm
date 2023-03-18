@@ -1,13 +1,12 @@
 package db
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
-	"os"
+	"strconv"
 	"time"
 
-	"github.com/samber/lo"
+	"github.com/rprtr258/simpdb"
 )
 
 type ProcStatus int
@@ -33,12 +32,10 @@ type Status struct {
 
 type ProcID uint64
 
-type DB map[ProcID]ProcData
-
 // TODO: implement String()
 type ProcData struct {
-	ID   ProcID `json:"id"`
-	Name string `json:"name"`
+	ProcID ProcID `json:"id"`
+	Name   string `json:"name"`
 	// Command - executable to run
 	Command string `json:"command"`
 	// Args - arguments for executable, not including executable itself as first argument
@@ -55,185 +52,100 @@ type ProcData struct {
 	// Respawns int
 }
 
+func (p ProcData) ID() string {
+	return strconv.FormatUint(uint64(p.ProcID), 10)
+}
+
 type DBHandle struct {
-	dbFilename string
+	db    *simpdb.DB
+	procs *simpdb.Table[ProcData]
 }
-
-func encodeJSON[T any](proc T) ([]byte, error) {
-	return json.Marshal(proc)
-}
-
-func decodeJSON[T any](data []byte) (T, error) {
-	var res T
-	if err := json.Unmarshal(data, &res); err != nil {
-		return lo.Empty[T](), fmt.Errorf("failed decoding: %w", err)
-	}
-
-	return res, nil
-}
-
-// TODO: serialize/deserialize protobuffers
 
 // TODO: must call db.Close after this
-func New(dbFile string) DBHandle {
+func New(dbFile string) (DBHandle, error) {
+	db := simpdb.New(dbFile) // TODO: dbDir
+	procs, err := simpdb.GetTable[ProcData](db, "procs", simpdb.TableConfig{})
+	if err != nil {
+		return DBHandle{}, err
+	}
+
 	return DBHandle{
-		dbFilename: dbFile,
-	}
+		db:    db,
+		procs: procs,
+	}, nil
 }
 
-func (handle DBHandle) Update(statement func(DB) error) error {
-	db, err := os.ReadFile(handle.dbFilename)
-	if err != nil {
-		return fmt.Errorf("os.ReadFile failed: %w", err)
-	}
-
-	res, err := decodeJSON[DB](db)
-	if err != nil {
-		return fmt.Errorf("can't decode db file: %w", err)
-	}
-
-	if err := statement(res); err != nil {
-		return fmt.Errorf("update failed: %w", err)
-	}
-
-	toWrite, err := encodeJSON(res)
-	if err != nil {
-		return fmt.Errorf("update failed: %w", err)
-	}
-
-	if err := os.WriteFile(handle.dbFilename, toWrite, 0o640); err != nil {
-		return fmt.Errorf("database write failed: %w", err)
-	}
-
-	return nil
-}
-
-func (handle DBHandle) View(statement func(DB) error) error {
-	db, err := os.ReadFile(handle.dbFilename)
-	if err != nil {
-		return fmt.Errorf("os.ReadFile failed: %w", err)
-	}
-
-	res, err := decodeJSON[DB](db)
-	if err != nil {
-		return fmt.Errorf("can't decode db file: %w", err)
-	}
-
-	return statement(res)
+func (handle DBHandle) Close() error {
+	return handle.procs.Flush()
 }
 
 func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
-	newProcID := ProcID(0)
-
-	err := handle.Update(func(db DB) error {
-		for {
-			if _, ok := db[newProcID]; !ok {
-				break
-			}
-			newProcID++
+	maxProcID := uint64(0)
+	handle.procs.Iter(func(id string, _ ProcData) bool {
+		procID, _ := strconv.ParseUint(id, 10, 64) // TODO: remove, change ids to ints
+		if procID > maxProcID {
+			maxProcID = procID
 		}
 
-		// TODO: remove mutation?
-		metadata.ID = ProcID(newProcID)
-		db[newProcID] = metadata
-
-		return nil
+		return true
 	})
 
-	if err != nil {
-		return 0, fmt.Errorf("db.AddProc failed: %w", err)
+	// TODO: remove mutation?
+	metadata.ProcID = ProcID(maxProcID + 1)
+
+	if !handle.procs.Insert(metadata) {
+		return 0, errors.New("insert: already present")
 	}
 
-	return ProcID(newProcID), nil
+	return metadata.ProcID, nil
 }
 
-func (handle DBHandle) UpdateProc(id ProcID, metadata ProcData) error {
-	return handle.Update(func(db DB) error {
-		db[id] = metadata
-		return nil
-	})
+func (handle DBHandle) UpdateProc(metadata ProcData) {
+	handle.procs.Upsert(metadata)
 }
 
 func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
-	res := make([]ProcData, 0, len(ids))
-
-	if err := handle.View(func(db DB) error {
-		for _, procID := range ids {
-			proc, ok := db[procID]
-			if !ok {
-				log.Printf("[WARN] can't find proc by id %d\n", procID)
-			}
-
-			res = append(res, proc)
-		}
-
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("db.GetProcs failed: %w", err)
+	lookupTable := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		lookupTable[strconv.FormatUint(uint64(id), 10)] = struct{}{}
 	}
+
+	res := handle.procs.Where(func(id string, _ ProcData) bool {
+		_, ok := lookupTable[id]
+		return ok
+	}).List().All()
 
 	return res, nil
 }
 
-func (handle DBHandle) List() (map[ProcID]ProcData, error) {
+func (handle DBHandle) List() map[ProcID]ProcData {
 	res := map[ProcID]ProcData{}
-
-	if err := handle.View(func(db DB) error {
-		res = db
-		return nil
-	}); err != nil {
-		return nil, fmt.Errorf("db.List failed: %w", err)
-	}
-
-	return res, nil
+	handle.procs.Iter(func(id string, pd ProcData) bool {
+		res[pd.ProcID] = pd
+		return true
+	})
+	return res
 }
 
 func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) error {
-	return handle.Update(func(db DB) error {
-		procData, ok := db[procID]
-		if !ok {
-			return fmt.Errorf("procID=%d not found", procID)
-		}
-
-		// TODO: remove mutation?
-		procData.Status = newStatus
-		db[procID] = procData
-
-		return nil
-	})
-}
-
-func (handle DBHandle) Delete(procIDs []uint64) error {
-	return handle.Update(func(db DB) error {
-		for _, procID := range procIDs {
-			if _, ok := db[ProcID(procID)]; !ok {
-				log.Printf("[WARN] procID=%d not found\n", procID)
-			}
-
-			delete(db, ProcID(procID))
-		}
-
-		return nil
-	})
-}
-
-func (handle DBHandle) Init() error {
-	_, err := os.Stat(handle.dbFilename)
-	if err == nil {
-		return nil
-	} else if err != os.ErrNotExist {
-		return fmt.Errorf("os.Stat failed: %w", err)
+	pd := handle.procs.Get(strconv.FormatUint(uint64(procID), 10))
+	if !pd.Valid {
+		return fmt.Errorf("proc %d was not found", procID)
 	}
 
-	file, err := os.Create(handle.dbFilename)
-	if err != nil {
-		return fmt.Errorf("creating db failed: %w", err)
-	}
-	defer file.Close()
-
-	if _, err := file.WriteString("{}"); err != nil {
-		return fmt.Errorf("seeding db failed: %w", err)
-	}
-
+	pd.Value.Status = newStatus
+	handle.procs.Upsert(pd.Value)
 	return nil
+}
+
+func (handle DBHandle) Delete(procIDs []uint64) {
+	lookupTable := make(map[uint64]struct{}, len(procIDs))
+	for _, procID := range procIDs {
+		lookupTable[procID] = struct{}{}
+	}
+
+	handle.procs.Where(func(_ string, pd ProcData) bool {
+		_, ok := lookupTable[uint64(pd.ProcID)]
+		return ok
+	}).Delete()
 }

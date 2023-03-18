@@ -21,6 +21,7 @@ require (
 require (
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/google/go-jsonnet v0.19.1
+	github.com/rprtr258/simpdb v0.4.1
 )
 
 require (

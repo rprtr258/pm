@@ -51,7 +51,7 @@ func (c Client) Create(ctx context.Context, r *api.ProcessOptions) (uint64, erro
 	return resp.GetId(), nil
 }
 
-func (c Client) List(ctx context.Context) (db.DB, error) {
+func (c Client) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
 	resp, err := c.client.List(ctx, &emptypb.Empty{})
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (c Client) List(ctx context.Context) (db.DB, error) {
 		func(proc *api.Process) (db.ProcID, db.ProcData) {
 			procID := db.ProcID(proc.GetId().GetId())
 			return procID, db.ProcData{
-				ID:      procID,
+				ProcID:  procID,
 				Name:    proc.GetName(),
 				Command: proc.GetCommand(),
 				Args:    proc.GetArgs(),

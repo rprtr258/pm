@@ -88,7 +88,7 @@ func WithAllIfNoFilters(cfg *filterConfig) {
 	cfg.allIfNoFilters = true
 }
 
-func FilterProcs[T ~uint64](procs db.DB, opts ...filterOption) []T {
+func FilterProcs[T ~uint64](procs map[db.ProcID]db.ProcData, opts ...filterOption) []T {
 	cfg := filterConfig{}
 	for _, opt := range opts {
 		opt(&cfg)
@@ -112,6 +112,6 @@ func FilterProcs[T ~uint64](procs db.DB, opts ...filterOption) []T {
 		return T(procID), lo.Contains(cfg.filter.Names, proc.Name) ||
 			lo.Some(cfg.filter.Tags, proc.Tags) ||
 			lo.Contains(cfg.filter.Statuses, proc.Status.Status) ||
-			lo.Contains(cfg.filter.IDs, proc.ID)
+			lo.Contains(cfg.filter.IDs, proc.ProcID)
 	})
 }

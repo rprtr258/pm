@@ -29,11 +29,11 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 	}
 	defer sock.Close()
 
-	dbHandle := db.New(dbFile)
-
-	if err := dbHandle.Init(); err != nil {
+	dbHandle, err := db.New(dbFile)
+	if err != nil {
 		return err
 	}
+	defer dbHandle.Close()
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -68,11 +68,7 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 					db.StatusErrored,
 				)
 
-				ls, err := dbHandle.List()
-				if err != nil {
-					log.Println(err.Error())
-					continue
-				}
+				ls := dbHandle.List()
 
 				procID, ok := lo.FindKeyBy(
 					ls,

@@ -125,7 +125,7 @@ func list(
 
 	procsToShow := internal.MapDict(procIDsToShow, resp)
 	sort.Slice(procsToShow, func(i, j int) bool {
-		return procsToShow[i].ID < procsToShow[j].ID
+		return procsToShow[i].ProcID < procsToShow[j].ProcID
 	})
 
 	t := table.New(os.Stdout)

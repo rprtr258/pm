@@ -62,11 +62,11 @@ func (cmd *deleteCmd) Run(
 	ctx *cli.Context,
 	configs []RunConfig,
 	client client.Client,
-	_ db.DB,
-	configList db.DB,
+	_ map[db.ProcID]db.ProcData, // TODO: ???
+	procs map[db.ProcID]db.ProcData,
 ) error {
 	procIDs := internal.FilterProcs[uint64](
-		configList,
+		procs,
 		internal.WithGeneric(ctx.Args().Slice()),
 		internal.WithIDs(cmd.ids),
 		internal.WithNames(cmd.names),

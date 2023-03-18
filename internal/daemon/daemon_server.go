@@ -49,7 +49,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 	}
 
 	for _, proc := range procs {
-		procIDStr := strconv.FormatUint(uint64(proc.ID), 10)
+		procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10)
 		logsDir := path.Join(srv.homeDir, "logs")
 
 		if err := os.Mkdir(logsDir, os.ModePerm); err != nil && !errors.Is(err, os.ErrExist) {
@@ -96,7 +96,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		args := append([]string{proc.Command}, proc.Args...)
 		process, err := os.StartProcess(proc.Command, args, &procAttr)
 		if err != nil {
-			if err2 := srv.db.SetStatus(proc.ID, db.Status{Status: db.StatusErrored}); err2 != nil {
+			if err2 := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusErrored}); err2 != nil {
 				return nil, fmt.Errorf("running failed, setting errored status failed: %w", multierr.Combine(err, err2))
 			}
 
@@ -108,7 +108,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 			Pid:       process.Pid,
 			StartTime: time.Now(),
 		}
-		if err := srv.db.SetStatus(proc.ID, runningStatus); err != nil {
+		if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
 			return nil, err
 		}
 	}
@@ -170,7 +170,7 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 		fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
 	}
 
-	if err := srv.db.SetStatus(proc.ID, db.Status{Status: db.StatusStopped}); err != nil {
+	if err := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusStopped}); err != nil {
 		return status.Errorf(codes.DataLoss, fmt.Errorf("updating status of process %+v failed: %w", proc, err).Error())
 	}
 
@@ -179,10 +179,7 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 
 func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*api.ProcessID, error) {
 	if r.Name != nil {
-		procs, err := srv.db.List()
-		if err != nil {
-			return nil, err
-		}
+		procs := srv.db.List()
 
 		if procID, ok := lo.FindKeyBy(
 			procs,
@@ -191,7 +188,7 @@ func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*ap
 			},
 		); ok {
 			procData := db.ProcData{
-				ID: procID,
+				ProcID: procID,
 				Status: db.Status{
 					Status: db.StatusStarting,
 				},
@@ -203,9 +200,7 @@ func (srv *daemonServer) Create(ctx context.Context, r *api.ProcessOptions) (*ap
 				Watch:   nil,
 			}
 
-			if err := srv.db.UpdateProc(procID, procData); err != nil {
-				return nil, err
-			}
+			srv.db.UpdateProc(procData)
 
 			return &api.ProcessID{Id: uint64(procID)}, nil
 		}
@@ -238,10 +233,7 @@ func genName() string {
 }
 
 func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.ProcessesList, error) {
-	list, err := srv.db.List()
-	if err != nil {
-		return nil, err
-	}
+	list := srv.db.List()
 
 	return &api.ProcessesList{
 		List: lo.MapToSlice(
@@ -293,9 +285,8 @@ func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty
 			return procID.GetId()
 		},
 	)
-	if err := srv.db.Delete(ids); err != nil {
-		return nil, err // TODO: add errs descriptions, loggings
-	}
+	srv.db.Delete(ids)
+	// TODO: add errs descriptions, loggings
 
 	var merr error
 	for _, procID := range ids {

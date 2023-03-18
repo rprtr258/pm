@@ -68,11 +68,11 @@ func (cmd *startCmd) Run(
 	ctx *cli.Context,
 	configs []RunConfig,
 	client client.Client,
-	list db.DB,
-	configList db.DB,
+	_ map[db.ProcID]db.ProcData,
+	procs map[db.ProcID]db.ProcData,
 ) error {
 	procIDsToStart := internal.FilterProcs[uint64](
-		configList,
+		procs,
 		internal.WithAllIfNoFilters,
 		internal.WithGeneric(ctx.Args().Slice()),
 		internal.WithIDs(cmd.ids),
