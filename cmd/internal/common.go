@@ -352,4 +352,3 @@ func executeProcCommand(
 //   .option('--spa', 'always serving index.html on inexistant sub path')
 //   .option('--basic-auth-username [username]', 'set basic auth username')
 //   .option('--basic-auth-password [password]', 'set basic auth password')
-//   .option('--monitor [frontend-app]', 'frontend app monitoring (auto integrate snippet on html files)')
