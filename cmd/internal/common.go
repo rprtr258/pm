@@ -216,70 +216,25 @@ func executeProcCommand(
 
 // Name: "restart", commander.command('restart <id|name|namespace|all|json|stdin...>') .description('restart a process')
 
-// { Name: "inspect", commander.command('inspect <name>') .description('inspect a process')
-
-// { Name: "sendSignal", commander.command('sendSignal <signal> <pm2_id|name>') .description('send a system signal to the target process') .action(function(signal, pm2_id) { if (isNaN(parseInt(pm2_id))) { console.log(cst.PREFIX_MSG + 'Sending signal to process name ' + pm2_id); pm2.sendSignalToProcessName(signal, pm2_id); } else { console.log(cst.PREFIX_MSG + 'Sending signal to process id ' + pm2_id); pm2.sendSignalToProcessId(signal, pm2_id); } }); },
-
-// { Name: "ping",
-//   .description('ping pm2 daemon - if not up it will launch it')
-//   .action(function() {
-//     pm2.ping();
+// { Name: "inspect",
+// commander.command('inspect <name|id>')
+//   .description('inspect process')
+//   .alias("desc", "info", "show")
+//   .action(function(proc_id) {
+//     pm2.describe(proc_id);
 //   });
 // },
 
-// { Name: "updatePM2",
-// commander.command('updatePM2')
+// { Name: "sendSignal", commander.command('sendSignal <signal> <pm2_id|name>')
+// .description('send a system signal to the target process')
+
+// { Name: "ping", .description('ping pm2 daemon - if not up it will launch it')
+
+// { Name: "update",
 //   .description('update in-memory PM2 with local PM2')
 //   .action(function() {
 //     pm2.update();
 //   });
-// commander.command('update')
-//   .description('(alias) update in-memory PM2 with local PM2')
-//   .action(function() {
-//     pm2.update();
-//   });
-// },
-
-// { Name: "install",
-// Module specifics
-// commander.command('install <module|git://url>')
-//   .alias('module:install')
-//   .option('--tarball', 'is local tarball')
-//   .option('--install', 'run yarn install before starting module')
-//   .option('--docker', 'is docker container')
-//   .option('--v1', 'install module in v1 manner (do not use it)')
-//   .option('--safe [time]', 'keep module backup, if new module fail = restore with previous')
-//   .description('install or update a module and run it forever')
-//   .action(function(plugin_name, opts) {
-//     require('util')._extend(commander, opts);
-//     pm2.install(plugin_name, commander);
-//   });
-// },
-
-// { Name: "module:update",
-// commander.command('module:update <module|git://url>')
-//   .description('update a module and run it forever')
-//   .action(function(plugin_name) {
-//     pm2.install(plugin_name);
-//   });
-// },
-
-// { Name: "module:generate",
-// commander.command('module:generate [app_name]')
-//   .description('Generate a sample module in current folder')
-//   .action(function(app_name) {
-//     pm2.generateModuleSample(app_name);
-//   });
-// },
-
-// { Name: "uninstall",
-// commander.command('uninstall <module>')
-//   .alias('module:uninstall')
-//   .description('stop and uninstall a module')
-//   .action(function(plugin_name) {
-//     pm2.uninstall(plugin_name);
-//   });
-// },
 
 // { Name: "report",
 //   .description('give a full pm2 report for https://github.com/Unitech/pm2/issues')
@@ -288,143 +243,43 @@ func executeProcCommand(
 //   });
 // },
 
-// { Name: "link",
-// PM2 I/O
+// { Name: "link", PM2 I/O
 // commander.command('link [secret] [public] [name]')
 //   .option('--info-node [url]', 'set url info node')
 //   .description('link with the pm2 monitoring dashboard')
-//   .action(pm2.linkManagement.bind(pm2));
-// },
 
-// { Name: "unlink",
-// commander.command('unlink')
+// { Name: "unlink", commander.command('unlink')
 //   .description('unlink with the pm2 monitoring dashboard')
-//   .action(function() {
-//     pm2.unlink();
-//   });
-// },
 
 // { Name: "monitor",
 // commander.command('monitor [name]')
-//   .description('monitor target process')
-//   .action(function(name) {
-//     if (name == undefined) {
-//       return plusHandler()
-//     }
-//     pm2.monitorState('monitor', name);
-//   });
-// },
+//   .description('monitor target process / open monitoring dashboard')
 
 // { Name: "unmonitor",
 // commander.command('unmonitor [name]')
 //   .description('unmonitor target process')
-//   .action(function(name) {
-//     pm2.monitorState('unmonitor', name);
-//   });
-// },
-
-// { Name: "open",
-//   .description('open the pm2 monitoring dashboard')
-//   .action(function(name) {
-//     pm2.openDashboard();
-//   });
-// },
-
-// { Name: "plus",
-// commander.command('plus [command] [option]')
-//   .alias('register')
-//   .option('--info-node [url]', 'set url info node for on-premise pm2 plus')
-//   .option('-d --discrete', 'silent mode')
-//   .option('-a --install-all', 'install all modules (force yes)')
-//   .description('enable pm2 plus')
-//   .action(plusHandler);
-// function plusHandler (command, opts) {
-//   if (opts && opts.infoNode) {
-//     process.env.KEYMETRICS_NODE = opts.infoNode
-//   }
-//   return PM2ioHandler.launch(command, opts)
-// }
-// },
-
-// { Name: "login",
-//   .description('Login to pm2 plus')
-//   .action(function() {
-//     return plusHandler('login')
-//   });
-// },
-
-// { Name: "logout",
-//   .description('Logout from pm2 plus')
-//   .action(function() {
-//     return plusHandler('logout')
-//   });
-// },
 
 // { Name: "dump",
 //   .alias('save')
 //   .option('--force', 'force deletion of dump file, even if empty')
+//   .option('--clear', 'empty dump file')
 //   .description('dump all processes for resurrecting them later')
 //   .action(failOnUnknown(function(opts) {
 //     pm2.dump(commander.force)
 //   }));
 // },
 
-// { Name: "cleardump",
-// Delete dump file
-//   .description('Create empty dump file')
-//   .action(failOnUnknown(function() {
-//     pm2.clearDump();
-//   }));
-// },
-
 // { Name: "resurrect",
 //   .description('resurrect previously dumped processes')
-//   .action(failOnUnknown(function() {
-//     console.log(cst.PREFIX_MSG + 'Resurrecting');
-//     pm2.resurrect();
-//   }));
-// },
 
-// { Name: "send",
-// commander.command('send <pm_id> <line>')
-//   .description('send stdin to <pm_id>')
-//   .action(function(pm_id, line) {
-//     pm2.sendLineToStdin(pm_id, line);
-//   });
-// },
+// { Name: "send", commander.command('send <pm_id> <line>') .description('send stdin to <pm_id>')
 
-// { Name: "attach",
-// Attach to stdin/stdout
-// Not TTY ready
+// { Name: "attach", Attach to stdin/stdout
 // commander.command('attach <pm_id> [command separator]')
 //   .description('attach stdin/stdout to application identified by <pm_id>')
-//   .action(function(pm_id, separator) {
-//     pm2.attach(pm_id, separator);
-//   });
-// },
 
-// { Name: "unstartup",
-// commander.command('unstartup [platform]')
-//   .description('disable the pm2 startup hook')
-//   .action(function(platform) {
-//     pm2.uninstallStartup(platform, commander);
-//   });
-// },
-
-// { Name: "startup",
-// commander.command('startup [platform]')
-//   .description('enable the pm2 startup hook')
-//   .action(function(platform) {
-//     pm2.startup(platform, commander);
-//   });
-// },
-
-// { Name: "logrotate",
-//   .description('copy default logrotate configuration')
-//   .action(function(cmd) {
-//     pm2.logrotate(commander);
-//   });
-// },
+// { Name: "startup", commander.command('startup [platform]') .description('enable the pm2 startup hook')
+// { Name: "unstartup", commander.command('unstartup') .description('disable the pm2 startup hook')
 
 // { Name: "ecosystem",
 // Sample generate
@@ -440,23 +295,6 @@ func executeProcCommand(
 // &cli.StringFlag{Name:      "user", Aliases: []string{"u"}, Usage: "define user when generating startup script"},
 // &cli.BoolFlag{Name:        "write", Aliases: []string{"w"}, Usage: "write configuration in local folder"},
 
-// { Name: "reset",
-// commander.command('reset <name|id|all>')
-//   .description('reset counters for process')
-//   .action(function(proc_id) {
-//     pm2.reset(proc_id);
-//   });
-// },
-
-// { Name: "describe",
-// commander.command('describe <name|id>')
-//   .description('describe all parameters of a process')
-//   .alias("desc", "info", "show")
-//   .action(function(proc_id) {
-//     pm2.describe(proc_id);
-//   });
-// },
-
 // { Name: "env",
 // commander.command('env <id>')
 //   .description('list all environment variables of a process id')
@@ -465,21 +303,11 @@ func executeProcCommand(
 //   });
 // },
 
-// { Name: "sysmonit",
-//   .description('start system monitoring daemon')
-//   .action(function() {
-//     pm2.launchSysMonitoring()
-//   })
-// },
-
 // { Name: "monit",
 // Dashboard command
-// commander.command('')
+//   .alias('dash', "dashboard")
 //   .description('launch termcaps monitoring')
-//   .action(function() {
-//     pm2.dashboard();
-//   });
-// },
+//   .description('launch dashboard with monitoring and logs')
 
 // { Name: "imonit",
 //   .description('launch legacy termcaps monitoring')
@@ -488,21 +316,9 @@ func executeProcCommand(
 //   });
 // },
 
-// { Name: "dashboard",
-//   .alias('dash')
-//   .description('launch dashboard with monitoring and logs')
-//   .action(function() {
-//     pm2.dashboard();
-//   });
-// },
-
 // { Name:      "flush",
 // 	Usage:     "flush logs",
 // 	ArgsUsage: "[api]",
-// .action(function(api) {
-//   pm2.flush(api);
-//  }
-// },
 
 // { Name:  "reloadLogs",
 // 	Usage: "reload all logs",
@@ -522,76 +338,9 @@ func executeProcCommand(
 //   .option('--timestamp [format]', 'add timestamps (default format YYYY-MM-DD-HH:mm:ss)')
 //   .option('--nostream', 'print logs without lauching the log stream')
 //   .option('--highlight [value]', 'highlights the given value')
-// 	},
-//   .action(function(id, cmd) {
-//     var Logs = require('../API/Log.js');
-//     if (!id) id = 'all';
-//     var line = 15;
-//     var raw  = false;
-//     var exclusive = false;
-//     var timestamp = false;
-//     var highlight = false;
-//     if(!isNaN(parseInt(cmd.lines))) {
-//       line = parseInt(cmd.lines);
-//     }
-//     if (cmd.parent.rawArgs.indexOf('--raw') !== -1)
-//       raw = true;
-//     if (cmd.timestamp)
-//       timestamp = typeof cmd.timestamp == 'string' ? cmd.timestamp : 'YYYY-MM-DD-HH:mm:ss';
-//     if (cmd.highlight)
-//       highlight = typeof cmd.highlight == 'string' ? cmd.highlight : false;
-//     if (cmd.out == true)
-//       exclusive = 'out';
-//     if (cmd.err == true)
-//       exclusive = 'err';
-//     if (cmd.nostream == true)
-//       pm2.printLogs(id, line, raw, timestamp, exclusive);
-//     else if (cmd.json == true)
-//       Logs.jsonStream(pm2.Client, id);
-//     else if (cmd.format == true)
-//       Logs.formatStream(pm2.Client, id, false, 'YYYY-MM-DD-HH:mm:ssZZ', exclusive, highlight);
-//     else
-//       pm2.streamLogs(id, line, raw, timestamp, exclusive, highlight);
-// },
 
 // { Name:  "kill",
 // 	Usage: "kill daemon",
-//   .action(failOnUnknown(function(arg) {
-//     pm2.killDaemon(function() {
-//       process.exit(cst.SUCCESS_EXIT);
-// },
-
-// { Name:      "pull",
-// 	Usage:     "updates repository for a given app",
-// 	ArgsUsage: "<name> [commit_id]",
-//   .action(function(pm2_name, commit_id) {
-//     if (commit_id !== undefined) {
-//       pm2._pullCommitId({
-//         pm2_name: pm2_name,
-//         commit_id: commit_id
-//       });
-//     }
-//     else
-//       pm2.pullAndRestart(pm2_name);
-// },}
-
-// { Name:      "forward",
-// 	Usage:     "updates repository to the next commit for a given app",
-// 	ArgsUsage: "<name>",
-//   .action(function(pm2_name) {
-//     pm2.forward(pm2_name);
-// },}
-
-// { Name:      "backward",
-// 	Usage:     "downgrades repository to the previous commit for a given app",
-// 	ArgsUsage: "<name>",
-//   .action(function(pm2_name) {
-//     pm2.backward(pm2_name);
-// },}
-
-// { Name:  "deepUpdate",
-// 	Usage: "performs a deep update of PM2",
-//     pm2.deepUpdate();
 // },
 
 // { Name:      "serve",
@@ -604,7 +353,3 @@ func executeProcCommand(
 //   .option('--basic-auth-username [username]', 'set basic auth username')
 //   .option('--basic-auth-password [password]', 'set basic auth password')
 //   .option('--monitor [frontend-app]', 'frontend app monitoring (auto integrate snippet on html files)')
-// 	},
-//   .action(function (path, port, cmd) {
-//     pm2.serve(path, port || cmd.port, cmd, commander);
-// },}
