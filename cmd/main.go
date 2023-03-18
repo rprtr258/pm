@@ -8,6 +8,7 @@ import (
 
 	"github.com/rprtr258/pm/cmd/internal"
 	internal2 "github.com/rprtr258/pm/internal"
+	"github.com/rprtr258/xerr"
 )
 
 func main() {
@@ -50,7 +51,7 @@ func main() {
 			if os.IsNotExist(err) {
 				return os.Mkdir(internal2.DirHome, 0o755)
 			} else if err != nil {
-				return fmt.Errorf("os.Stat(home dir) failed: %w", err)
+				return xerr.NewWM(err, "os.stat", xerr.Field("homedir", internal2.DirHome))
 			}
 
 			return nil

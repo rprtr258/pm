@@ -2,13 +2,13 @@ package internal
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/xerr"
 )
 
 func init() {
@@ -82,7 +82,7 @@ func (cmd *deleteCmd) Run(
 	fmt.Printf("Stopping and removing: %v\n", procIDs)
 
 	if err := client.Stop(ctx.Context, procIDs); err != nil {
-		log.Println(fmt.Errorf("client.Stop failed: %w", err).Error())
+		return xerr.NewWM(err, "client.stop")
 	}
 
 	return client.Delete(ctx.Context, procIDs)

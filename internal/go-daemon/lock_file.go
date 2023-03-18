@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"syscall"
+
+	"github.com/rprtr258/xerr"
 )
 
 // TODO: fix message
@@ -70,18 +72,29 @@ func (file *LockFile) Unlock() error {
 	return err
 }
 
+var ErrNoPIDFound = errors.New("no pid found")
+
 // ReadPidFile reads process id from file with give name and returns pid.
-// If unable read from a file, returns error.
-func ReadPidFile(name string) (pid int, err error) {
-	var file *os.File
-	if file, err = os.OpenFile(name, os.O_RDONLY, 0o640); err != nil {
-		return
+func ReadPidFile(name string) (int, error) {
+	file, err := os.OpenFile(name, os.O_RDONLY, 0o640)
+	if err != nil {
+		return 0, xerr.NewWM(err, "open file",
+			xerr.Field("filename", name),
+			xerr.Errors(ErrNoPIDFound))
 	}
 	defer file.Close()
 
 	lock := &LockFile{file}
-	pid, err = lock.ReadPid()
-	return
+	pid, err := lock.ReadPid()
+	if err != nil {
+		if xerr.Is(err, io.EOF) {
+			return 0, ErrNoPIDFound
+		}
+
+		return 0, xerr.NewWM(err, "read pid from pidfile")
+	}
+
+	return pid, nil
 }
 
 // WritePid writes current process id to an open file.
@@ -102,12 +115,17 @@ func (file *LockFile) WritePid() (err error) {
 
 // ReadPid reads process id from file and returns pid.
 // If unable read from a file, returns error.
-func (file *LockFile) ReadPid() (pid int, err error) {
-	if _, err = file.Seek(0, io.SeekStart); err != nil {
-		return
+func (file *LockFile) ReadPid() (int, error) {
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return 0, xerr.NewWM(err, "seek 0")
 	}
-	_, err = fmt.Fscan(file, &pid)
-	return
+
+	var pid int
+	if _, err := fmt.Fscan(file, &pid); err != nil {
+		return 0, xerr.NewWM(err, "scan pid")
+	}
+
+	return pid, nil
 }
 
 // Remove removes lock, closes and removes an open file.

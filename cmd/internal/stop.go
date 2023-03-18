@@ -8,6 +8,7 @@ import (
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/xerr"
 )
 
 func init() {
@@ -96,7 +97,7 @@ func (cmd *stopCmd) Run(
 	}
 
 	if err := client.Stop(ctx.Context, ids); err != nil {
-		return fmt.Errorf("client.Stop failed: %w", err)
+		return xerr.NewWM(err, "client.stop")
 	}
 
 	for _, id := range []uint64{} {

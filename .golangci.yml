@@ -40,6 +40,7 @@ linters-settings:
       - "^net/url.URL$"
       - "^os/exec.Cmd$"
       - "^reflect.StructField$"
+      - "^syscall.SysProcAttr$"
       # public libs
       - "^github.com/Shopify/sarama.Config$"
       - "^github.com/Shopify/sarama.ProducerMessage$"

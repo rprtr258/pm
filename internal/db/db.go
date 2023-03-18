@@ -62,9 +62,11 @@ type DBHandle struct {
 }
 
 // TODO: must call db.Close after this
-func New(dbFile string) (DBHandle, error) {
-	db := simpdb.New(dbFile) // TODO: dbDir
-	procs, err := simpdb.GetTable[ProcData](db, "procs", simpdb.TableConfig{})
+func New(dir string) (DBHandle, error) {
+	db := simpdb.New(dir)
+	procs, err := simpdb.GetTable[ProcData](db, "procs", simpdb.TableConfig{
+		Indent: false,
+	})
 	if err != nil {
 		return DBHandle{}, err
 	}

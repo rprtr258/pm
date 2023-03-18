@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"net"
 
 	"github.com/samber/lo"
@@ -13,6 +12,7 @@ import (
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/xerr"
 )
 
 type Client struct {
@@ -29,7 +29,7 @@ func NewGrpcClient() (Client, error) {
 		}),
 	)
 	if err != nil {
-		return Client{}, fmt.Errorf("connecting to grpc server failed: %w", err)
+		return Client{}, xerr.NewWM(err, "connect to grpc server")
 	}
 
 	return Client{

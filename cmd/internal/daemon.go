@@ -84,12 +84,12 @@ func daemonStart() error {
 	}
 
 	if err := pm_daemon.Kill(daemonCtx, internal.SocketDaemonRPC); err != nil {
-		return fmt.Errorf("killing daemon failed: %w", err)
+		return xerr.NewWM(err, "kill daemon process")
 	}
 
 	daemonProcess, err := daemonCtx.Reborn()
 	if err != nil {
-		return fmt.Errorf("reborn daemon failed: %w", err)
+		return xerr.NewWM(err, "reborn daemon")
 	}
 
 	if daemonProcess != nil {
@@ -123,7 +123,7 @@ func daemonStop() error {
 }
 
 func daemonRun() error {
-	return pm_daemon.Run(internal.SocketDaemonRPC, internal.FileDaemonDB, internal.DirHome)
+	return pm_daemon.Run(internal.SocketDaemonRPC, internal.FileDaemonDBDir, internal.DirHome)
 }
 
 func deferErr(closer func() error) func() {

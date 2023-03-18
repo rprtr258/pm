@@ -137,11 +137,9 @@ func (cmd *runCmd) Run(
 		}
 
 		if len(cmd.args) != 1 {
-			return fmt.Errorf(
-				"interpreter %q set, thats why only single arg must be provided (but there were %d provided)",
-				cmd.interpreter,
-				len(cmd.args),
-			)
+			return xerr.NewM("interpreter set, so only single arg is expected",
+				xerr.Field("interpreter", cmd.interpreter),
+				xerr.Field("argsCount", len(cmd.args)))
 		}
 
 		toRunArgs = append(toRunArgs, strings.Split(cmd.interpreter, " ")...)
@@ -150,7 +148,7 @@ func (cmd *runCmd) Run(
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("can't get cwd: %w", err)
+		return xerr.NewWM(err, "get cwd")
 	}
 
 	name := ctx.String("name")
@@ -192,7 +190,7 @@ func runConfigs(
 	var merr error
 	for _, name := range names {
 		if _, ok := configsByName[name]; !ok {
-			multierr.AppendInto(&merr, fmt.Errorf("unknown name of proc: %q", name))
+			xerr.AppendInto(&merr, xerr.NewM("unknown proc name", xerr.Field("name", name)))
 		}
 	}
 	if merr != nil {
@@ -211,7 +209,8 @@ func run(
 ) error {
 	command, err := exec.LookPath(config.Command)
 	if err != nil {
-		return fmt.Errorf("could not find executable %q: %w", config.Command, err)
+		return xerr.NewWM(err, "look for executable path",
+			xerr.Field("executable", config.Command))
 	}
 
 	procID, err := client.Create(ctx, &api.ProcessOptions{

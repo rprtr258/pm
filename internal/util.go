@@ -1,8 +1,7 @@
 package internal
 
 import (
-	"fmt"
-
+	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 )
 
@@ -43,7 +42,7 @@ func MapErr[T, R any](collection []T, iteratee func(T, int) (R, error)) ([]R, er
 	for i, item := range collection {
 		res, err := iteratee(item, i)
 		if err != nil {
-			return nil, fmt.Errorf("MapErr on i=%d: %w", i, err)
+			return nil, xerr.NewW(err, xerr.Field("i", i))
 		}
 		results[i] = res
 	}

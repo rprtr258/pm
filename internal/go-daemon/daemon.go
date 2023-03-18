@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"go.uber.org/multierr"
+	"github.com/rprtr258/xerr"
 	"golang.org/x/sys/unix"
 )
 
@@ -76,14 +76,14 @@ func (d *Context) Reborn() (*os.Process, error) {
 	if WasReborn() {
 		err := d.child()
 		if err != nil {
-			return nil, fmt.Errorf("reborn child failed: %w", err)
+			return nil, xerr.NewWM(err, "reborn child failed")
 		}
 		return nil, nil
 	}
 
 	child, err := d.parent()
 	if err != nil {
-		return nil, fmt.Errorf("reborn parent failed: %w", err)
+		return nil, xerr.NewWM(err, "reborn parent failed")
 	}
 
 	return child, nil
@@ -92,22 +92,40 @@ func (d *Context) Reborn() (*os.Process, error) {
 // Search searches daemons process by given in context pid file name.
 // If success returns pointer on daemons os.Process structure,
 // else returns error. Returns nil if filename is empty.
-func (d *Context) Search() (daemon *os.Process, err error) {
-	if len(d.PidFileName) > 0 {
-		var pid int
-		if pid, err = ReadPidFile(d.PidFileName); err != nil {
-			return
-		}
-		daemon, err = os.FindProcess(pid)
-		if err == nil && daemon != nil {
-			// Send a test signal to test if this daemon is actually alive or dead
-			// An error means it is dead
-			if daemon.Signal(syscall.Signal(0)) != nil {
-				daemon = nil
-			}
-		}
+func (d *Context) Search() (*os.Process, error) {
+	if len(d.PidFileName) == 0 {
+		return nil, nil
 	}
-	return
+
+	pid, err := ReadPidFile(d.PidFileName)
+	if err != nil {
+		if xerr.Is(err, ErrNoPIDFound) {
+			return nil, nil
+		}
+
+		return nil, xerr.NewWM(
+			err, "read pid file",
+			xerr.Field("pidFileName", d.PidFileName))
+	}
+
+	daemon, err := os.FindProcess(pid)
+	if err != nil {
+		return nil, xerr.NewWM(
+			err, "find process",
+			xerr.Field("pid", pid))
+	}
+
+	if daemon == nil {
+		return nil, nil
+	}
+
+	// Send a test signal to test if this daemon is actually alive or dead.
+	if err := daemon.Signal(syscall.Signal(0)); err != nil {
+		// An error means it is dead.
+		return nil, xerr.NewWM(err, "check daemon process")
+	}
+
+	return daemon, nil
 }
 
 // Release provides correct pid-file release in daemon.
@@ -142,15 +160,12 @@ func (d *Context) parent() (*os.Process, error) {
 
 	child, err := os.StartProcess(d.abspath, d.Args, attr)
 	if err != nil {
-		err = fmt.Errorf("StartProcess failed: %w", err)
+		err = xerr.NewWM(err, "StartProcess")
 
 		if d.pidFile != nil {
-			err2 := d.pidFile.Remove()
-			if err2 != nil {
-				err2 = fmt.Errorf("pidFile.Remove failed: %w", err2)
+			if err2 := d.pidFile.Remove(); err2 != nil {
+				return nil, xerr.New(xerr.Errors(err, xerr.NewWM(err2, "pidFile.Remove")))
 			}
-
-			return nil, multierr.Combine(err, err2)
 		}
 
 		return nil, err
@@ -169,24 +184,30 @@ func (d *Context) openFiles() error {
 
 	var err error
 	if d.nullFile, err = os.Open(os.DevNull); err != nil {
-		return fmt.Errorf("open(devNull) failed: %w", err)
+		return xerr.NewWM(err, "open /dev/null")
 	}
 
 	if len(d.PidFileName) > 0 {
 		if d.PidFileName, err = filepath.Abs(d.PidFileName); err != nil {
-			return fmt.Errorf("abs(pidFile) failed: %w", err)
+			return xerr.NewWM(err, "filepath.Abs", xerr.Field("pidFilename", d.PidFileName))
 		}
+
 		if d.pidFile, err = OpenLockFile(d.PidFileName, d.PidFilePerm); err != nil {
-			return fmt.Errorf("OpenLockFile(pidFile) failed: %w", err)
+			return xerr.NewWM(err, "OpenLockFile", xerr.Field("pidFilename", d.PidFileName))
 		}
+
 		if err = d.pidFile.Lock(); err != nil {
-			return fmt.Errorf("pidFile.Lock() failed: %w", err)
+			return xerr.NewWM(err, "pidFile.Lock")
 		}
+
 		if len(d.Chroot) > 0 {
 			// Calculate PID-file absolute path in child's environment
 			if d.PidFileName, err = filepath.Rel(d.Chroot, d.PidFileName); err != nil {
-				return fmt.Errorf("Rel(%s, pidFile) failed: %w", d.Chroot, err)
+				return xerr.NewWM(err, "filepath.Rel",
+					xerr.Field("basepath", d.Chroot),
+					xerr.Field("targpath", d.PidFileName))
 			}
+
 			d.PidFileName = "/" + d.PidFileName
 		}
 	}
@@ -197,7 +218,9 @@ func (d *Context) openFiles() error {
 		} else if d.LogFileName == "/dev/stderr" {
 			d.logFile = os.Stderr
 		} else if d.logFile, err = os.OpenFile(d.LogFileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, d.LogFilePerm); err != nil {
-			return fmt.Errorf("OpenFile(logFile, perms=%v) failed: %w", d.LogFilePerm, err)
+			return xerr.NewWM(err, "open log file",
+				xerr.Field("filename", d.LogFileName),
+				xerr.Field("permissions", d.LogFilePerm))
 		}
 	}
 

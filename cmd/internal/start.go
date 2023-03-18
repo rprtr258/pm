@@ -9,6 +9,7 @@ import (
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/xerr"
 )
 
 func init() {
@@ -87,7 +88,7 @@ func (cmd *startCmd) Run(
 	}
 
 	if err := client.Start(ctx.Context, procIDsToStart); err != nil {
-		return fmt.Errorf("client.Start failed: %w", err)
+		return xerr.NewWM(err, "client.start")
 	}
 
 	fmt.Println(lo.ToAnySlice(procIDsToStart)...)

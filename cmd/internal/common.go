@@ -147,7 +147,8 @@ func executeProcCommand(
 	configFilename := ctx.String("config")
 
 	if ctx.IsSet("config") && !isConfigFile(configFilename) {
-		return fmt.Errorf("%s is not a valid config file", configFilename)
+		return xerr.NewM("invalid config file",
+			xerr.Field("configFilename", configFilename))
 	}
 
 	if !ctx.IsSet("config") {
