@@ -14,10 +14,11 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/rprtr258/xerr"
+
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
 	"github.com/rprtr258/pm/internal/go-daemon"
-	"github.com/rprtr258/xerr"
 )
 
 // TODO: fix "reborn failed: daemon: Resource temporarily unavailable" on start when

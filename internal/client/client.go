@@ -9,10 +9,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/rprtr258/xerr"
+
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/db"
-	"github.com/rprtr258/xerr"
 )
 
 type Client struct {

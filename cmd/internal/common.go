@@ -11,10 +11,11 @@ import (
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
+	"github.com/rprtr258/xerr"
+
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
 	"github.com/rprtr258/pm/internal/db"
-	"github.com/rprtr258/xerr"
 )
 
 type RunConfig struct {
