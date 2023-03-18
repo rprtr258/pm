@@ -102,5 +102,6 @@ func (cmd *stopCmd) Run(
 	for _, id := range []uint64{} {
 		fmt.Println(id)
 	}
+
 	return nil
 }

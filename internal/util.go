@@ -37,7 +37,7 @@ func FilterMapToSlice[K comparable, V, R any](in map[K]V, mapper func(key K, val
 	return result
 }
 
-// MapErr - like lo.Map but returns first error occured
+// MapErr - like lo.Map but returns first error occurred.
 func MapErr[T, R any](collection []T, iteratee func(T, int) (R, error)) ([]R, error) {
 	results := make([]R, len(collection))
 	for i, item := range collection {
@@ -47,5 +47,6 @@ func MapErr[T, R any](collection []T, iteratee func(T, int) (R, error)) ([]R, er
 		}
 		results[i] = res
 	}
+
 	return results, nil
 }

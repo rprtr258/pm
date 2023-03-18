@@ -13,15 +13,16 @@ import (
 
 	"google.golang.org/grpc"
 
+	"github.com/samber/lo"
+
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
 	"github.com/rprtr258/pm/internal/go-daemon"
-	"github.com/samber/lo"
 )
 
 // TODO: fix "reborn failed: daemon: Resource temporarily unavailable" on start when
 // daemon is already running
-// Run daemon
+// Run daemon.
 func Run(rpcSocket, dbFile, homeDir string) error {
 	sock, err := net.Listen("unix", rpcSocket)
 	if err != nil {
@@ -81,8 +82,8 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 					continue
 				}
 
-				if err := dbHandle.SetStatus(procID, db.Status{Status: dbStatus}); err != nil {
-					log.Println(err.Error())
+				if found := dbHandle.SetStatus(procID, db.Status{Status: dbStatus}); !found {
+					log.Println(fmt.Errorf("proc %d was not found", procID).Error())
 				}
 			}
 		}
@@ -95,14 +96,14 @@ func Run(rpcSocket, dbFile, homeDir string) error {
 	return nil
 }
 
-// Kill daemon
+// Kill daemon.
 func Kill(daemonCtx *daemon.Context, rpcSocket string) error {
 	if err := os.Remove(rpcSocket); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("removing socket file failed: %w", err)
 	}
 
 	proc, err := daemonCtx.Search()
-	if err != nil && err != os.ErrNotExist {
+	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("searching daemon failed: %w", err)
 	}
 

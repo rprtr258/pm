@@ -9,7 +9,7 @@ import (
 
 var (
 	filename                = os.TempDir() + "/test.lock"
-	fileperm    os.FileMode = 0644
+	fileperm    os.FileMode = 0o644
 	invalidname             = "/x/y/unknown"
 )
 

@@ -22,7 +22,7 @@ type Client struct {
 
 func NewGrpcClient() (Client, error) {
 	conn, err := grpc.Dial(
-		internal.SocketDaemonRpc,
+		internal.SocketDaemonRPC,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 			return net.Dial("unix", s)
@@ -91,7 +91,7 @@ func mapPbStatus(status *api.ProcessStatus) db.Status {
 			Status:    db.StatusRunning,
 			Pid:       int(st.GetPid()),
 			StartTime: st.GetStartTime().AsTime(),
-			Cpu:       st.GetCpu(),
+			CPU:       st.GetCpu(),
 			Memory:    st.GetMemory(),
 		}
 	default:

@@ -10,13 +10,13 @@ import (
 	"github.com/sevlyar/go-daemon"
 )
 
-var (
-	signal = flag.String("s", "", `Send signal to the daemon:
+var signal = flag.String("s", "", `Send signal to the daemon:
   stop — shutdown`)
-)
 
-const logFileName = "sample.log"
-const pidFileName = "sample.pid"
+const (
+	logFileName = "sample.log"
+	pidFileName = "sample.pid"
+)
 
 func main() {
 	flag.Parse()
@@ -24,11 +24,11 @@ func main() {
 
 	cntxt := &daemon.Context{
 		PidFileName: pidFileName,
-		PidFilePerm: 0644,
+		PidFilePerm: 0o644,
 		LogFileName: logFileName,
-		LogFilePerm: 0640,
+		LogFilePerm: 0o640,
 		WorkDir:     "./",
-		Umask:       027,
+		Umask:       0o27,
 		Args:        []string{"[go-daemon sample]"},
 	}
 

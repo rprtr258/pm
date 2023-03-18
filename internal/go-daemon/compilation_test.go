@@ -36,11 +36,6 @@ func TestCompilation(t *testing.T) {
 		"solaris/amd64",
 		"windows/386",
 		"windows/amd64",
-
-		// TODO(yar): support plan9
-		//"plan9/386",
-		//"plan9/amd64",
-		//"plan9/arm",
 	}
 
 	env := os.Environ()
@@ -75,5 +70,6 @@ func requireMinor(minor int) bool {
 	if err != nil {
 		return false
 	}
+
 	return ver >= minor
 }

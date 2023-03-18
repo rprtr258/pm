@@ -16,6 +16,7 @@ import (
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/xerr"
 )
 
 func init() {
@@ -101,10 +102,10 @@ func init() {
 
 type runCmd struct {
 	name        string
-	args        []string
-	tags        []string
 	cwd         string
 	interpreter string
+	args        []string
+	tags        []string
 }
 
 func (cmd *runCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
@@ -132,7 +133,7 @@ func (cmd *runCmd) Run(
 		toRunArgs = cmd.args
 	} else {
 		if configs != nil {
-			return fmt.Errorf("either interpreter with cmd or config must be provided, not both")
+			return errors.New("either interpreter with cmd or config must be provided, not both")
 		}
 
 		if len(cmd.args) != 1 {
@@ -145,11 +146,6 @@ func (cmd *runCmd) Run(
 
 		toRunArgs = append(toRunArgs, strings.Split(cmd.interpreter, " ")...)
 		toRunArgs = append(toRunArgs, cmd.args[0])
-	}
-
-	var err error
-	if err != nil {
-		return fmt.Errorf("could not find executable %q: %w", toRunArgs[0], err)
 	}
 
 	cwd, err := os.Getwd()
@@ -166,6 +162,7 @@ func (cmd *runCmd) Run(
 		Tags: ctx.StringSlice("tag"),
 		Cwd:  cwd,
 	}
+
 	return run(ctx.Context, config, client)
 }
 
@@ -195,17 +192,16 @@ func runConfigs(
 	var merr error
 	for _, name := range names {
 		if _, ok := configsByName[name]; !ok {
-			multierr.AppendInto(&merr, fmt.Errorf("unknown name of proc: %s", name))
+			multierr.AppendInto(&merr, fmt.Errorf("unknown name of proc: %q", name))
 		}
 	}
 	if merr != nil {
 		return merr
 	}
 
-	for _, config := range configsByName {
-		multierr.AppendInto(&merr, run(ctx, config, client))
-	}
-	return merr
+	return xerr.Combine(lo.MapToSlice(configsByName, func(_ string, config RunConfig) error {
+		return run(ctx, config, client)
+	})...)
 }
 
 func run(
@@ -215,7 +211,7 @@ func run(
 ) error {
 	command, err := exec.LookPath(config.Command)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not find executable %q: %w", config.Command, err)
 	}
 
 	procID, err := client.Create(ctx, &api.ProcessOptions{
@@ -226,11 +222,11 @@ func run(
 		Tags:    config.Tags,
 	})
 	if err != nil {
-		return err
+		return xerr.NewWM(err, "server.create")
 	}
 
 	if err := client.Start(ctx, []uint64{procID}); err != nil {
-		return fmt.Errorf("client.Start failed: %w", err)
+		return xerr.NewWM(err, "server.start")
 	}
 
 	fmt.Println(procID)

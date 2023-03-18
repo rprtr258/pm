@@ -12,5 +12,5 @@ var (
 	FileDaemonPid   = filepath.Join(DirHome, "pm.pid")
 	FileDaemonLog   = filepath.Join(DirHome, "pm.log")
 	FileDaemonDB    = filepath.Join(DirHome, "pm.db")
-	SocketDaemonRpc = filepath.Join(DirHome, "rpc.sock")
+	SocketDaemonRPC = filepath.Join(DirHome, "rpc.sock")
 )

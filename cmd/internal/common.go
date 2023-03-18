@@ -14,14 +14,15 @@ import (
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/xerr"
 )
 
 type RunConfig struct {
-	Name    internal.Optional[string]
-	Command string
 	Args    []string
 	Tags    []string
+	Command string
 	Cwd     string
+	Name    internal.Optional[string]
 }
 
 func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
@@ -34,7 +35,7 @@ func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 	}
 
 	if err := json.Unmarshal(data, &tmp); err != nil {
-		return err
+		return xerr.NewWM(err, "json.unmarshal")
 	}
 
 	*cfg = RunConfig{
@@ -95,22 +96,22 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 
 	jsonText, err := vm.EvaluateFile(filename)
 	if err != nil {
-		return nil, err
+		return nil, xerr.NewWM(err, "evaluate jsonnet file")
 	}
 
 	type configScanDTO struct {
 		Name    *string
+		Cwd     *string
 		Command string
 		Args    []any
 		Tags    []string
-		Cwd     *string
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
-		return nil, err
+		return nil, xerr.NewWM(err, "json.unmarshal")
 	}
 
-	configs := lo.Map(
+	return lo.Map(
 		scannedConfigs,
 		func(config configScanDTO, _ int) RunConfig {
 			cwd := config.Cwd
@@ -135,8 +136,7 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 				Cwd:  *cwd,
 			}
 		},
-	)
-	return configs, nil
+	), nil
 }
 
 func executeProcCommand(
@@ -158,13 +158,13 @@ func executeProcCommand(
 
 	client, err := client.NewGrpcClient()
 	if err != nil {
-		return err
+		return xerr.NewWM(err, "new grpc client")
 	}
-	defer deferErr(client.Close)
+	defer deferErr(client.Close)()
 
 	list, err := client.List(ctx.Context)
 	if err != nil {
-		return err
+		return xerr.NewWM(err, "server.list")
 	}
 
 	if !ctx.IsSet("config") {

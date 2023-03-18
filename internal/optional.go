@@ -36,13 +36,14 @@ func (opt Optional[T]) Ptr() *T {
 	return &opt.Value
 }
 
-// OrDefault - return first valid value, default if none found
+// OrDefault - return first valid value, default if none found.
 func OrDefault[T any](defaultValue T, optionals ...Optional[T]) T {
 	for _, optional := range optionals {
 		if optional.Valid {
 			return optional.Value
 		}
 	}
+
 	return defaultValue
 }
 
@@ -55,6 +56,7 @@ func Or[T any](optional Optional[T], or ...Optional[T]) Optional[T] {
 			return ori
 		}
 	}
+
 	return Invalid[T]()
 }
 

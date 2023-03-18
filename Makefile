@@ -8,6 +8,23 @@ db:
 	@go install github.com/antonmedv/fx@latest
 	fx ~/.pm/pm.db
 
+# run formatters
+fmt:
+	@go install mvdan.cc/gofumpt@latest
+	@go install golang.org/x/tools/cmd/goimports@latest
+	go fmt ./...
+	gofumpt -l -w .
+	goimports -l -w -local $(shell head -n1 go.mod | cut -d' ' -f2) .
+	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
+	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
+	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
+	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./...
+	go mod tidy
+
+# run linter
+lint:
+	golangci-lint run ./...
+
 # bump dependencies
 bump:
 	go get -u ./...

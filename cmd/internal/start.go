@@ -93,5 +93,4 @@ func (cmd *startCmd) Run(
 	fmt.Println(lo.ToAnySlice(procIDsToStart)...)
 
 	return nil
-
 }

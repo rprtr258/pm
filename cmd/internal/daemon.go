@@ -10,6 +10,7 @@ import (
 	"github.com/rprtr258/pm/internal/client"
 	pm_daemon "github.com/rprtr258/pm/internal/daemon"
 	"github.com/rprtr258/pm/internal/go-daemon"
+	"github.com/rprtr258/xerr"
 )
 
 func init() {
@@ -60,6 +61,7 @@ var DaemonCmd = &cli.Command{
 				}
 
 				fmt.Println("ok")
+
 				return nil
 			},
 		},
@@ -70,29 +72,35 @@ func daemonStart() error {
 	// TODO: move to internal
 	daemonCtx := &daemon.Context{
 		PidFileName: internal.FileDaemonPid,
-		PidFilePerm: 0644,
+		PidFilePerm: 0o644,
 		LogFileName: internal.FileDaemonLog,
-		LogFilePerm: 0640,
+		LogFilePerm: 0o640,
 		WorkDir:     "./",
-		Umask:       027,
+		Umask:       0o27,
 		Args:        []string{"pm", "daemon", "start"},
+		Chroot:      "",
+		Env:         nil,
+		Credential:  nil,
 	}
 
-	if err := pm_daemon.Kill(daemonCtx, internal.SocketDaemonRpc); err != nil {
+	if err := pm_daemon.Kill(daemonCtx, internal.SocketDaemonRPC); err != nil {
 		return fmt.Errorf("killing daemon failed: %w", err)
 	}
 
-	d, err := daemonCtx.Reborn()
+	daemonProcess, err := daemonCtx.Reborn()
 	if err != nil {
 		return fmt.Errorf("reborn daemon failed: %w", err)
 	}
 
-	if d != nil {
-		fmt.Println(d.Pid)
-		return daemonCtx.Release()
+	if daemonProcess != nil {
+		fmt.Println(daemonProcess.Pid)
+		if err := daemonCtx.Release(); err != nil {
+			return xerr.NewWM(err, "daemon release")
+		}
+		return nil
 	}
 
-	defer deferErr(daemonCtx.Release)
+	defer deferErr(daemonCtx.Release)()
 
 	return daemonRun()
 }
@@ -100,23 +108,28 @@ func daemonStart() error {
 func daemonStop() error {
 	daemonCtx := &daemon.Context{
 		PidFileName: internal.FileDaemonPid,
-		PidFilePerm: 0644,
+		PidFilePerm: 0o644,
 		LogFileName: internal.FileDaemonLog,
-		LogFilePerm: 0640,
+		LogFilePerm: 0o640,
 		WorkDir:     "./",
-		Umask:       027,
+		Umask:       0o27,
 		Args:        []string{"pm", "daemon", "start"},
+		Chroot:      "",
+		Env:         nil,
+		Credential:  nil,
 	}
 
-	return pm_daemon.Kill(daemonCtx, internal.SocketDaemonRpc)
+	return pm_daemon.Kill(daemonCtx, internal.SocketDaemonRPC)
 }
 
 func daemonRun() error {
-	return pm_daemon.Run(internal.SocketDaemonRpc, internal.FileDaemonDB, internal.DirHome)
+	return pm_daemon.Run(internal.SocketDaemonRPC, internal.FileDaemonDB, internal.DirHome)
 }
 
-func deferErr(close func() error) {
-	if err := close(); err != nil {
-		log.Println("some defer action failed:", err)
+func deferErr(closer func() error) func() {
+	return func() {
+		if err := closer(); err != nil {
+			log.Println("some defer action failed:", err)
+		}
 	}
 }

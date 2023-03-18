@@ -15,11 +15,11 @@ import (
 func main() {
 	cntxt := &daemon.Context{
 		PidFileName: "sample.pid",
-		PidFilePerm: 0644,
+		PidFilePerm: 0o644,
 		LogFileName: "sample.log",
-		LogFilePerm: 0640,
+		LogFilePerm: 0o640,
 		WorkDir:     "./",
-		Umask:       027,
+		Umask:       0o27,
 		Args:        []string{"[go-daemon sample]"},
 	}
 

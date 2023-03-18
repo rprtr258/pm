@@ -57,14 +57,14 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		}
 
 		stdoutLogFilename := path.Join(logsDir, procIDStr+".stdout")
-		stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0660)
+		stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 		if err != nil {
 			return nil, fmt.Errorf("os.OpenFile(%s) failed: %w", stdoutLogFilename, err)
 		}
 		defer stdoutLogFile.Close()
 
 		stderrLogFilename := path.Join(logsDir, procIDStr+".stderr")
-		stderrLogFile, err := os.OpenFile(stderrLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0660)
+		stderrLogFile, err := os.OpenFile(stderrLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 		if err != nil {
 			return nil, fmt.Errorf("os.OpenFile(%s) failed: %w", stderrLogFilename, err)
 		}
@@ -96,8 +96,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		args := append([]string{proc.Command}, proc.Args...)
 		process, err := os.StartProcess(proc.Command, args, &procAttr)
 		if err != nil {
-			if err2 := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusErrored}); err2 != nil {
-				return nil, fmt.Errorf("running failed, setting errored status failed: %w", multierr.Combine(err, err2))
+			if found := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusErrored}); !found {
+				return nil, fmt.Errorf("running failed, setting errored status failed: %w", multierr.Combine(err, fmt.Errorf("proc %d was not found", proc.ProcID)))
 			}
 
 			return nil, fmt.Errorf("running failed process=%s: %w", spew.Sdump(proc), err)
@@ -108,8 +108,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 			Pid:       process.Pid,
 			StartTime: time.Now(),
 		}
-		if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
-			return nil, err
+		if found := srv.db.SetStatus(proc.ProcID, runningStatus); !found {
+			return nil, fmt.Errorf("proc %d was not found", proc.ProcID)
 		}
 	}
 
@@ -163,15 +163,15 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 	if err != nil {
 		if errors.As(err, &errno); errno != 10 {
 			return fmt.Errorf("releasing process %+v failed: %w %#v", proc, err, spew.Sdump(err))
-		} else {
-			fmt.Printf("[INFO] process %+v is not a child", proc)
 		}
+
+		fmt.Printf("[INFO] process %+v is not a child", proc)
 	} else {
 		fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
 	}
 
-	if err := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusStopped}); err != nil {
-		return status.Errorf(codes.DataLoss, fmt.Errorf("updating status of process %+v failed: %w", proc, err).Error())
+	if found := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusStopped}); !found {
+		return status.Errorf(codes.DataLoss, fmt.Errorf("updating status of process %+v failed: %w", proc, fmt.Errorf("proc %d was not found", proc.ProcID)).Error())
 	}
 
 	return nil
@@ -269,7 +269,7 @@ func mapStatus(status db.Status) *api.ProcessStatus {
 			Running: &api.RunningProcessStatus{
 				Pid:       int64(status.Pid),
 				StartTime: timestamppb.New(status.StartTime),
-				Cpu:       status.Cpu,
+				Cpu:       status.CPU,
 				Memory:    status.Memory,
 			},
 		}}

@@ -2,7 +2,6 @@ package db
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -20,12 +19,12 @@ const (
 )
 
 type Status struct {
-	Status ProcStatus `json:"status"`
+	StartTime time.Time  `json:"start_time"`
+	Status    ProcStatus `json:"status"`
 	// nulls if not running
-	Pid       int       `json:"pid"`
-	StartTime time.Time `json:"start_time"`
-	// Cpu usage percentage rounded to integer
-	Cpu uint64 `json:"cpu"`
+	Pid int `json:"pid"`
+	// CPU usage percentage rounded to integer
+	CPU uint64 `json:"cpu"`
 	// Memory usage in bytes
 	Memory uint64 `json:"memory"`
 }
@@ -34,16 +33,17 @@ type ProcID uint64
 
 // TODO: implement String()
 type ProcData struct {
-	ProcID ProcID `json:"id"`
-	Name   string `json:"name"`
 	// Command - executable to run
 	Command string `json:"command"`
+	Cwd     string `json:"cwd"`
+	Name    string `json:"name"`
 	// Args - arguments for executable, not including executable itself as first argument
 	Args   []string `json:"args"`
-	Status Status   `json:"status"`
 	Tags   []string `json:"tags"`
-	Cwd    string   `json:"cwd"`
 	Watch  []string `json:"watch"`
+	Status Status   `json:"status"`
+	ProcID ProcID   `json:"id"`
+
 	// StdoutFile  string
 	// StderrFile  string
 	// RestartTries int
@@ -124,18 +124,20 @@ func (handle DBHandle) List() map[ProcID]ProcData {
 		res[pd.ProcID] = pd
 		return true
 	})
+
 	return res
 }
 
-func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) error {
+func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) bool {
 	pd := handle.procs.Get(strconv.FormatUint(uint64(procID), 10))
 	if !pd.Valid {
-		return fmt.Errorf("proc %d was not found", procID)
+		return false
 	}
 
 	pd.Value.Status = newStatus
 	handle.procs.Upsert(pd.Value)
-	return nil
+
+	return true
 }
 
 func (handle DBHandle) Delete(procIDs []uint64) {

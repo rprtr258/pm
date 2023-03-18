@@ -14,6 +14,8 @@ import (
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
+	"github.com/rprtr258/xerr"
+
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
 	"github.com/rprtr258/pm/internal/db"
@@ -104,13 +106,13 @@ func list(
 ) error {
 	client, err := client.NewGrpcClient()
 	if err != nil {
-		return err
+		return xerr.NewWM(err, "new grpc client")
 	}
-	defer deferErr(client.Close)
+	defer deferErr(client.Close)()
 
 	resp, err := client.List(ctx)
 	if err != nil {
-		return err
+		return xerr.NewWM(err, "list server call")
 	}
 
 	procIDsToShow := internal.FilterProcs[db.ProcID](
@@ -139,14 +141,14 @@ func list(
 	for _, proc := range procsToShow {
 		status, pid, uptime := mapStatus(proc.Status)
 		t.AddRow(
-			color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
+			color.New(color.FgCyan, color.Bold).Sprint(proc.ProcID),
 			proc.Name,
 			status,
 			internal.IfNotNil(pid, strconv.Itoa),
 			lo.If(pid == nil, "").
 				Else(uptime.Truncate(time.Second).String()),
 			fmt.Sprint(proc.Tags),
-			fmt.Sprint(proc.Status.Cpu),
+			fmt.Sprint(proc.Status.CPU),
 			fmt.Sprint(proc.Status.Memory),
 			fmt.Sprintf("%s %s", proc.Command, strings.Join(proc.Args, " ")), // TODO: escape args
 		)

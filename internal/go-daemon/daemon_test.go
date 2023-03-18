@@ -26,11 +26,11 @@ func Example() {
 	// Define daemon context
 	dmn := &Context{
 		PidFileName: "/var/run/daemon.pid",
-		PidFilePerm: 0644,
+		PidFilePerm: 0o644,
 		LogFileName: "/var/log/daemon.log",
-		LogFilePerm: 0640,
+		LogFilePerm: 0o640,
 		WorkDir:     "/",
-		Umask:       027,
+		Umask:       0o27,
 	}
 
 	// Send commands if needed
@@ -40,6 +40,7 @@ func Example() {
 			log.Fatalln("Unable send signal to the daemon:", err)
 		}
 		SendCommands(d)
+
 		return
 	}
 
