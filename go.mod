@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/aquasecurity/table v1.8.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/fatih/color v1.14.1
+	github.com/fatih/color v1.15.0
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/samber/lo v1.37.0
 	github.com/sevlyar/go-daemon v0.1.6
@@ -13,7 +13,7 @@ require (
 	go.uber.org/multierr v1.10.0
 	golang.org/x/sys v0.6.0
 	google.golang.org/grpc v1.53.0
-	google.golang.org/protobuf v1.29.0
+	google.golang.org/protobuf v1.30.0
 )
 
 // replace github.com/sevlyar/go-daemon v0.1.6 => ./internal/go-daemon
@@ -34,7 +34,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0 // indirect
+	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect
