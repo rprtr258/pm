@@ -48,10 +48,14 @@ func main() {
 		Before: func(*cli.Context) error {
 			// TODO: run daemon if not running
 			_, err := os.Stat(internal2.DirHome)
-			if os.IsNotExist(err) {
-				return os.Mkdir(internal2.DirHome, 0o755)
-			} else if err != nil {
-				return xerr.NewWM(err, "os.stat", xerr.Field("homedir", internal2.DirHome))
+			if err != nil {
+				if !os.IsNotExist(err) {
+					return xerr.NewWM(err, "os.stat", xerr.Field("homedir", internal2.DirHome))
+				}
+
+				if err := os.Mkdir(internal2.DirHome, 0o755); err != nil {
+					return xerr.NewWM(err, "create dir", xerr.Field("homedir", internal2.DirHome))
+				}
 			}
 
 			return nil
