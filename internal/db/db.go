@@ -9,17 +9,17 @@ import (
 	"github.com/rprtr258/simpdb"
 )
 
-type ProcStatus int
+type StatusType int
 
 const (
-	StatusInvalid ProcStatus = iota
+	StatusInvalid StatusType = iota
 	StatusStarting
 	StatusRunning
 	StatusStopped
 	StatusErrored
 )
 
-func (ps ProcStatus) String() string {
+func (ps StatusType) String() string {
 	switch ps {
 	case StatusInvalid:
 		return "invalid"
@@ -38,7 +38,7 @@ func (ps ProcStatus) String() string {
 
 type Status struct {
 	StartTime time.Time  `json:"start_time"`
-	Status    ProcStatus `json:"status"`
+	Status    StatusType `json:"type"`
 	// nulls if not running
 	Pid int `json:"pid"`
 	// CPU usage percentage rounded to integer

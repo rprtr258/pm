@@ -12,7 +12,7 @@ import (
 type filter struct {
 	Names    []string
 	Tags     []string
-	Statuses []db.ProcStatus
+	Statuses []db.StatusType
 	IDs      []db.ProcID
 }
 
@@ -53,7 +53,7 @@ func WithTags(args []string) filterOption {
 }
 
 func WithStatuses(args []string) filterOption {
-	statuses := lo.Map(args, func(status string, _ int) db.ProcStatus {
+	statuses := lo.Map(args, func(status string, _ int) db.StatusType {
 		switch status {
 		case "invalid":
 			return db.StatusInvalid
@@ -67,7 +67,7 @@ func WithStatuses(args []string) filterOption {
 			return db.StatusErrored
 		default:
 			log.Printf("unknown status %q\n", status)
-			return lo.Empty[db.ProcStatus]()
+			return lo.Empty[db.StatusType]()
 		}
 	})
 
