@@ -25,6 +25,10 @@ fmt:
 lint:
 	golangci-lint run ./...
 
+# run tests
+test:
+	go test ./...
+
 # bump dependencies
 bump:
 	go get -u ./...

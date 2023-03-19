@@ -40,6 +40,14 @@ type daemonServer struct {
 	homeDir string
 }
 
+func getProcCwd(cwd, procCwd string) string {
+	if filepath.IsAbs(procCwd) {
+		return procCwd
+	}
+
+	return filepath.Join(cwd, procCwd)
+}
+
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empty, error) {
@@ -79,7 +87,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		}
 
 		procAttr := os.ProcAttr{
-			Dir: filepath.Join(cwd, proc.Cwd),
+			Dir: getProcCwd(cwd, proc.Cwd),
 			Env: os.Environ(), // TODO: ???
 			Files: []*os.File{ // TODO: pid file is somehow passes to child
 				os.Stdin,
@@ -105,7 +113,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 						xerr.NewM("proc was not found", xerr.Field("procID", proc.ProcID))))
 			}
 
-			return nil, xerr.NewWM(err, "running failed", xerr.Field("procData", spew.Sdump(proc)))
+			return nil, xerr.NewWM(err, "running failed", xerr.Field("procData", spew.Sprint(proc)))
 		}
 
 		runningStatus := db.Status{
