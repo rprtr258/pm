@@ -80,8 +80,12 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 					continue
 				}
 
-				if found := dbHandle.SetStatus(procID, db.Status{Status: dbStatus}); !found {
-					log.Printf("proc %d not found while trying to set status %v\n", procID, dbStatus)
+				if err := dbHandle.SetStatus(procID, db.Status{Status: dbStatus}); err != nil {
+					if _, ok := xerr.As[db.ErrorProcNotFound](err); ok {
+						log.Printf("proc %d not found while trying to set status %v\n", procID, dbStatus)
+					} else {
+						log.Printf("[ERROR] set status: %s", err.Error())
+					}
 				}
 			}
 		}

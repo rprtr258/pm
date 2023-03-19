@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/simpdb"
+	"github.com/rprtr258/xerr"
 )
 
 type StatusType int
@@ -117,11 +118,21 @@ func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 		return 0, errors.New("insert: already present")
 	}
 
+	if err := handle.procs.Flush(); err != nil {
+		return 0, xerr.NewWM(err, "db flush")
+	}
+
 	return metadata.ProcID, nil
 }
 
-func (handle DBHandle) UpdateProc(metadata ProcData) {
+func (handle DBHandle) UpdateProc(metadata ProcData) error {
 	handle.procs.Upsert(metadata)
+
+	if err := handle.procs.Flush(); err != nil {
+		return xerr.NewWM(err, "db flush")
+	}
+
+	return nil
 }
 
 func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
@@ -148,19 +159,29 @@ func (handle DBHandle) List() map[ProcID]ProcData {
 	return res
 }
 
-func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) bool {
+type ErrorProcNotFound ProcID
+
+func (err ErrorProcNotFound) Error() string {
+	return fmt.Sprintf("proc #%d not found", err)
+}
+
+func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) error {
 	pd := handle.procs.Get(strconv.FormatUint(uint64(procID), 10))
 	if !pd.Valid {
-		return false
+		return ErrorProcNotFound(procID)
 	}
 
 	pd.Value.Status = newStatus
 	handle.procs.Upsert(pd.Value)
 
-	return true
+	if err := handle.procs.Flush(); err != nil {
+		return xerr.NewWM(err, "db flush")
+	}
+
+	return nil
 }
 
-func (handle DBHandle) Delete(procIDs []uint64) {
+func (handle DBHandle) Delete(procIDs []uint64) error {
 	lookupTable := make(map[uint64]struct{}, len(procIDs))
 	for _, procID := range procIDs {
 		lookupTable[procID] = struct{}{}
@@ -170,4 +191,10 @@ func (handle DBHandle) Delete(procIDs []uint64) {
 		_, ok := lookupTable[uint64(pd.ProcID)]
 		return ok
 	}).Delete()
+
+	if err := handle.procs.Flush(); err != nil {
+		return xerr.NewWM(err, "db flush")
+	}
+
+	return nil
 }

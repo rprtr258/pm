@@ -106,11 +106,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		args := append([]string{proc.Command}, proc.Args...)
 		process, err := os.StartProcess(proc.Command, args, &procAttr)
 		if err != nil {
-			if found := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusErrored}); !found {
-				return nil, xerr.NewM("running failed, setting errored status failed",
-					xerr.Errors(
-						err,
-						xerr.NewM("proc was not found", xerr.Field("procID", proc.ProcID))))
+			if errSetStatus := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusInvalid}); errSetStatus != nil {
+				return nil, xerr.NewM("running failed, setting errored status failed", xerr.Errors(err, errSetStatus))
 			}
 
 			return nil, xerr.NewWM(err, "running failed", xerr.Field("procData", spew.Sprint(proc)))
@@ -121,8 +118,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 			Pid:       process.Pid,
 			StartTime: time.Now(),
 		}
-		if found := srv.db.SetStatus(proc.ProcID, runningStatus); !found {
-			return nil, xerr.NewM("proc was not found", xerr.Field("procID", proc.ProcID))
+		if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
+			return nil, xerr.NewWM(err, "set status running", xerr.Field("procID", proc.ProcID))
 		}
 	}
 
@@ -182,8 +179,8 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 		fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
 	}
 
-	if found := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusStopped}); !found {
-		return status.Errorf(codes.DataLoss, "updating process status, not found, pid=%d", proc.ProcID)
+	if err := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusStopped}); err != nil {
+		return status.Errorf(codes.DataLoss, "set status stopped, procID=%d: %s", proc.ProcID, err.Error())
 	}
 
 	return nil
