@@ -2,6 +2,7 @@ package db
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -17,6 +18,23 @@ const (
 	StatusStopped
 	StatusErrored
 )
+
+func (ps ProcStatus) String() string {
+	switch ps {
+	case StatusInvalid:
+		return "invalid"
+	case StatusStarting:
+		return "starting"
+	case StatusRunning:
+		return "running"
+	case StatusStopped:
+		return "stopped"
+	case StatusErrored:
+		return "errored"
+	default:
+		return fmt.Sprintf("UNKNOWN(%d)", ps)
+	}
+}
 
 type Status struct {
 	StartTime time.Time  `json:"start_time"`
