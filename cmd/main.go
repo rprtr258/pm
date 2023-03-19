@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/urfave/cli/v2"
 
@@ -55,6 +57,8 @@ func main() {
 			return nil
 		},
 	}
+
+	rand.Seed(time.Now().UnixNano())
 
 	if err := app.Run(os.Args); err != nil {
 		fmt.Println(err)

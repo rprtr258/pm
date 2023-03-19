@@ -3,12 +3,10 @@ package daemon
 import (
 	"errors"
 	"log"
-	"math/rand"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"google.golang.org/grpc"
 
@@ -36,8 +34,6 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 		return xerr.NewWM(err, "create db")
 	}
 	defer dbHandle.Close()
-
-	rand.Seed(time.Now().UnixNano())
 
 	srv := grpc.NewServer()
 	api.RegisterDaemonServer(srv, &daemonServer{
