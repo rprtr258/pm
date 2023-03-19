@@ -47,22 +47,6 @@ var ListCmd = &cli.Command{
 	Aliases: []string{"l", "ls", "ps", "status"},
 	Usage:   "list processes",
 	Flags: []cli.Flag{
-		// TODO: list as json
-		// TODO: show as tree -t,--tree
-		&cli.BoolFlag{ // TODO: ???
-			Name:    "mini-list",
-			Aliases: []string{"m"},
-			Usage:   "display a compacted list without formatting",
-		},
-		// &cli.BoolFlag{
-		// 	Name:  "sort",
-		// 	Usage: "sort <id|name|pid>:<inc|dec> sort process according to field value",
-		// },
-		&cli.BoolFlag{
-			Name:  "compact",
-			Usage: "show compact table",
-			Value: false,
-		},
 		// &cli.StringFlag{
 		// 	Name:    "format",
 		// 	Aliases: []string{"f"},
@@ -93,7 +77,6 @@ var ListCmd = &cli.Command{
 			ctx.StringSlice("tags"),
 			ctx.StringSlice("status"),
 			ctx.Uint64Slice("id"),
-			ctx.Bool("compact"),
 		)
 	},
 }
@@ -102,7 +85,6 @@ func list(
 	ctx context.Context,
 	genericFilters, nameFilters, tagFilters, statusFilters []string,
 	idFilters []uint64,
-	compact bool,
 ) error {
 	client, err := client.NewGrpcClient()
 	if err != nil {
@@ -130,17 +112,14 @@ func list(
 		return procsToShow[i].ProcID < procsToShow[j].ProcID
 	})
 
-	t := table.New(os.Stdout)
-	t.SetRowLines(!compact)
-	t.SetDividers(table.UnicodeRoundedDividers)
-	t.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
-	t.SetHeaderStyle(table.StyleBold)
-	t.SetLineStyle(table.StyleDim)
-
-	// TODO: sort
+	procsTable := table.New(os.Stdout)
+	procsTable.SetDividers(table.UnicodeRoundedDividers)
+	procsTable.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
+	procsTable.SetHeaderStyle(table.StyleBold)
+	procsTable.SetLineStyle(table.StyleDim)
 	for _, proc := range procsToShow {
 		status, pid, uptime := mapStatus(proc.Status)
-		t.AddRow(
+		procsTable.AddRow(
 			color.New(color.FgCyan, color.Bold).Sprint(proc.ProcID),
 			proc.Name,
 			status,
@@ -153,8 +132,7 @@ func list(
 			fmt.Sprintf("%s %s", proc.Command, strings.Join(proc.Args, " ")), // TODO: escape args
 		)
 	}
-
-	t.Render()
+	procsTable.Render()
 
 	return nil
 }
