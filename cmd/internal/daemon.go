@@ -93,7 +93,7 @@ func daemonStart() error {
 		return xerr.NewWM(err, "reborn daemon")
 	}
 
-	if daemonProcess != nil {
+	if daemonProcess != nil { // parent
 		fmt.Println(daemonProcess.Pid)
 		if err := daemonCtx.Release(); err != nil {
 			return xerr.NewWM(err, "daemon release")
@@ -101,6 +101,7 @@ func daemonStart() error {
 		return nil
 	}
 
+	// child/daemon
 	defer deferErr(daemonCtx.Release)()
 
 	return daemonRun()
