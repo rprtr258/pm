@@ -11,7 +11,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/log v0.0.5
 	github.com/rprtr258/simpdb v0.5.0
-	github.com/rprtr258/xerr v0.0.5
+	github.com/rprtr258/xerr v0.0.6
 	github.com/samber/lo v1.38.1
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/stretchr/testify v1.8.2
