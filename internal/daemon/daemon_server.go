@@ -106,18 +106,14 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		args := append([]string{proc.Command}, proc.Args...)
 		process, err := os.StartProcess(proc.Command, args, &procAttr)
 		if err != nil {
-			if errSetStatus := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusInvalid}); errSetStatus != nil { //nolint:exhaustruct // not needed
+			if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusInvalid()); errSetStatus != nil {
 				return nil, xerr.NewM("running failed, setting errored status failed", xerr.Errors(err, errSetStatus))
 			}
 
 			return nil, xerr.NewWM(err, "running failed", xerr.Field("procData", spew.Sprint(proc)))
 		}
 
-		runningStatus := db.Status{
-			Status:    db.StatusRunning,
-			Pid:       process.Pid,
-			StartTime: time.Now(),
-		}
+		runningStatus := db.NewStatusRunning(time.Now(), process.Pid, 0, 0)
 		if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
 			return nil, xerr.NewWM(err, "set status running", xerr.Field("procID", proc.ProcID))
 		}
@@ -179,7 +175,7 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 		fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
 	}
 
-	if errSetStatus := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusStopped}); errSetStatus != nil { //nolint:exhaustruct // not needed
+	if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusStopped(state.ExitCode())); errSetStatus != nil {
 		return status.Errorf(codes.DataLoss, "set status stopped, procID=%d: %s", proc.ProcID, errSetStatus.Error())
 	}
 
@@ -197,10 +193,8 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 			},
 		); ok {
 			procData := db.ProcData{
-				ProcID: procID,
-				Status: db.Status{ //nolint:exhaustruct // not needed
-					Status: db.StatusStarting,
-				},
+				ProcID:  procID,
+				Status:  db.NewStatusStarting(),
 				Name:    procOpts.GetName(),
 				Cwd:     procOpts.GetCwd(),
 				Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
@@ -220,9 +214,7 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 	name := lo.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(genName)
 
 	procData := db.ProcData{
-		Status: db.Status{ //nolint:exhaustruct // not needed
-			Status: db.StatusStarting,
-		},
+		Status:  db.NewStatusStarting(),
 		Name:    name,
 		Cwd:     procOpts.GetCwd(),
 		Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),

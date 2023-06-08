@@ -48,10 +48,44 @@ type Status struct {
 	Memory uint64 `json:"memory"`
 }
 
+func NewStatusInvalid() Status {
+	return Status{ //nolint:exhaustruct // not needed
+		Status: StatusInvalid,
+	}
+}
+
+func NewStatusStarting() Status {
+	return Status{ //nolint:exhaustruct // not needed
+		Status: StatusStarting,
+	}
+}
+
+func NewStatusRunning(startTime time.Time, pid int, cpu, memory uint64) Status {
+	return Status{
+		Status:    StatusRunning,
+		StartTime: startTime,
+		Pid:       pid,
+		CPU:       cpu,
+		Memory:    memory,
+	}
+}
+
 func NewStatusStopped(exitCode int) Status {
 	return Status{ //nolint:exhaustruct // not needed
 		Status: StatusStopped,
 		// TODO: add exit code
+	}
+}
+
+func NewStatusErrored() Status {
+	return Status{ //nolint:exhaustruct // not needed
+		Status: StatusErrored,
+	}
+}
+
+func NewStatus() Status {
+	return Status{ //nolint:exhaustruct // not needed
+		Status: StatusInvalid,
 	}
 }
 
