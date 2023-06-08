@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/simpdb"
+	"github.com/rprtr258/simpdb/storages"
 	"github.com/rprtr258/xerr"
 )
 
@@ -124,9 +125,8 @@ type DBHandle struct {
 // TODO: must call db.Close after this
 func New(dir string) (DBHandle, error) {
 	db := simpdb.New(dir)
-	procs, err := simpdb.GetTable[ProcData](db, "procs", simpdb.TableConfig{
-		Indent: false,
-	})
+
+	procs, err := simpdb.GetTable[ProcData](db, "procs", storages.NewJSONStorage[ProcData]())
 	if err != nil {
 		return DBHandle{}, err
 	}
