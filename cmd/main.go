@@ -8,11 +8,30 @@ import (
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/cmd/internal"
 	internal2 "github.com/rprtr258/pm/internal"
 )
+
+func ensureDir(dirname string) error {
+	_, errStat := os.Stat(dirname)
+	if errStat == nil {
+		return nil
+	}
+
+	if !os.IsNotExist(errStat) {
+		return xerr.NewWM(errStat, "stat home dir")
+	}
+
+	log.Infof("creating home dir...", log.F{"dir": dirname})
+	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
+		return xerr.NewWM(errMkdir, "create home dir")
+	}
+
+	return nil
+}
 
 func main() {
 	app := &cli.App{
@@ -43,15 +62,9 @@ func main() {
 		),
 		Before: func(*cli.Context) error {
 			// TODO: run daemon if not running
-			_, err := os.Stat(internal2.DirHome)
-			if err != nil {
-				if !os.IsNotExist(err) {
-					return xerr.NewWM(err, "os.stat", xerr.Fields{"homedir": internal2.DirHome})
-				}
 
-				if err := os.Mkdir(internal2.DirHome, 0o755); err != nil {
-					return xerr.NewWM(err, "create dir", xerr.Fields{"homedir": internal2.DirHome})
-				}
+			if err := ensureDir(internal2.DirHome); err != nil {
+				return xerr.NewWM(err, "ensure home dir", xerr.Fields{"dir": internal2.DirHome})
 			}
 
 			return nil
