@@ -11,6 +11,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
+	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal"
@@ -123,16 +124,25 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 			return RunConfig{
 				Name:    internal.FromPtr(config.Name),
 				Command: config.Command,
-				Args: lo.Map(
-					config.Args,
-					func(arg any, _ int) string {
-						if stringer, ok := arg.(fmt.Stringer); ok {
-							return stringer.String()
-						}
-						// TODO: check arg types
-						return fmt.Sprintf("%v", arg)
-					},
-				),
+				Args: lo.Map(config.Args, func(arg any, i int) string { //nolint:varnamelen // i is index
+					switch a := arg.(type) {
+					case fmt.Stringer:
+						return a.String()
+					case int, int8, int16, int32, int64,
+						uint, uint8, uint16, uint32, uint64,
+						float32, float64, bool, string:
+						return fmt.Sprint(arg)
+					default:
+						argStr := fmt.Sprintf("%v", arg)
+						log.Errorf("unknown arg type", log.F{
+							"arg":    argStr,
+							"i":      i,
+							"config": config,
+						})
+
+						return argStr
+					}
+				}),
 				Tags: config.Tags,
 				Cwd:  *cwd,
 			}
