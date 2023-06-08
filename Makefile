@@ -5,8 +5,7 @@ PM := "go run cmd/main.go"
 
 # open database
 db:
-	@go install github.com/antonmedv/fx@latest
-	fx ~/.pm/pm.db
+	go run github.com/antonmedv/fx@latest ~/.pm/db/procs.json
 
 # run formatters
 fmt:
