@@ -48,6 +48,13 @@ type Status struct {
 	Memory uint64 `json:"memory"`
 }
 
+func NewStatusStopped(exitCode int) Status {
+	return Status{ //nolint:exhaustruct // not needed
+		Status: StatusStopped,
+		// TODO: add exit code
+	}
+}
+
 type ProcID uint64
 
 // TODO: implement String()

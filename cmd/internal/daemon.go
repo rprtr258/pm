@@ -50,15 +50,15 @@ var DaemonCmd = &cli.Command{
 			Usage:   "check daemon status",
 			Aliases: []string{"ps"},
 			Action: func(ctx *cli.Context) error {
-				client, err := client.NewGrpcClient()
-				if err != nil {
-					return err
+				client, errNewClient := client.NewGrpcClient()
+				if errNewClient != nil {
+					return xerr.NewWM(errNewClient, "create grpc client")
 				}
 
 				// TODO: print daemon process info
 
-				if err := client.HealthCheck(ctx.Context); err != nil {
-					return err
+				if errHealth := client.HealthCheck(ctx.Context); errHealth != nil {
+					return xerr.NewWM(errHealth, "check daemon health")
 				}
 
 				fmt.Println("ok")
@@ -69,28 +69,32 @@ var DaemonCmd = &cli.Command{
 	},
 }
 
-func daemonStart() error {
-	// TODO: move to internal
-	daemonCtx := &daemon.Context{
+func newDaemonContext() *daemon.Context {
+	return &daemon.Context{
 		PidFileName: internal.FileDaemonPid,
-		PidFilePerm: 0o644,
+		PidFilePerm: 0o644, //nolint:gomnd // default pid file permissions, rwxr--r--
 		LogFileName: internal.FileDaemonLog,
-		LogFilePerm: 0o640,
+		LogFilePerm: 0o640, //nolint:gomnd // default log file permissions, rwxr-----
 		WorkDir:     "./",
-		Umask:       0o27,
+		Umask:       0o27, //nolint:gomnd // don't know
 		Args:        []string{"pm", "daemon", "start"},
 		Chroot:      "",
 		Env:         nil,
 		Credential:  nil,
 	}
+}
 
-	if err := pm_daemon.Kill(daemonCtx, internal.SocketDaemonRPC); err != nil {
-		return xerr.NewWM(err, "kill daemon process")
+func daemonStart() error {
+	// TODO: move to internal
+	daemonCtx := newDaemonContext()
+
+	if errKill := pm_daemon.Kill(daemonCtx, internal.SocketDaemonRPC); errKill != nil {
+		return xerr.NewWM(errKill, "kill daemon process")
 	}
 
-	daemonProcess, err := daemonCtx.Reborn()
-	if err != nil {
-		return xerr.NewWM(err, "reborn daemon")
+	daemonProcess, errReborn := daemonCtx.Reborn()
+	if errReborn != nil {
+		return xerr.NewWM(errReborn, "reborn daemon")
 	}
 
 	if daemonProcess != nil { // parent
@@ -108,24 +112,20 @@ func daemonStart() error {
 }
 
 func daemonStop() error {
-	daemonCtx := &daemon.Context{
-		PidFileName: internal.FileDaemonPid,
-		PidFilePerm: 0o644,
-		LogFileName: internal.FileDaemonLog,
-		LogFilePerm: 0o640,
-		WorkDir:     "./",
-		Umask:       0o27,
-		Args:        []string{"pm", "daemon", "start"},
-		Chroot:      "",
-		Env:         nil,
-		Credential:  nil,
+	daemonCtx := newDaemonContext()
+	if errKill := pm_daemon.Kill(daemonCtx, internal.SocketDaemonRPC); errKill != nil {
+		return xerr.NewWM(errKill, "kill daemon process")
 	}
 
-	return pm_daemon.Kill(daemonCtx, internal.SocketDaemonRPC)
+	return nil
 }
 
 func daemonRun() error {
-	return pm_daemon.Run(internal.SocketDaemonRPC, internal.FileDaemonDBDir, internal.DirHome)
+	if errRun := pm_daemon.Run(internal.SocketDaemonRPC, internal.FileDaemonDBDir, internal.DirHome); errRun != nil {
+		return xerr.NewWM(errRun, "run daemon")
+	}
+
+	return nil
 }
 
 func deferErr(closer func() error) func() {

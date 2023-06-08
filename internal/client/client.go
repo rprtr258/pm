@@ -89,24 +89,24 @@ func (c Client) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
 func mapPbStatus(status *api.ProcessStatus) db.Status {
 	switch {
 	case status.GetErrored() != nil:
-		return db.Status{Status: db.StatusErrored}
+		return db.Status{Status: db.StatusErrored} //nolint:exhaustruct // ???
 	case status.GetInvalid() != nil:
-		return db.Status{Status: db.StatusInvalid}
+		return db.Status{Status: db.StatusInvalid} //nolint:exhaustruct // ???
 	case status.GetStarting() != nil:
-		return db.Status{Status: db.StatusStarting}
+		return db.Status{Status: db.StatusStarting} //nolint:exhaustruct // ???
 	case status.GetStopped() != nil:
-		return db.Status{Status: db.StatusStopped}
+		return db.Status{Status: db.StatusStopped} //nolint:exhaustruct // ???
 	case status.GetRunning() != nil:
-		st := status.GetRunning()
+		stat := status.GetRunning()
 		return db.Status{
 			Status:    db.StatusRunning,
-			Pid:       int(st.GetPid()),
-			StartTime: st.GetStartTime().AsTime(),
-			CPU:       st.GetCpu(),
-			Memory:    st.GetMemory(),
+			Pid:       int(stat.GetPid()),
+			StartTime: stat.GetStartTime().AsTime(),
+			CPU:       stat.GetCpu(),
+			Memory:    stat.GetMemory(),
 		}
 	default:
-		return db.Status{Status: db.StatusInvalid}
+		return db.Status{Status: db.StatusInvalid} //nolint:exhaustruct // ???
 	}
 }
 

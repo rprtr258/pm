@@ -59,7 +59,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 	}
 
 	for _, proc := range procs {
-		procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10)
+		procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
 		logsDir := path.Join(srv.homeDir, "logs")
 
 		if err := os.Mkdir(logsDir, os.ModePerm); err != nil && !errors.Is(err, os.ErrExist) {
@@ -106,7 +106,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		args := append([]string{proc.Command}, proc.Args...)
 		process, err := os.StartProcess(proc.Command, args, &procAttr)
 		if err != nil {
-			if errSetStatus := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusInvalid}); errSetStatus != nil {
+			if errSetStatus := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusInvalid}); errSetStatus != nil { //nolint:exhaustruct // not needed
 				return nil, xerr.NewM("running failed, setting errored status failed", xerr.Errors(err, errSetStatus))
 			}
 
@@ -154,24 +154,24 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 	}
 
 	// TODO: actually stop proc
-	process, err := os.FindProcess(proc.Status.Pid)
-	if err != nil {
-		return xerr.NewWM(err, "getting process by pid failed", xerr.Field("pid", proc.Status.Pid))
+	process, errFindProc := os.FindProcess(proc.Status.Pid)
+	if errFindProc != nil {
+		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Field("pid", proc.Status.Pid))
 	}
 
 	// TODO: kill after timeout
-	if err := syscall.Kill(-process.Pid, syscall.SIGTERM); err != nil {
-		if errors.Is(err, os.ErrProcessDone) {
+	if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
+		if errors.Is(errKill, os.ErrProcessDone) {
 			log.Printf("[WARN] finished process %+v with running status", proc)
 		} else {
-			return xerr.NewWM(err, "killing process failed", xerr.Field("pid", process.Pid))
+			return xerr.NewWM(errKill, "killing process failed", xerr.Field("pid", process.Pid))
 		}
 	}
 
-	state, err := process.Wait()
-	if err != nil {
-		if errno, ok := xerr.As[syscall.Errno](err); !ok || errno != 10 {
-			return xerr.NewWM(err, "releasing process", xerr.Field("procData", proc))
+	state, errFindProc := process.Wait()
+	if errFindProc != nil {
+		if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
+			return xerr.NewWM(errFindProc, "releasing process", xerr.Field("procData", proc))
 		}
 
 		fmt.Printf("[INFO] process %+v is not a child", proc)
@@ -179,8 +179,8 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 		fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
 	}
 
-	if err := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusStopped}); err != nil {
-		return status.Errorf(codes.DataLoss, "set status stopped, procID=%d: %s", proc.ProcID, err.Error())
+	if errSetStatus := srv.db.SetStatus(proc.ProcID, db.Status{Status: db.StatusStopped}); errSetStatus != nil { //nolint:exhaustruct // not needed
+		return status.Errorf(codes.DataLoss, "set status stopped, procID=%d: %s", proc.ProcID, errSetStatus.Error())
 	}
 
 	return nil
@@ -198,7 +198,7 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 		); ok {
 			procData := db.ProcData{
 				ProcID: procID,
-				Status: db.Status{
+				Status: db.Status{ //nolint:exhaustruct // not needed
 					Status: db.StatusStarting,
 				},
 				Name:    procOpts.GetName(),
@@ -209,7 +209,9 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 				Watch:   nil,
 			}
 
-			srv.db.UpdateProc(procData)
+			if errUpdate := srv.db.UpdateProc(procData); errUpdate != nil {
+				return nil, xerr.NewWM(errUpdate, "update proc", xerr.Field("procData", procData))
+			}
 
 			return &api.ProcessID{Id: uint64(procID)}, nil
 		}
@@ -218,7 +220,7 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 	name := lo.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(genName)
 
 	procData := db.ProcData{
-		Status: db.Status{
+		Status: db.Status{ //nolint:exhaustruct // not needed
 			Status: db.StatusStarting,
 		},
 		Name:    name,
@@ -263,6 +265,7 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.Proce
 	}, nil
 }
 
+//nolint:exhaustruct // can't return api.isProcessStatus_Status
 func mapStatus(status db.Status) *api.ProcessStatus {
 	switch status.Status {
 	case db.StatusInvalid:
@@ -295,8 +298,10 @@ func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty
 			return procID.GetId()
 		},
 	)
-	srv.db.Delete(ids)
-	// TODO: add errs descriptions, loggings
+	if errDelete := srv.db.Delete(ids); errDelete != nil {
+		return nil, xerr.NewWM(errDelete, "delete proc", xerr.Field("procIDs", ids))
+	}
+	// TODO: add loggings
 
 	var merr error
 	for _, procID := range ids {
@@ -310,29 +315,28 @@ func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty
 
 func removeLogFiles(procID uint64) error {
 	stdoutFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stdout", procID))
-	if err := removeFile(stdoutFilename); err != nil {
-		return err
+	if errRmStdout := removeFile(stdoutFilename); errRmStdout != nil {
+		return errRmStdout
 	}
 
 	stderrFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stderr", procID))
-	if err := removeFile(stderrFilename); err != nil {
-		return err
+	if errRmStderr := removeFile(stderrFilename); errRmStderr != nil {
+		return errRmStderr
 	}
 
 	return nil
 }
 
 func removeFile(name string) error {
-	if _, err := os.Stat(name); err != nil {
-		if os.IsNotExist(err) {
+	if _, errStat := os.Stat(name); errStat != nil {
+		if os.IsNotExist(errStat) {
 			return nil
 		}
-		return xerr.NewWM(err, "remove file, stat",
-			xerr.Field("filename", name))
+		return xerr.NewWM(errStat, "remove file, stat", xerr.Field("filename", name))
 	}
 
-	if err := os.Remove(name); err != nil {
-		return xerr.NewWM(err, "remove file",
+	if errRm := os.Remove(name); errRm != nil {
+		return xerr.NewWM(errRm, "remove file",
 			xerr.Field("filename", name))
 	}
 

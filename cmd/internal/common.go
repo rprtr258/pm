@@ -154,38 +154,40 @@ func executeProcCommand(
 
 	if !ctx.IsSet("config") {
 		if err := cmd.Validate(ctx, nil); err != nil {
-			return err
+			return xerr.NewWM(err, "validate config")
 		}
 	}
 
-	client, err := client.NewGrpcClient()
-	if err != nil {
-		return xerr.NewWM(err, "new grpc client")
+	client, errList := client.NewGrpcClient()
+	if errList != nil {
+		return xerr.NewWM(errList, "new grpc client")
 	}
 	defer deferErr(client.Close)()
 
-	list, err := client.List(ctx.Context)
-	if err != nil {
-		return xerr.NewWM(err, "server.list")
+	list, errList := client.List(ctx.Context)
+	if errList != nil {
+		return xerr.NewWM(errList, "server.list")
 	}
 
 	if !ctx.IsSet("config") {
-		return cmd.Run(
+		if errRun := cmd.Run(
 			ctx,
 			nil,
 			client,
 			list,
 			list,
-		)
+		); errRun != nil {
+			return xerr.NewWM(errRun, "run")
+		}
 	}
 
-	configs, err := loadConfigs(configFilename)
-	if err != nil {
-		return err
+	configs, errLoadConfigs := loadConfigs(configFilename)
+	if errLoadConfigs != nil {
+		return errLoadConfigs
 	}
 
 	if err := cmd.Validate(ctx, configs); err != nil {
-		return err
+		return xerr.NewWM(err, "validate run configs")
 	}
 
 	names := lo.FilterMap(
@@ -202,13 +204,17 @@ func executeProcCommand(
 		},
 	)
 
-	return cmd.Run(
+	if errRun := cmd.Run(
 		ctx,
 		configs,
 		client,
 		list,
 		configList,
-	)
+	); errRun != nil {
+		return xerr.NewWM(errRun, "run config list")
+	}
+
+	return nil
 }
 
 // { Name: "pid", commander.command('[app_name]')

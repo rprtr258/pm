@@ -80,11 +80,17 @@ func (cmd *deleteCmd) Run(
 		return nil
 	}
 
-	fmt.Printf("Stopping and removing: %v\n", procIDs)
+	fmt.Printf("Stopping: %v\n", procIDs)
 
 	if err := client.Stop(ctx.Context, procIDs); err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}
 
-	return client.Delete(ctx.Context, procIDs)
+	fmt.Printf("Removing: %v\n", procIDs)
+
+	if errDelete := client.Delete(ctx.Context, procIDs); errDelete != nil {
+		return xerr.NewWM(errDelete, "client.delete", xerr.Field("procIDs", procIDs))
+	}
+
+	return nil
 }
