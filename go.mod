@@ -22,6 +22,7 @@ require (
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/google/go-jsonnet v0.19.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+	github.com/rprtr258/log v0.0.5
 	github.com/rprtr258/simpdb v0.4.1
 	github.com/rprtr258/xerr v0.0.5
 	github.com/stretchr/testify v1.8.1
@@ -35,9 +36,10 @@ require (
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/rprtr258/fun v0.0.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
-	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0 // indirect
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/text v0.8.0 // indirect

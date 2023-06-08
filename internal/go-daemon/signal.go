@@ -5,17 +5,18 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/rprtr258/log"
 )
 
 // ErrStop should be returned signal handler function
 // for termination of handling signals.
 var ErrStop = errors.New("stop serve signals")
 
-// SignalHandlerFunc is the interface for signal handler functions.
-type SignalHandlerFunc func(sig os.Signal) (err error)
+type SignalHandlerFunc func(sig os.Signal) error
 
 // SetSigHandler sets handler for the given signals.
-// SIGTERM has the default handler, he returns ErrStop.
+// SIGTERM has the default handler, which returns ErrStop.
 func SetSigHandler(handler SignalHandlerFunc, signals ...os.Signal) {
 	for _, sig := range signals {
 		handlers[sig] = handler
@@ -23,7 +24,7 @@ func SetSigHandler(handler SignalHandlerFunc, signals ...os.Signal) {
 }
 
 // ServeSignals calls handlers for system signals.
-func ServeSignals() (err error) {
+func ServeSignals() error {
 	signals := make([]os.Signal, 0, len(handlers))
 	for sig := range handlers {
 		signals = append(signals, sig)
@@ -32,6 +33,7 @@ func ServeSignals() (err error) {
 	ch := make(chan os.Signal, 8)
 	signal.Notify(ch, signals...)
 
+	var err error
 	for sig := range ch {
 		err = handlers[sig](sig)
 		if err != nil {
@@ -42,18 +44,15 @@ func ServeSignals() (err error) {
 	signal.Stop(ch)
 
 	if err == ErrStop {
-		err = nil
+		return nil
 	}
 
-	return
+	return err
 }
 
-var handlers = make(map[os.Signal]SignalHandlerFunc)
-
-func init() {
-	handlers[syscall.SIGTERM] = sigtermDefaultHandler
-}
-
-func sigtermDefaultHandler(sig os.Signal) error {
-	return ErrStop
+var handlers = map[os.Signal]SignalHandlerFunc{
+	syscall.SIGTERM: func(sig os.Signal) error {
+		log.Info("SIGTERM received")
+		return ErrStop
+	},
 }

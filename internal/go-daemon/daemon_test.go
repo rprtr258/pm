@@ -31,15 +31,26 @@ func Example() {
 		LogFilePerm: 0o640,
 		WorkDir:     "/",
 		Umask:       0o27,
+		abspath:     "",
+		pidFile:     nil,
+		logFile:     nil,
+		nullFile:    nil,
+		Chroot:      "",
+		Credential:  nil,
+		Env:         nil,
+		Args:        nil,
 	}
 
 	// Send commands if needed
 	if len(ActiveFlags()) > 0 {
 		d, err := dmn.Search()
 		if err != nil {
-			log.Fatalln("Unable send signal to the daemon:", err)
+			log.Fatalln("Unable to find daemon:", err.Error())
 		}
-		SendCommands(d)
+
+		if err := SendCommands(d); err != nil {
+			log.Fatalln("Unable send commands:", err.Error())
+		}
 
 		return
 	}
@@ -52,7 +63,7 @@ func Example() {
 	if child != nil {
 		return
 	}
-	defer dmn.Release()
+	defer dmn.Release() //nolint:errcheck // example
 
 	// Run main operation
 	go func() {
@@ -60,8 +71,7 @@ func Example() {
 		<-ch
 	}()
 
-	err = ServeSignals()
-	if err != nil {
-		log.Println("Error:", err)
+	if errServe := ServeSignals(); errServe != nil {
+		log.Println("Error:", errServe)
 	}
 }

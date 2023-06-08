@@ -91,6 +91,7 @@ func ActiveFlags() []Flag {
 			ret = append(ret, f)
 		}
 	}
+
 	return ret
 }
 
@@ -101,5 +102,6 @@ func signals() []os.Signal {
 			ret = append(ret, sig)
 		}
 	}
+
 	return ret
 }

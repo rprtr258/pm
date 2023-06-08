@@ -12,12 +12,12 @@ import (
 
 // Mark of daemon process - system environment variable _GO_DAEMON=1.
 const (
-	MARK_NAME  = "_GO_DAEMON"
-	MARK_VALUE = "1"
+	MarkName  = "_GO_DAEMON"
+	MarkValue = "1"
 )
 
 // Default file permissions for log and pid files.
-const FILE_PERM = os.FileMode(0o640)
+const FilePerm = os.FileMode(0o640)
 
 // A Context describes daemon context.
 // Struct contains only serializable public fields (!!!)
@@ -63,7 +63,7 @@ type Context struct {
 
 // WasReborn returns true in child process (daemon) and false in parent process.
 func WasReborn() bool {
-	return os.Getenv(MARK_NAME) == MARK_VALUE
+	return os.Getenv(MarkName) == MarkValue
 }
 
 // Reborn runs second copy of current process in the given context.
@@ -99,13 +99,12 @@ func (d *Context) Search() (*os.Process, error) {
 
 	pid, err := ReadPidFile(d.PidFileName)
 	if err != nil {
-		if xerr.Is(err, ErrNoPIDFound) {
+		if _, ok := xerr.As[*PidFileNotFoundError](err); ok {
+			// TODO: ???
 			return nil, nil
 		}
 
-		return nil, xerr.NewWM(
-			err, "read pid file",
-			xerr.Fields{"pidFileName": d.PidFileName})
+		return nil, xerr.NewWM(err, "read pid file", xerr.Fields{"pidFileName": d.PidFileName})
 	}
 
 	daemon, err := os.FindProcess(pid)
@@ -176,10 +175,10 @@ func (d *Context) parent() (*os.Process, error) {
 
 func (d *Context) openFiles() error {
 	if d.PidFilePerm == 0 {
-		d.PidFilePerm = FILE_PERM
+		d.PidFilePerm = FilePerm
 	}
 	if d.LogFilePerm == 0 {
-		d.LogFilePerm = FILE_PERM
+		d.LogFilePerm = FilePerm
 	}
 
 	var err error
@@ -218,7 +217,11 @@ func (d *Context) openFiles() error {
 			d.logFile = os.Stdout
 		} else if d.LogFileName == "/dev/stderr" {
 			d.logFile = os.Stderr
-		} else if d.logFile, err = os.OpenFile(d.LogFileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, d.LogFilePerm); err != nil {
+		} else if d.logFile, err = os.OpenFile(
+			d.LogFileName,
+			os.O_WRONLY|os.O_CREATE|os.O_APPEND,
+			d.LogFilePerm,
+		); err != nil {
 			return xerr.NewWM(err, "open log file", xerr.Fields{
 				"filename":    d.LogFileName,
 				"permissions": d.LogFilePerm,
@@ -229,44 +232,46 @@ func (d *Context) openFiles() error {
 	return nil
 }
 
-func (d *Context) closeFiles() (err error) {
-	cl := func(file **os.File) {
+func (d *Context) closeFiles() error {
+	close := func(file **os.File) {
 		if *file != nil {
 			(*file).Close()
 			*file = nil
 		}
 	}
-	cl(&d.logFile)
-	cl(&d.nullFile)
-	cl(&d.pidFile.File)
-	return
+	close(&d.logFile)
+	close(&d.nullFile)
+	close(&d.pidFile.File)
+
+	return nil
 }
 
-func (d *Context) prepareEnv() (err error) {
+func (d *Context) prepareEnv() error {
+	var err error
 	if d.abspath, err = os.Executable(); err != nil {
-		return
+		return xerr.NewWM(err, "get executable path")
 	}
 
 	if len(d.Args) == 0 {
 		d.Args = os.Args
 	}
 
-	mark := fmt.Sprintf("%s=%s", MARK_NAME, MARK_VALUE)
+	mark := fmt.Sprintf("%s=%s", MarkName, MarkValue)
 	if len(d.Env) == 0 {
 		d.Env = os.Environ()
 	}
 	d.Env = append(d.Env, mark)
 
-	return
+	return nil
 }
 
-func (d *Context) files() (f []*os.File) {
+func (d *Context) files() []*os.File {
 	log := d.nullFile
 	if d.logFile != nil {
-		log = d.logFile
+		log = d.logFile // TODO: just log=d.logFile ?
 	}
 
-	f = []*os.File{
+	files := []*os.File{
 		d.nullFile, // d.rpipe,    // (0) stdin
 		log,        // (1) stdout
 		log,        // (2) stderr
@@ -274,9 +279,10 @@ func (d *Context) files() (f []*os.File) {
 	}
 
 	if d.pidFile != nil {
-		f = append(f, d.pidFile.File) // (4) pid file
+		files = append(files, d.pidFile.File) // (4) pid file
 	}
-	return
+
+	return files
 }
 
 var initialized = false
@@ -290,29 +296,28 @@ func (d *Context) child() (err error) {
 	// create PID file after context decoding to know PID file full path.
 	if len(d.PidFileName) > 0 {
 		d.pidFile = NewLockFile(os.NewFile(4, d.PidFileName))
-		if err = d.pidFile.WritePid(); err != nil {
-			return
+		if errWritePid := d.pidFile.WritePid(); errWritePid != nil {
+			return errWritePid
 		}
 		defer func() {
 			if err != nil {
-				d.pidFile.Remove()
+				err = xerr.Combine(err, d.pidFile.Remove())
 			}
 		}()
 	}
 
-	if err = unix.Dup2(3, 0); err != nil {
-		return
+	if errDup := unix.Dup2(3, 0); errDup != nil {
+		return xerr.NewWM(errDup, "Dup2")
 	}
 
 	if d.Umask != 0 {
 		syscall.Umask(d.Umask)
 	}
 	if len(d.Chroot) > 0 {
-		err = syscall.Chroot(d.Chroot)
-		if err != nil {
+		if errChroot := syscall.Chroot(d.Chroot); errChroot != nil {
 			return
 		}
 	}
 
-	return
+	return nil
 }

@@ -5,6 +5,8 @@ import (
 	"os"
 	"runtime"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -13,32 +15,26 @@ var (
 	invalidname             = "/x/y/unknown"
 )
 
-func TestCreatePidFile(test *testing.T) {
-	if _, err := CreatePidFile(invalidname, fileperm); err == nil {
-		test.Fatal("CreatePidFile(): Error was not detected on invalid name")
-	}
+func TestCreatePidFile(t *testing.T) {
+	_, err := CreatePidFile(invalidname, fileperm)
+	assert.Error(t, err, "CreatePidFile(): Error was not detected on invalid name")
 
 	lock, err := CreatePidFile(filename, fileperm)
-	if err != nil {
-		test.Fatal(err)
-	}
-	defer lock.Remove()
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, lock.Remove())
+	}()
 
 	data, err := os.ReadFile(filename)
-	if err != nil {
-		test.Fatal(err)
-	}
-	if string(data) != fmt.Sprint(os.Getpid()) {
-		test.Fatal("pids not equal")
-	}
+	assert.NoError(t, err)
+
+	assert.Equal(t, string(data), fmt.Sprint(os.Getpid()))
 
 	file, err := os.OpenFile(filename, os.O_RDONLY, fileperm)
-	if err != nil {
-		test.Fatal(err)
-	}
-	if err = NewLockFile(file).WritePid(); err == nil {
-		test.Fatal("WritePid(): Error was not detected on invalid permissions")
-	}
+	assert.NoError(t, err)
+
+	err = NewLockFile(file).WritePid()
+	assert.Error(t, err, "WritePid(): Error was not detected on invalid permissions")
 }
 
 func TestNewLockFile(test *testing.T) {
@@ -53,45 +49,36 @@ func TestNewLockFile(test *testing.T) {
 	}
 }
 
-func TestReadPid(test *testing.T) {
+func TestReadPid(t *testing.T) {
 	lock, err := CreatePidFile(filename, fileperm)
-	if err != nil {
-		test.Fatal(err)
-	}
-	defer lock.Remove()
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, lock.Remove())
+	}()
 
 	pid, err := lock.ReadPid()
-	if err != nil {
-		test.Fatal("ReadPid(): Unable read pid from file:", err)
-	}
+	assert.NoError(t, err, "ReadPid(): Unable read pid from file")
 
-	if pid != os.Getpid() {
-		test.Fatal("Pid not equal real pid")
-	}
+	assert.Equal(t, pid, os.Getpid(), "Pid not equal real pid")
 }
 
-func TestLockFileLock(test *testing.T) {
+func TestLockFileLock(t *testing.T) {
 	lock1, err := OpenLockFile(filename, fileperm)
 	if err != nil {
-		test.Fatal(err)
+		t.Fatal(err)
 	}
-	if err := lock1.Lock(); err != nil {
-		test.Fatal(err)
-	}
-	defer lock1.Remove()
+	assert.NoError(t, lock1.Lock())
+	defer func() {
+		assert.NoError(t, lock1.Remove())
+	}()
 
 	lock2, err := OpenLockFile(filename, fileperm)
-	if err != nil {
-		test.Fatal(err)
-	}
+	assert.NoError(t, err)
+
 	if runtime.GOOS == "solaris" {
 		// Solaris does not see a double lock attempt by the same process as failure.
-		if err := lock2.Lock(); err != nil {
-			test.Fatal("To lock file more than once must be unavailable.")
-		}
+		assert.NoError(t, lock2.Lock(), "To lock file more than once must be unavailable")
 	} else {
-		if err := lock2.Lock(); err != nil && err != ErrWouldBlock {
-			test.Fatal("To lock file more than once must be unavailable.")
-		}
+		assert.ErrorContains(t, lock2.Lock(), "would block", "To lock file more than once must be unavailable")
 	}
 }

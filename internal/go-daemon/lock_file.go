@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,10 +8,6 @@ import (
 
 	"github.com/rprtr258/xerr"
 )
-
-// TODO: fix message
-// ErrWouldBlock indicates on locking pid-file by another process.
-var ErrWouldBlock = errors.New("daemon: Resource temporarily unavailable")
 
 // LockFile wraps *os.File and provide functions for locking of files.
 type LockFile struct {
@@ -54,35 +49,54 @@ func OpenLockFile(name string, perm os.FileMode) (lock *LockFile, err error) {
 func (file *LockFile) Lock() error {
 	fd := file.Fd()
 	err := syscall.Flock(int(fd), syscall.LOCK_EX|syscall.LOCK_NB)
-	if err == syscall.EWOULDBLOCK {
-		return ErrWouldBlock
+	if err != nil {
+		if err == syscall.EWOULDBLOCK { //nolint:errorlint,goerr113 // check exactly
+			return xerr.NewM("file locking would block", xerr.Fields{"filename": file.Name()})
+		}
+
+		return xerr.NewWM(err, "lock file", xerr.Fields{"filename": file.Name()})
 	}
 
-	return err
+	return nil
 }
 
 // Unlock remove exclusive lock on an open file.
 func (file *LockFile) Unlock() error {
 	fd := file.Fd()
 	err := syscall.Flock(int(fd), syscall.LOCK_UN)
-	if err == syscall.EWOULDBLOCK {
-		return ErrWouldBlock
+	if err != nil {
+		if err == syscall.EWOULDBLOCK {
+			return xerr.NewM("file unlocking would block", xerr.Fields{"filename": file.Name()})
+		}
+
+		return xerr.NewWM(err, "unlock file", xerr.Fields{"filename": file.Name()})
 	}
 
-	return err
+	return nil
 }
 
-var ErrNoPIDFound = errors.New("no pid found")
+type PidFileNotFoundError struct {
+	pidfile string
+	exists  bool
+}
+
+func (e *PidFileNotFoundError) Error() string {
+	if e.exists {
+		return fmt.Sprintf("pidfile %s not found", e.pidfile)
+	}
+
+	return fmt.Sprintf("pidfile %s is empty or has invalid content", e.pidfile)
+}
 
 // ReadPidFile reads process id from file with give name and returns pid.
 func ReadPidFile(name string) (int, error) {
 	file, err := os.OpenFile(name, os.O_RDONLY, 0o640)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return 0, ErrNoPIDFound
+			return 0, &PidFileNotFoundError{name, false}
 		}
 
-		return 0, xerr.NewWM(err, "open file", xerr.Fields{"filename": name})
+		return 0, xerr.NewWM(err, "open file", xerr.Fields{"pidfile": name})
 	}
 	defer file.Close()
 
@@ -90,10 +104,10 @@ func ReadPidFile(name string) (int, error) {
 	pid, err := lock.ReadPid()
 	if err != nil {
 		if xerr.Is(err, io.EOF) {
-			return 0, ErrNoPIDFound
+			return 0, &PidFileNotFoundError{name, true}
 		}
 
-		return 0, xerr.NewWM(err, "read pid from pidfile")
+		return 0, xerr.NewWM(err, "read pid from pidfile", xerr.Fields{"pidfile": name})
 	}
 
 	return pid, nil
