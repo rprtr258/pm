@@ -110,44 +110,38 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
-		return nil, xerr.NewWM(err, "json.unmarshal")
+		return nil, xerr.NewWM(err, "unmarshal configs json")
 	}
 
-	return lo.Map(
-		scannedConfigs,
-		func(config configScanDTO, _ int) RunConfig {
-			cwd := config.Cwd
-			if cwd == nil {
-				cwd = lo.ToPtr(filepath.Dir(filename))
-			}
+	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
+		return RunConfig{
+			Name:    internal.FromPtr(config.Name),
+			Command: config.Command,
+			Args: lo.Map(config.Args, func(arg any, i int) string { //nolint:varnamelen // i is index
+				switch a := arg.(type) {
+				case fmt.Stringer:
+					return a.String()
+				case int, int8, int16, int32, int64,
+					uint, uint8, uint16, uint32, uint64,
+					float32, float64, bool, string:
+					return fmt.Sprint(arg)
+				default:
+					argStr := fmt.Sprintf("%v", arg)
+					log.Errorf("unknown arg type", log.F{
+						"arg":    argStr,
+						"i":      i,
+						"config": config,
+					})
 
-			return RunConfig{
-				Name:    internal.FromPtr(config.Name),
-				Command: config.Command,
-				Args: lo.Map(config.Args, func(arg any, i int) string { //nolint:varnamelen // i is index
-					switch a := arg.(type) {
-					case fmt.Stringer:
-						return a.String()
-					case int, int8, int16, int32, int64,
-						uint, uint8, uint16, uint32, uint64,
-						float32, float64, bool, string:
-						return fmt.Sprint(arg)
-					default:
-						argStr := fmt.Sprintf("%v", arg)
-						log.Errorf("unknown arg type", log.F{
-							"arg":    argStr,
-							"i":      i,
-							"config": config,
-						})
-
-						return argStr
-					}
-				}),
-				Tags: config.Tags,
-				Cwd:  *cwd,
-			}
-		},
-	), nil
+					return argStr
+				}
+			}),
+			Tags: config.Tags,
+			Cwd: lo.
+				If(config.Cwd == nil, filepath.Dir(filename)).
+				ElseF(func() string { return *config.Cwd }),
+		}
+	}), nil
 }
 
 func executeProcCommand(
@@ -163,7 +157,7 @@ func executeProcCommand(
 
 	if !ctx.IsSet("config") {
 		if err := cmd.Validate(ctx, nil); err != nil {
-			return xerr.NewWM(err, "validate config")
+			return xerr.NewWM(err, "validate nil config")
 		}
 	}
 
@@ -196,22 +190,16 @@ func executeProcCommand(
 	}
 
 	if err := cmd.Validate(ctx, configs); err != nil {
-		return xerr.NewWM(err, "validate run configs")
+		return xerr.NewWM(err, "validate config")
 	}
 
-	names := lo.FilterMap(
-		configs,
-		func(cfg RunConfig, _ int) (string, bool) {
-			return cfg.Name.Value, cfg.Name.Valid
-		},
-	)
+	names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
+		return cfg.Name.Value, cfg.Name.Valid
+	})
 
-	configList := lo.PickBy(
-		list,
-		func(_ db.ProcID, procData db.ProcData) bool {
-			return lo.Contains(names, procData.Name)
-		},
-	)
+	configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
+		return lo.Contains(names, procData.Name)
+	})
 
 	if errRun := cmd.Run(
 		ctx,
