@@ -69,6 +69,10 @@ var _app = &cli.App{
 
 func main() {
 	if errRun := _app.Run(os.Args); errRun != nil {
-		log.Fatal(errRun.Error())
+		if s, e := xerr.MarshalJSON(errRun); e == nil {
+			log.Fatal(string(s)) // TODO: get error fields
+		} else {
+			log.Fatal(errRun.Error())
+		}
 	}
 }
