@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	petname "github.com/dustinkirkland/golang-petname"
+	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"go.uber.org/multierr"
 	"google.golang.org/grpc/codes"
@@ -21,10 +21,9 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/rprtr258/xerr"
-
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/pm/internal/namegen"
 )
 
 var (
@@ -211,7 +210,7 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 		}
 	}
 
-	name := lo.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(genName)
+	name := lo.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(namegen.New)
 
 	procData := db.ProcData{
 		ProcID:  0, // TODO: create instead proc create query
@@ -230,11 +229,6 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 	}
 
 	return &api.ProcessID{Id: uint64(procID)}, nil
-}
-
-func genName() string {
-	const words = 2
-	return petname.Generate(words, "-")
 }
 
 func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.ProcessesList, error) {

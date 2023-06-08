@@ -7,11 +7,10 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/multierr"
-
-	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"

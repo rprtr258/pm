@@ -5,7 +5,6 @@ go 1.19
 require (
 	github.com/aquasecurity/table v1.8.0
 	github.com/davecgh/go-spew v1.1.1
-	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0
 	github.com/fatih/color v1.15.0
 	github.com/google/go-jsonnet v0.20.0
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
