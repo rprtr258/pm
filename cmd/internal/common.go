@@ -92,27 +92,21 @@ func isConfigFile(arg string) bool {
 	return !stat.IsDir()
 }
 
-func loadConfigs(filename string) ([]RunConfig, error) {
+func newVM() *jsonnet.VM {
 	vm := jsonnet.MakeVM()
 	vm.ExtVar("now", time.Now().Format("15:04:05"))
+	return vm
+}
 
-	jsonText, err := vm.EvaluateFile(filename)
-	if err != nil {
-		return nil, xerr.NewWM(err, "evaluate jsonnet file")
-	}
+type configScanDTO struct {
+	Name    *string
+	Cwd     *string
+	Command string
+	Args    []any
+	Tags    []string
+}
 
-	type configScanDTO struct {
-		Name    *string
-		Cwd     *string
-		Command string
-		Args    []any
-		Tags    []string
-	}
-	var scannedConfigs []configScanDTO
-	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
-		return nil, xerr.NewWM(err, "unmarshal configs json")
-	}
-
+func parseConfigs(cwd string, scannedConfigs []configScanDTO) []RunConfig {
 	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
 		return RunConfig{
 			Name:    internal.FromPtr(config.Name),
@@ -138,27 +132,29 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 			}),
 			Tags: config.Tags,
 			Cwd: lo.
-				If(config.Cwd == nil, filepath.Dir(filename)).
+				If(config.Cwd == nil, cwd).
 				ElseF(func() string { return *config.Cwd }),
 		}
-	}), nil
+	})
 }
 
-func executeProcCommand(
-	ctx *cli.Context,
-	cmd procCommand,
-) error {
-	// TODO: *string destination
-	configFilename := ctx.String("config")
-
-	if ctx.IsSet("config") && !isConfigFile(configFilename) {
-		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
+func loadConfigs(filename string) ([]RunConfig, error) {
+	jsonText, err := newVM().EvaluateFile(filename)
+	if err != nil {
+		return nil, xerr.NewWM(err, "evaluate jsonnet file")
 	}
 
-	if !ctx.IsSet("config") {
-		if err := cmd.Validate(ctx, nil); err != nil {
-			return xerr.NewWM(err, "validate nil config")
-		}
+	var scannedConfigs []configScanDTO
+	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
+		return nil, xerr.NewWM(err, "unmarshal configs json")
+	}
+
+	return parseConfigs(filepath.Dir(filename), scannedConfigs), nil
+}
+
+func executeProcCommandWithoutConfig(ctx *cli.Context, cmd procCommand) error {
+	if err := cmd.Validate(ctx, nil); err != nil {
+		return xerr.NewWM(err, "validate nil config")
 	}
 
 	client, errList := client.NewGrpcClient()
@@ -172,16 +168,33 @@ func executeProcCommand(
 		return xerr.NewWM(errList, "server.list")
 	}
 
-	if !ctx.IsSet("config") {
-		if errRun := cmd.Run(
-			ctx,
-			nil,
-			client,
-			list,
-			list,
-		); errRun != nil {
-			return xerr.NewWM(errRun, "run")
-		}
+	if errRun := cmd.Run(
+		ctx,
+		nil,
+		client,
+		list,
+		list,
+	); errRun != nil {
+		return xerr.NewWM(errRun, "run")
+	}
+
+	return nil
+}
+
+func executeProcCommandWithConfig(ctx *cli.Context, cmd procCommand, configFilename string) error {
+	if !isConfigFile(configFilename) {
+		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
+	}
+
+	client, errList := client.NewGrpcClient()
+	if errList != nil {
+		return xerr.NewWM(errList, "new grpc client")
+	}
+	defer deferErr(client.Close)()
+
+	list, errList := client.List(ctx.Context)
+	if errList != nil {
+		return xerr.NewWM(errList, "server.list")
 	}
 
 	configs, errLoadConfigs := loadConfigs(configFilename)
@@ -212,6 +225,17 @@ func executeProcCommand(
 	}
 
 	return nil
+}
+
+func executeProcCommand(
+	ctx *cli.Context,
+	cmd procCommand,
+) error {
+	if ctx.IsSet("config") {
+		return executeProcCommandWithConfig(ctx, cmd, ctx.String("config"))
+	} else {
+		return executeProcCommandWithoutConfig(ctx, cmd)
+	}
 }
 
 // { Name: "pid", commander.command('[app_name]')
