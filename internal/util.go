@@ -42,7 +42,7 @@ func MapErr[T, R any](collection []T, iteratee func(T, int) (R, error)) ([]R, er
 	for i, item := range collection {
 		res, err := iteratee(item, i)
 		if err != nil {
-			return nil, xerr.NewW(err, xerr.Field("i", i))
+			return nil, xerr.NewW(err, xerr.Fields{"i": i})
 		}
 		results[i] = res
 	}

@@ -89,7 +89,7 @@ func (cmd *deleteCmd) Run(
 	fmt.Printf("Removing: %v\n", procIDs)
 
 	if errDelete := client.Delete(ctx.Context, procIDs); errDelete != nil {
-		return xerr.NewWM(errDelete, "client.delete", xerr.Field("procIDs", procIDs))
+		return xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
 	}
 
 	return nil

@@ -6,11 +6,11 @@ import (
 	"os"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/aquasecurity/table"
 	"github.com/fatih/color"
+	"github.com/kballard/go-shellquote"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
@@ -119,6 +119,7 @@ func list(
 	procsTable.SetLineStyle(table.StyleDim)
 	for _, proc := range procsToShow {
 		status, pid, uptime := mapStatus(proc.Status)
+
 		procsTable.AddRow(
 			color.New(color.FgCyan, color.Bold).Sprint(proc.ProcID),
 			proc.Name,
@@ -129,7 +130,7 @@ func list(
 			fmt.Sprint(proc.Tags),
 			fmt.Sprint(proc.Status.CPU),
 			fmt.Sprint(proc.Status.Memory),
-			fmt.Sprintf("%s %s", proc.Command, strings.Join(proc.Args, " ")), // TODO: escape args
+			shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
 		)
 	}
 	procsTable.Render()

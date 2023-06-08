@@ -207,13 +207,13 @@ func (err ErrorProcNotFound) Error() string {
 }
 
 func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) error {
-	pd := handle.procs.Get(strconv.FormatUint(uint64(procID), 10))
-	if !pd.Valid {
+	procDataMaybe := handle.procs.Get(strconv.FormatUint(uint64(procID), 10)) //nolint:gomnd // decimal
+	if !procDataMaybe.Valid {
 		return ErrorProcNotFound(procID)
 	}
 
-	pd.Value.Status = newStatus
-	handle.procs.Upsert(pd.Value)
+	procDataMaybe.Value.Status = newStatus
+	handle.procs.Upsert(procDataMaybe.Value)
 
 	if err := handle.procs.Flush(); err != nil {
 		return xerr.NewWM(err, "db flush")

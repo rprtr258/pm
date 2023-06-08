@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -128,19 +127,20 @@ func (cmd *runCmd) Run(
 		}
 
 		if len(cmd.args) == 0 {
-			return errors.New("command expected")
+			return xerr.NewM("command expected")
 		}
 
 		toRunArgs = cmd.args
 	} else {
 		if configs != nil {
-			return errors.New("either interpreter with cmd or config must be provided, not both")
+			return xerr.NewM("either interpreter with cmd or config must be provided, not both")
 		}
 
 		if len(cmd.args) != 1 {
-			return xerr.NewM("interpreter set, so only single arg is expected",
-				xerr.Field("interpreter", cmd.interpreter),
-				xerr.Field("argsCount", len(cmd.args)))
+			return xerr.NewM("interpreter set, so only single arg is expected", xerr.Fields{
+				"interpreter": cmd.interpreter,
+				"argsCount":   len(cmd.args),
+			})
 		}
 
 		toRunArgs = append(toRunArgs, strings.Split(cmd.interpreter, " ")...)
@@ -191,7 +191,7 @@ func runConfigs(
 	var merr error
 	for _, name := range names {
 		if _, ok := configsByName[name]; !ok {
-			xerr.AppendInto(&merr, xerr.NewM("unknown proc name", xerr.Field("name", name)))
+			xerr.AppendInto(&merr, xerr.NewM("unknown proc name", xerr.Fields{"name": name}))
 		}
 	}
 	if merr != nil {
@@ -210,8 +210,7 @@ func run(
 ) error {
 	command, err := exec.LookPath(config.Command)
 	if err != nil {
-		return xerr.NewWM(err, "look for executable path",
-			xerr.Field("executable", config.Command))
+		return xerr.NewWM(err, "look for executable path", xerr.Fields{"executable": config.Command})
 	}
 
 	procID, err := client.Create(ctx, &api.ProcessOptions{

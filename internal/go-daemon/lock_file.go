@@ -82,7 +82,7 @@ func ReadPidFile(name string) (int, error) {
 			return 0, ErrNoPIDFound
 		}
 
-		return 0, xerr.NewWM(err, "open file", xerr.Field("filename", name))
+		return 0, xerr.NewWM(err, "open file", xerr.Fields{"filename": name})
 	}
 	defer file.Close()
 

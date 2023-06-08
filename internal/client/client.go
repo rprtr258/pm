@@ -29,7 +29,7 @@ func NewGrpcClient() (Client, error) {
 			conn, err := net.Dial("unix", addr)
 			if err != nil {
 				return nil, xerr.NewWM(err, "dial unix socket",
-					xerr.Field("addr", addr))
+					xerr.Fields{"addr": addr})
 			}
 
 			return conn, nil
@@ -112,21 +112,21 @@ func mapPbStatus(status *api.ProcessStatus) db.Status {
 
 func (c Client) Delete(ctx context.Context, ids []uint64) error {
 	if _, err := c.client.Delete(ctx, mapIDs(ids)); err != nil {
-		return xerr.NewWM(err, "server.delete", xerr.Field("ids", ids))
+		return xerr.NewWM(err, "server.delete", xerr.Fields{"ids": ids})
 	}
 	return nil
 }
 
 func (c Client) Start(ctx context.Context, ids []uint64) error {
 	if _, err := c.client.Start(ctx, mapIDs(ids)); err != nil {
-		return xerr.NewWM(err, "server.start", xerr.Field("ids", ids))
+		return xerr.NewWM(err, "server.start", xerr.Fields{"ids": ids})
 	}
 	return nil
 }
 
 func (c Client) Stop(ctx context.Context, ids []uint64) error {
 	if _, err := c.client.Stop(ctx, mapIDs(ids)); err != nil {
-		return xerr.NewWM(err, "server.stop", xerr.Field("ids", ids))
+		return xerr.NewWM(err, "server.stop", xerr.Fields{"ids": ids})
 	}
 	return nil
 }

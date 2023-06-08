@@ -25,7 +25,7 @@ import (
 func Run(rpcSocket, dbDir, homeDir string) error {
 	sock, err := net.Listen("unix", rpcSocket)
 	if err != nil {
-		return xerr.NewWM(err, "net.Listen on rpc socket", xerr.Field("socket", rpcSocket))
+		return xerr.NewWM(err, "net.Listen on rpc socket", xerr.Fields{"socket": rpcSocket})
 	}
 	defer sock.Close()
 
@@ -45,7 +45,7 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 	log.Printf("daemon started at %v", sock.Addr())
 
 	go func() {
-		c := make(chan os.Signal, 10)
+		c := make(chan os.Signal, 10) //nolint:gomnd // arbitrary buffer size
 		signal.Notify(c, syscall.SIGCHLD)
 		for range c {
 			for {
@@ -62,9 +62,9 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 
 				dbStatus := lo.If(
 					status.ExitStatus() == 0,
-					db.StatusStopped,
+					db.NewStatusStopped(0),
 				).Else(
-					db.StatusErrored,
+					db.NewStatusErrored(), // TODO: replace with stopped(exitCode)
 				)
 
 				allProcs := dbHandle.List()
@@ -80,7 +80,7 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 					continue
 				}
 
-				if err := dbHandle.SetStatus(procID, db.Status{Status: dbStatus}); err != nil {
+				if err := dbHandle.SetStatus(procID, dbStatus); err != nil {
 					if _, ok := xerr.As[db.ErrorProcNotFound](err); ok {
 						log.Printf("proc %d not found while trying to set status %v\n", procID, dbStatus)
 					} else {

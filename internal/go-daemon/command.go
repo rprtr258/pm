@@ -2,6 +2,8 @@ package daemon
 
 import (
 	"os"
+
+	"github.com/rprtr258/xerr"
 )
 
 // AddCommand is wrapper on AddFlag and SetSigHandler functions.
@@ -68,32 +70,36 @@ func AddFlag(f Flag, sig os.Signal) {
 }
 
 // SendCommands sends active signals to the given process.
-func SendCommands(p *os.Process) (err error) {
+func SendCommands(p *os.Process) error {
 	for _, sig := range signals() {
-		if err = p.Signal(sig); err != nil {
-			return
+		if err := p.Signal(sig); err != nil {
+			return xerr.NewW(err, xerr.Fields{
+				"signal":  sig.String(),
+				"process": p.Pid,
+			})
 		}
 	}
-	return
+
+	return nil
 }
 
 // ActiveFlags returns flags that has the state 'set'.
-func ActiveFlags() (ret []Flag) {
-	ret = make([]Flag, 0, 1)
+func ActiveFlags() []Flag {
+	ret := make([]Flag, 0, len(flags))
 	for f := range flags {
 		if f.IsSet() {
 			ret = append(ret, f)
 		}
 	}
-	return
+	return ret
 }
 
-func signals() (ret []os.Signal) {
-	ret = make([]os.Signal, 0, 1)
+func signals() []os.Signal {
+	ret := make([]os.Signal, 0, len(flags))
 	for f, sig := range flags {
 		if f.IsSet() {
 			ret = append(ret, sig)
 		}
 	}
-	return
+	return ret
 }

@@ -46,11 +46,11 @@ func main() {
 			_, err := os.Stat(internal2.DirHome)
 			if err != nil {
 				if !os.IsNotExist(err) {
-					return xerr.NewWM(err, "os.stat", xerr.Field("homedir", internal2.DirHome))
+					return xerr.NewWM(err, "os.stat", xerr.Fields{"homedir": internal2.DirHome})
 				}
 
 				if err := os.Mkdir(internal2.DirHome, 0o755); err != nil {
-					return xerr.NewWM(err, "create dir", xerr.Field("homedir", internal2.DirHome))
+					return xerr.NewWM(err, "create dir", xerr.Fields{"homedir": internal2.DirHome})
 				}
 			}
 

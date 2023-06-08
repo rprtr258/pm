@@ -216,7 +216,6 @@ linters:
     - revive # fast, configurable, extensible, flexible, and beautiful linter for Go, drop-in replacement of golint
     - stylecheck # is a replacement for golint
     - tenv # detects using os.Setenv instead of t.Setenv since Go1.17
-    - testpackage # makes you use a separate _test package
     - tparallel # detects inappropriate usage of t.Parallel() method in your Go test codes
     - unconvert # removes unnecessary type conversions
     - unparam # reports unused function parameters
@@ -244,7 +243,7 @@ linters:
     - maintidx # measures the maintainability index of each function
     - misspell # [useless] finds commonly misspelled English words in comments
     - nlreturn # [too strict and mostly code is not more readable] checks for a new line before return and branch statements to increase code clarity
-    - paralleltest # [too many false positives] detects missing usage of t.Parallel() method in your Go test
+    # - paralleltest # [too many false positives] detects missing usage of t.Parallel() method in your Go test # TODO: get back
     - thelper # detects golang test helpers without t.Helper() call and checks the consistency of test helpers
 
 issues:

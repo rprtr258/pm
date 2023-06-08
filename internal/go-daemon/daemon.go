@@ -105,14 +105,14 @@ func (d *Context) Search() (*os.Process, error) {
 
 		return nil, xerr.NewWM(
 			err, "read pid file",
-			xerr.Field("pidFileName", d.PidFileName))
+			xerr.Fields{"pidFileName": d.PidFileName})
 	}
 
 	daemon, err := os.FindProcess(pid)
 	if err != nil {
 		return nil, xerr.NewWM(
 			err, "find process",
-			xerr.Field("pid", pid))
+			xerr.Fields{"pid": pid})
 	}
 
 	if daemon == nil {
@@ -164,7 +164,7 @@ func (d *Context) parent() (*os.Process, error) {
 
 		if d.pidFile != nil {
 			if err2 := d.pidFile.Remove(); err2 != nil {
-				return nil, xerr.New(xerr.Errors(err, xerr.NewWM(err2, "pidFile.Remove")))
+				return nil, xerr.Combine(err, xerr.NewWM(err2, "pidFile.Remove"))
 			}
 		}
 
@@ -189,11 +189,11 @@ func (d *Context) openFiles() error {
 
 	if len(d.PidFileName) > 0 {
 		if d.PidFileName, err = filepath.Abs(d.PidFileName); err != nil {
-			return xerr.NewWM(err, "filepath.Abs", xerr.Field("pidFilename", d.PidFileName))
+			return xerr.NewWM(err, "filepath.Abs", xerr.Fields{"pidFilename": d.PidFileName})
 		}
 
 		if d.pidFile, err = OpenLockFile(d.PidFileName, d.PidFilePerm); err != nil {
-			return xerr.NewWM(err, "OpenLockFile", xerr.Field("pidFilename", d.PidFileName))
+			return xerr.NewWM(err, "OpenLockFile", xerr.Fields{"pidFilename": d.PidFileName})
 		}
 
 		if err = d.pidFile.Lock(); err != nil {
@@ -203,9 +203,10 @@ func (d *Context) openFiles() error {
 		if len(d.Chroot) > 0 {
 			// Calculate PID-file absolute path in child's environment
 			if d.PidFileName, err = filepath.Rel(d.Chroot, d.PidFileName); err != nil {
-				return xerr.NewWM(err, "filepath.Rel",
-					xerr.Field("basepath", d.Chroot),
-					xerr.Field("targpath", d.PidFileName))
+				return xerr.NewWM(err, "filepath.Rel", xerr.Fields{
+					"basepath": d.Chroot,
+					"targpath": d.PidFileName,
+				})
 			}
 
 			d.PidFileName = "/" + d.PidFileName
@@ -218,9 +219,10 @@ func (d *Context) openFiles() error {
 		} else if d.LogFileName == "/dev/stderr" {
 			d.logFile = os.Stderr
 		} else if d.logFile, err = os.OpenFile(d.LogFileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, d.LogFilePerm); err != nil {
-			return xerr.NewWM(err, "open log file",
-				xerr.Field("filename", d.LogFileName),
-				xerr.Field("permissions", d.LogFilePerm))
+			return xerr.NewWM(err, "open log file", xerr.Fields{
+				"filename":    d.LogFileName,
+				"permissions": d.LogFilePerm,
+			})
 		}
 	}
 

@@ -63,20 +63,20 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		logsDir := path.Join(srv.homeDir, "logs")
 
 		if err := os.Mkdir(logsDir, os.ModePerm); err != nil && !errors.Is(err, os.ErrExist) {
-			return nil, xerr.NewWM(err, "create logs dir", xerr.Field("dir", logsDir))
+			return nil, xerr.NewWM(err, "create logs dir", xerr.Fields{"dir": logsDir})
 		}
 
 		stdoutLogFilename := path.Join(logsDir, procIDStr+".stdout")
 		stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 		if err != nil {
-			return nil, xerr.NewWM(err, "open stdout file", xerr.Field("filename", stdoutLogFile))
+			return nil, xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": stdoutLogFile})
 		}
 		defer stdoutLogFile.Close()
 
 		stderrLogFilename := path.Join(logsDir, procIDStr+".stderr")
 		stderrLogFile, err := os.OpenFile(stderrLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 		if err != nil {
-			return nil, xerr.NewWM(err, "open stderr file", xerr.Field("filename", stderrLogFilename))
+			return nil, xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": stderrLogFilename})
 		}
 		defer stderrLogFile.Close() // TODO: wrap
 		// TODO: syscall.CloseOnExec(pidFile.Fd()) or just close pid file
@@ -107,15 +107,15 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		process, err := os.StartProcess(proc.Command, args, &procAttr)
 		if err != nil {
 			if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusInvalid()); errSetStatus != nil {
-				return nil, xerr.NewM("running failed, setting errored status failed", xerr.Errors(err, errSetStatus))
+				return nil, xerr.NewWM(xerr.Combine(err, errSetStatus), "running failed, setting errored status failed")
 			}
 
-			return nil, xerr.NewWM(err, "running failed", xerr.Field("procData", spew.Sprint(proc)))
+			return nil, xerr.NewWM(err, "running failed", xerr.Fields{"procData": spew.Sprint(proc)})
 		}
 
 		runningStatus := db.NewStatusRunning(time.Now(), process.Pid, 0, 0)
 		if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
-			return nil, xerr.NewWM(err, "set status running", xerr.Field("procID", proc.ProcID))
+			return nil, xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ProcID})
 		}
 	}
 
@@ -152,7 +152,7 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 	// TODO: actually stop proc
 	process, errFindProc := os.FindProcess(proc.Status.Pid)
 	if errFindProc != nil {
-		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Field("pid", proc.Status.Pid))
+		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Fields{"pid": proc.Status.Pid})
 	}
 
 	// TODO: kill after timeout
@@ -160,14 +160,14 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 		if errors.Is(errKill, os.ErrProcessDone) {
 			log.Printf("[WARN] finished process %+v with running status", proc)
 		} else {
-			return xerr.NewWM(errKill, "killing process failed", xerr.Field("pid", process.Pid))
+			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
 		}
 	}
 
 	state, errFindProc := process.Wait()
 	if errFindProc != nil {
 		if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
-			return xerr.NewWM(errFindProc, "releasing process", xerr.Field("procData", proc))
+			return xerr.NewWM(errFindProc, "releasing process", xerr.Fields{"procData": proc})
 		}
 
 		fmt.Printf("[INFO] process %+v is not a child", proc)
@@ -204,7 +204,7 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 			}
 
 			if errUpdate := srv.db.UpdateProc(procData); errUpdate != nil {
-				return nil, xerr.NewWM(errUpdate, "update proc", xerr.Field("procData", procData))
+				return nil, xerr.NewWM(errUpdate, "update proc", xerr.Fields{"procData": procData})
 			}
 
 			return &api.ProcessID{Id: uint64(procID)}, nil
@@ -214,6 +214,7 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 	name := lo.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(genName)
 
 	procData := db.ProcData{
+		ProcID:  0, // TODO: create instead proc create query
 		Status:  db.NewStatusStarting(),
 		Name:    name,
 		Cwd:     procOpts.GetCwd(),
@@ -291,14 +292,14 @@ func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty
 		},
 	)
 	if errDelete := srv.db.Delete(ids); errDelete != nil {
-		return nil, xerr.NewWM(errDelete, "delete proc", xerr.Field("procIDs", ids))
+		return nil, xerr.NewWM(errDelete, "delete proc", xerr.Fields{"procIDs": ids})
 	}
 	// TODO: add loggings
 
 	var merr error
 	for _, procID := range ids {
 		if err := removeLogFiles(procID); err != nil {
-			multierr.AppendInto(&merr, xerr.NewWM(err, "delete proc", xerr.Field("procID", procID)))
+			multierr.AppendInto(&merr, xerr.NewWM(err, "delete proc", xerr.Fields{"procID": procID}))
 		}
 	}
 
@@ -324,12 +325,11 @@ func removeFile(name string) error {
 		if os.IsNotExist(errStat) {
 			return nil
 		}
-		return xerr.NewWM(errStat, "remove file, stat", xerr.Field("filename", name))
+		return xerr.NewWM(errStat, "remove file, stat", xerr.Fields{"filename": name})
 	}
 
 	if errRm := os.Remove(name); errRm != nil {
-		return xerr.NewWM(errRm, "remove file",
-			xerr.Field("filename", name))
+		return xerr.NewWM(errRm, "remove file", xerr.Fields{"filename": name})
 	}
 
 	return nil
