@@ -1,14 +1,13 @@
 PM := "go run cmd/main.go"
 
-# _help:
-#   just --list --unsorted
+.PHONY: help
+help: # show list of all commands
+	@grep -E '^[a-zA-Z_-]+:.*?# .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?# "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-# open database
-db:
+db: # open database
 	go run github.com/antonmedv/fx@latest ~/.pm/db/procs.json
 
-# run formatters
-fmt:
+fmt: # run formatters
 	@go install mvdan.cc/gofumpt@latest
 	@go install golang.org/x/tools/cmd/goimports@latest
 	go fmt ./...
@@ -20,21 +19,17 @@ fmt:
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./...
 	go mod tidy
 
-# run linter
-lint:
+lint: # run linter
 	golangci-lint run ./...
 
-# run tests
-test:
+test: # run tests
 	go test ./...
 
-# bump dependencies
-bump:
+bump: # bump dependencies
 	go get -u ./...
 	go mod tidy
 
-# compile go sources for protobuf
-protoc:
+protoc: # compile go sources for protobuf
 	protoc \
 		--go_out=. \
 		--go_opt=paths=source_relative \
@@ -42,15 +37,11 @@ protoc:
 		--go-grpc_opt=paths=source_relative \
 		api/api.proto
 
-# check todos
-todo:
+todo: # check todos
 	rg 'TODO' --glob '**/*.go' || echo 'All done!'
 
-# restart daemon
-daemon-restart:
+daemon-restart: # restart daemon
 	{{PM}} daemon stop && {{PM}} daemon start
 
-# TODO: remove
-# run "long running" task
-run-task:
+run-task: # TODO: remove # run "long running" task
 	{{PM}} run --name qmen24-$(date +'%H:%M:%S') sleep 10

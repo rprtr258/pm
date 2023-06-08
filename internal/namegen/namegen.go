@@ -365,11 +365,11 @@ var (
 )
 
 // New generates a random name from the list of adjectives and surnames in this package
-// formatted as "adjective_surname". For example "focused_turing".
+// formatted as "adjective-surname". For example "focused-turing".
 //
 //nolint:gosec // G404: Use of weak random number generator (math/rand instead of crypto/rand)
 func New() string {
 	adjective := adjectives[rand.Intn(len(adjectives))]
 	surname := surnames[rand.Intn(len(surnames))]
-	return adjective + "_" + surname
+	return adjective + "-" + surname
 }
