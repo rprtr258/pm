@@ -16,7 +16,6 @@ require (
 	github.com/sevlyar/go-daemon v0.1.6
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.5
-	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.8.0
 	google.golang.org/grpc v1.55.0
 	google.golang.org/protobuf v1.30.0

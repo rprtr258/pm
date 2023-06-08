@@ -15,7 +15,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
-	"go.uber.org/multierr"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -135,7 +134,7 @@ func (srv *daemonServer) Stop(_ context.Context, req *api.IDs) (*emptypb.Empty, 
 
 	var merr error
 	for _, proc := range procsWeHaveAmongRequested {
-		multierr.AppendInto(&merr, srv.stop(proc))
+		xerr.AppendInto(&merr, srv.stop(proc))
 	}
 
 	return &emptypb.Empty{}, merr
@@ -293,7 +292,7 @@ func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty
 	var merr error
 	for _, procID := range ids {
 		if err := removeLogFiles(procID); err != nil {
-			multierr.AppendInto(&merr, xerr.NewWM(err, "delete proc", xerr.Fields{"procID": procID}))
+			xerr.AppendInto(&merr, xerr.NewWM(err, "delete proc", xerr.Fields{"procID": procID}))
 		}
 	}
 

@@ -10,7 +10,6 @@ import (
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
@@ -173,7 +172,7 @@ func runConfigs(
 	if len(names) == 0 {
 		var merr error
 		for _, config := range configs {
-			multierr.AppendInto(&merr, run(ctx, config, client))
+			xerr.AppendInto(&merr, run(ctx, config, client))
 		}
 		return merr
 	}
