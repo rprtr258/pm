@@ -9,9 +9,9 @@ import (
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal"
-	"github.com/rprtr258/pm/internal/client"
 	pm_daemon "github.com/rprtr258/pm/internal/daemon"
 	"github.com/rprtr258/pm/internal/go-daemon"
+	"github.com/rprtr258/pm/pkg/client"
 )
 
 var _daemonCmd = &cli.Command{

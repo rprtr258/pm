@@ -12,7 +12,7 @@ import (
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
-	"github.com/rprtr258/pm/internal/client"
+	"github.com/rprtr258/pm/pkg/client"
 )
 
 var _runCmd = &cli.Command{
