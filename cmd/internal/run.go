@@ -95,10 +95,10 @@ func init() {
 					interpreter: ctx.String("interpreter"),
 				}
 				if ctx.IsSet("config") {
-					return executeProcCommandWithConfig2(ctx, client, props, ctx.String("config"))
+					return executeProcCommandWithConfig2(ctx.Context, client, props, ctx.String("config"))
 				}
 
-				return executeProcCommandWithoutConfig2(ctx, client, props)
+				return executeProcCommandWithoutConfig2(ctx.Context, client, props)
 			},
 		},
 	)
@@ -112,7 +112,7 @@ type runCmd struct {
 	tags        []string
 }
 
-func (cmd *runCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
+func (cmd *runCmd) Validate(configs []RunConfig) error {
 	// TODO: validate params
 	return nil
 }
@@ -185,7 +185,7 @@ func run(
 }
 
 func executeProcCommandWithConfig2(
-	ctx *cli.Context,
+	ctx context.Context,
 	client client.Client,
 	cmd runCmd,
 	configFilename string,
@@ -199,14 +199,14 @@ func executeProcCommandWithConfig2(
 		return errLoadConfigs
 	}
 
-	if err := cmd.Validate(ctx, configs); err != nil {
+	if err := cmd.Validate(configs); err != nil {
 		return xerr.NewWM(err, "validate config")
 	}
 
-	return runConfigs(ctx.Context, cmd.args, configs, client)
+	return runConfigs(ctx, cmd.args, configs, client)
 }
 
-func executeProcCommandWithoutConfig2(ctx *cli.Context, client client.Client, cmd runCmd) error {
+func executeProcCommandWithoutConfig2(ctx context.Context, client client.Client, cmd runCmd) error {
 	var toRunArgs []string
 	if cmd.interpreter == "" {
 		if len(cmd.args) == 0 {
@@ -231,15 +231,16 @@ func executeProcCommandWithoutConfig2(ctx *cli.Context, client client.Client, cm
 		return xerr.NewWM(err, "get cwd")
 	}
 
-	name := ctx.String("name")
 	config := RunConfig{
 		Command: toRunArgs[0],
 		Args:    toRunArgs[1:],
-		Name: lo.If(name != "", internal.Valid(name)).
-			Else(internal.Invalid[string]()),
-		Tags: ctx.StringSlice("tag"),
+		Name: internal.Optional[string]{
+			Value: cmd.name,
+			Valid: cmd.name != "",
+		},
+		Tags: cmd.tags,
 		Cwd:  cwd,
 	}
 
-	return run(ctx.Context, config, client)
+	return run(ctx, config, client)
 }
