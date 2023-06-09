@@ -72,22 +72,12 @@ func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-var (
-	AllCmds = []*cli.Command{
-		_daemonCmd,
-		// process management
-		_runCmd, _startCmd, _stopCmd, _deleteCmd,
-		// inspection
-		_listCmd,
-	}
-
-	configFlag = &cli.StringFlag{
-		Name:      "config",
-		Usage:     "config file to use",
-		Aliases:   []string{"f"},
-		TakesFile: true,
-	}
-)
+var configFlag = &cli.StringFlag{
+	Name:      "config",
+	Usage:     "config file to use",
+	Aliases:   []string{"f"},
+	TakesFile: true,
+}
 
 func isConfigFile(arg string) bool {
 	stat, err := os.Stat(arg)

@@ -24,15 +24,20 @@ var App = &cli.App{
 		// &cli.BoolFlag{Name:        "wait-ip",
 		//               Usage: "override systemd script to wait for full internet connectivity to launch pm2"},
 	},
-	Commands: append(
-		AllCmds,
-		&cli.Command{
+	Commands: []*cli.Command{
+		_daemonCmd,
+		// process management
+		_runCmd, _startCmd, _stopCmd, _deleteCmd,
+		// inspection
+		_listCmd,
+		// other
+		{
 			Name:    "version",
 			Aliases: []string{"v"},
 			Usage:   "print pm version",
 			// TODO: implement
 		},
-	),
+	},
 	Before: func(*cli.Context) error {
 		// TODO: run daemon if not running
 
