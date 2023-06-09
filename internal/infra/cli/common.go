@@ -1,4 +1,4 @@
-package internal
+package cli
 
 import (
 	"encoding/json"
@@ -16,6 +16,24 @@ import (
 
 	"github.com/rprtr258/pm/internal"
 )
+
+func ensureDir(dirname string) error {
+	_, errStat := os.Stat(dirname)
+	if errStat == nil {
+		return nil
+	}
+
+	if !os.IsNotExist(errStat) {
+		return xerr.NewWM(errStat, "stat home dir")
+	}
+
+	log.Infof("creating home dir...", log.F{"dir": dirname})
+	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
+		return xerr.NewWM(errMkdir, "create home dir")
+	}
+
+	return nil
+}
 
 type RunConfig struct {
 	Args    []string
