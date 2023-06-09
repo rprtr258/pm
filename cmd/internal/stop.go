@@ -69,10 +69,10 @@ func init() {
 				defer deferErr(client.Close)()
 
 				if ctx.IsSet("config") {
-					return executeProcCommandWithConfig5(ctx, client, stopCmd, ctx.String("config"))
+					return executeProcCommandWithConfig5(ctx.Context, client, stopCmd, ctx.String("config"))
 				}
 
-				return executeProcCommandWithoutConfig5(ctx, client, stopCmd)
+				return executeProcCommandWithoutConfig5(ctx.Context, client, stopCmd)
 			},
 		},
 	)
@@ -85,7 +85,7 @@ type stopCmd struct {
 	args  []string
 }
 
-func (cmd *stopCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
+func (cmd *stopCmd) Validate(configs []RunConfig) error {
 	return nil
 }
 
@@ -119,26 +119,22 @@ func (cmd *stopCmd) Run(
 	return nil
 }
 
-func executeProcCommandWithoutConfig5(ctx *cli.Context, client client.Client, cmd stopCmd) error {
-	list, errList := client.List(ctx.Context)
+func executeProcCommandWithoutConfig5(ctx context.Context, client client.Client, cmd stopCmd) error {
+	list, errList := client.List(ctx)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")
 	}
 
-	if errRun := cmd.Run(ctx.Context, client, list); errRun != nil {
-		return xerr.NewWM(errRun, "run")
-	}
-
-	return nil
+	return cmd.Run(ctx, client, list)
 }
 
 func executeProcCommandWithConfig5(
-	ctx *cli.Context,
+	ctx context.Context,
 	client client.Client,
 	cmd stopCmd,
 	configFilename string,
 ) error {
-	list, errList := client.List(ctx.Context)
+	list, errList := client.List(ctx)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")
 	}
@@ -148,7 +144,7 @@ func executeProcCommandWithConfig5(
 		return errLoadConfigs
 	}
 
-	if err := cmd.Validate(ctx, configs); err != nil {
+	if err := cmd.Validate(configs); err != nil {
 		return xerr.NewWM(err, "validate config")
 	}
 
@@ -160,11 +156,7 @@ func executeProcCommandWithConfig5(
 		return lo.Contains(names, procData.Name)
 	})
 
-	if errRun := cmd.Run(
-		ctx.Context,
-		client,
-		configList,
-	); errRun != nil {
+	if errRun := cmd.Run(ctx, client, configList); errRun != nil {
 		return xerr.NewWM(errRun, "run config list")
 	}
 
