@@ -83,7 +83,7 @@ func (cmd *startCmd) Run(
 	client client.Client,
 	procs map[db.ProcID]db.ProcData,
 ) error {
-	procIDsToStart := internal.FilterProcs[uint64](
+	procIDs := internal.FilterProcs[uint64](
 		procs,
 		internal.WithAllIfNoFilters,
 		internal.WithGeneric(cmd.args),
@@ -93,16 +93,16 @@ func (cmd *startCmd) Run(
 		internal.WithTags(cmd.tags),
 	)
 
-	if len(procIDsToStart) == 0 {
+	if len(procIDs) == 0 {
 		fmt.Println("nothing to start")
 		return nil
 	}
 
-	if err := client.Start(ctx, procIDsToStart); err != nil {
+	if err := client.Start(ctx, procIDs); err != nil {
 		return xerr.NewWM(err, "client.start")
 	}
 
-	fmt.Println(lo.ToAnySlice(procIDsToStart)...)
+	fmt.Println(lo.ToAnySlice(procIDs)...)
 
 	return nil
 }
