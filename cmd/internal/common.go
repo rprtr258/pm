@@ -15,8 +15,6 @@ import (
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal"
-	"github.com/rprtr258/pm/internal/client"
-	"github.com/rprtr258/pm/internal/db"
 )
 
 type RunConfig struct {
@@ -54,22 +52,6 @@ func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
-}
-
-// procCommand is any command changning procs state
-// e.g. start, stop, delete, etc.
-type procCommand interface {
-	// Validate input parameters. Returns error if invalid parameters were found.
-	// configs is nill if no config file provided.
-	Validate(ctx *cli.Context, configs []RunConfig) error
-	// Run command given all the input data.
-	Run(
-		ctx *cli.Context,
-		configs []RunConfig,
-		client client.Client,
-		list map[db.ProcID]db.ProcData,
-		configList map[db.ProcID]db.ProcData,
-	) error
 }
 
 var (
@@ -150,91 +132,6 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	return parseConfigs(filepath.Dir(filename), scannedConfigs), nil
-}
-
-func executeProcCommandWithoutConfig(ctx *cli.Context, client client.Client, cmd procCommand) error {
-	if err := cmd.Validate(ctx, nil); err != nil { // TODO: ???
-		return xerr.NewWM(err, "validate nil config")
-	}
-
-	list, errList := client.List(ctx.Context)
-	if errList != nil {
-		return xerr.NewWM(errList, "server.list")
-	}
-
-	if errRun := cmd.Run(
-		ctx,
-		nil,
-		client,
-		list,
-		list,
-	); errRun != nil {
-		return xerr.NewWM(errRun, "run")
-	}
-
-	return nil
-}
-
-func executeProcCommandWithConfig(
-	ctx *cli.Context,
-	client client.Client,
-	cmd procCommand,
-	configFilename string,
-) error {
-	if !isConfigFile(configFilename) {
-		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
-	}
-
-	list, errList := client.List(ctx.Context)
-	if errList != nil {
-		return xerr.NewWM(errList, "server.list")
-	}
-
-	configs, errLoadConfigs := loadConfigs(configFilename)
-	if errLoadConfigs != nil {
-		return errLoadConfigs
-	}
-
-	if err := cmd.Validate(ctx, configs); err != nil {
-		return xerr.NewWM(err, "validate config")
-	}
-
-	names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
-		return cfg.Name.Value, cfg.Name.Valid
-	})
-
-	configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
-		return lo.Contains(names, procData.Name)
-	})
-
-	if errRun := cmd.Run(
-		ctx,
-		configs,
-		client,
-		list,
-		configList,
-	); errRun != nil {
-		return xerr.NewWM(errRun, "run config list")
-	}
-
-	return nil
-}
-
-func executeProcCommand(
-	ctx *cli.Context,
-	cmd procCommand,
-) error {
-	client, errList := client.NewGrpcClient()
-	if errList != nil {
-		return xerr.NewWM(errList, "new grpc client")
-	}
-	defer deferErr(client.Close)()
-
-	if ctx.IsSet("config") {
-		return executeProcCommandWithConfig(ctx, client, cmd, ctx.String("config"))
-	} else {
-		return executeProcCommandWithoutConfig(ctx, client, cmd)
-	}
 }
 
 // { Name: "pid", commander.command('[app_name]')

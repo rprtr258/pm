@@ -14,7 +14,6 @@ import (
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
 	"github.com/rprtr258/pm/internal/client"
-	"github.com/rprtr258/pm/internal/db"
 )
 
 func init() {
@@ -82,17 +81,24 @@ func init() {
 				// &cli.BoolFlag{Name:        "dockerdaemon", Usage: "for debugging purpose"},
 			},
 			Action: func(ctx *cli.Context) error {
-				return executeProcCommand(
-					ctx,
-					&runCmd{
-						// TODO: change to destinations
-						name:        ctx.String("name"),
-						args:        ctx.Args().Slice(),
-						tags:        ctx.StringSlice("tag"),
-						cwd:         ctx.String("pwd"),
-						interpreter: ctx.String("interpreter"),
-					},
-				)
+				client, errList := client.NewGrpcClient()
+				if errList != nil {
+					return xerr.NewWM(errList, "new grpc client")
+				}
+				defer deferErr(client.Close)()
+
+				props := runCmd{
+					name:        ctx.String("name"),
+					args:        ctx.Args().Slice(),
+					tags:        ctx.StringSlice("tag"),
+					cwd:         ctx.String("pwd"),
+					interpreter: ctx.String("interpreter"),
+				}
+				if ctx.IsSet("config") {
+					return executeProcCommandWithConfig2(ctx, client, props, ctx.String("config"))
+				}
+
+				return executeProcCommandWithoutConfig2(ctx, client, props)
 			},
 		},
 	)
@@ -111,58 +117,6 @@ func (cmd *runCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
 	return nil
 }
 
-func (cmd *runCmd) Run(
-	ctx *cli.Context,
-	configs []RunConfig,
-	client client.Client,
-	_ map[db.ProcID]db.ProcData,
-	_ map[db.ProcID]db.ProcData,
-) error {
-	var toRunArgs []string
-	if cmd.interpreter == "" {
-		if configs != nil {
-			return runConfigs(ctx.Context, cmd.args, configs, client)
-		}
-
-		if len(cmd.args) == 0 {
-			return xerr.NewM("command expected")
-		}
-
-		toRunArgs = cmd.args
-	} else {
-		if configs != nil {
-			return xerr.NewM("either interpreter with cmd or config must be provided, not both")
-		}
-
-		if len(cmd.args) != 1 {
-			return xerr.NewM("interpreter set, so only single arg is expected", xerr.Fields{
-				"interpreter": cmd.interpreter,
-				"argsCount":   len(cmd.args),
-			})
-		}
-
-		toRunArgs = append(toRunArgs, strings.Split(cmd.interpreter, " ")...)
-		toRunArgs = append(toRunArgs, cmd.args[0])
-	}
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		return xerr.NewWM(err, "get cwd")
-	}
-
-	name := ctx.String("name")
-	config := RunConfig{
-		Command: toRunArgs[0],
-		Args:    toRunArgs[1:],
-		Name: lo.If(name != "", internal.Valid(name)).
-			Else(internal.Invalid[string]()),
-		Tags: ctx.StringSlice("tag"),
-		Cwd:  cwd,
-	}
-
-	return run(ctx.Context, config, client)
-}
-
 func runConfigs(
 	ctx context.Context,
 	names []string,
@@ -170,11 +124,9 @@ func runConfigs(
 	client client.Client,
 ) error {
 	if len(names) == 0 {
-		var merr error
-		for _, config := range configs {
-			xerr.AppendInto(&merr, run(ctx, config, client))
-		}
-		return merr
+		return xerr.Combine(lo.Map(configs, func(config RunConfig, _ int) error {
+			return run(ctx, config, client)
+		})...)
 	}
 
 	configsByName := make(map[string]RunConfig, len(names))
@@ -186,12 +138,13 @@ func runConfigs(
 		configsByName[cfg.Name.Value] = cfg
 	}
 
-	var merr error
-	for _, name := range names {
+	merr := xerr.Combine(lo.FilterMap(names, func(name string, _ int) (error, bool) {
 		if _, ok := configsByName[name]; !ok {
-			xerr.AppendInto(&merr, xerr.NewM("unknown proc name", xerr.Fields{"name": name}))
+			return xerr.NewM("unknown proc name", xerr.Fields{"name": name}), true
 		}
-	}
+
+		return nil, false
+	})...)
 	if merr != nil {
 		return merr
 	}
@@ -229,4 +182,81 @@ func run(
 	fmt.Println(procID)
 
 	return nil
+}
+
+func executeProcCommandWithConfig2(
+	ctx *cli.Context,
+	client client.Client,
+	cmd runCmd,
+	configFilename string,
+) error {
+	if !isConfigFile(configFilename) {
+		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
+	}
+
+	// list, errList := client.List(ctx.Context)
+	// if errList != nil {
+	// 	return xerr.NewWM(errList, "server.list")
+	// }
+
+	configs, errLoadConfigs := loadConfigs(configFilename)
+	if errLoadConfigs != nil {
+		return errLoadConfigs
+	}
+
+	if err := cmd.Validate(ctx, configs); err != nil {
+		return xerr.NewWM(err, "validate config")
+	}
+
+	// names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
+	// 	return cfg.Name.Value, cfg.Name.Valid
+	// })
+
+	// configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
+	// 	return lo.Contains(names, procData.Name)
+	// })
+
+	if cmd.interpreter != "" {
+		return xerr.NewM("either interpreter with cmd or config must be provided, not both")
+	}
+
+	return runConfigs(ctx.Context, cmd.args, configs, client)
+}
+
+func executeProcCommandWithoutConfig2(ctx *cli.Context, client client.Client, cmd runCmd) error {
+	var toRunArgs []string
+	if cmd.interpreter == "" {
+		if len(cmd.args) == 0 {
+			return xerr.NewM("command expected")
+		}
+
+		toRunArgs = cmd.args
+	} else {
+		if len(cmd.args) != 1 {
+			return xerr.NewM("interpreter set, so only single arg is expected", xerr.Fields{
+				"interpreter": cmd.interpreter,
+				"argsCount":   len(cmd.args),
+			})
+		}
+
+		toRunArgs = append(toRunArgs, strings.Split(cmd.interpreter, " ")...)
+		toRunArgs = append(toRunArgs, cmd.args[0])
+	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return xerr.NewWM(err, "get cwd")
+	}
+
+	name := ctx.String("name")
+	config := RunConfig{
+		Command: toRunArgs[0],
+		Args:    toRunArgs[1:],
+		Name: lo.If(name != "", internal.Valid(name)).
+			Else(internal.Invalid[string]()),
+		Tags: ctx.StringSlice("tag"),
+		Cwd:  cwd,
+	}
+
+	return run(ctx.Context, config, client)
 }

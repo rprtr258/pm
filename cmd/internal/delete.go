@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/xerr"
@@ -36,14 +37,23 @@ func init() {
 				configFlag,
 			},
 			Action: func(ctx *cli.Context) error {
-				return executeProcCommand(
-					ctx,
-					&deleteCmd{
-						names: ctx.StringSlice("name"),
-						tags:  ctx.StringSlice("tag"),
-						ids:   ctx.Uint64Slice("id"),
-					},
-				)
+				delCmd := deleteCmd{
+					names: ctx.StringSlice("name"),
+					tags:  ctx.StringSlice("tag"),
+					ids:   ctx.Uint64Slice("id"),
+				}
+
+				client, errList := client.NewGrpcClient()
+				if errList != nil {
+					return xerr.NewWM(errList, "new grpc client")
+				}
+				defer deferErr(client.Close)()
+
+				if ctx.IsSet("config") {
+					return executeProcCommandWithConfig3(ctx, client, delCmd, ctx.String("config"))
+				}
+
+				return executeProcCommandWithoutConfig3(ctx, client, delCmd)
 			},
 		},
 	)
@@ -90,6 +100,70 @@ func (cmd *deleteCmd) Run(
 
 	if errDelete := client.Delete(ctx.Context, procIDs); errDelete != nil {
 		return xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
+	}
+
+	return nil
+}
+
+func executeProcCommandWithoutConfig3(ctx *cli.Context, client client.Client, cmd deleteCmd) error {
+	list, errList := client.List(ctx.Context)
+	if errList != nil {
+		return xerr.NewWM(errList, "server.list")
+	}
+
+	if errRun := cmd.Run(
+		ctx,
+		nil,
+		client,
+		list,
+		list,
+	); errRun != nil {
+		return xerr.NewWM(errRun, "run")
+	}
+
+	return nil
+}
+
+func executeProcCommandWithConfig3(
+	ctx *cli.Context,
+	client client.Client,
+	cmd deleteCmd,
+	configFilename string,
+) error {
+	if !isConfigFile(configFilename) {
+		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
+	}
+
+	list, errList := client.List(ctx.Context)
+	if errList != nil {
+		return xerr.NewWM(errList, "server.list")
+	}
+
+	configs, errLoadConfigs := loadConfigs(configFilename)
+	if errLoadConfigs != nil {
+		return errLoadConfigs
+	}
+
+	if err := cmd.Validate(ctx, configs); err != nil {
+		return xerr.NewWM(err, "validate config")
+	}
+
+	names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
+		return cfg.Name.Value, cfg.Name.Valid
+	})
+
+	configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
+		return lo.Contains(names, procData.Name)
+	})
+
+	if errRun := cmd.Run(
+		ctx,
+		configs,
+		client,
+		list,
+		configList,
+	); errRun != nil {
+		return xerr.NewWM(errRun, "run config list")
 	}
 
 	return nil

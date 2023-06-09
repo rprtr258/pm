@@ -41,15 +41,24 @@ func init() {
 				configFlag,
 			},
 			Action: func(ctx *cli.Context) error {
-				return executeProcCommand(
-					ctx,
-					&startCmd{
-						names:    ctx.StringSlice("name"),
-						tags:     ctx.StringSlice("tags"),
-						statuses: ctx.StringSlice("status"),
-						ids:      ctx.Uint64Slice("id"),
-					},
-				)
+				startCmd := startCmd{
+					names:    ctx.StringSlice("name"),
+					tags:     ctx.StringSlice("tags"),
+					statuses: ctx.StringSlice("status"),
+					ids:      ctx.Uint64Slice("id"),
+				}
+
+				client, errList := client.NewGrpcClient()
+				if errList != nil {
+					return xerr.NewWM(errList, "new grpc client")
+				}
+				defer deferErr(client.Close)()
+
+				if ctx.IsSet("config") {
+					return executeProcCommandWithConfig4(ctx, client, startCmd, ctx.String("config"))
+				}
+
+				return executeProcCommandWithoutConfig4(ctx, client, startCmd)
 			},
 		},
 	)
@@ -93,6 +102,74 @@ func (cmd *startCmd) Run(
 	}
 
 	fmt.Println(lo.ToAnySlice(procIDsToStart)...)
+
+	return nil
+}
+
+func executeProcCommandWithoutConfig4(ctx *cli.Context, client client.Client, cmd startCmd) error {
+	if err := cmd.Validate(ctx, nil); err != nil { // TODO: ???
+		return xerr.NewWM(err, "validate nil config")
+	}
+
+	list, errList := client.List(ctx.Context)
+	if errList != nil {
+		return xerr.NewWM(errList, "server.list")
+	}
+
+	if errRun := cmd.Run(
+		ctx,
+		nil,
+		client,
+		list,
+		list,
+	); errRun != nil {
+		return xerr.NewWM(errRun, "run")
+	}
+
+	return nil
+}
+
+func executeProcCommandWithConfig4(
+	ctx *cli.Context,
+	client client.Client,
+	cmd startCmd,
+	configFilename string,
+) error {
+	if !isConfigFile(configFilename) {
+		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
+	}
+
+	list, errList := client.List(ctx.Context)
+	if errList != nil {
+		return xerr.NewWM(errList, "server.list")
+	}
+
+	configs, errLoadConfigs := loadConfigs(configFilename)
+	if errLoadConfigs != nil {
+		return errLoadConfigs
+	}
+
+	if err := cmd.Validate(ctx, configs); err != nil {
+		return xerr.NewWM(err, "validate config")
+	}
+
+	names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
+		return cfg.Name.Value, cfg.Name.Valid
+	})
+
+	configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
+		return lo.Contains(names, procData.Name)
+	})
+
+	if errRun := cmd.Run(
+		ctx,
+		configs,
+		client,
+		list,
+		configList,
+	); errRun != nil {
+		return xerr.NewWM(errRun, "run config list")
+	}
 
 	return nil
 }
