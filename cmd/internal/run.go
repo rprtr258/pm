@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
@@ -39,12 +38,6 @@ func init() {
 					Name:  "cwd",
 					Usage: "set working directory",
 				},
-				&cli.StringFlag{
-					Name:    "interpreter",
-					Aliases: []string{"i"},
-					Usage:   "set interpreter to executing command",
-				},
-				// TODO: interpreter args
 				configFlag,
 				// &cli.BoolFlag{Name:        "watch", Usage: "Watch folder for changes"},
 				// &cli.StringSliceFlag{Name: "watch", Usage: "watch application folder for changes"},
@@ -72,7 +65,6 @@ func init() {
 				// &cli.BoolFlag{Name:        "no-autorestart", Usage: "start an app without automatic restart"},
 				// &cli.DurationFlag{Name:    "restart-delay", Usage: "specify a delay between restarts"},
 				// &cli.BoolFlag{Name:        "merge-logs", Usage: "merge logs from different instances but keep error and out separated"},
-				// &cli.StringSliceFlag{Name: "interpreter-args", Usage: "set arguments to pass to the interpreter"},
 				// &cli.BoolFlag{Name:        "fresh", Usage: "Rebuild Dockerfile"},
 				// &cli.BoolFlag{Name:        "daemon", Usage: "Run container in Daemon mode (debug purposes)"},
 				// &cli.BoolFlag{Name:        "container", Usage: "Start application in container mode"},
@@ -88,11 +80,10 @@ func init() {
 				defer deferErr(client.Close)()
 
 				props := runCmd{
-					name:        ctx.String("name"),
-					args:        ctx.Args().Slice(),
-					tags:        ctx.StringSlice("tag"),
-					cwd:         ctx.String("pwd"),
-					interpreter: ctx.String("interpreter"),
+					name: ctx.String("name"),
+					args: ctx.Args().Slice(),
+					tags: ctx.StringSlice("tag"),
+					cwd:  ctx.String("pwd"),
 				}
 				if ctx.IsSet("config") {
 					return executeProcCommandWithConfig2(ctx.Context, client, props, ctx.String("config"))
@@ -105,11 +96,10 @@ func init() {
 }
 
 type runCmd struct {
-	name        string
-	cwd         string
-	interpreter string
-	args        []string
-	tags        []string
+	name string
+	cwd  string
+	args []string
+	tags []string
 }
 
 func (cmd *runCmd) Validate(configs []RunConfig) error {
@@ -190,10 +180,6 @@ func executeProcCommandWithConfig2(
 	cmd runCmd,
 	configFilename string,
 ) error {
-	if cmd.interpreter != "" {
-		return xerr.NewM("either interpreter with cmd or config must be provided, not both")
-	}
-
 	configs, errLoadConfigs := loadConfigs(configFilename)
 	if errLoadConfigs != nil {
 		return errLoadConfigs
@@ -207,23 +193,8 @@ func executeProcCommandWithConfig2(
 }
 
 func executeProcCommandWithoutConfig2(ctx context.Context, client client.Client, cmd runCmd) error {
-	var toRunArgs []string
-	if cmd.interpreter == "" {
-		if len(cmd.args) == 0 {
-			return xerr.NewM("command expected")
-		}
-
-		toRunArgs = cmd.args
-	} else {
-		if len(cmd.args) != 1 {
-			return xerr.NewM("interpreter set, so only single arg is expected", xerr.Fields{
-				"interpreter": cmd.interpreter,
-				"argsCount":   len(cmd.args),
-			})
-		}
-
-		toRunArgs = append(toRunArgs, strings.Split(cmd.interpreter, " ")...)
-		toRunArgs = append(toRunArgs, cmd.args[0])
+	if len(cmd.args) == 0 {
+		return xerr.NewM("command expected")
 	}
 
 	cwd, err := os.Getwd()
@@ -232,8 +203,8 @@ func executeProcCommandWithoutConfig2(ctx context.Context, client client.Client,
 	}
 
 	config := RunConfig{
-		Command: toRunArgs[0],
-		Args:    toRunArgs[1:],
+		Command: cmd.args[0],
+		Args:    cmd.args[1:],
 		Name: internal.Optional[string]{
 			Value: cmd.name,
 			Valid: cmd.name != "",
