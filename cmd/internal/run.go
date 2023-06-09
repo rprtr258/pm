@@ -80,8 +80,8 @@ func init() {
 				defer deferErr(client.Close)()
 
 				props := runCmd{
-					name: ctx.String("name"),
 					args: ctx.Args().Slice(),
+					name: ctx.String("name"),
 					tags: ctx.StringSlice("tag"),
 					cwd:  ctx.String("pwd"),
 				}
