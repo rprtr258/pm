@@ -88,9 +88,7 @@ func (cmd *stopCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
 
 func (cmd *stopCmd) Run(
 	ctx *cli.Context,
-	configs []RunConfig,
 	client client.Client,
-	_ map[db.ProcID]db.ProcData,
 	configList map[db.ProcID]db.ProcData,
 ) error {
 	ids := internal.FilterProcs[uint64](
@@ -130,9 +128,7 @@ func executeProcCommandWithoutConfig5(ctx *cli.Context, client client.Client, cm
 
 	if errRun := cmd.Run(
 		ctx,
-		nil,
 		client,
-		list,
 		list,
 	); errRun != nil {
 		return xerr.NewWM(errRun, "run")
@@ -175,9 +171,7 @@ func executeProcCommandWithConfig5(
 
 	if errRun := cmd.Run(
 		ctx,
-		configs,
 		client,
-		list,
 		configList,
 	); errRun != nil {
 		return xerr.NewWM(errRun, "run config list")
