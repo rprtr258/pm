@@ -71,9 +71,7 @@ func (cmd *deleteCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
 
 func (cmd *deleteCmd) Run(
 	ctx *cli.Context,
-	configs []RunConfig,
 	client client.Client,
-	_ map[db.ProcID]db.ProcData, // TODO: ???
 	procs map[db.ProcID]db.ProcData,
 ) error {
 	procIDs := internal.FilterProcs[uint64](
@@ -113,9 +111,7 @@ func executeProcCommandWithoutConfig3(ctx *cli.Context, client client.Client, cm
 
 	if errRun := cmd.Run(
 		ctx,
-		nil,
 		client,
-		list,
 		list,
 	); errRun != nil {
 		return xerr.NewWM(errRun, "run")
@@ -130,10 +126,6 @@ func executeProcCommandWithConfig3(
 	cmd deleteCmd,
 	configFilename string,
 ) error {
-	if !isConfigFile(configFilename) {
-		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
-	}
-
 	list, errList := client.List(ctx.Context)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")
@@ -158,9 +150,7 @@ func executeProcCommandWithConfig3(
 
 	if errRun := cmd.Run(
 		ctx,
-		configs,
 		client,
-		list,
 		configList,
 	); errRun != nil {
 		return xerr.NewWM(errRun, "run config list")

@@ -117,10 +117,6 @@ func (cmd *stopCmd) Run(
 }
 
 func executeProcCommandWithoutConfig5(ctx *cli.Context, client client.Client, cmd stopCmd) error {
-	if err := cmd.Validate(ctx, nil); err != nil { // TODO: ???
-		return xerr.NewWM(err, "validate nil config")
-	}
-
 	list, errList := client.List(ctx.Context)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")
@@ -143,10 +139,6 @@ func executeProcCommandWithConfig5(
 	cmd stopCmd,
 	configFilename string,
 ) error {
-	if !isConfigFile(configFilename) {
-		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
-	}
-
 	list, errList := client.List(ctx.Context)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")

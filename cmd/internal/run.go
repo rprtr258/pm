@@ -190,14 +190,9 @@ func executeProcCommandWithConfig2(
 	cmd runCmd,
 	configFilename string,
 ) error {
-	if !isConfigFile(configFilename) {
-		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
+	if cmd.interpreter != "" {
+		return xerr.NewM("either interpreter with cmd or config must be provided, not both")
 	}
-
-	// list, errList := client.List(ctx.Context)
-	// if errList != nil {
-	// 	return xerr.NewWM(errList, "server.list")
-	// }
 
 	configs, errLoadConfigs := loadConfigs(configFilename)
 	if errLoadConfigs != nil {
@@ -206,18 +201,6 @@ func executeProcCommandWithConfig2(
 
 	if err := cmd.Validate(ctx, configs); err != nil {
 		return xerr.NewWM(err, "validate config")
-	}
-
-	// names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
-	// 	return cfg.Name.Value, cfg.Name.Valid
-	// })
-
-	// configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
-	// 	return lo.Contains(names, procData.Name)
-	// })
-
-	if cmd.interpreter != "" {
-		return xerr.NewM("either interpreter with cmd or config must be provided, not both")
 	}
 
 	return runConfigs(ctx.Context, cmd.args, configs, client)

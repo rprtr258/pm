@@ -121,6 +121,10 @@ func parseConfigs(cwd string, scannedConfigs []configScanDTO) []RunConfig {
 }
 
 func loadConfigs(filename string) ([]RunConfig, error) {
+	if !isConfigFile(filename) {
+		return nil, xerr.NewM("invalid config file", xerr.Fields{"configFilename": filename})
+	}
+
 	jsonText, err := newVM().EvaluateFile(filename)
 	if err != nil {
 		return nil, xerr.NewWM(err, "evaluate jsonnet file")

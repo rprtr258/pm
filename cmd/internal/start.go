@@ -135,10 +135,6 @@ func executeProcCommandWithConfig4(
 	cmd startCmd,
 	configFilename string,
 ) error {
-	if !isConfigFile(configFilename) {
-		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
-	}
-
 	list, errList := client.List(ctx.Context)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")
