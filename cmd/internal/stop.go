@@ -109,7 +109,7 @@ func (cmd *stopCmd) Run(
 		return xerr.NewWM(err, "client.stop")
 	}
 
-	for _, id := range []uint64{} {
+	for _, id := range ids {
 		fmt.Println(id)
 	}
 
