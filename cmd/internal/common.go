@@ -55,7 +55,13 @@ func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 }
 
 var (
-	AllCmds []*cli.Command
+	AllCmds = []*cli.Command{
+		_daemonCmd,
+		// process management
+		_runCmd, _startCmd, _stopCmd, _deleteCmd,
+		// inspection
+		_listCmd,
+	}
 
 	configFlag = &cli.StringFlag{
 		Name:      "config",
@@ -88,7 +94,22 @@ type configScanDTO struct {
 	Tags    []string
 }
 
-func parseConfigs(cwd string, scannedConfigs []configScanDTO) []RunConfig {
+func loadConfigs(filename string) ([]RunConfig, error) {
+	if !isConfigFile(filename) {
+		return nil, xerr.NewM("invalid config file", xerr.Fields{"configFilename": filename})
+	}
+
+	jsonText, err := newVM().EvaluateFile(filename)
+	if err != nil {
+		return nil, xerr.NewWM(err, "evaluate jsonnet file")
+	}
+
+	var scannedConfigs []configScanDTO
+	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
+		return nil, xerr.NewWM(err, "unmarshal configs json")
+	}
+
+	// TODO: validate configs
 	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
 		return RunConfig{
 			Name:    internal.FromPtr(config.Name),
@@ -114,29 +135,10 @@ func parseConfigs(cwd string, scannedConfigs []configScanDTO) []RunConfig {
 			}),
 			Tags: config.Tags,
 			Cwd: lo.
-				If(config.Cwd == nil, cwd).
+				If(config.Cwd == nil, filepath.Dir(filename)).
 				ElseF(func() string { return *config.Cwd }),
 		}
-	})
-}
-
-func loadConfigs(filename string) ([]RunConfig, error) {
-	if !isConfigFile(filename) {
-		return nil, xerr.NewM("invalid config file", xerr.Fields{"configFilename": filename})
-	}
-
-	jsonText, err := newVM().EvaluateFile(filename)
-	if err != nil {
-		return nil, xerr.NewWM(err, "evaluate jsonnet file")
-	}
-
-	var scannedConfigs []configScanDTO
-	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
-		return nil, xerr.NewWM(err, "unmarshal configs json")
-	}
-
-	// TODO: validate configs
-	return parseConfigs(filepath.Dir(filename), scannedConfigs), nil
+	}), nil
 }
 
 // { Name: "pid", commander.command('[app_name]')

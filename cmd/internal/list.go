@@ -21,10 +21,6 @@ import (
 	"github.com/rprtr258/pm/internal/db"
 )
 
-func init() {
-	AllCmds = append(AllCmds, ListCmd)
-}
-
 func mapStatus(status db.Status) (string, *int, time.Duration) {
 	switch status.Status {
 	case db.StatusStarting:
@@ -42,7 +38,7 @@ func mapStatus(status db.Status) (string, *int, time.Duration) {
 	}
 }
 
-var ListCmd = &cli.Command{
+var _listCmd = &cli.Command{
 	Name:    "list",
 	Aliases: []string{"l", "ls", "ps", "status"},
 	Usage:   "list processes",

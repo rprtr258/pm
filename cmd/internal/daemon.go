@@ -14,11 +14,7 @@ import (
 	"github.com/rprtr258/pm/internal/go-daemon"
 )
 
-func init() {
-	AllCmds = append(AllCmds, DaemonCmd)
-}
-
-var DaemonCmd = &cli.Command{
+var _daemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "manage daemon",
 	Subcommands: []*cli.Command{
