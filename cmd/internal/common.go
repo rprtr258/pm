@@ -152,16 +152,10 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 	return parseConfigs(filepath.Dir(filename), scannedConfigs), nil
 }
 
-func executeProcCommandWithoutConfig(ctx *cli.Context, cmd procCommand) error {
-	if err := cmd.Validate(ctx, nil); err != nil {
+func executeProcCommandWithoutConfig(ctx *cli.Context, client client.Client, cmd procCommand) error {
+	if err := cmd.Validate(ctx, nil); err != nil { // TODO: ???
 		return xerr.NewWM(err, "validate nil config")
 	}
-
-	client, errList := client.NewGrpcClient()
-	if errList != nil {
-		return xerr.NewWM(errList, "new grpc client")
-	}
-	defer deferErr(client.Close)()
 
 	list, errList := client.List(ctx.Context)
 	if errList != nil {
@@ -181,16 +175,15 @@ func executeProcCommandWithoutConfig(ctx *cli.Context, cmd procCommand) error {
 	return nil
 }
 
-func executeProcCommandWithConfig(ctx *cli.Context, cmd procCommand, configFilename string) error {
+func executeProcCommandWithConfig(
+	ctx *cli.Context,
+	client client.Client,
+	cmd procCommand,
+	configFilename string,
+) error {
 	if !isConfigFile(configFilename) {
 		return xerr.NewM("invalid config file", xerr.Fields{"configFilename": configFilename})
 	}
-
-	client, errList := client.NewGrpcClient()
-	if errList != nil {
-		return xerr.NewWM(errList, "new grpc client")
-	}
-	defer deferErr(client.Close)()
 
 	list, errList := client.List(ctx.Context)
 	if errList != nil {
@@ -231,10 +224,16 @@ func executeProcCommand(
 	ctx *cli.Context,
 	cmd procCommand,
 ) error {
+	client, errList := client.NewGrpcClient()
+	if errList != nil {
+		return xerr.NewWM(errList, "new grpc client")
+	}
+	defer deferErr(client.Close)()
+
 	if ctx.IsSet("config") {
-		return executeProcCommandWithConfig(ctx, cmd, ctx.String("config"))
+		return executeProcCommandWithConfig(ctx, client, cmd, ctx.String("config"))
 	} else {
-		return executeProcCommandWithoutConfig(ctx, cmd)
+		return executeProcCommandWithoutConfig(ctx, client, cmd)
 	}
 }
 
