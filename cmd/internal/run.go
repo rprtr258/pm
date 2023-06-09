@@ -97,11 +97,6 @@ type runCmd struct {
 	tags []string
 }
 
-func (cmd *runCmd) Validate(configs []RunConfig) error {
-	// TODO: validate params
-	return nil
-}
-
 func runConfigs(
 	ctx context.Context,
 	names []string,
