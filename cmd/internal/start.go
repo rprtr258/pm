@@ -70,10 +70,6 @@ func init() {
 					return errLoadConfigs
 				}
 
-				if err := startCmd.Validate(configs); err != nil {
-					return xerr.NewWM(err, "validate config")
-				}
-
 				names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
 					return cfg.Name.Value, cfg.Name.Valid
 				})
@@ -94,10 +90,6 @@ type startCmd struct {
 	ids      []uint64
 	statuses []string
 	args     []string
-}
-
-func (cmd *startCmd) Validate(configs []RunConfig) error {
-	return nil
 }
 
 func (cmd *startCmd) Run(

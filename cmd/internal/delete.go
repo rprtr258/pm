@@ -65,10 +65,6 @@ func init() {
 					return errLoadConfigs
 				}
 
-				if err := delCmd.Validate(configs); err != nil {
-					return xerr.NewWM(err, "validate config")
-				}
-
 				names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
 					return cfg.Name.Value, cfg.Name.Valid
 				})
@@ -88,10 +84,6 @@ type deleteCmd struct {
 	tags  []string
 	ids   []uint64
 	args  []string
-}
-
-func (cmd *deleteCmd) Validate(configs []RunConfig) error {
-	return nil
 }
 
 func (cmd *deleteCmd) Run(

@@ -135,6 +135,7 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 		return nil, xerr.NewWM(err, "unmarshal configs json")
 	}
 
+	// TODO: validate configs
 	return parseConfigs(filepath.Dir(filename), scannedConfigs), nil
 }
 

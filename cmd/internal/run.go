@@ -185,10 +185,6 @@ func executeProcCommandWithConfig2(
 		return errLoadConfigs
 	}
 
-	if err := cmd.Validate(configs); err != nil {
-		return xerr.NewWM(err, "validate config")
-	}
-
 	return runConfigs(ctx, cmd.args, configs, client)
 }
 
