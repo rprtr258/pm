@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/sevlyar/go-daemon"
+	"github.com/rprtr258/pm/internal/infra/go-daemon"
 )
 
 // To terminate the daemon use:

@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sevlyar/go-daemon"
+	"github.com/rprtr258/pm/internal/infra/go-daemon"
 )
 
 var signal = flag.String("s", "", `Send signal to the daemon:

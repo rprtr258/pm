@@ -7,13 +7,11 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.15.0
 	github.com/google/go-jsonnet v0.20.0
-	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/log v0.0.5
 	github.com/rprtr258/simpdb v0.5.0
 	github.com/rprtr258/xerr v0.0.6
 	github.com/samber/lo v1.38.1
-	github.com/sevlyar/go-daemon v0.1.6
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.5
 	golang.org/x/sys v0.8.0
