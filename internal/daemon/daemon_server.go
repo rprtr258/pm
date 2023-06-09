@@ -21,7 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/namegen"
 )
 

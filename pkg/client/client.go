@@ -13,7 +13,7 @@ import (
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal"
-	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 type Client struct {

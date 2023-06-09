@@ -6,7 +6,7 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 type filter struct {
