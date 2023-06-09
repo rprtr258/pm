@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/samber/lo"
@@ -41,6 +42,7 @@ func init() {
 					names: ctx.StringSlice("name"),
 					tags:  ctx.StringSlice("tag"),
 					ids:   ctx.Uint64Slice("id"),
+					args:  ctx.Args().Slice(),
 				}
 
 				client, errList := client.NewGrpcClient()
@@ -50,10 +52,10 @@ func init() {
 				defer deferErr(client.Close)()
 
 				if ctx.IsSet("config") {
-					return executeProcCommandWithConfig3(ctx, client, delCmd, ctx.String("config"))
+					return executeProcCommandWithConfig3(ctx.Context, client, delCmd, ctx.String("config"))
 				}
 
-				return executeProcCommandWithoutConfig3(ctx, client, delCmd)
+				return executeProcCommandWithoutConfig3(ctx.Context, client, delCmd)
 			},
 		},
 	)
@@ -63,20 +65,21 @@ type deleteCmd struct {
 	names []string
 	tags  []string
 	ids   []uint64
+	args  []string
 }
 
-func (cmd *deleteCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
+func (cmd *deleteCmd) Validate(configs []RunConfig) error {
 	return nil
 }
 
 func (cmd *deleteCmd) Run(
-	ctx *cli.Context,
+	ctx context.Context,
 	client client.Client,
 	procs map[db.ProcID]db.ProcData,
 ) error {
 	procIDs := internal.FilterProcs[uint64](
 		procs,
-		internal.WithGeneric(ctx.Args().Slice()),
+		internal.WithGeneric(cmd.args),
 		internal.WithIDs(cmd.ids),
 		internal.WithNames(cmd.names),
 		internal.WithTags(cmd.tags),
@@ -90,30 +93,26 @@ func (cmd *deleteCmd) Run(
 
 	fmt.Printf("Stopping: %v\n", procIDs)
 
-	if err := client.Stop(ctx.Context, procIDs); err != nil {
+	if err := client.Stop(ctx, procIDs); err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}
 
 	fmt.Printf("Removing: %v\n", procIDs)
 
-	if errDelete := client.Delete(ctx.Context, procIDs); errDelete != nil {
+	if errDelete := client.Delete(ctx, procIDs); errDelete != nil {
 		return xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
 	}
 
 	return nil
 }
 
-func executeProcCommandWithoutConfig3(ctx *cli.Context, client client.Client, cmd deleteCmd) error {
-	list, errList := client.List(ctx.Context)
+func executeProcCommandWithoutConfig3(ctx context.Context, client client.Client, cmd deleteCmd) error {
+	list, errList := client.List(ctx)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")
 	}
 
-	if errRun := cmd.Run(
-		ctx,
-		client,
-		list,
-	); errRun != nil {
+	if errRun := cmd.Run(ctx, client, list); errRun != nil {
 		return xerr.NewWM(errRun, "run")
 	}
 
@@ -121,12 +120,12 @@ func executeProcCommandWithoutConfig3(ctx *cli.Context, client client.Client, cm
 }
 
 func executeProcCommandWithConfig3(
-	ctx *cli.Context,
+	ctx context.Context,
 	client client.Client,
 	cmd deleteCmd,
 	configFilename string,
 ) error {
-	list, errList := client.List(ctx.Context)
+	list, errList := client.List(ctx)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")
 	}
@@ -136,7 +135,7 @@ func executeProcCommandWithConfig3(
 		return errLoadConfigs
 	}
 
-	if err := cmd.Validate(ctx, configs); err != nil {
+	if err := cmd.Validate(configs); err != nil {
 		return xerr.NewWM(err, "validate config")
 	}
 
@@ -148,11 +147,7 @@ func executeProcCommandWithConfig3(
 		return lo.Contains(names, procData.Name)
 	})
 
-	if errRun := cmd.Run(
-		ctx,
-		client,
-		configList,
-	); errRun != nil {
+	if errRun := cmd.Run(ctx, client, configList); errRun != nil {
 		return xerr.NewWM(errRun, "run config list")
 	}
 

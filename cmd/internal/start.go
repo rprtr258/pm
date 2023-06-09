@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/samber/lo"
@@ -46,6 +47,7 @@ func init() {
 					tags:     ctx.StringSlice("tags"),
 					statuses: ctx.StringSlice("status"),
 					ids:      ctx.Uint64Slice("id"),
+					args:     ctx.Args().Slice(),
 				}
 
 				client, errList := client.NewGrpcClient()
@@ -55,10 +57,10 @@ func init() {
 				defer deferErr(client.Close)()
 
 				if ctx.IsSet("config") {
-					return executeProcCommandWithConfig4(ctx, client, startCmd, ctx.String("config"))
+					return executeProcCommandWithConfig4(ctx.Context, client, startCmd, ctx.String("config"))
 				}
 
-				return executeProcCommandWithoutConfig4(ctx, client, startCmd)
+				return executeProcCommandWithoutConfig4(ctx.Context, client, startCmd)
 			},
 		},
 	)
@@ -69,21 +71,22 @@ type startCmd struct {
 	tags     []string
 	ids      []uint64
 	statuses []string
+	args     []string
 }
 
-func (cmd *startCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
+func (cmd *startCmd) Validate(configs []RunConfig) error {
 	return nil
 }
 
 func (cmd *startCmd) Run(
-	ctx *cli.Context,
+	ctx context.Context,
 	client client.Client,
 	procs map[db.ProcID]db.ProcData,
 ) error {
 	procIDsToStart := internal.FilterProcs[uint64](
 		procs,
 		internal.WithAllIfNoFilters,
-		internal.WithGeneric(ctx.Args().Slice()),
+		internal.WithGeneric(cmd.args),
 		internal.WithIDs(cmd.ids),
 		internal.WithNames(cmd.names),
 		internal.WithStatuses(cmd.statuses),
@@ -95,7 +98,7 @@ func (cmd *startCmd) Run(
 		return nil
 	}
 
-	if err := client.Start(ctx.Context, procIDsToStart); err != nil {
+	if err := client.Start(ctx, procIDsToStart); err != nil {
 		return xerr.NewWM(err, "client.start")
 	}
 
@@ -104,21 +107,13 @@ func (cmd *startCmd) Run(
 	return nil
 }
 
-func executeProcCommandWithoutConfig4(ctx *cli.Context, client client.Client, cmd startCmd) error {
-	if err := cmd.Validate(ctx, nil); err != nil { // TODO: ???
-		return xerr.NewWM(err, "validate nil config")
-	}
-
-	list, errList := client.List(ctx.Context)
+func executeProcCommandWithoutConfig4(ctx context.Context, client client.Client, cmd startCmd) error {
+	list, errList := client.List(ctx)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")
 	}
 
-	if errRun := cmd.Run(
-		ctx,
-		client,
-		list,
-	); errRun != nil {
+	if errRun := cmd.Run(ctx, client, list); errRun != nil {
 		return xerr.NewWM(errRun, "run")
 	}
 
@@ -126,12 +121,12 @@ func executeProcCommandWithoutConfig4(ctx *cli.Context, client client.Client, cm
 }
 
 func executeProcCommandWithConfig4(
-	ctx *cli.Context,
+	ctx context.Context,
 	client client.Client,
 	cmd startCmd,
 	configFilename string,
 ) error {
-	list, errList := client.List(ctx.Context)
+	list, errList := client.List(ctx)
 	if errList != nil {
 		return xerr.NewWM(errList, "server.list")
 	}
@@ -141,7 +136,7 @@ func executeProcCommandWithConfig4(
 		return errLoadConfigs
 	}
 
-	if err := cmd.Validate(ctx, configs); err != nil {
+	if err := cmd.Validate(configs); err != nil {
 		return xerr.NewWM(err, "validate config")
 	}
 
@@ -153,11 +148,7 @@ func executeProcCommandWithConfig4(
 		return lo.Contains(names, procData.Name)
 	})
 
-	if errRun := cmd.Run(
-		ctx,
-		client,
-		configList,
-	); errRun != nil {
+	if errRun := cmd.Run(ctx, client, configList); errRun != nil {
 		return xerr.NewWM(errRun, "run config list")
 	}
 
