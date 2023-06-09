@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/samber/lo"
@@ -58,6 +59,7 @@ func init() {
 					names: ctx.StringSlice("name"),
 					tags:  ctx.StringSlice("tag"),
 					ids:   ctx.Uint64Slice("id"),
+					args:  ctx.Args().Slice(),
 				}
 
 				client, errList := client.NewGrpcClient()
@@ -80,6 +82,7 @@ type stopCmd struct {
 	names []string
 	tags  []string
 	ids   []uint64
+	args  []string
 }
 
 func (cmd *stopCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
@@ -87,13 +90,13 @@ func (cmd *stopCmd) Validate(ctx *cli.Context, configs []RunConfig) error {
 }
 
 func (cmd *stopCmd) Run(
-	ctx *cli.Context,
+	ctx context.Context,
 	client client.Client,
 	configList map[db.ProcID]db.ProcData,
 ) error {
 	ids := internal.FilterProcs[uint64](
 		configList,
-		internal.WithGeneric(ctx.Args().Slice()),
+		internal.WithGeneric(cmd.args),
 		internal.WithIDs(cmd.ids),
 		internal.WithNames(cmd.names),
 		internal.WithTags(cmd.tags),
@@ -105,7 +108,7 @@ func (cmd *stopCmd) Run(
 		return nil
 	}
 
-	if err := client.Stop(ctx.Context, ids); err != nil {
+	if err := client.Stop(ctx, ids); err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}
 
@@ -122,11 +125,7 @@ func executeProcCommandWithoutConfig5(ctx *cli.Context, client client.Client, cm
 		return xerr.NewWM(errList, "server.list")
 	}
 
-	if errRun := cmd.Run(
-		ctx,
-		client,
-		list,
-	); errRun != nil {
+	if errRun := cmd.Run(ctx.Context, client, list); errRun != nil {
 		return xerr.NewWM(errRun, "run")
 	}
 
@@ -162,7 +161,7 @@ func executeProcCommandWithConfig5(
 	})
 
 	if errRun := cmd.Run(
-		ctx,
+		ctx.Context,
 		client,
 		configList,
 	); errRun != nil {
