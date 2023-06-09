@@ -8,9 +8,9 @@ import (
 
 	"github.com/rprtr258/xerr"
 
-	"github.com/rprtr258/pm/internal"
-	pm_daemon "github.com/rprtr258/pm/internal/daemon"
-	"github.com/rprtr258/pm/internal/go-daemon"
+	internal "github.com/rprtr258/pm/internal/core"
+	pm_daemon "github.com/rprtr258/pm/internal/core/daemon"
+	"github.com/rprtr258/pm/internal/infra/go-daemon"
 	"github.com/rprtr258/pm/pkg/client"
 )
 

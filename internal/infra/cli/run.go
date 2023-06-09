@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal"
+	internal "github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/pkg/client"
 )
 

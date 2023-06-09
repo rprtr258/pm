@@ -14,7 +14,7 @@ import (
 	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 
-	"github.com/rprtr258/pm/internal"
+	internal "github.com/rprtr258/pm/internal/core"
 )
 
 func ensureDir(dirname string) error {

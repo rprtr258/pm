@@ -12,7 +12,7 @@ import (
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal"
+	internal "github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 

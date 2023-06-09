@@ -4,7 +4,7 @@ import (
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
 
-	"github.com/rprtr258/pm/internal"
+	internal "github.com/rprtr258/pm/internal/core"
 )
 
 var App = &cli.App{
