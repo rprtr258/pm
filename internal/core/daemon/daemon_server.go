@@ -210,8 +210,7 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 		}
 	}
 
-	name := fun.If[string](procOpts.Name != nil).ThenF(procOpts.GetName).
-		ElseF(namegen.New)
+	name := fun.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(namegen.New)
 
 	procData := db.ProcData{
 		ProcID:  0, // TODO: create instead proc create query

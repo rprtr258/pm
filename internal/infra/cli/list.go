@@ -123,8 +123,7 @@ func list(
 			status,
 			strconv.Itoa(fun.Deref(pid)),
 			// TODO: check status instead for following parameters
-			fun.If[string](pid == nil).Then("").
-				Else(uptime.Truncate(time.Second).String()),
+			fun.If(pid == nil, "").Else(uptime.Truncate(time.Second).String()),
 			fmt.Sprint(proc.Tags),
 			fmt.Sprint(proc.Status.CPU),
 			fmt.Sprint(proc.Status.Memory),

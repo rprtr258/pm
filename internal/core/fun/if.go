@@ -1,100 +1,63 @@
 package fun
 
-type ccond[T any] struct {
+type ifElse[T any] struct {
 	predicate bool
+	value     func() T
 }
 
-func If[T any](predicate bool) ccond[T] { //nolint:revive // don't export type
-	return ccond[T]{predicate: predicate}
-}
-
-type thener[T any] struct {
-	val func() T
-	ccond[T]
-}
-
-func (cond ccond[T]) Then(value T) thener[T] {
-	return thener[T]{
-		ccond: cond,
-		val:   func() T { return value },
+func If[T any](predicate bool, value T) ifElse[T] { //nolint:revive // don't export type
+	return ifElse[T]{
+		predicate: predicate,
+		value:     func() T { return value },
 	}
 }
 
-func (cond ccond[T]) ThenF(value func() T) thener[T] {
-	return thener[T]{
-		ccond: cond,
-		val:   value,
+func IfF[T any](predicate bool, value func() T) ifElse[T] { //nolint:revive // don't export type
+	return ifElse[T]{
+		predicate: predicate,
+		value:     value,
 	}
 }
 
-func (cond ccond[T]) ThenDeref(value *T) thener[T] {
-	return thener[T]{
-		ccond: cond,
-		val:   func() T { return *value },
+func (i ifElse[T]) ElseIf(predicate bool, value T) ifElse[T] {
+	if i.predicate {
+		return i
+	}
+
+	return ifElse[T]{
+		predicate: predicate,
+		value:     func() T { return value },
 	}
 }
 
-func (then thener[T]) Else(value T) T {
-	if then.ccond.predicate {
-		return then.val()
+func (i ifElse[T]) ElseIfF(predicate bool, value func() T) ifElse[T] {
+	if i.predicate {
+		return i
+	}
+
+	return ifElse[T]{
+		predicate: predicate,
+		value:     value,
+	}
+}
+
+func (i ifElse[T]) Else(value T) T {
+	if i.predicate {
+		return i.value()
 	}
 	return value
 }
 
-func (then thener[T]) ElseF(value func() T) T {
-	if then.ccond.predicate {
-		return then.val()
+func (i ifElse[T]) ElseF(value func() T) T {
+	if i.predicate {
+		return i.value()
 	}
 	return value()
 }
 
-type elseifer[T any] struct {
-	thener    thener[T]
-	predicate bool
-}
-
-func (then thener[T]) ElseIf(predicate bool) elseifer[T] {
-	return elseifer[T]{
-		predicate: predicate,
-		thener:    then,
+func (i ifElse[T]) ElseDeref(value *T) T {
+	if i.predicate {
+		return i.value()
 	}
-}
-
-func (els elseifer[T]) Then(value T) thener[T] {
-	if els.thener.predicate {
-		return els.thener
-	}
-
-	return thener[T]{
-		val: func() T { return value },
-		ccond: ccond[T]{
-			predicate: els.predicate,
-		},
-	}
-}
-
-func (els elseifer[T]) ThenF(value func() T) thener[T] {
-	if els.thener.predicate {
-		return els.thener
-	}
-
-	return thener[T]{
-		val: value,
-		ccond: ccond[T]{
-			predicate: els.predicate,
-		},
-	}
-}
-
-func (els elseifer[T]) ThenDeref(value *T) thener[T] {
-	if els.thener.predicate {
-		return els.thener
-	}
-
-	return thener[T]{
-		val: func() T { return *value },
-		ccond: ccond[T]{
-			predicate: els.predicate,
-		},
-	}
+	return *value
 }

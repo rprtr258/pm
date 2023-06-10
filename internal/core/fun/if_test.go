@@ -18,54 +18,50 @@ func TestAll(t *testing.T) {
 		want string
 	}{
 		"true": {
-			got: If[string](true).Then("1").
-				Else("2"),
+			got:  If[string](true, "1").Else("2"),
 			want: "1",
 		},
 		"false": {
-			got: If[string](false).Then("1").
-				Else("2"),
+			got:  If(false, "1").Else("2"),
 			want: "2",
 		},
 		"ThenF ElseF true": {
-			got: If[string](true).ThenF(_const("1")).
-				ElseF(_const("2")),
+			got:  IfF(true, _const("1")).ElseF(_const("2")),
 			want: "1",
 		},
 		"ThenF ElseF false": {
-			got: If[string](false).ThenF(_const("1")).
-				ElseF(_const("2")),
+			got:  IfF(false, _const("1")).ElseF(_const("2")),
 			want: "2",
 		},
 		"ElseIf Else 1": {
-			got: If[string](true).Then("1").
-				ElseIf(true).Then("2").
+			got: If(true, "1").
+				ElseIf(true, "2").
 				Else("3"),
 			want: "1",
 		},
 		"ElseIf Else 2": {
-			got: If[string](false).Then("1").
-				ElseIf(true).Then("2").
+			got: If(false, "1").
+				ElseIf(true, "2").
 				Else("3"),
 			want: "2",
 		},
 		"ElseIf Else 3": {
-			got: If[string](false).Then("1").
-				ElseIf(false).Then("2").
+			got: If(false, "1").
+				ElseIf(false, "2").
 				Else("3"),
 			want: "3",
 		},
 		"ElseIf ElseIf 3": {
-			got: If[string](false).Then("1").
-				ElseIf(false).Then("2").
-				ElseIf(true).Then("3").
+			got: If(false, "1").
+				ElseIf(false, "2").
+				ElseIf(true, "3").
 				Else("4"),
 			want: "3",
 		},
 		"ElseIf ElseIf 4": {
-			got: If[string](false).Then("1").
-				ElseIf(false).Then("2").
-				ElseIf(false).Then("3").
+			got: If(false, "1").
+				ElseIf(false, "2").
+				ElseIf(false, "3").
 				Else("4"),
 			want: "4",
 		},
