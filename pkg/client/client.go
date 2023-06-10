@@ -11,7 +11,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/rprtr258/pm/api"
-	internal "github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
@@ -22,7 +22,7 @@ type Client struct {
 
 func NewGrpcClient() (Client, error) {
 	conn, err := grpc.Dial(
-		internal.SocketDaemonRPC,
+		core.SocketDaemonRPC,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
 			conn, err := net.Dial("unix", addr)

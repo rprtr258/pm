@@ -9,7 +9,7 @@ import (
 
 	"github.com/rprtr258/xerr"
 
-	internal "github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -92,14 +92,14 @@ func (cmd *startCmdProps) Run(
 	client client.Client,
 	procs map[db.ProcID]db.ProcData,
 ) error {
-	procIDs := internal.FilterProcs[uint64](
+	procIDs := core.FilterProcs[uint64](
 		procs,
-		internal.WithAllIfNoFilters,
-		internal.WithGeneric(cmd.args),
-		internal.WithIDs(cmd.ids),
-		internal.WithNames(cmd.names),
-		internal.WithStatuses(cmd.statuses),
-		internal.WithTags(cmd.tags),
+		core.WithAllIfNoFilters,
+		core.WithGeneric(cmd.args),
+		core.WithIDs(cmd.ids),
+		core.WithNames(cmd.names),
+		core.WithStatuses(cmd.statuses),
+		core.WithTags(cmd.tags),
 	)
 
 	if len(procIDs) == 0 {

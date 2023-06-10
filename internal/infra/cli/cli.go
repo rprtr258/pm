@@ -4,7 +4,7 @@ import (
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
 
-	internal "github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core"
 )
 
 var App = &cli.App{
@@ -41,8 +41,8 @@ var App = &cli.App{
 	Before: func(*cli.Context) error {
 		// TODO: run daemon if not running
 
-		if err := ensureDir(internal.DirHome); err != nil {
-			return xerr.NewWM(err, "ensure home dir", xerr.Fields{"dir": internal.DirHome})
+		if err := ensureDir(core.DirHome); err != nil {
+			return xerr.NewWM(err, "ensure home dir", xerr.Fields{"dir": core.DirHome})
 		}
 
 		return nil

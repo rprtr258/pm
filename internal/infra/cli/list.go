@@ -15,7 +15,7 @@ import (
 
 	"github.com/rprtr258/xerr"
 
-	internal "github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
@@ -91,14 +91,14 @@ func list(
 		return xerr.NewWM(err, "list server call")
 	}
 
-	procIDsToShow := internal.FilterProcs[db.ProcID](
+	procIDsToShow := core.FilterProcs[db.ProcID](
 		resp,
-		internal.WithAllIfNoFilters,
-		internal.WithGeneric(genericFilters),
-		internal.WithIDs(idFilters),
-		internal.WithNames(nameFilters),
-		internal.WithStatuses(statusFilters),
-		internal.WithTags(tagFilters),
+		core.WithAllIfNoFilters,
+		core.WithGeneric(genericFilters),
+		core.WithIDs(idFilters),
+		core.WithNames(nameFilters),
+		core.WithStatuses(statusFilters),
+		core.WithTags(tagFilters),
 	)
 
 	procsToShow := fun.MapDict(procIDsToShow, resp)

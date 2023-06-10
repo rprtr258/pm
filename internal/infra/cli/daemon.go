@@ -8,7 +8,7 @@ import (
 
 	"github.com/rprtr258/xerr"
 
-	internal "github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core"
 	pm_daemon "github.com/rprtr258/pm/internal/core/daemon"
 	"github.com/rprtr258/pm/internal/infra/go-daemon"
 	"github.com/rprtr258/pm/pkg/client"
@@ -67,9 +67,9 @@ var _daemonCmd = &cli.Command{
 
 func newDaemonContext() *daemon.Context {
 	return &daemon.Context{
-		PidFileName: internal.FileDaemonPid,
+		PidFileName: core.FileDaemonPid,
 		PidFilePerm: 0o644, //nolint:gomnd // default pid file permissions, rwxr--r--
-		LogFileName: internal.FileDaemonLog,
+		LogFileName: core.FileDaemonLog,
 		LogFilePerm: 0o640, //nolint:gomnd // default log file permissions, rwxr-----
 		WorkDir:     "./",
 		Umask:       0o27, //nolint:gomnd // don't know
@@ -84,7 +84,7 @@ func daemonStart() error {
 	// TODO: move to internal
 	daemonCtx := newDaemonContext()
 
-	if errKill := pm_daemon.Kill(daemonCtx, internal.SocketDaemonRPC); errKill != nil {
+	if errKill := pm_daemon.Kill(daemonCtx, core.SocketDaemonRPC); errKill != nil {
 		return xerr.NewWM(errKill, "kill daemon process")
 	}
 
@@ -109,7 +109,7 @@ func daemonStart() error {
 
 func daemonStop() error {
 	daemonCtx := newDaemonContext()
-	if errKill := pm_daemon.Kill(daemonCtx, internal.SocketDaemonRPC); errKill != nil {
+	if errKill := pm_daemon.Kill(daemonCtx, core.SocketDaemonRPC); errKill != nil {
 		return xerr.NewWM(errKill, "kill daemon process")
 	}
 
@@ -117,7 +117,7 @@ func daemonStop() error {
 }
 
 func daemonRun() error {
-	if errRun := pm_daemon.Run(internal.SocketDaemonRPC, internal.FileDaemonDBDir, internal.DirHome); errRun != nil {
+	if errRun := pm_daemon.Run(core.SocketDaemonRPC, core.FileDaemonDBDir, core.DirHome); errRun != nil {
 		return xerr.NewWM(errRun, "run daemon")
 	}
 
