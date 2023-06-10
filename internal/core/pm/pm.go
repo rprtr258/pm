@@ -92,12 +92,12 @@ func (app App) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
 	return list, nil
 }
 
-// Run - create and start processes, returns ids of created processes.
+// Run - create processes, returns ids of created processes.
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
-func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]uint64, error) {
+func (app App) Create(ctx context.Context, configs ...core.RunConfig) ([]db.ProcID, error) {
 	var err error
-	procIDs := make([]uint64, 0, len(configs))
+	procIDs := make([]db.ProcID, 0, len(configs))
 	for _, config := range configs {
 		command, errLook := exec.LookPath(config.Command)
 		if errLook != nil {
@@ -126,16 +126,20 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]uint64, er
 			continue
 		}
 
-		procIDs = append(procIDs, procID)
-	}
-
-	if errStart := app.client.Start(ctx, procIDs); errStart != nil {
-		return nil, xerr.Combine(err, xerr.NewWM(
-			errStart,
-			"start processes",
-			xerr.Fields{"procIDs": procIDs},
-		))
+		procIDs = append(procIDs, db.ProcID(procID))
 	}
 
 	return procIDs, err
+}
+
+func (app App) Run(ctx context.Context, procIDs ...db.ProcID) error {
+	procIDs2 := lo.Map(procIDs, func(procID db.ProcID, _ int) uint64 {
+		return uint64(procID)
+	})
+
+	if errStart := app.client.Start(ctx, procIDs2); errStart != nil {
+		return xerr.NewWM(errStart, "start processes")
+	}
+
+	return nil
 }

@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/samber/lo"
@@ -10,7 +9,7 @@ import (
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/db"
+	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -39,13 +38,11 @@ var _startCmd = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		startCmd := startCmdProps{
-			names:    ctx.StringSlice("name"),
-			tags:     ctx.StringSlice("tags"),
-			statuses: ctx.StringSlice("status"),
-			ids:      ctx.Uint64Slice("id"),
-			args:     ctx.Args().Slice(),
-		}
+		names := ctx.StringSlice("name")
+		tags := ctx.StringSlice("tags")
+		statuses := ctx.StringSlice("status")
+		ids := ctx.Uint64Slice("id")
+		args := ctx.Args().Slice()
 
 		client, errList := client.NewGrpcClient()
 		if errList != nil {
@@ -53,13 +50,32 @@ var _startCmd = &cli.Command{
 		}
 		defer deferErr(client.Close)()
 
+		app := pm.New(client)
+
 		list, errList := client.List(ctx.Context)
 		if errList != nil {
 			return xerr.NewWM(errList, "server.list")
 		}
 
 		if !ctx.IsSet("config") {
-			return startCmd.Run(ctx.Context, client, list)
+			procIDs := core.FilterProcs[uint64](
+				list,
+				core.WithAllIfNoFilters,
+				core.WithGeneric(args),
+				core.WithIDs(ids),
+				core.WithNames(names),
+				core.WithStatuses(statuses),
+				core.WithTags(tags),
+			)
+
+			if len(procIDs) == 0 {
+				fmt.Println("nothing to start")
+				return nil
+			}
+
+			if err := client.Start(ctx.Context, procIDs); err != nil {
+				return xerr.NewWM(err, "client.start")
+			}
 		}
 
 		configs, errLoadConfigs := loadConfigs(ctx.String("config"))
@@ -67,51 +83,33 @@ var _startCmd = &cli.Command{
 			return errLoadConfigs
 		}
 
-		names := lo.FilterMap(configs, func(cfg core.RunConfig, _ int) (string, bool) {
-			return cfg.Name.Unpack()
-		})
+		filteredList, err := app.ListByRunConfigs(ctx.Context, configs)
+		if err != nil {
+			return err
+		}
 
-		configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
-			return lo.Contains(names, procData.Name)
-		})
+		// TODO: reuse filter options
+		procIDs := core.FilterProcs[uint64](
+			filteredList,
+			core.WithAllIfNoFilters,
+			core.WithGeneric(args),
+			core.WithIDs(ids),
+			core.WithNames(names),
+			core.WithStatuses(statuses),
+			core.WithTags(tags),
+		)
 
-		return startCmd.Run(ctx.Context, client, configList)
-	},
-}
+		if len(procIDs) == 0 {
+			fmt.Println("nothing to start")
+			return nil
+		}
 
-type startCmdProps struct {
-	names    []string
-	tags     []string
-	ids      []uint64
-	statuses []string
-	args     []string
-}
+		if err := client.Start(ctx.Context, procIDs); err != nil {
+			return xerr.NewWM(err, "client.start")
+		}
 
-func (cmd *startCmdProps) Run(
-	ctx context.Context,
-	client client.Client,
-	procs map[db.ProcID]db.ProcData,
-) error {
-	procIDs := core.FilterProcs[uint64](
-		procs,
-		core.WithAllIfNoFilters,
-		core.WithGeneric(cmd.args),
-		core.WithIDs(cmd.ids),
-		core.WithNames(cmd.names),
-		core.WithStatuses(cmd.statuses),
-		core.WithTags(cmd.tags),
-	)
+		fmt.Println(lo.ToAnySlice(procIDs)...)
 
-	if len(procIDs) == 0 {
-		fmt.Println("nothing to start")
 		return nil
-	}
-
-	if err := client.Start(ctx, procIDs); err != nil {
-		return xerr.NewWM(err, "client.start")
-	}
-
-	fmt.Println(lo.ToAnySlice(procIDs)...)
-
-	return nil
+	},
 }

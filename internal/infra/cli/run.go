@@ -103,13 +103,20 @@ var _runCmd = &cli.Command{
 				Cwd:     workDir,
 			}
 
-			procIDs, errRun := app.Run(ctx.Context, runConfig)
-			for _, procID := range procIDs {
-				fmt.Println(procID)
-			}
+			procIDs, errRun := app.Create(ctx.Context, runConfig)
 			if errRun != nil {
-				return xerr.NewWM(errRun, "run command", xerr.Fields{"runConfig": runConfig})
+				return xerr.NewWM(errRun, "run command", xerr.Fields{"runConfig": runConfig, "procIDs": procIDs})
 			}
+
+			if len(procIDs) != 1 {
+				return xerr.NewWM(errRun, "invalid procIDs count", xerr.Fields{"procIDs": procIDs})
+			}
+
+			if err := app.Run(ctx.Context, procIDs...); err != nil {
+				return xerr.NewWM(err, "run proc", xerr.Fields{"procID": procIDs[0]})
+			}
+
+			fmt.Println(procIDs[0])
 
 			return nil
 		}
@@ -122,12 +129,18 @@ var _runCmd = &cli.Command{
 		names := ctx.Args().Slice()
 		if len(names) == 0 {
 			// no filtering by names, run all processes
-			procIDs, err := app.Run(ctx.Context, configs...)
+			procIDs, err := app.Create(ctx.Context, configs...)
+			if err != nil {
+				return xerr.NewWM(err, "create all procs from config", xerr.Fields{"created procIDs": procIDs})
+			}
+
+			err = app.Run(ctx.Context, procIDs...)
+			if err != nil {
+				return xerr.NewWM(err, "run procs", xerr.Fields{"procIDs": procIDs})
+			}
+
 			for _, procID := range procIDs {
 				fmt.Println(procID)
-			}
-			if err != nil {
-				return xerr.NewWM(err, "run all procs from config")
 			}
 		}
 
@@ -151,14 +164,19 @@ var _runCmd = &cli.Command{
 			return merr
 		}
 
-		procIDs, err := app.Run(ctx.Context, lo.Values(configsByName)...)
+		procIDs, err := app.Create(ctx.Context, lo.Values(configsByName)...)
+		if err != nil {
+			return xerr.NewWM(err, "run procs filtered by name from config", xerr.Fields{"names": names, "created procIDs": procIDs})
+		}
+
+		err = app.Run(ctx.Context, procIDs...)
+		if err != nil {
+			return xerr.NewWM(err, "run procs", xerr.Fields{"procIDs": procIDs})
+		}
+
 		for _, procID := range procIDs {
 			fmt.Println(procID)
 		}
-		if err != nil {
-			return xerr.NewWM(err, "run procs filtered by name from config", xerr.Fields{"names": names})
-		}
-
 		return nil
 	},
 }
