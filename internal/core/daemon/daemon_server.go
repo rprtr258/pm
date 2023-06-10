@@ -30,8 +30,8 @@ import (
 // TODO: logs for daemon everywhere
 type daemonServer struct {
 	api.UnimplementedDaemonServer
-	db      db.Handle
-	homeDir string
+	db               db.Handle
+	homeDir, logsDir string
 }
 
 func getProcCwd(cwd, procCwd string) string {
@@ -40,6 +40,67 @@ func getProcCwd(cwd, procCwd string) string {
 	}
 
 	return filepath.Join(cwd, procCwd)
+}
+
+func (srv *daemonServer) start(ctx context.Context, proc core.ProcData) error {
+	procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
+	stdoutLogFilename := path.Join(srv.logsDir, procIDStr+".stdout")
+	stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
+	if err != nil {
+		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": stdoutLogFile})
+	}
+	defer stdoutLogFile.Close()
+
+	stderrLogFilename := path.Join(srv.logsDir, procIDStr+".stderr")
+	stderrLogFile, err := os.OpenFile(stderrLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
+	if err != nil {
+		return xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": stderrLogFilename})
+	}
+	defer func() {
+		if errClose := stderrLogFile.Close(); errClose != nil {
+			log.Error(errClose.Error())
+		}
+	}()
+	// TODO: syscall.CloseOnExec(pidFile.Fd()) or just close pid file
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return xerr.NewWM(err, "os.Getwd")
+	}
+
+	procAttr := os.ProcAttr{
+		Dir: getProcCwd(cwd, proc.Cwd),
+		Env: os.Environ(), // TODO: ???
+		Files: []*os.File{ // TODO: pid file is somehow passes to child
+			os.Stdin,
+			stdoutLogFile,
+			stderrLogFile,
+			// TODO: very fucking dirty hack not to inherit pid (and possibly other fds from daemon)
+			// because I tried different variants, none of them worked out, including setting O_CLOEXEC on
+			// pid file open and fcntl FD_CLOEXEC on already opened pid file fd
+			nil, nil, nil, nil, nil, nil, nil, nil,
+		},
+		Sys: &syscall.SysProcAttr{
+			Setpgid: true,
+		},
+	}
+
+	args := append([]string{proc.Command}, proc.Args...)
+	process, err := os.StartProcess(proc.Command, args, &procAttr)
+	if err != nil {
+		if errSetStatus := srv.db.SetStatus(proc.ProcID, core.NewStatusInvalid()); errSetStatus != nil {
+			return xerr.NewWM(xerr.Combine(err, errSetStatus), "running failed, setting errored status failed")
+		}
+
+		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": spew.Sprint(proc)})
+	}
+
+	runningStatus := core.NewStatusRunning(time.Now(), process.Pid, 0, 0)
+	if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
+		return xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ProcID})
+	}
+
+	return nil
 }
 
 // Start - run processes by their ids in database
@@ -53,68 +114,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 	}
 
 	for _, proc := range procs {
-		procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
-		logsDir := path.Join(srv.homeDir, "logs")
-
-		if err := os.Mkdir(logsDir, os.ModePerm); err != nil && !errors.Is(err, os.ErrExist) {
-			return nil, xerr.NewWM(err, "create logs dir", xerr.Fields{"dir": logsDir})
-		}
-
-		stdoutLogFilename := path.Join(logsDir, procIDStr+".stdout")
-		stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
-		if err != nil {
-			return nil, xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": stdoutLogFile})
-		}
-		defer stdoutLogFile.Close()
-
-		stderrLogFilename := path.Join(logsDir, procIDStr+".stderr")
-		stderrLogFile, err := os.OpenFile(stderrLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
-		if err != nil {
-			return nil, xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": stderrLogFilename})
-		}
-		defer func() {
-			if errClose := stderrLogFile.Close(); errClose != nil {
-				log.Error(errClose.Error())
-			}
-		}()
-		// TODO: syscall.CloseOnExec(pidFile.Fd()) or just close pid file
-
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, xerr.NewWM(err, "os.Getwd")
-		}
-
-		procAttr := os.ProcAttr{
-			Dir: getProcCwd(cwd, proc.Cwd),
-			Env: os.Environ(), // TODO: ???
-			Files: []*os.File{ // TODO: pid file is somehow passes to child
-				os.Stdin,
-				stdoutLogFile,
-				stderrLogFile,
-				// TODO: very fucking dirty hack not to inherit pid (and possibly other fds from daemon)
-				// because I tried different variants, none of them worked out, including setting O_CLOEXEC on
-				// pid file open and fcntl FD_CLOEXEC on already opened pid file fd
-				nil, nil, nil, nil, nil, nil, nil, nil,
-			},
-			Sys: &syscall.SysProcAttr{
-				Setpgid: true,
-			},
-		}
-
-		args := append([]string{proc.Command}, proc.Args...)
-		process, err := os.StartProcess(proc.Command, args, &procAttr)
-		if err != nil {
-			if errSetStatus := srv.db.SetStatus(proc.ProcID, core.NewStatusInvalid()); errSetStatus != nil {
-				return nil, xerr.NewWM(xerr.Combine(err, errSetStatus), "running failed, setting errored status failed")
-			}
-
-			return nil, xerr.NewWM(err, "running failed", xerr.Fields{"procData": spew.Sprint(proc)})
-		}
-
-		runningStatus := core.NewStatusRunning(time.Now(), process.Pid, 0, 0)
-		if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
-			return nil, xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ProcID})
-		}
+		srv.start(ctx, proc)
 	}
 
 	return &emptypb.Empty{}, nil

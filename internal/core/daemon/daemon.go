@@ -21,12 +21,16 @@ import (
 // TODO: fix "reborn failed: daemon: Resource temporarily unavailable" on start when
 // daemon is already running
 // Run daemon.
-func Run(rpcSocket, dbDir, homeDir string) error {
+func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
 	sock, err := net.Listen("unix", rpcSocket)
 	if err != nil {
 		return xerr.NewWM(err, "net.Listen on rpc socket", xerr.Fields{"socket": rpcSocket})
 	}
 	defer sock.Close()
+
+	if err := os.Mkdir(logsDir, os.ModePerm); err != nil && !errors.Is(err, os.ErrExist) {
+		return xerr.NewWM(err, "create logs dir", xerr.Fields{"dir": logsDir})
+	}
 
 	dbHandle, err := db.New(dbDir)
 	if err != nil {
@@ -38,6 +42,7 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 		UnimplementedDaemonServer: api.UnimplementedDaemonServer{},
 		db:                        dbHandle,
 		homeDir:                   homeDir,
+		logsDir:                   logsDir,
 	})
 
 	log.Infof("daemon started", log.F{"socket": sock.Addr()})

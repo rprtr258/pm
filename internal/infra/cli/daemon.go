@@ -113,7 +113,12 @@ func daemonStop() error {
 }
 
 func daemonRun() error {
-	if errRun := pm_daemon.Run(core.SocketDaemonRPC, core.FileDaemonDBDir, core.DirHome); errRun != nil {
+	if errRun := pm_daemon.Run(
+		core.SocketDaemonRPC,
+		core.FileDaemonDBDir,
+		core.DirHome,
+		core.DirDaemonLogs,
+	); errRun != nil {
 		return xerr.NewWM(errRun, "run daemon")
 	}
 
