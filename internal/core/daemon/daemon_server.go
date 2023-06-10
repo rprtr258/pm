@@ -72,7 +72,11 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		if err != nil {
 			return nil, xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": stderrLogFilename})
 		}
-		defer stderrLogFile.Close() // TODO: wrap
+		defer func() {
+			if errClose := stderrLogFile.Close(); errClose != nil {
+				log.Error(errClose.Error())
+			}
+		}()
 		// TODO: syscall.CloseOnExec(pidFile.Fd()) or just close pid file
 
 		cwd, err := os.Getwd()

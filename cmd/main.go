@@ -11,7 +11,6 @@ import (
 
 func main() {
 	if errRun := cli.App.Run(os.Args); errRun != nil {
-		message, fields := xerr.UnwrapFields(errRun)
-		log.Fatalf(message, fields)
+		log.Fatalf(xerr.UnwrapFields(errRun))
 	}
 }
