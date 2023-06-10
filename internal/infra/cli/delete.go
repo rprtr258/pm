@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/xerr"
@@ -52,17 +51,22 @@ var _deleteCmd = &cli.Command{
 		}
 
 		if !ctx.IsSet("config") {
-			procIDs, err := app.Delete(ctx.Context, list, args, names, tags, ids)
+			procIDs, err := app.Stop(ctx.Context, list, args, names, tags, ids)
 			if err != nil {
 				return xerr.NewWM(err, "delete")
 			}
+			fmt.Println("stopped", procIDs)
 
 			if len(procIDs) == 0 {
 				fmt.Println("Nothing to stop, leaving")
 				return nil
 			}
 
-			fmt.Println(lo.ToAnySlice(lo.Keys(list)))
+			procIDs, err = app.Delete(ctx.Context, procIDs...)
+			if err != nil {
+				return xerr.NewWM(err, "delete")
+			}
+			fmt.Println("deleted", procIDs)
 
 			return nil
 		}
@@ -77,12 +81,17 @@ var _deleteCmd = &cli.Command{
 			return xerr.NewWM(errList, "list by run configs", xerr.Fields{"configs": configs})
 		}
 
-		procIDs, err := app.Delete(ctx.Context, list, args, names, tags, ids)
+		procIDs, err := app.Stop(ctx.Context, list, args, names, tags, ids)
+		if err != nil {
+			return xerr.NewWM(err, "stop")
+		}
+		fmt.Println("stoped", procIDs)
+
+		procIDs, err = app.Delete(ctx.Context, procIDs...)
 		if err != nil {
 			return xerr.NewWM(err, "delete")
 		}
-
-		fmt.Println(lo.ToAnySlice(procIDs))
+		fmt.Println("deleted", procIDs)
 
 		return nil
 	},

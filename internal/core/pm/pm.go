@@ -49,12 +49,12 @@ func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig
 }
 
 // TODO: split into stop and delete
-func (app App) Delete(
+func (app App) Stop(
 	ctx context.Context,
 	procs map[db.ProcID]db.ProcData,
 	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
 ) ([]db.ProcID, error) {
-	procIDs := core.FilterProcs[uint64](
+	procIDs := core.FilterProcs[db.ProcID](
 		procs,
 		core.WithGeneric(args),
 		core.WithIDs(ids),
@@ -67,17 +67,23 @@ func (app App) Delete(
 		return []db.ProcID{}, nil
 	}
 
-	if err := app.client.Stop(ctx, procIDs); err != nil {
+	if err := app.client.Stop(ctx, lo.Map(procIDs, func(procID db.ProcID, _ int) uint64 {
+		return uint64(procID)
+	})); err != nil {
 		return nil, xerr.NewWM(err, "client.stop")
 	}
 
-	if errDelete := app.client.Delete(ctx, procIDs); errDelete != nil {
+	return procIDs, nil
+}
+
+func (app App) Delete(ctx context.Context, procIDs ...db.ProcID) ([]db.ProcID, error) {
+	if errDelete := app.client.Delete(ctx, lo.Map(procIDs, func(procID db.ProcID, _ int) uint64 {
+		return uint64(procID)
+	})); errDelete != nil {
 		return nil, xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
 	}
 
-	return lo.Map(procIDs, func(id uint64, _ int) db.ProcID {
-		return db.ProcID(id)
-	}), nil
+	return procIDs, nil
 }
 
 func (app App) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
