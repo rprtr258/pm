@@ -28,9 +28,7 @@ func mapStatus(status db.Status) (string, *int, time.Duration) {
 	case db.StatusRunning:
 		return color.GreenString("running"), &status.Pid, time.Since(status.StartTime)
 	case db.StatusStopped:
-		return color.YellowString("stopped"), nil, 0
-	case db.StatusErrored:
-		return color.RedString("errored"), nil, 0
+		return color.YellowString("stopped(%d)", status.ExitCode), nil, 0
 	case db.StatusInvalid:
 		return color.RedString("invalid(%T)", status), nil, 0
 	default:

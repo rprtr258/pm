@@ -257,13 +257,15 @@ func mapStatus(status db.Status) *api.ProcessStatus {
 	switch status.Status {
 	case db.StatusInvalid:
 		return &api.ProcessStatus{Status: &api.ProcessStatus_Invalid{}}
-	case db.StatusErrored:
-		// TODO: exit status code
-		return &api.ProcessStatus{Status: &api.ProcessStatus_Errored{}}
 	case db.StatusStarting:
 		return &api.ProcessStatus{Status: &api.ProcessStatus_Starting{}}
 	case db.StatusStopped:
-		return &api.ProcessStatus{Status: &api.ProcessStatus_Stopped{}}
+		return &api.ProcessStatus{Status: &api.ProcessStatus_Stopped{
+			Stopped: &api.StoppedProcessStatus{
+				ExitCode:  int64(status.ExitCode),
+				StoppedAt: timestamppb.New(status.StoppedAt),
+			},
+		}}
 	case db.StatusRunning:
 		return &api.ProcessStatus{Status: &api.ProcessStatus_Running{
 			Running: &api.RunningProcessStatus{

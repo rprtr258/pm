@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/go-daemon"
 )
@@ -59,18 +58,14 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 					continue
 				}
 
-				dbStatus := fun.If[db.Status](status.ExitStatus() == 0, db.NewStatusStopped(0)).
-					Else(db.NewStatusErrored()) // TODO: replace with stopped(exitCode)
+				dbStatus := db.NewStatusStopped(status.ExitStatus())
 
 				allProcs := dbHandle.List()
 
-				procID, procFound := lo.FindKeyBy(
-					allProcs,
-					func(_ db.ProcID, procData db.ProcData) bool {
-						return procData.Status.Status == db.StatusRunning &&
-							procData.Status.Pid == pid
-					},
-				)
+				procID, procFound := lo.FindKeyBy(allProcs, func(_ db.ProcID, procData db.ProcData) bool {
+					return procData.Status.Status == db.StatusRunning &&
+						procData.Status.Pid == pid
+				})
 				if !procFound {
 					continue
 				}

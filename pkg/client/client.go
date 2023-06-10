@@ -4,12 +4,11 @@ import (
 	"context"
 	"net"
 
+	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
-
-	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/api"
 	internal "github.com/rprtr258/pm/internal/core"
@@ -88,15 +87,12 @@ func (c Client) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
 
 func mapPbStatus(status *api.ProcessStatus) db.Status {
 	switch {
-	case status.GetErrored() != nil:
-		return db.NewStatusErrored()
 	case status.GetInvalid() != nil:
 		return db.NewStatusInvalid()
 	case status.GetStarting() != nil:
 		return db.NewStatusStarting()
 	case status.GetStopped() != nil:
-		// TODO: get exit code from status
-		return db.NewStatusStopped(0)
+		return db.NewStatusStopped(int(status.GetStopped().GetExitCode()))
 	case status.GetRunning() != nil:
 		stat := status.GetRunning()
 		return db.NewStatusRunning(

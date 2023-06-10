@@ -51,8 +51,7 @@ message ProcessStatus {
         google.protobuf.Empty Invalid = 1;
         google.protobuf.Empty Starting = 2;
         RunningProcessStatus Running = 3;
-        google.protobuf.Empty Stopped = 4;
-        google.protobuf.Empty Errored = 5;
+        StoppedProcessStatus Stopped = 4;
     };
 }
 
@@ -61,6 +60,11 @@ message RunningProcessStatus {
     google.protobuf.Timestamp start_time = 2;
     uint64 cpu = 3;
     uint64 memory = 4;
+}
+
+message StoppedProcessStatus {
+    int64 exit_code = 1;
+    google.protobuf.Timestamp stopped_at = 2;
 }
 
 message IDs {

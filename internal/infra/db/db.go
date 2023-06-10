@@ -18,7 +18,6 @@ const (
 	StatusStarting
 	StatusRunning
 	StatusStopped
-	StatusErrored
 )
 
 func (ps StatusType) String() string {
@@ -31,22 +30,19 @@ func (ps StatusType) String() string {
 		return "running"
 	case StatusStopped:
 		return "stopped"
-	case StatusErrored:
-		return "errored"
 	default:
 		return fmt.Sprintf("UNKNOWN(%d)", ps)
 	}
 }
 
 type Status struct {
-	StartTime time.Time  `json:"start_time"`
+	StartTime time.Time  `json:"start_time"` // StartTime, valid if running
 	Status    StatusType `json:"type"`
-	// nulls if not running
-	Pid int `json:"pid"`
-	// CPU usage percentage rounded to integer
-	CPU uint64 `json:"cpu"`
-	// Memory usage in bytes
-	Memory uint64 `json:"memory"`
+	Pid       int        `json:"pid"`        // PID, valid if running
+	CPU       uint64     `json:"cpu"`        // CPU usage percentage rounded to integer, valid if running
+	Memory    uint64     `json:"memory"`     // Memory usage in bytes, valid if running
+	ExitCode  int        `json:"exit_code"`  // ExitCode of the process, valid if stopped
+	StoppedAt time.Time  `json:"stopped_at"` // StoppedAt - time when the process stopped, valid if stopped
 }
 
 func NewStatusInvalid() Status {
@@ -73,14 +69,8 @@ func NewStatusRunning(startTime time.Time, pid int, cpu, memory uint64) Status {
 
 func NewStatusStopped(exitCode int) Status {
 	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusStopped,
-		// TODO: add exit code
-	}
-}
-
-func NewStatusErrored() Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusErrored,
+		Status:   StatusStopped,
+		ExitCode: exitCode,
 	}
 }
 

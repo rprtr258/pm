@@ -64,8 +64,6 @@ func WithStatuses(args []string) FilterProcsOption {
 			return db.StatusRunning
 		case "stopped":
 			return db.StatusStopped
-		case "errored":
-			return db.StatusErrored
 		default:
 			log.Printf("unknown status %q\n", status)
 			return lo.Empty[db.StatusType]()
