@@ -67,7 +67,7 @@ var _startCmd = &cli.Command{
 			return errLoadConfigs
 		}
 
-		names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
+		names := lo.FilterMap(configs, func(cfg core.RunConfig, _ int) (string, bool) {
 			return cfg.Name.Unpack()
 		})
 

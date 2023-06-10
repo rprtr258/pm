@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -105,16 +106,16 @@ type runCmd struct {
 func runConfigs(
 	ctx context.Context,
 	names []string,
-	configs []RunConfig,
+	configs []core.RunConfig,
 	client client.Client,
 ) error {
 	if len(names) == 0 {
-		return xerr.Combine(lo.Map(configs, func(config RunConfig, _ int) error {
+		return xerr.Combine(lo.Map(configs, func(config core.RunConfig, _ int) error {
 			return run(ctx, config, client)
 		})...)
 	}
 
-	configsByName := make(map[string]RunConfig, len(names))
+	configsByName := make(map[string]core.RunConfig, len(names))
 	for _, cfg := range configs {
 		if name, ok := cfg.Name.Unpack(); !ok || !lo.Contains(names, name) {
 			continue
@@ -134,14 +135,14 @@ func runConfigs(
 		return merr
 	}
 
-	return xerr.Combine(lo.MapToSlice(configsByName, func(_ string, config RunConfig) error {
+	return xerr.Combine(lo.MapToSlice(configsByName, func(_ string, config core.RunConfig) error {
 		return run(ctx, config, client)
 	})...)
 }
 
 func run(
 	ctx context.Context,
-	config RunConfig,
+	config core.RunConfig,
 	client client.Client,
 ) error {
 	command, err := exec.LookPath(config.Command)
@@ -179,7 +180,7 @@ func execRun(ctx context.Context, client client.Client, cmd runCmd) error {
 		return xerr.NewWM(err, "get cwd")
 	}
 
-	return run(ctx, RunConfig{
+	return run(ctx, core.RunConfig{
 		Command: cmd.args[0],
 		Args:    cmd.args[1:],
 		Name:    fun.Optional(cmd.name, cmd.name != ""),

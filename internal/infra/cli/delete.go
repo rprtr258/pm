@@ -1,16 +1,11 @@
 package cli
 
 import (
-	"context"
-	"fmt"
-
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/xerr"
 
-	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/db"
+	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -35,12 +30,10 @@ var _deleteCmd = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		delCmd := deleteCmd{
-			names: ctx.StringSlice("name"),
-			tags:  ctx.StringSlice("tag"),
-			ids:   ctx.Uint64Slice("id"),
-			args:  ctx.Args().Slice(),
-		}
+		names := ctx.StringSlice("name")
+		tags := ctx.StringSlice("tag")
+		ids := ctx.Uint64Slice("id")
+		args := ctx.Args().Slice()
 
 		client, errList := client.NewGrpcClient()
 		if errList != nil {
@@ -48,13 +41,19 @@ var _deleteCmd = &cli.Command{
 		}
 		defer deferErr(client.Close)()
 
+		app := pm.New(client)
+
 		list, errList := client.List(ctx.Context)
 		if errList != nil {
 			return xerr.NewWM(errList, "server.list")
 		}
 
 		if !ctx.IsSet("config") {
-			return delCmd.Run(ctx.Context, client, list)
+			if err := app.Delete(ctx.Context, list, args, names, tags, ids); err != nil {
+				return xerr.NewWM(err, "delete")
+			}
+
+			return nil
 		}
 
 		configs, errLoadConfigs := loadConfigs(ctx.String("config"))
@@ -62,55 +61,15 @@ var _deleteCmd = &cli.Command{
 			return errLoadConfigs
 		}
 
-		names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
-			return cfg.Name.Unpack()
-		})
+		list, errList = app.ListByRunConfigs(ctx.Context, configs)
+		if errList != nil {
+			return xerr.NewWM(errList, "list by run configs", xerr.Fields{"configs": configs})
+		}
 
-		configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
-			return lo.Contains(names, procData.Name)
-		})
+		if err := app.Delete(ctx.Context, list, args, names, tags, ids); err != nil {
+			return xerr.NewWM(err, "delete")
+		}
 
-		return delCmd.Run(ctx.Context, client, configList)
-	},
-}
-
-type deleteCmd struct {
-	names []string
-	tags  []string
-	ids   []uint64
-	args  []string
-}
-
-func (cmd *deleteCmd) Run(
-	ctx context.Context,
-	client client.Client,
-	procs map[db.ProcID]db.ProcData,
-) error {
-	procIDs := core.FilterProcs[uint64](
-		procs,
-		core.WithGeneric(cmd.args),
-		core.WithIDs(cmd.ids),
-		core.WithNames(cmd.names),
-		core.WithTags(cmd.tags),
-		core.WithAllIfNoFilters,
-	)
-
-	if len(procIDs) == 0 {
-		fmt.Println("Nothing to stop, leaving")
 		return nil
-	}
-
-	fmt.Printf("Stopping: %v\n", procIDs)
-
-	if err := client.Stop(ctx, procIDs); err != nil {
-		return xerr.NewWM(err, "client.stop")
-	}
-
-	fmt.Printf("Removing: %v\n", procIDs)
-
-	if errDelete := client.Delete(ctx, procIDs); errDelete != nil {
-		return xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
-	}
-
-	return nil
+	},
 }

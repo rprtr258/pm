@@ -13,6 +13,7 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/log"
+	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/xerr"
 )
 
@@ -34,43 +35,7 @@ func ensureDir(dirname string) error {
 	return nil
 }
 
-type RunConfig struct {
-	Args    []string
-	Tags    []string
-	Command string
-	Cwd     string
-	Name    fun.Option[string]
-}
-
-func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
-	var tmp struct {
-		Name    *string  `json:"name"`
-		Cwd     string   `json:"cwd"`
-		Command string   `json:"command"`
-		Args    []any    `json:"args"`
-		Tags    []string `json:"tags"`
-	}
-
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return xerr.NewWM(err, "json.unmarshal")
-	}
-
-	*cfg = RunConfig{
-		Name:    fun.FromPtr(tmp.Name),
-		Cwd:     tmp.Cwd,
-		Command: tmp.Command,
-		Args: lo.Map(
-			tmp.Args,
-			func(elem any, _ int) string {
-				return fmt.Sprint(elem)
-			},
-		),
-		Tags: tmp.Tags,
-	}
-
-	return nil
-}
-
+// TODO: move to core
 var configFlag = &cli.StringFlag{
 	Name:      "config",
 	Usage:     "config file to use",
@@ -101,7 +66,7 @@ type configScanDTO struct {
 	Tags    []string
 }
 
-func loadConfigs(filename string) ([]RunConfig, error) {
+func loadConfigs(filename string) ([]core.RunConfig, error) {
 	if !isConfigFile(filename) {
 		return nil, xerr.NewM(
 			"invalid config file",
@@ -121,8 +86,8 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	// TODO: validate configs
-	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
-		return RunConfig{
+	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) core.RunConfig {
+		return core.RunConfig{
 			Name:    fun.FromPtr(config.Name),
 			Command: config.Command,
 			Args: lo.Map(config.Args, func(arg any, i int) string { //nolint:varnamelen // i is index
