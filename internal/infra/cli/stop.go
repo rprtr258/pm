@@ -10,6 +10,7 @@ import (
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -103,7 +104,9 @@ func (cmd *stopCmd) Run(
 	client client.Client,
 	configList map[db.ProcID]db.ProcData,
 ) error {
-	ids := core.FilterProcs[uint64](
+	app := pm.New(client)
+
+	ids := core.FilterProcs[db.ProcID](
 		configList,
 		core.WithGeneric(cmd.args),
 		core.WithIDs(cmd.ids),
@@ -117,13 +120,12 @@ func (cmd *stopCmd) Run(
 		return nil
 	}
 
-	if err := client.Stop(ctx, ids); err != nil {
+	procIDs, err := app.Stop(ctx, configList, cmd.args, cmd.names, cmd.tags, cmd.ids)
+	if err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}
 
-	for _, id := range ids {
-		fmt.Println(id)
-	}
+	fmt.Println(lo.ToAnySlice(procIDs)...)
 
 	return nil
 }
