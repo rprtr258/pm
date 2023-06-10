@@ -22,9 +22,9 @@ type filterConfig struct {
 	allIfNoFilters bool
 }
 
-type filterOption func(*filterConfig)
+type FilterProcsOption func(*filterConfig)
 
-func WithGeneric(args []string) filterOption {
+func WithGeneric(args []string) FilterProcsOption {
 	ids := lo.FilterMap(args, func(id string, _ int) (db.ProcID, bool) {
 		procID, err := strconv.ParseUint(id, 10, 64)
 		if err != nil {
@@ -41,19 +41,19 @@ func WithGeneric(args []string) filterOption {
 	}
 }
 
-func WithNames(args []string) filterOption {
+func WithNames(args []string) FilterProcsOption {
 	return func(cfg *filterConfig) {
 		cfg.filter.Names = append(cfg.filter.Names, args...)
 	}
 }
 
-func WithTags(args []string) filterOption {
+func WithTags(args []string) FilterProcsOption {
 	return func(cfg *filterConfig) {
 		cfg.filter.Tags = append(cfg.filter.Tags, args...)
 	}
 }
 
-func WithStatuses(args []string) filterOption {
+func WithStatuses(args []string) FilterProcsOption {
 	statuses := lo.Map(args, func(status string, _ int) db.StatusType {
 		switch status {
 		case "invalid":
@@ -77,7 +77,7 @@ func WithStatuses(args []string) filterOption {
 	}
 }
 
-func WithIDs[T uint64](args []T) filterOption {
+func WithIDs[T uint64](args []T) FilterProcsOption {
 	return func(cfg *filterConfig) {
 		cfg.filter.IDs = append(cfg.filter.IDs, lo.Map(args, func(id T, _ int) db.ProcID {
 			return db.ProcID(id)
@@ -89,8 +89,8 @@ func WithAllIfNoFilters(cfg *filterConfig) {
 	cfg.allIfNoFilters = true
 }
 
-func FilterProcs[T ~uint64](procs map[db.ProcID]db.ProcData, opts ...filterOption) []T {
-	cfg := filterConfig{}
+func FilterProcs[T ~uint64](procs map[db.ProcID]db.ProcData, opts ...FilterProcsOption) []T {
+	var cfg filterConfig
 	for _, opt := range opts {
 		opt(&cfg)
 	}
@@ -100,13 +100,13 @@ func FilterProcs[T ~uint64](procs map[db.ProcID]db.ProcData, opts ...filterOptio
 		len(cfg.filter.Tags) == 0 &&
 		len(cfg.filter.Statuses) == 0 &&
 		len(cfg.filter.IDs) == 0 {
-		if cfg.allIfNoFilters {
-			return lo.Map(lo.Keys(procs), func(id db.ProcID, _ int) T {
-				return T(id)
-			})
-		} else {
+		if !cfg.allIfNoFilters {
 			return nil
 		}
+
+		return lo.Map(lo.Keys(procs), func(id db.ProcID, _ int) T {
+			return T(id)
+		})
 	}
 
 	return fun.FilterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (T, bool) {
