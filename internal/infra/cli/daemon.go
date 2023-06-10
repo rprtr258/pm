@@ -2,10 +2,10 @@ package cli
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -24,7 +24,26 @@ var _daemonCmd = &cli.Command{
 			Aliases: []string{"restart"},
 			Usage:   "launch daemon process",
 			Action: func(ctx *cli.Context) error {
-				return daemonStart()
+				if errKill := pm_daemon.Kill(_daemonCtx, core.SocketDaemonRPC); errKill != nil {
+					return xerr.NewWM(errKill, "kill daemon process")
+				}
+
+				daemonProcess, errReborn := _daemonCtx.Reborn()
+				if errReborn != nil {
+					return xerr.NewWM(errReborn, "reborn daemon")
+				}
+
+				if daemonProcess != nil { // parent
+					fmt.Println(daemonProcess.Pid)
+					if err := _daemonCtx.Release(); err != nil {
+						return xerr.NewWM(err, "daemon release")
+					}
+					return nil
+				}
+
+				defer deferErr(_daemonCtx.Release)()
+
+				return daemonRun()
 			},
 		},
 		{
@@ -80,30 +99,6 @@ var _daemonCtx = &daemon.Context{
 	Credential:  nil,
 }
 
-func daemonStart() error {
-	if errKill := pm_daemon.Kill(_daemonCtx, core.SocketDaemonRPC); errKill != nil {
-		return xerr.NewWM(errKill, "kill daemon process")
-	}
-
-	daemonProcess, errReborn := _daemonCtx.Reborn()
-	if errReborn != nil {
-		return xerr.NewWM(errReborn, "reborn daemon")
-	}
-
-	if daemonProcess != nil { // parent
-		fmt.Println(daemonProcess.Pid)
-		if err := _daemonCtx.Release(); err != nil {
-			return xerr.NewWM(err, "daemon release")
-		}
-		return nil
-	}
-
-	// child/daemon
-	defer deferErr(_daemonCtx.Release)()
-
-	return daemonRun()
-}
-
 func daemonStop() error {
 	if errKill := pm_daemon.Kill(_daemonCtx, core.SocketDaemonRPC); errKill != nil {
 		return xerr.NewWM(errKill, "kill daemon process")
@@ -128,7 +123,7 @@ func daemonRun() error {
 func deferErr(closer func() error) func() {
 	return func() {
 		if err := closer(); err != nil {
-			log.Println("some defer action failed:", err)
+			log.Errorf("some defer action failed:", log.F{"error": err.Error()})
 		}
 	}
 }

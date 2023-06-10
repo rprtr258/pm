@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"net"
 	"os"
@@ -37,7 +38,15 @@ func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
 		return xerr.NewWM(errDBNew, "create db")
 	}
 
-	srv := grpc.NewServer()
+	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(func(
+		ctx context.Context,
+		req any,
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (any, error) {
+		log.Infof(info.FullMethod, log.F{"req": req})
+		return nil, nil
+	}))
 	api.RegisterDaemonServer(srv, &daemonServer{
 		UnimplementedDaemonServer: api.UnimplementedDaemonServer{},
 		db:                        dbHandle,
@@ -92,11 +101,32 @@ func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
 		}
 	}()
 
-	if errServe := srv.Serve(sock); errServe != nil {
-		return xerr.NewWM(errServe, "serve")
-	}
+	doneCh := make(chan error, 1)
+	go func() {
+		if errServe := srv.Serve(sock); errServe != nil {
+			doneCh <- xerr.NewWM(errServe, "serve")
+		} else {
+			doneCh <- nil
+		}
+	}()
+	defer func() {
+		if errRm := os.Remove(core.SocketDaemonRPC); errRm != nil && !errors.Is(errRm, os.ErrNotExist) {
+			log.Fatalf("remove pid file", log.F{
+				"file":  core.FileDaemonPid,
+				"error": errRm.Error(),
+			})
+		}
+	}()
 
-	return nil
+	sigsCh := make(chan os.Signal, 1)
+	signal.Notify(sigsCh, syscall.SIGINT)
+
+	select {
+	case <-sigsCh:
+		return nil
+	case err := <-doneCh:
+		return err
+	}
 }
 
 // Kill daemon.
