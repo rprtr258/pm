@@ -2,7 +2,6 @@ package pm
 
 import (
 	"context"
-	"fmt"
 	"os/exec"
 
 	"github.com/rprtr258/xerr"
@@ -49,11 +48,12 @@ func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig
 	return configList, nil
 }
 
+// TODO: split into stop and delete
 func (app App) Delete(
 	ctx context.Context,
 	procs map[db.ProcID]db.ProcData,
 	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
-) error {
+) ([]db.ProcID, error) {
 	procIDs := core.FilterProcs[uint64](
 		procs,
 		core.WithGeneric(args),
@@ -64,23 +64,20 @@ func (app App) Delete(
 	)
 
 	if len(procIDs) == 0 {
-		fmt.Println("Nothing to stop, leaving")
-		return nil
+		return []db.ProcID{}, nil
 	}
-
-	fmt.Printf("Stopping: %v\n", procIDs)
 
 	if err := app.client.Stop(ctx, procIDs); err != nil {
-		return xerr.NewWM(err, "client.stop")
+		return nil, xerr.NewWM(err, "client.stop")
 	}
-
-	fmt.Printf("Removing: %v\n", procIDs)
 
 	if errDelete := app.client.Delete(ctx, procIDs); errDelete != nil {
-		return xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
+		return nil, xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
 	}
 
-	return nil
+	return lo.Map(procIDs, func(id uint64, _ int) db.ProcID {
+		return db.ProcID(id)
+	}), nil
 }
 
 func (app App) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
@@ -132,7 +129,7 @@ func (app App) Create(ctx context.Context, configs ...core.RunConfig) ([]db.Proc
 	return procIDs, err
 }
 
-func (app App) Run(ctx context.Context, procIDs ...db.ProcID) error {
+func (app App) Start(ctx context.Context, procIDs ...db.ProcID) error {
 	procIDs2 := lo.Map(procIDs, func(procID db.ProcID, _ int) uint64 {
 		return uint64(procID)
 	})

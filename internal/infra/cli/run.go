@@ -112,7 +112,7 @@ var _runCmd = &cli.Command{
 				return xerr.NewWM(errRun, "invalid procIDs count", xerr.Fields{"procIDs": procIDs})
 			}
 
-			if err := app.Run(ctx.Context, procIDs...); err != nil {
+			if err := app.Start(ctx.Context, procIDs...); err != nil {
 				return xerr.NewWM(err, "run proc", xerr.Fields{"procID": procIDs[0]})
 			}
 
@@ -134,14 +134,14 @@ var _runCmd = &cli.Command{
 				return xerr.NewWM(err, "create all procs from config", xerr.Fields{"created procIDs": procIDs})
 			}
 
-			err = app.Run(ctx.Context, procIDs...)
+			err = app.Start(ctx.Context, procIDs...)
 			if err != nil {
 				return xerr.NewWM(err, "run procs", xerr.Fields{"procIDs": procIDs})
 			}
 
-			for _, procID := range procIDs {
-				fmt.Println(procID)
-			}
+			fmt.Println(lo.ToAnySlice(procIDs)...)
+
+			return nil
 		}
 
 		configsByName := make(map[string]core.RunConfig, len(names))
@@ -169,14 +169,13 @@ var _runCmd = &cli.Command{
 			return xerr.NewWM(err, "run procs filtered by name from config", xerr.Fields{"names": names, "created procIDs": procIDs})
 		}
 
-		err = app.Run(ctx.Context, procIDs...)
+		err = app.Start(ctx.Context, procIDs...)
 		if err != nil {
 			return xerr.NewWM(err, "run procs", xerr.Fields{"procIDs": procIDs})
 		}
 
-		for _, procID := range procIDs {
-			fmt.Println(procID)
-		}
+		fmt.Println(lo.ToAnySlice(procIDs)...)
+
 		return nil
 	},
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/pm"
+	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -58,7 +59,7 @@ var _startCmd = &cli.Command{
 		}
 
 		if !ctx.IsSet("config") {
-			procIDs := core.FilterProcs[uint64](
+			procIDs := core.FilterProcs[db.ProcID](
 				list,
 				core.WithAllIfNoFilters,
 				core.WithGeneric(args),
@@ -73,7 +74,7 @@ var _startCmd = &cli.Command{
 				return nil
 			}
 
-			if err := client.Start(ctx.Context, procIDs); err != nil {
+			if err := app.Start(ctx.Context, procIDs...); err != nil {
 				return xerr.NewWM(err, "client.start")
 			}
 		}
@@ -89,7 +90,7 @@ var _startCmd = &cli.Command{
 		}
 
 		// TODO: reuse filter options
-		procIDs := core.FilterProcs[uint64](
+		procIDs := core.FilterProcs[db.ProcID](
 			filteredList,
 			core.WithAllIfNoFilters,
 			core.WithGeneric(args),
@@ -104,7 +105,7 @@ var _startCmd = &cli.Command{
 			return nil
 		}
 
-		if err := client.Start(ctx.Context, procIDs); err != nil {
+		if err := app.Start(ctx.Context, procIDs...); err != nil {
 			return xerr.NewWM(err, "client.start")
 		}
 
