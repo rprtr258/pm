@@ -71,7 +71,7 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 				}
 
 				if err := dbHandle.SetStatus(procID, dbStatus); err != nil {
-					if _, ok := xerr.As[db.ErrorProcNotFound](err); ok {
+					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
 						log.Printf("proc %d not found while trying to set status %v\n", procID, dbStatus)
 					} else {
 						log.Printf("[ERROR] set status: %s", err.Error())

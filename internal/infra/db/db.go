@@ -1,7 +1,6 @@
 package db
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -9,6 +8,7 @@ import (
 	"github.com/rprtr258/simpdb"
 	"github.com/rprtr258/simpdb/storages"
 	"github.com/rprtr258/xerr"
+	"github.com/samber/lo"
 )
 
 type StatusType int
@@ -82,6 +82,10 @@ func NewStatus() Status {
 
 type ProcID uint64
 
+func (id ProcID) String() string {
+	return strconv.FormatUint(uint64(id), 10) //nolint:gomnd // decimal id
+}
+
 type ProcData struct {
 	// Command - executable to run
 	Command string `json:"command"`
@@ -103,7 +107,7 @@ type ProcData struct {
 }
 
 func (p ProcData) ID() string {
-	return strconv.FormatUint(uint64(p.ProcID), 10) //nolint:gomnd // decimal id
+	return p.ProcID.String()
 }
 
 type Handle struct {
@@ -135,25 +139,24 @@ func (handle Handle) Close() error {
 }
 
 func (handle Handle) AddProc(metadata ProcData) (ProcID, error) {
-	maxProcID := uint64(0)
-	handle.procs.Iter(func(id string, _ ProcData) bool {
-		procID, _ := strconv.ParseUint(id, 10, 64) // TODO: remove, change ids to ints
-		if procID > maxProcID {
-			maxProcID = procID
+	maxProcID := ProcID(0)
+	handle.procs.Iter(func(_ string, proc ProcData) bool {
+		if proc.ProcID > maxProcID {
+			maxProcID = proc.ProcID
 		}
 
 		return true
 	})
 
 	// TODO: remove mutation?
-	metadata.ProcID = ProcID(maxProcID + 1)
+	metadata.ProcID = maxProcID + 1
 
 	if !handle.procs.Insert(metadata) {
-		return 0, errors.New("insert: already present")
+		return 0, xerr.NewM("insert: already present")
 	}
 
 	if err := handle.procs.Flush(); err != nil {
-		return 0, xerr.NewWM(err, "db flush")
+		return 0, xerr.NewWM(err, "insert: db flush")
 	}
 
 	return metadata.ProcID, nil
@@ -163,24 +166,24 @@ func (handle Handle) UpdateProc(metadata ProcData) error {
 	handle.procs.Upsert(metadata)
 
 	if err := handle.procs.Flush(); err != nil {
-		return xerr.NewWM(err, "db flush")
+		return xerr.NewWM(err, "update: db flush")
 	}
 
 	return nil
 }
 
 func (handle Handle) GetProcs(ids []ProcID) ([]ProcData, error) {
-	lookupTable := make(map[string]struct{}, len(ids))
-	for _, id := range ids {
-		lookupTable[strconv.FormatUint(uint64(id), 10)] = struct{}{}
-	}
+	lookupTable := lo.SliceToMap(ids, func(id ProcID) (string, struct{}) {
+		return id.String(), struct{}{}
+	})
 
-	res := handle.procs.Where(func(id string, _ ProcData) bool {
-		_, ok := lookupTable[id]
-		return ok
-	}).List().All()
-
-	return res, nil
+	return handle.procs.
+		Where(func(id string, _ ProcData) bool {
+			_, ok := lookupTable[id]
+			return ok
+		}).
+		List().
+		All(), nil
 }
 
 func (handle Handle) List() map[ProcID]ProcData {
@@ -189,45 +192,43 @@ func (handle Handle) List() map[ProcID]ProcData {
 		res[pd.ProcID] = pd
 		return true
 	})
-
 	return res
 }
 
-type ErrorProcNotFound ProcID
+type ProcNotFoundError ProcID
 
-func (err ErrorProcNotFound) Error() string {
+func (err ProcNotFoundError) Error() string {
 	return fmt.Sprintf("proc #%d not found", err)
 }
 
 func (handle Handle) SetStatus(procID ProcID, newStatus Status) error {
-	procDataMaybe := handle.procs.Get(strconv.FormatUint(uint64(procID), 10)) //nolint:gomnd // decimal
+	procDataMaybe := handle.procs.Get(procID.String())
 	if !procDataMaybe.Valid {
-		return ErrorProcNotFound(procID)
+		return ProcNotFoundError(procID)
 	}
 
 	procDataMaybe.Value.Status = newStatus
 	handle.procs.Upsert(procDataMaybe.Value)
 
 	if err := handle.procs.Flush(); err != nil {
-		return xerr.NewWM(err, "db flush")
+		return xerr.NewWM(err, "set status: db flush")
 	}
 
 	return nil
 }
 
 func (handle Handle) Delete(procIDs []uint64) error {
-	lookupTable := make(map[uint64]struct{}, len(procIDs))
-	for _, procID := range procIDs {
-		lookupTable[procID] = struct{}{}
-	}
+	lookupTable := lo.SliceToMap(procIDs, func(id uint64) (ProcID, struct{}) {
+		return ProcID(id), struct{}{}
+	})
 
 	handle.procs.Where(func(_ string, pd ProcData) bool {
-		_, ok := lookupTable[uint64(pd.ProcID)]
+		_, ok := lookupTable[pd.ProcID]
 		return ok
 	}).Delete()
 
 	if err := handle.procs.Flush(); err != nil {
-		return xerr.NewWM(err, "db flush")
+		return xerr.NewWM(err, "delete: db flush")
 	}
 
 	return nil

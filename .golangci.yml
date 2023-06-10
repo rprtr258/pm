@@ -159,7 +159,7 @@ linters-settings:
 
   nlreturn:
     # Size of the block (including return statement that is still "OK") so no return split required.
-    block-size: 5
+    block-size: 6
 
   wrapcheck:
     # An array of strings that specify globs of packages to ignore.
