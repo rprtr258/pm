@@ -6,8 +6,10 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"reflect"
 	"syscall"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
@@ -44,8 +46,22 @@ func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
-		log.Infof(info.FullMethod, log.F{"req": req})
-		return nil, nil
+		reqType := reflect.TypeOf(req).Elem()
+		reqVal := reflect.ValueOf(req).Elem()
+
+		fields := make(log.F, reqType.NumField()+1)
+		fields["@type"] = reqType.Name()
+		for i := 0; i < reqType.NumField(); i++ {
+			field := reqType.Field(i)
+			if !field.IsExported() {
+				continue
+			}
+
+			fields[field.Name] = spew.Sprint(reqVal.Field(i).Interface())
+		}
+
+		log.Infof(info.FullMethod, fields)
+		return handler(ctx, req)
 	}))
 	api.RegisterDaemonServer(srv, &daemonServer{
 		UnimplementedDaemonServer: api.UnimplementedDaemonServer{},
