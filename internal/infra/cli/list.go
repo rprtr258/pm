@@ -120,7 +120,7 @@ func list(
 			color.New(color.FgCyan, color.Bold).Sprint(proc.ProcID),
 			proc.Name,
 			status,
-			internal.IfNotNil(pid, strconv.Itoa),
+			strconv.Itoa(internal.Deref(pid)),
 			lo.If(pid == nil, "").
 				Else(uptime.Truncate(time.Second).String()),
 			fmt.Sprint(proc.Tags),
