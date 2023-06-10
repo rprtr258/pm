@@ -103,7 +103,11 @@ type configScanDTO struct {
 
 func loadConfigs(filename string) ([]RunConfig, error) {
 	if !isConfigFile(filename) {
-		return nil, xerr.NewM("invalid config file", xerr.Fields{"configFilename": filename})
+		return nil, xerr.NewM(
+			"invalid config file",
+			xerr.Fields{"configFilename": filename},
+			xerr.Stacktrace(0),
+		)
 	}
 
 	jsonText, err := newVM().EvaluateFile(filename)

@@ -9,7 +9,7 @@ require (
 	github.com/google/go-jsonnet v0.20.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/fun v0.0.4
-	github.com/rprtr258/log v0.0.5
+	github.com/rprtr258/log v0.0.6
 	github.com/rprtr258/simpdb v0.5.0
 	github.com/rprtr258/xerr v0.0.7
 	github.com/samber/lo v1.38.1
