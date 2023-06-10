@@ -18,19 +18,18 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/core/pm"
-	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
-func mapStatus(status db.Status) (string, *int, time.Duration) {
+func mapStatus(status core.Status) (string, *int, time.Duration) {
 	switch status.Status {
-	case db.StatusStarting:
+	case core.StatusStarting:
 		return color.YellowString("starting"), nil, 0
-	case db.StatusRunning:
+	case core.StatusRunning:
 		return color.GreenString("running"), &status.Pid, time.Since(status.StartTime)
-	case db.StatusStopped:
+	case core.StatusStopped:
 		return color.YellowString("stopped(%d)", status.ExitCode), nil, 0
-	case db.StatusInvalid:
+	case core.StatusInvalid:
 		return color.RedString("invalid(%T)", status), nil, 0
 	default:
 		return color.RedString("BROKEN(%T)", status), nil, 0
@@ -93,7 +92,7 @@ func list(
 		return xerr.NewWM(err, "list server call")
 	}
 
-	procIDsToShow := core.FilterProcs[db.ProcID](
+	procIDsToShow := core.FilterProcs[core.ProcID](
 		list,
 		core.WithAllIfNoFilters,
 		core.WithGeneric(genericFilters),

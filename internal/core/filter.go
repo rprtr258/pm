@@ -7,14 +7,13 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core/fun"
-	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 type filter struct {
 	Names    []string
 	Tags     []string
-	Statuses []db.StatusType
-	IDs      []db.ProcID
+	Statuses []StatusType
+	IDs      []ProcID
 }
 
 type filterConfig struct {
@@ -25,13 +24,13 @@ type filterConfig struct {
 type FilterProcsOption func(*filterConfig)
 
 func WithGeneric(args []string) FilterProcsOption {
-	ids := lo.FilterMap(args, func(id string, _ int) (db.ProcID, bool) {
+	ids := lo.FilterMap(args, func(id string, _ int) (ProcID, bool) {
 		procID, err := strconv.ParseUint(id, 10, 64) //nolint:gomnd // parse id as decimal uint64
 		if err != nil {
 			return 0, false
 		}
 
-		return db.ProcID(procID), true
+		return ProcID(procID), true
 	})
 
 	return func(cfg *filterConfig) {
@@ -54,19 +53,19 @@ func WithTags(args []string) FilterProcsOption {
 }
 
 func WithStatuses(args []string) FilterProcsOption {
-	statuses := lo.Map(args, func(status string, _ int) db.StatusType {
+	statuses := lo.Map(args, func(status string, _ int) StatusType {
 		switch status {
 		case "invalid":
-			return db.StatusInvalid
+			return StatusInvalid
 		case "starting":
-			return db.StatusStarting
+			return StatusStarting
 		case "running":
-			return db.StatusRunning
+			return StatusRunning
 		case "stopped":
-			return db.StatusStopped
+			return StatusStopped
 		default:
 			log.Printf("unknown status %q\n", status)
-			return lo.Empty[db.StatusType]()
+			return lo.Empty[StatusType]()
 		}
 	})
 
@@ -77,8 +76,8 @@ func WithStatuses(args []string) FilterProcsOption {
 
 func WithIDs[T uint64](args []T) FilterProcsOption {
 	return func(cfg *filterConfig) {
-		cfg.filter.IDs = append(cfg.filter.IDs, lo.Map(args, func(id T, _ int) db.ProcID {
-			return db.ProcID(id)
+		cfg.filter.IDs = append(cfg.filter.IDs, lo.Map(args, func(id T, _ int) ProcID {
+			return ProcID(id)
 		})...)
 	}
 }
@@ -87,7 +86,7 @@ func WithAllIfNoFilters(cfg *filterConfig) {
 	cfg.allIfNoFilters = true
 }
 
-func FilterProcs[T ~uint64](procs map[db.ProcID]db.ProcData, opts ...FilterProcsOption) []T {
+func FilterProcs[T ~uint64](procs map[ProcID]ProcData, opts ...FilterProcsOption) []T {
 	var cfg filterConfig
 	for _, opt := range opts {
 		opt(&cfg)
@@ -102,12 +101,12 @@ func FilterProcs[T ~uint64](procs map[db.ProcID]db.ProcData, opts ...FilterProcs
 			return nil
 		}
 
-		return lo.Map(lo.Keys(procs), func(id db.ProcID, _ int) T {
+		return lo.Map(lo.Keys(procs), func(id ProcID, _ int) T {
 			return T(id)
 		})
 	}
 
-	return fun.FilterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (T, bool) {
+	return fun.FilterMapToSlice(procs, func(procID ProcID, proc ProcData) (T, bool) {
 		return T(procID), lo.Contains(cfg.filter.Names, proc.Name) ||
 			lo.Some(cfg.filter.Tags, proc.Tags) ||
 			lo.Contains(cfg.filter.Statuses, proc.Status.Status) ||

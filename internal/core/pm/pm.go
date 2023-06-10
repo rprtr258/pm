@@ -9,7 +9,6 @@ import (
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -31,7 +30,7 @@ func (app App) CheckDaemon(ctx context.Context) error {
 	return nil
 }
 
-func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig) (map[db.ProcID]db.ProcData, error) {
+func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig) (map[core.ProcID]core.ProcData, error) {
 	list, errList := app.client.List(ctx)
 	if errList != nil {
 		return nil, xerr.NewWM(errList, "ListByRunConfigs: list procs")
@@ -41,7 +40,7 @@ func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig
 		return cfg.Name.Unpack()
 	})
 
-	configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
+	configList := lo.PickBy(list, func(_ core.ProcID, procData core.ProcData) bool {
 		return lo.Contains(procNames, procData.Name)
 	})
 
@@ -50,10 +49,10 @@ func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig
 
 func (app App) Stop(
 	ctx context.Context,
-	procs map[db.ProcID]db.ProcData,
+	procs map[core.ProcID]core.ProcData,
 	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
-) ([]db.ProcID, error) {
-	procIDs := core.FilterProcs[db.ProcID](
+) ([]core.ProcID, error) {
+	procIDs := core.FilterProcs[core.ProcID](
 		procs,
 		core.WithGeneric(args),
 		core.WithIDs(ids),
@@ -63,10 +62,10 @@ func (app App) Stop(
 	)
 
 	if len(procIDs) == 0 {
-		return []db.ProcID{}, nil
+		return []core.ProcID{}, nil
 	}
 
-	if err := app.client.Stop(ctx, lo.Map(procIDs, func(procID db.ProcID, _ int) uint64 {
+	if err := app.client.Stop(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
 		return uint64(procID)
 	})); err != nil {
 		return nil, xerr.NewWM(err, "client.stop")
@@ -75,8 +74,8 @@ func (app App) Stop(
 	return procIDs, nil
 }
 
-func (app App) Delete(ctx context.Context, procIDs ...db.ProcID) ([]db.ProcID, error) {
-	if errDelete := app.client.Delete(ctx, lo.Map(procIDs, func(procID db.ProcID, _ int) uint64 {
+func (app App) Delete(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcID, error) {
+	if errDelete := app.client.Delete(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
 		return uint64(procID)
 	})); errDelete != nil {
 		return nil, xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
@@ -85,7 +84,7 @@ func (app App) Delete(ctx context.Context, procIDs ...db.ProcID) ([]db.ProcID, e
 	return procIDs, nil
 }
 
-func (app App) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
+func (app App) List(ctx context.Context) (map[core.ProcID]core.ProcData, error) {
 	list, errList := app.client.List(ctx)
 	if errList != nil {
 		return nil, xerr.NewWM(errList, "List: list procs")
@@ -97,9 +96,9 @@ func (app App) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
 // Run - create processes, returns ids of created processes.
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
-func (app App) Create(ctx context.Context, configs ...core.RunConfig) ([]db.ProcID, error) {
+func (app App) Create(ctx context.Context, configs ...core.RunConfig) ([]core.ProcID, error) {
 	var err error
-	procIDs := make([]db.ProcID, 0, len(configs))
+	procIDs := make([]core.ProcID, 0, len(configs))
 	for _, config := range configs {
 		command, errLook := exec.LookPath(config.Command)
 		if errLook != nil {
@@ -128,14 +127,14 @@ func (app App) Create(ctx context.Context, configs ...core.RunConfig) ([]db.Proc
 			continue
 		}
 
-		procIDs = append(procIDs, db.ProcID(procID))
+		procIDs = append(procIDs, core.ProcID(procID))
 	}
 
 	return procIDs, err
 }
 
-func (app App) Start(ctx context.Context, procIDs ...db.ProcID) error {
-	procIDs2 := lo.Map(procIDs, func(procID db.ProcID, _ int) uint64 {
+func (app App) Start(ctx context.Context, procIDs ...core.ProcID) error {
+	procIDs2 := lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
 		return uint64(procID)
 	})
 

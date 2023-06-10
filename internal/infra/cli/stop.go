@@ -11,7 +11,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/pm"
-	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -84,7 +83,7 @@ var _stopCmd = &cli.Command{
 			return cfg.Name.Unpack()
 		})
 
-		configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
+		configList := lo.PickBy(list, func(_ core.ProcID, procData core.ProcData) bool {
 			return lo.Contains(names, procData.Name)
 		})
 
@@ -102,11 +101,11 @@ type stopCmd struct {
 func (cmd *stopCmd) Run(
 	ctx context.Context,
 	client client.Client,
-	configList map[db.ProcID]db.ProcData,
+	configList map[core.ProcID]core.ProcData,
 ) error {
 	app := pm.New(client)
 
-	ids := core.FilterProcs[db.ProcID](
+	ids := core.FilterProcs[core.ProcID](
 		configList,
 		core.WithGeneric(cmd.args),
 		core.WithIDs(cmd.ids),

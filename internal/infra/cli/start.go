@@ -10,7 +10,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/pm"
-	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -59,7 +58,7 @@ var _startCmd = &cli.Command{
 		}
 
 		if !ctx.IsSet("config") {
-			procIDs := core.FilterProcs[db.ProcID](
+			procIDs := core.FilterProcs[core.ProcID](
 				list,
 				core.WithAllIfNoFilters,
 				core.WithGeneric(args),
@@ -90,7 +89,7 @@ var _startCmd = &cli.Command{
 		}
 
 		// TODO: reuse filter options
-		procIDs := core.FilterProcs[db.ProcID](
+		procIDs := core.FilterProcs[core.ProcID](
 			filteredList,
 			core.WithAllIfNoFilters,
 			core.WithGeneric(args),

@@ -12,7 +12,6 @@ import (
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 type Client struct {
@@ -61,7 +60,7 @@ func (c Client) Create(ctx context.Context, r *api.ProcessOptions) (uint64, erro
 	return resp.GetId(), nil
 }
 
-func (c Client) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
+func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error) {
 	resp, err := c.client.List(ctx, &emptypb.Empty{})
 	if err != nil {
 		return nil, xerr.NewWM(err, "server.list")
@@ -69,9 +68,9 @@ func (c Client) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
 
 	return lo.SliceToMap(
 		resp.GetList(),
-		func(proc *api.Process) (db.ProcID, db.ProcData) {
-			procID := db.ProcID(proc.GetId().GetId())
-			return procID, db.ProcData{
+		func(proc *api.Process) (core.ProcID, core.ProcData) {
+			procID := core.ProcID(proc.GetId().GetId())
+			return procID, core.ProcData{
 				ProcID:  procID,
 				Name:    proc.GetName(),
 				Command: proc.GetCommand(),
@@ -85,24 +84,24 @@ func (c Client) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
 	), nil
 }
 
-func mapPbStatus(status *api.ProcessStatus) db.Status {
+func mapPbStatus(status *api.ProcessStatus) core.Status {
 	switch {
 	case status.GetInvalid() != nil:
-		return db.NewStatusInvalid()
+		return core.NewStatusInvalid()
 	case status.GetStarting() != nil:
-		return db.NewStatusStarting()
+		return core.NewStatusStarting()
 	case status.GetStopped() != nil:
-		return db.NewStatusStopped(int(status.GetStopped().GetExitCode()))
+		return core.NewStatusStopped(int(status.GetStopped().GetExitCode()))
 	case status.GetRunning() != nil:
 		stat := status.GetRunning()
-		return db.NewStatusRunning(
+		return core.NewStatusRunning(
 			stat.GetStartTime().AsTime(),
 			int(stat.GetPid()),
 			stat.GetCpu(),
 			stat.GetMemory(),
 		)
 	default:
-		return db.NewStatusInvalid()
+		return core.NewStatusInvalid()
 	}
 }
 
