@@ -2,12 +2,12 @@ package daemon
 
 import (
 	"errors"
-	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
@@ -39,7 +39,7 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 		homeDir:                   homeDir,
 	})
 
-	log.Printf("daemon started at %v", sock.Addr())
+	log.Infof("daemon started", log.F{"socket": sock.Addr()})
 
 	go func() {
 		c := make(chan os.Signal, 10) //nolint:gomnd // arbitrary buffer size
@@ -53,7 +53,7 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 					break
 				}
 				if err != nil {
-					log.Println("waitpid failed", err.Error())
+					log.Errorf("waitpid failed", log.F{"err": err.Error()})
 					continue
 				}
 
@@ -71,9 +71,15 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 
 				if err := dbHandle.SetStatus(procID, dbStatus); err != nil {
 					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
-						log.Printf("proc %d not found while trying to set status %v\n", procID, dbStatus)
+						log.Errorf("proc not found while trying to set status", log.F{
+							"procID":     procID,
+							"new status": dbStatus,
+						})
 					} else {
-						log.Printf("[ERROR] set status: %s", err.Error())
+						log.Errorf("set proc status", log.F{
+							"procID":     procID,
+							"new status": dbStatus,
+						})
 					}
 				}
 			}
@@ -95,11 +101,12 @@ func Kill(daemonCtx *daemon.Context, rpcSocket string) error {
 
 	proc, err := daemonCtx.Search()
 	if err != nil && !os.IsNotExist(err) {
-		return xerr.NewWM(err, "search daemon")
-	}
+		if xerr.Is(err, daemon.ErrDaemonNotFound) {
+			log.Info("daemon already killed or did not exist")
+			return nil
+		}
 
-	if proc == nil {
-		return nil
+		return xerr.NewWM(err, "search daemon")
 	}
 
 	for {

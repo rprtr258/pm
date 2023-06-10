@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -82,6 +83,8 @@ func (d *Context) Reborn() (*os.Process, error) {
 	return nil, d.child()
 }
 
+var ErrDaemonNotFound = errors.New("daemon not found")
+
 // Search searches daemons process by given in context pid file name.
 // If success returns pointer on daemons os.Process structure,
 // else returns error. Returns nil if filename is empty.
@@ -101,9 +104,7 @@ func (d *Context) Search() (*os.Process, error) {
 
 	daemon, err := os.FindProcess(pid)
 	if err != nil {
-		return nil, xerr.NewWM(
-			err, "find process",
-			xerr.Fields{"pid": pid})
+		return nil, xerr.NewWM(err, "find process", xerr.Fields{"pid": pid})
 	}
 
 	if daemon == nil {
@@ -113,7 +114,7 @@ func (d *Context) Search() (*os.Process, error) {
 	// Send a test signal to test if this daemon is actually alive or dead.
 	if err := daemon.Signal(syscall.Signal(0)); err != nil {
 		// An error means it is dead.
-		return nil, xerr.NewWM(err, "check daemon", xerr.Fields{"pid": pid})
+		return nil, ErrDaemonNotFound
 	}
 
 	return daemon, nil
@@ -240,9 +241,14 @@ func (d *Context) closeFiles() error {
 		}
 
 		errClose := (*file).Close()
+		filename := (*file).Name()
 		*file = nil
 
-		return xerr.NewWM(errClose, "close file", xerr.Fields{"filename": (*file).Name()})
+		if errClose != nil {
+			return xerr.NewWM(errClose, "close file", xerr.Fields{"filename": filename})
+		}
+
+		return nil
 	}
 
 	return xerr.Combine(
