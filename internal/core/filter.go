@@ -26,7 +26,7 @@ type FilterProcsOption func(*filterConfig)
 
 func WithGeneric(args []string) FilterProcsOption {
 	ids := lo.FilterMap(args, func(id string, _ int) (db.ProcID, bool) {
-		procID, err := strconv.ParseUint(id, 10, 64)
+		procID, err := strconv.ParseUint(id, 10, 64) //nolint:gomnd // parse id as decimal uint64
 		if err != nil {
 			return 0, false
 		}
