@@ -74,7 +74,7 @@ var _deleteCmd = &cli.Command{
 
 		configs, errLoadConfigs := core.LoadConfigs(ctx.String("config"))
 		if errLoadConfigs != nil {
-			return errLoadConfigs
+			return xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{"configfile": ctx.String("config")})
 		}
 
 		list, errList = app.ListByRunConfigs(ctx.Context, configs)
