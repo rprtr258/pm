@@ -1,8 +1,8 @@
 package fun
 
 type ifElse[T any] struct {
-	predicate bool
 	value     func() T
+	predicate bool
 }
 
 func If[T any](predicate bool, value T) ifElse[T] { //nolint:revive // don't export type
