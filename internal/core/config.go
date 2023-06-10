@@ -22,35 +22,6 @@ type RunConfig struct {
 	Name    fun.Option[string]
 }
 
-func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
-	var tmp struct {
-		Name    *string  `json:"name"`
-		Cwd     string   `json:"cwd"`
-		Command string   `json:"command"`
-		Args    []any    `json:"args"`
-		Tags    []string `json:"tags"`
-	}
-
-	if err := json.Unmarshal(data, &tmp); err != nil {
-		return xerr.NewWM(err, "json.unmarshal")
-	}
-
-	*cfg = RunConfig{
-		Name:    fun.FromPtr(tmp.Name),
-		Cwd:     tmp.Cwd,
-		Command: tmp.Command,
-		Args: lo.Map(
-			tmp.Args,
-			func(elem any, _ int) string {
-				return fmt.Sprint(elem)
-			},
-		),
-		Tags: tmp.Tags,
-	}
-
-	return nil
-}
-
 func isConfigFile(arg string) bool {
 	stat, err := os.Stat(arg)
 	if err != nil {
@@ -81,17 +52,16 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	type configScanDTO struct {
-		Name    *string
-		Cwd     *string
-		Command string
-		Args    []any
-		Tags    []string
+		Name    *string  `json:"name"`
+		Cwd     *string  `json:"cwd"`
+		Command string   `json:"command"`
+		Args    []any    `json:"args"`
+		Tags    []string `json:"tags"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
 		return nil, xerr.NewWM(err, "unmarshal configs json")
 	}
-	fmt.Println(scannedConfigs)
 
 	// TODO: validate configs
 	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
