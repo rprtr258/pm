@@ -3,10 +3,12 @@ package pm
 import (
 	"context"
 	"fmt"
+	"os/exec"
 
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 
+	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
@@ -79,4 +81,61 @@ func (app App) Delete(
 	}
 
 	return nil
+}
+
+func (app App) List(ctx context.Context) (map[db.ProcID]db.ProcData, error) {
+	list, errList := app.client.List(ctx)
+	if errList != nil {
+		return nil, xerr.NewWM(errList, "List: list procs")
+	}
+
+	return list, nil
+}
+
+// Run - create and start processes, returns ids of created processes.
+// ids must be handled before handling error, because it tries to run all
+// processes and error contains info about all failed processes, not only first.
+func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]uint64, error) {
+	var err error
+	procIDs := make([]uint64, 0, len(configs))
+	for _, config := range configs {
+		command, errLook := exec.LookPath(config.Command)
+		if errLook != nil {
+			xerr.AppendInto(&errLook, xerr.NewWM(
+				errLook,
+				"look for executable path",
+				xerr.Fields{"executable": config.Command},
+			))
+			continue
+		}
+
+		req := &api.ProcessOptions{
+			Command: command,
+			Args:    config.Args,
+			Name:    config.Name.Ptr(),
+			Cwd:     config.Cwd,
+			Tags:    config.Tags,
+		}
+		procID, errCreate := app.client.Create(ctx, req)
+		if errCreate != nil {
+			xerr.AppendInto(&err, xerr.NewWM(
+				errCreate,
+				"server.create",
+				xerr.Fields{"processOptions": req},
+			))
+			continue
+		}
+
+		procIDs = append(procIDs, procID)
+	}
+
+	if errStart := app.client.Start(ctx, procIDs); errStart != nil {
+		return nil, xerr.Combine(err, xerr.NewWM(
+			errStart,
+			"start processes",
+			xerr.Fields{"procIDs": procIDs},
+		))
+	}
+
+	return procIDs, err
 }

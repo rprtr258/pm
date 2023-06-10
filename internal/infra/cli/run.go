@@ -1,18 +1,16 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
-	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -77,14 +75,43 @@ var _runCmd = &cli.Command{
 		}
 		defer deferErr(client.Close)()
 
-		props := runCmd{
-			args: ctx.Args().Slice(),
-			name: ctx.String("name"),
-			tags: ctx.StringSlice("tag"),
-			cwd:  ctx.String("pwd"),
-		}
+		app := pm.New(client)
+
+		command := ctx.Args().First()
+		commandArgs := ctx.Args().Tail()
+		name := ctx.String("name")
+		tags := ctx.StringSlice("tag")
+		workDir := ctx.String("pwd")
 		if !ctx.IsSet("config") {
-			return execRun(ctx.Context, client, props)
+			if ctx.Args().Len() == 0 {
+				return xerr.NewM("command expected")
+			}
+
+			if !ctx.IsSet("cwd") {
+				cwd, err := os.Getwd()
+				if err != nil {
+					return xerr.NewWM(err, "get cwd")
+				}
+				workDir = cwd
+			}
+
+			runConfig := core.RunConfig{
+				Command: command,
+				Args:    commandArgs,
+				Name:    fun.Optional(name, name != ""),
+				Tags:    tags,
+				Cwd:     workDir,
+			}
+
+			procIDs, errRun := app.Run(ctx.Context, runConfig)
+			for _, procID := range procIDs {
+				fmt.Println(procID)
+			}
+			if errRun != nil {
+				return xerr.NewWM(errRun, "run command", xerr.Fields{"runConfig": runConfig})
+			}
+
+			return nil
 		}
 
 		configs, errLoadConfigs := loadConfigs(ctx.String("config"))
@@ -92,99 +119,46 @@ var _runCmd = &cli.Command{
 			return errLoadConfigs
 		}
 
-		return runConfigs(ctx.Context, props.args, configs, client)
-	},
-}
+		names := ctx.Args().Slice()
+		if len(names) == 0 {
+			// no filtering by names, run all processes
+			procIDs, err := app.Run(ctx.Context, configs...)
+			for _, procID := range procIDs {
+				fmt.Println(procID)
+			}
+			if err != nil {
+				return xerr.NewWM(err, "run all procs from config")
+			}
+		}
 
-type runCmd struct {
-	name string
-	cwd  string
-	args []string
-	tags []string
-}
+		configsByName := make(map[string]core.RunConfig, len(names))
+		for _, cfg := range configs {
+			if name, ok := cfg.Name.Unpack(); !ok || !lo.Contains(names, name) {
+				continue
+			}
 
-func runConfigs(
-	ctx context.Context,
-	names []string,
-	configs []core.RunConfig,
-	client client.Client,
-) error {
-	if len(names) == 0 {
-		return xerr.Combine(lo.Map(configs, func(config core.RunConfig, _ int) error {
-			return run(ctx, config, client)
+			configsByName[cfg.Name.Unwrap()] = cfg
+		}
+
+		merr := xerr.Combine(lo.FilterMap(names, func(name string, _ int) (error, bool) {
+			if _, ok := configsByName[name]; !ok {
+				return xerr.NewM("unknown proc name", xerr.Fields{"name": name}), true
+			}
+
+			return nil, false
 		})...)
-	}
-
-	configsByName := make(map[string]core.RunConfig, len(names))
-	for _, cfg := range configs {
-		if name, ok := cfg.Name.Unpack(); !ok || !lo.Contains(names, name) {
-			continue
+		if merr != nil {
+			return merr
 		}
 
-		configsByName[cfg.Name.Unwrap()] = cfg
-	}
-
-	merr := xerr.Combine(lo.FilterMap(names, func(name string, _ int) (error, bool) {
-		if _, ok := configsByName[name]; !ok {
-			return xerr.NewM("unknown proc name", xerr.Fields{"name": name}), true
+		procIDs, err := app.Run(ctx.Context, lo.Values(configsByName)...)
+		for _, procID := range procIDs {
+			fmt.Println(procID)
+		}
+		if err != nil {
+			return xerr.NewWM(err, "run procs filtered by name from config", xerr.Fields{"names": names})
 		}
 
-		return nil, false
-	})...)
-	if merr != nil {
-		return merr
-	}
-
-	return xerr.Combine(lo.MapToSlice(configsByName, func(_ string, config core.RunConfig) error {
-		return run(ctx, config, client)
-	})...)
-}
-
-func run(
-	ctx context.Context,
-	config core.RunConfig,
-	client client.Client,
-) error {
-	command, err := exec.LookPath(config.Command)
-	if err != nil {
-		return xerr.NewWM(err, "look for executable path", xerr.Fields{"executable": config.Command})
-	}
-
-	procID, err := client.Create(ctx, &api.ProcessOptions{
-		Command: command,
-		Args:    config.Args,
-		Name:    config.Name.Ptr(),
-		Cwd:     config.Cwd,
-		Tags:    config.Tags,
-	})
-	if err != nil {
-		return xerr.NewWM(err, "server.create")
-	}
-
-	if err := client.Start(ctx, []uint64{procID}); err != nil {
-		return xerr.NewWM(err, "server.start")
-	}
-
-	fmt.Println(procID)
-
-	return nil
-}
-
-func execRun(ctx context.Context, client client.Client, cmd runCmd) error {
-	if len(cmd.args) == 0 {
-		return xerr.NewM("command expected")
-	}
-
-	cwd, err := os.Getwd()
-	if err != nil {
-		return xerr.NewWM(err, "get cwd")
-	}
-
-	return run(ctx, core.RunConfig{
-		Command: cmd.args[0],
-		Args:    cmd.args[1:],
-		Name:    fun.Optional(cmd.name, cmd.name != ""),
-		Tags:    cmd.tags,
-		Cwd:     cwd,
-	}, client)
+		return nil
+	},
 }

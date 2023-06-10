@@ -17,6 +17,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/fun"
+	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -86,13 +87,14 @@ func list(
 	}
 	defer deferErr(client.Close)()
 
-	resp, err := client.List(ctx)
+	app := pm.New(client)
+	list, err := app.List(ctx) // TODO: move in filters which are bit below
 	if err != nil {
 		return xerr.NewWM(err, "list server call")
 	}
 
 	procIDsToShow := core.FilterProcs[db.ProcID](
-		resp,
+		list,
 		core.WithAllIfNoFilters,
 		core.WithGeneric(genericFilters),
 		core.WithIDs(idFilters),
@@ -101,7 +103,7 @@ func list(
 		core.WithTags(tagFilters),
 	)
 
-	procsToShow := fun.MapDict(procIDsToShow, resp)
+	procsToShow := fun.MapDict(procIDsToShow, list)
 	sort.Slice(procsToShow, func(i, j int) bool {
 		return procsToShow[i].ProcID < procsToShow[j].ProcID
 	})
