@@ -27,12 +27,6 @@ import (
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
-var (
-	_userHome      = os.Getenv("HOME")
-	HomeDir        = path.Join(_userHome, ".pm")
-	_daemonLogsDir = path.Join(HomeDir, "logs")
-)
-
 // TODO: logs for daemon everywhere
 type daemonServer struct {
 	api.UnimplementedDaemonServer
@@ -305,12 +299,12 @@ func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty
 }
 
 func removeLogFiles(procID uint64) error {
-	stdoutFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stdout", procID))
+	stdoutFilename := filepath.Join(core.DirDaemonLogs, fmt.Sprintf("%d.stdout", procID))
 	if errRmStdout := removeFile(stdoutFilename); errRmStdout != nil {
 		return errRmStdout
 	}
 
-	stderrFilename := filepath.Join(_daemonLogsDir, fmt.Sprintf("%d.stderr", procID))
+	stderrFilename := filepath.Join(core.DirDaemonLogs, fmt.Sprintf("%d.stderr", procID))
 	if errRmStderr := removeFile(stderrFilename); errRmStderr != nil {
 		return errRmStderr
 	}
