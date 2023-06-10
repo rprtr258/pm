@@ -134,13 +134,13 @@ func (srv *daemonServer) Stop(_ context.Context, req *api.IDs) (*emptypb.Empty, 
 
 	var merr error
 	for _, proc := range procsWeHaveAmongRequested {
-		xerr.AppendInto(&merr, srv.stop(proc))
+		xerr.AppendInto(&merr, srv.stop(proc, syscall.SIGTERM))
 	}
 
 	return &emptypb.Empty{}, merr
 }
 
-func (srv *daemonServer) stop(proc core.ProcData) error {
+func (srv *daemonServer) stop(proc core.ProcData, signal syscall.Signal) error {
 	if proc.Status.Status != core.StatusRunning {
 		log.Infof("tried to stop non-running process", log.F{"proc": proc})
 		return nil
@@ -153,7 +153,7 @@ func (srv *daemonServer) stop(proc core.ProcData) error {
 	}
 
 	// TODO: kill after timeout
-	if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
+	if errKill := syscall.Kill(-process.Pid, signal); errKill != nil {
 		if errors.Is(errKill, os.ErrProcessDone) {
 			log.Warnf("tried to stop process which is done", log.F{"proc": proc})
 		} else if errors.Is(errKill, syscall.ESRCH) { // no such process
