@@ -1,4 +1,4 @@
-package internal
+package fun
 
 type ccond[T any] struct {
 	predicate bool
@@ -24,6 +24,13 @@ func (cond ccond[T]) ThenF(value func() T) thener[T] {
 	return thener[T]{
 		ccond: cond,
 		val:   value,
+	}
+}
+
+func (cond ccond[T]) ThenDeref(value *T) thener[T] {
+	return thener[T]{
+		ccond: cond,
+		val:   func() T { return *value },
 	}
 }
 
@@ -73,6 +80,19 @@ func (els elseifer[T]) ThenF(value func() T) thener[T] {
 
 	return thener[T]{
 		val: value,
+		ccond: ccond[T]{
+			predicate: els.predicate,
+		},
+	}
+}
+
+func (els elseifer[T]) ThenDeref(value *T) thener[T] {
+	if els.thener.predicate {
+		return els.thener
+	}
+
+	return thener[T]{
+		val: func() T { return *value },
 		ccond: ccond[T]{
 			predicate: els.predicate,
 		},

@@ -1,4 +1,4 @@
-package internal
+package fun
 
 import (
 	"github.com/rprtr258/xerr"

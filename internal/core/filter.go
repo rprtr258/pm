@@ -6,6 +6,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
@@ -108,7 +109,7 @@ func FilterProcs[T ~uint64](procs map[db.ProcID]db.ProcData, opts ...filterOptio
 		}
 	}
 
-	return FilterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (T, bool) {
+	return fun.FilterMapToSlice(procs, func(procID db.ProcID, proc db.ProcData) (T, bool) {
 		return T(procID), lo.Contains(cfg.filter.Names, proc.Name) ||
 			lo.Some(cfg.filter.Tags, proc.Tags) ||
 			lo.Contains(cfg.filter.Statuses, proc.Status.Status) ||

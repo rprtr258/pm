@@ -15,6 +15,7 @@ import (
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/go-daemon"
 )
@@ -60,12 +61,8 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 					continue
 				}
 
-				dbStatus := lo.If(
-					status.ExitStatus() == 0,
-					db.NewStatusStopped(0),
-				).Else(
-					db.NewStatusErrored(), // TODO: replace with stopped(exitCode)
-				)
+				dbStatus := fun.If[db.Status](status.ExitStatus() == 0).Then(db.NewStatusStopped(0)).
+					Else(db.NewStatusErrored()) // TODO: replace with stopped(exitCode)
 
 				allProcs := dbHandle.List()
 

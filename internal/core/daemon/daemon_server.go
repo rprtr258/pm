@@ -21,6 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
@@ -209,7 +210,8 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 		}
 	}
 
-	name := lo.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(namegen.New)
+	name := fun.If[string](procOpts.Name != nil).ThenF(procOpts.GetName).
+		ElseF(namegen.New)
 
 	procData := db.ProcData{
 		ProcID:  0, // TODO: create instead proc create query

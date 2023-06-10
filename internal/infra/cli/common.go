@@ -11,10 +11,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
-
-	internal "github.com/rprtr258/pm/internal/core"
 )
 
 func ensureDir(dirname string) error {
@@ -40,7 +39,7 @@ type RunConfig struct {
 	Tags    []string
 	Command string
 	Cwd     string
-	Name    internal.Optional[string]
+	Name    fun.Option[string]
 }
 
 func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
@@ -57,7 +56,7 @@ func (cfg *RunConfig) UnmarshalJSON(data []byte) error {
 	}
 
 	*cfg = RunConfig{
-		Name:    internal.FromPtr(tmp.Name),
+		Name:    fun.FromPtr(tmp.Name),
 		Cwd:     tmp.Cwd,
 		Command: tmp.Command,
 		Args: lo.Map(
@@ -120,7 +119,7 @@ func loadConfigs(filename string) ([]RunConfig, error) {
 	// TODO: validate configs
 	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
 		return RunConfig{
-			Name:    internal.FromPtr(config.Name),
+			Name:    fun.FromPtr(config.Name),
 			Command: config.Command,
 			Args: lo.Map(config.Args, func(arg any, i int) string { //nolint:varnamelen // i is index
 				switch a := arg.(type) {

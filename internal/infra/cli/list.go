@@ -11,12 +11,12 @@ import (
 	"github.com/aquasecurity/table"
 	"github.com/fatih/color"
 	"github.com/kballard/go-shellquote"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/xerr"
 
 	internal "github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -103,7 +103,7 @@ func list(
 		internal.WithTags(tagFilters),
 	)
 
-	procsToShow := internal.MapDict(procIDsToShow, resp)
+	procsToShow := fun.MapDict(procIDsToShow, resp)
 	sort.Slice(procsToShow, func(i, j int) bool {
 		return procsToShow[i].ProcID < procsToShow[j].ProcID
 	})
@@ -114,14 +114,16 @@ func list(
 	procsTable.SetHeaderStyle(table.StyleBold)
 	procsTable.SetLineStyle(table.StyleDim)
 	for _, proc := range procsToShow {
+		// TODO: if errored/stopped show time since start instead of uptime (not in place of)
 		status, pid, uptime := mapStatus(proc.Status)
 
 		procsTable.AddRow(
 			color.New(color.FgCyan, color.Bold).Sprint(proc.ProcID),
 			proc.Name,
 			status,
-			strconv.Itoa(internal.Deref(pid)),
-			lo.If(pid == nil, "").
+			strconv.Itoa(fun.Deref(pid)),
+			// TODO: check status instead for following parameters
+			fun.If[string](pid == nil).Then("").
 				Else(uptime.Truncate(time.Second).String()),
 			fmt.Sprint(proc.Tags),
 			fmt.Sprint(proc.Status.CPU),

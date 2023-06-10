@@ -38,8 +38,8 @@ github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZN
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.4.4 h1:8TfxU8dW6PdqD27gjM8MVNuicgxIjxpm4K7x4jp8sis=
 github.com/rivo/uniseg v0.4.4/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
-github.com/rprtr258/fun v0.0.3 h1:XcBT0TogqZ0ZGbKrP/lJy5ezuiql04nxncjxsgREAfw=
-github.com/rprtr258/fun v0.0.3/go.mod h1:xxOYkmNW7A7DEw07iuHv2NAB75HHDBqQB6Xf21k0sFU=
+github.com/rprtr258/fun v0.0.4 h1:hmQO9SccKUmdce3mA9FZ41ZHZJEMCZk3ZbwlNKTLzyw=
+github.com/rprtr258/fun v0.0.4/go.mod h1:xxOYkmNW7A7DEw07iuHv2NAB75HHDBqQB6Xf21k0sFU=
 github.com/rprtr258/log v0.0.5 h1:XfoxwmQYF3cEuAx1vnXIuSU5+wd4+qRvl5lsxQy9l78=
 github.com/rprtr258/log v0.0.5/go.mod h1:AH9BhFSL0F0m3EEoJ5vbO0aYGUoejQ4Wq/luT0scLRk=
 github.com/rprtr258/simpdb v0.5.0 h1:RU1+TUJ2z0sdTCMyPdeXd4CJm1Wun+i99Dd+cyd5H+A=

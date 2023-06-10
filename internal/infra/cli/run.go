@@ -6,12 +6,12 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/api"
-	internal "github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -111,11 +111,11 @@ func runConfigs(
 
 	configsByName := make(map[string]RunConfig, len(names))
 	for _, cfg := range configs {
-		if !cfg.Name.Valid || !lo.Contains(names, cfg.Name.Value) {
+		if name, ok := cfg.Name.Unpack(); !ok || !lo.Contains(names, name) {
 			continue
 		}
 
-		configsByName[cfg.Name.Value] = cfg
+		configsByName[cfg.Name.Unwrap()] = cfg
 	}
 
 	merr := xerr.Combine(lo.FilterMap(names, func(name string, _ int) (error, bool) {
@@ -191,12 +191,9 @@ func executeProcCommandWithoutConfig2(ctx context.Context, client client.Client,
 	config := RunConfig{
 		Command: cmd.args[0],
 		Args:    cmd.args[1:],
-		Name: internal.Optional[string]{
-			Value: cmd.name,
-			Valid: cmd.name != "",
-		},
-		Tags: cmd.tags,
-		Cwd:  cwd,
+		Name:    fun.Optional(cmd.name, cmd.name != ""),
+		Tags:    cmd.tags,
+		Cwd:     cwd,
 	}
 
 	return run(ctx, config, client)

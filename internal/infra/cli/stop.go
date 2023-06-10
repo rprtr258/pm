@@ -80,7 +80,7 @@ var _stopCmd = &cli.Command{
 		}
 
 		names := lo.FilterMap(configs, func(cfg RunConfig, _ int) (string, bool) {
-			return cfg.Name.Value, cfg.Name.Valid
+			return cfg.Name.Unpack()
 		})
 
 		configList := lo.PickBy(list, func(_ db.ProcID, procData db.ProcData) bool {
