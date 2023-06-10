@@ -8,11 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"google.golang.org/grpc"
-
-	"github.com/samber/lo"
-
 	"github.com/rprtr258/xerr"
+	"github.com/samber/lo"
+	"google.golang.org/grpc"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core/fun"
