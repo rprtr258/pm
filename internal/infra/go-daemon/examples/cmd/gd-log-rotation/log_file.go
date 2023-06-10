@@ -7,9 +7,9 @@ import (
 )
 
 type LogFile struct {
-	mu   sync.Mutex
-	name string
 	file *os.File
+	name string
+	mu   sync.Mutex
 }
 
 // NewLogFile creates a new LogFile. The file is optional - it will be created if needed.

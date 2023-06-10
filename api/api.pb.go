@@ -25,10 +25,9 @@ const (
 
 type ProcessID struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-
-	Id uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id            uint64 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProcessID) Reset() {
@@ -72,14 +71,13 @@ func (x *ProcessID) GetId() uint64 {
 
 type ProcessOptions struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
+	Name          *string `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
+	Command       string  `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
+	Cwd           string  `protobuf:"bytes,4,opt,name=cwd,proto3" json:"cwd,omitempty"`
 	unknownFields protoimpl.UnknownFields
-
-	Command string   `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
-	Args    []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
-	Name    *string  `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
-	Cwd     string   `protobuf:"bytes,4,opt,name=cwd,proto3" json:"cwd,omitempty"`
-	Tags    []string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
+	Args          []string `protobuf:"bytes,2,rep,name=args,proto3" json:"args,omitempty"`
+	Tags          []string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProcessOptions) Reset() {
@@ -151,10 +149,9 @@ func (x *ProcessOptions) GetTags() []string {
 
 type ProcessesList struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-
-	List []*Process `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	List          []*Process `protobuf:"bytes,1,rep,name=list,proto3" json:"list,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProcessesList) Reset() {
@@ -198,16 +195,15 @@ func (x *ProcessesList) GetList() []*Process {
 
 type Process struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
+	Id            *ProcessID     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Status        *ProcessStatus `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	Name          string         `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Cwd           string         `protobuf:"bytes,4,opt,name=cwd,proto3" json:"cwd,omitempty"`
+	Command       string         `protobuf:"bytes,6,opt,name=command,proto3" json:"command,omitempty"`
 	unknownFields protoimpl.UnknownFields
-
-	Id      *ProcessID     `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Status  *ProcessStatus `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	Name    string         `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	Cwd     string         `protobuf:"bytes,4,opt,name=cwd,proto3" json:"cwd,omitempty"`
-	Tags    []string       `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
-	Command string         `protobuf:"bytes,6,opt,name=command,proto3" json:"command,omitempty"`
-	Args    []string       `protobuf:"bytes,7,rep,name=args,proto3" json:"args,omitempty"`
+	Tags          []string `protobuf:"bytes,5,rep,name=tags,proto3" json:"tags,omitempty"`
+	Args          []string `protobuf:"bytes,7,rep,name=args,proto3" json:"args,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Process) Reset() {
@@ -292,18 +288,10 @@ func (x *Process) GetArgs() []string {
 }
 
 type ProcessStatus struct {
+	Status        isProcessStatus_Status `protobuf_oneof:"status"`
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-
-	// Types that are assignable to Status:
-	//
-	//	*ProcessStatus_Invalid
-	//	*ProcessStatus_Starting
-	//	*ProcessStatus_Running
-	//	*ProcessStatus_Stopped
-	//	*ProcessStatus_Errored
-	Status isProcessStatus_Status `protobuf_oneof:"status"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProcessStatus) Reset() {
@@ -416,13 +404,12 @@ func (*ProcessStatus_Errored) isProcessStatus_Status() {}
 
 type RunningProcessStatus struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
+	StartTime     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
-
-	Pid       int64                  `protobuf:"varint,1,opt,name=pid,proto3" json:"pid,omitempty"`
-	StartTime *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	Cpu       uint64                 `protobuf:"varint,3,opt,name=cpu,proto3" json:"cpu,omitempty"`
-	Memory    uint64                 `protobuf:"varint,4,opt,name=memory,proto3" json:"memory,omitempty"`
+	Pid           int64  `protobuf:"varint,1,opt,name=pid,proto3" json:"pid,omitempty"`
+	Cpu           uint64 `protobuf:"varint,3,opt,name=cpu,proto3" json:"cpu,omitempty"`
+	Memory        uint64 `protobuf:"varint,4,opt,name=memory,proto3" json:"memory,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RunningProcessStatus) Reset() {
@@ -487,10 +474,9 @@ func (x *RunningProcessStatus) GetMemory() uint64 {
 
 type IDs struct {
 	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
-
-	Ids []*ProcessID `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	Ids           []*ProcessID `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *IDs) Reset() {
