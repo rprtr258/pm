@@ -116,7 +116,7 @@ type Handle struct {
 }
 
 func New(dir string) (Handle, error) {
-	db := simpdb.New(dir)
+	db := simpdb.New(dir) //nolint:varnamelen // ???
 
 	procs, err := simpdb.GetTable[ProcData](db, "procs", storages.NewJSONStorage[ProcData]())
 	if err != nil {

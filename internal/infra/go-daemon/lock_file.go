@@ -21,35 +21,45 @@ func NewLockFile(file *os.File) *LockFile {
 
 // CreatePidFile opens the named file, applies exclusive lock and writes
 // current process id to file.
-func CreatePidFile(name string, perm os.FileMode) (lock *LockFile, err error) {
-	if lock, err = OpenLockFile(name, perm); err != nil {
-		return
+func CreatePidFile(name string, perm os.FileMode) (*LockFile, error) {
+	lock, errOpen := OpenLockFile(name, perm)
+	if errOpen != nil {
+		return nil, errOpen
 	}
-	if err = lock.Lock(); err != nil {
-		lock.Remove()
-		return
+
+	if errLock := lock.Lock(); errLock != nil {
+		if errRm := lock.Remove(); errRm != nil {
+			return nil, xerr.Combine(errRm, errLock)
+		}
+
+		return nil, errLock
 	}
-	if err = lock.WritePid(); err != nil {
-		lock.Remove()
+
+	if errWrite := lock.WritePid(); errWrite != nil {
+		if errRm := lock.Remove(); errRm != nil {
+			return nil, xerr.Combine(errRm, errWrite)
+		}
+
+		return nil, errWrite
 	}
-	return
+
+	return lock, nil
 }
 
 // OpenLockFile opens the named file with flags os.O_RDWR|os.O_CREATE and specified perm.
 // If successful, function returns LockFile for opened file.
-func OpenLockFile(name string, perm os.FileMode) (lock *LockFile, err error) {
-	var file *os.File
-	if file, err = os.OpenFile(name, os.O_RDWR|os.O_CREATE, perm); err == nil {
-		lock = &LockFile{file}
+func OpenLockFile(name string, perm os.FileMode) (*LockFile, error) {
+	file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, perm)
+	if err != nil {
+		return nil, xerr.NewWM(err, "open lock file")
 	}
-	return
+
+	return &LockFile{file}, nil
 }
 
 // Lock apply exclusive lock on an open file. If file already locked, returns error.
 func (file *LockFile) Lock() error {
-	fd := file.Fd()
-	err := syscall.Flock(int(fd), syscall.LOCK_EX|syscall.LOCK_NB)
-	if err != nil {
+	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		if err == syscall.EWOULDBLOCK { //nolint:errorlint,goerr113 // check exactly
 			return xerr.NewM("file locking would block", xerr.Fields{"filename": file.Name()})
 		}
@@ -62,10 +72,8 @@ func (file *LockFile) Lock() error {
 
 // Unlock remove exclusive lock on an open file.
 func (file *LockFile) Unlock() error {
-	fd := file.Fd()
-	err := syscall.Flock(int(fd), syscall.LOCK_UN)
-	if err != nil {
-		if err == syscall.EWOULDBLOCK {
+	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
+		if xerr.Is(err, syscall.EWOULDBLOCK) {
 			return xerr.NewM("file unlocking would block", xerr.Fields{"filename": file.Name()})
 		}
 
@@ -114,31 +122,37 @@ func ReadPidFile(name string) (int, error) {
 }
 
 // WritePid writes current process id to an open file.
-func (file *LockFile) WritePid() (err error) {
-	if _, err = file.Seek(0, io.SeekStart); err != nil {
-		return
+func (file *LockFile) WritePid() error {
+	if _, errSeek := file.Seek(0, io.SeekStart); errSeek != nil {
+		return xerr.NewWM(errSeek, "seek 0", xerr.Fields{"filename": file.Name()})
 	}
-	var fileLen int
-	if fileLen, err = fmt.Fprint(file, os.Getpid()); err != nil {
-		return
+
+	fileLen, errWrite := fmt.Fprint(file, os.Getpid())
+	if errWrite != nil {
+		return xerr.NewWM(errWrite, "write pid to file", xerr.Fields{"filename": file.Name()})
 	}
-	if err = file.Truncate(int64(fileLen)); err != nil {
-		return
+
+	if errTruncate := file.Truncate(int64(fileLen)); errTruncate != nil {
+		return xerr.NewWM(errTruncate, "truncate file", xerr.Fields{"filename": file.Name(), "length": fileLen})
 	}
-	err = file.Sync()
-	return
+
+	if errSync := file.Sync(); errSync != nil {
+		return xerr.NewWM(errSync, "sync file", xerr.Fields{"filename": file.Name()})
+	}
+
+	return nil
 }
 
 // ReadPid reads process id from file and returns pid.
 // If unable read from a file, returns error.
 func (file *LockFile) ReadPid() (int, error) {
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		return 0, xerr.NewWM(err, "seek 0")
+		return 0, xerr.NewWM(err, "seek 0", xerr.Fields{"filename": file.Name()})
 	}
 
 	var pid int
 	if _, err := fmt.Fscan(file, &pid); err != nil {
-		return 0, xerr.NewWM(err, "scan pid")
+		return 0, xerr.NewWM(err, "scan pid", xerr.Fields{"filename": file.Name()})
 	}
 
 	return pid, nil
@@ -152,5 +166,9 @@ func (file *LockFile) Remove() error {
 		return err
 	}
 
-	return os.Remove(file.Name())
+	if errRm := os.Remove(file.Name()); errRm != nil {
+		return xerr.NewWM(errRm, "remove file", xerr.Fields{"filename": file.Name()})
+	}
+
+	return nil
 }

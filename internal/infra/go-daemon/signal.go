@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/rprtr258/log"
+	"github.com/rprtr258/xerr"
 )
 
 // ErrStop should be returned signal handler function
@@ -25,25 +26,22 @@ func SetSigHandler(handler SignalHandlerFunc, signals ...os.Signal) {
 
 // ServeSignals calls handlers for system signals.
 func ServeSignals() error {
-	signals := make([]os.Signal, 0, len(handlers))
+	sigsCh := make(chan os.Signal, len(handlers))
 	for sig := range handlers {
-		signals = append(signals, sig)
+		signal.Notify(sigsCh, sig)
 	}
 
-	ch := make(chan os.Signal, 8)
-	signal.Notify(ch, signals...)
-
 	var err error
-	for sig := range ch {
+	for sig := range sigsCh {
 		err = handlers[sig](sig)
 		if err != nil {
 			break
 		}
 	}
 
-	signal.Stop(ch)
+	signal.Stop(sigsCh)
 
-	if err == ErrStop {
+	if xerr.Is(err, ErrStop) {
 		return nil
 	}
 
