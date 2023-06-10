@@ -22,19 +22,19 @@ import (
 // daemon is already running
 // Run daemon.
 func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
-	sock, err := net.Listen("unix", rpcSocket)
-	if err != nil {
-		return xerr.NewWM(err, "net.Listen on rpc socket", xerr.Fields{"socket": rpcSocket})
+	sock, errListen := net.Listen("unix", rpcSocket)
+	if errListen != nil {
+		return xerr.NewWM(errListen, "net.Listen on rpc socket", xerr.Fields{"socket": rpcSocket})
 	}
 	defer sock.Close()
 
-	if err := os.Mkdir(logsDir, os.ModePerm); err != nil && !errors.Is(err, os.ErrExist) {
-		return xerr.NewWM(err, "create logs dir", xerr.Fields{"dir": logsDir})
+	if errMkdirLogs := os.Mkdir(logsDir, os.ModePerm); errMkdirLogs != nil && !errors.Is(errMkdirLogs, os.ErrExist) {
+		return xerr.NewWM(errMkdirLogs, "create logs dir", xerr.Fields{"dir": logsDir})
 	}
 
-	dbHandle, err := db.New(dbDir)
-	if err != nil {
-		return xerr.NewWM(err, "create db")
+	dbHandle, errDBNew := db.New(dbDir)
+	if errDBNew != nil {
+		return xerr.NewWM(errDBNew, "create db")
 	}
 
 	srv := grpc.NewServer()
@@ -54,12 +54,12 @@ func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
 			for {
 				var status syscall.WaitStatus
 				var rusage syscall.Rusage
-				pid, err := syscall.Wait4(-1, &status, 0, &rusage)
+				pid, errWait := syscall.Wait4(-1, &status, 0, &rusage)
 				if pid < 0 {
 					break
 				}
-				if err != nil {
-					log.Errorf("waitpid failed", log.F{"err": err.Error()})
+				if errWait != nil {
+					log.Errorf("Wait4 failed", log.F{"err": errWait.Error()})
 					continue
 				}
 
@@ -92,8 +92,8 @@ func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
 		}
 	}()
 
-	if err := srv.Serve(sock); err != nil {
-		return xerr.NewWM(err, "serve")
+	if errServe := srv.Serve(sock); errServe != nil {
+		return xerr.NewWM(errServe, "serve")
 	}
 
 	return nil
