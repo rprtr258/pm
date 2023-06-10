@@ -63,7 +63,21 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		return nil, xerr.NewWM(err, "unmarshal configs json")
 	}
 
-	// TODO: validate configs
+	// validate configs
+	errValidation := xerr.Combine(lo.Map(scannedConfigs, func(config configScanDTO, _ int) error {
+		if config.Command == "" {
+			return xerr.NewM(
+				"missing command",
+				xerr.Fields{"config": config},
+			)
+		}
+
+		return nil
+	})...)
+	if errValidation != nil {
+		return nil, errValidation
+	}
+
 	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
 		return RunConfig{
 			Name:    fun.FromPtr(config.Name),
