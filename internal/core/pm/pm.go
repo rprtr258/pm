@@ -48,7 +48,6 @@ func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig
 	return configList, nil
 }
 
-// TODO: split into stop and delete
 func (app App) Stop(
 	ctx context.Context,
 	procs map[db.ProcID]db.ProcData,
