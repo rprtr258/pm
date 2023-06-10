@@ -10,7 +10,7 @@ package api;
 service Daemon {
     // process management
     rpc Start(IDs) returns (google.protobuf.Empty);
-    rpc Stop(IDs) returns (google.protobuf.Empty);
+    rpc Signal(SignalRequest) returns (google.protobuf.Empty);
 
     // CRUD operations
     rpc Create(ProcessOptions) returns (ProcessID);
@@ -69,4 +69,14 @@ message StoppedProcessStatus {
 
 message IDs {
     repeated ProcessID ids = 1;
+}
+
+enum Signal {
+    SIGTERM = 0;
+    SIGKILL = 1;
+}
+
+message SignalRequest {
+    repeated ProcessID ids = 1;
+    Signal signal = 2;
 }

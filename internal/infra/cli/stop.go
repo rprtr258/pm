@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"syscall"
 
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
@@ -119,7 +120,7 @@ func (cmd *stopCmd) Run(
 		return nil
 	}
 
-	procIDs, err := app.Stop(ctx, configList, cmd.args, cmd.names, cmd.tags, cmd.ids)
+	procIDs, err := app.Stop(ctx, syscall.SIGTERM, configList, cmd.args, cmd.names, cmd.tags, cmd.ids)
 	if err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}

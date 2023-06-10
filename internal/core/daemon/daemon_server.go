@@ -122,7 +122,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 
 // Stop - stop processes by their ids in database
 // TODO: change to sending signals
-func (srv *daemonServer) Stop(_ context.Context, req *api.IDs) (*emptypb.Empty, error) {
+func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emptypb.Empty, error) {
 	procsToStop := lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
 		return core.ProcID(id.GetId())
 	})
@@ -132,9 +132,19 @@ func (srv *daemonServer) Stop(_ context.Context, req *api.IDs) (*emptypb.Empty, 
 		return nil, xerr.NewWM(err, "getting procs to stop")
 	}
 
+	var signal syscall.Signal
+	switch req.GetSignal() {
+	case api.Signal_SIGTERM:
+		signal = syscall.SIGTERM
+	case api.Signal_SIGKILL:
+		signal = syscall.SIGKILL
+	default:
+		return nil, xerr.NewM("unknown signal", xerr.Fields{"signal": req.GetSignal()})
+	}
+
 	var merr error
 	for _, proc := range procsWeHaveAmongRequested {
-		xerr.AppendInto(&merr, srv.stop(proc, syscall.SIGTERM))
+		xerr.AppendInto(&merr, srv.stop(proc, signal))
 	}
 
 	return &emptypb.Empty{}, merr

@@ -3,6 +3,7 @@ package pm
 import (
 	"context"
 	"os/exec"
+	"syscall"
 
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
@@ -49,6 +50,7 @@ func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig
 
 func (app App) Stop(
 	ctx context.Context,
+	signal syscall.Signal,
 	procs map[core.ProcID]core.ProcData,
 	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
 ) ([]core.ProcID, error) {
@@ -65,7 +67,7 @@ func (app App) Stop(
 		return []core.ProcID{}, nil
 	}
 
-	if err := app.client.Stop(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
+	if err := app.client.Signal(ctx, signal, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
 		return uint64(procID)
 	})); err != nil {
 		return nil, xerr.NewWM(err, "client.stop")

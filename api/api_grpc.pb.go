@@ -8,7 +8,6 @@ package api
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -22,7 +21,7 @@ const _ = grpc.SupportPackageIsVersion7
 
 const (
 	Daemon_Start_FullMethodName       = "/api.Daemon/Start"
-	Daemon_Stop_FullMethodName        = "/api.Daemon/Stop"
+	Daemon_Signal_FullMethodName      = "/api.Daemon/Signal"
 	Daemon_Create_FullMethodName      = "/api.Daemon/Create"
 	Daemon_List_FullMethodName        = "/api.Daemon/List"
 	Daemon_Delete_FullMethodName      = "/api.Daemon/Delete"
@@ -35,7 +34,7 @@ const (
 type DaemonClient interface {
 	// process management
 	Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Signal(ctx context.Context, in *SignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// CRUD operations
 	Create(ctx context.Context, in *ProcessOptions, opts ...grpc.CallOption) (*ProcessID, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
@@ -60,9 +59,9 @@ func (c *daemonClient) Start(ctx context.Context, in *IDs, opts ...grpc.CallOpti
 	return out, nil
 }
 
-func (c *daemonClient) Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *daemonClient) Signal(ctx context.Context, in *SignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Daemon_Stop_FullMethodName, in, out, opts...)
+	err := c.cc.Invoke(ctx, Daemon_Signal_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +110,7 @@ func (c *daemonClient) HealthCheck(ctx context.Context, in *emptypb.Empty, opts 
 type DaemonServer interface {
 	// process management
 	Start(context.Context, *IDs) (*emptypb.Empty, error)
-	Stop(context.Context, *IDs) (*emptypb.Empty, error)
+	Signal(context.Context, *SignalRequest) (*emptypb.Empty, error)
 	// CRUD operations
 	Create(context.Context, *ProcessOptions) (*ProcessID, error)
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
@@ -127,8 +126,8 @@ type UnimplementedDaemonServer struct {
 func (UnimplementedDaemonServer) Start(context.Context, *IDs) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
 }
-func (UnimplementedDaemonServer) Stop(context.Context, *IDs) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
+func (UnimplementedDaemonServer) Signal(context.Context, *SignalRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Signal not implemented")
 }
 func (UnimplementedDaemonServer) Create(context.Context, *ProcessOptions) (*ProcessID, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
@@ -173,20 +172,20 @@ func _Daemon_Start_Handler(srv interface{}, ctx context.Context, dec func(interf
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Daemon_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IDs)
+func _Daemon_Signal_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SignalRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DaemonServer).Stop(ctx, in)
+		return srv.(DaemonServer).Signal(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Daemon_Stop_FullMethodName,
+		FullMethod: Daemon_Signal_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).Stop(ctx, req.(*IDs))
+		return srv.(DaemonServer).Signal(ctx, req.(*SignalRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -275,8 +274,8 @@ var Daemon_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Daemon_Start_Handler,
 		},
 		{
-			MethodName: "Stop",
-			Handler:    _Daemon_Stop_Handler,
+			MethodName: "Signal",
+			Handler:    _Daemon_Signal_Handler,
 		},
 		{
 			MethodName: "Create",

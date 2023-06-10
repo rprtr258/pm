@@ -3,7 +3,9 @@ package client
 import (
 	"context"
 	"net"
+	"syscall"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
@@ -119,23 +121,35 @@ func (c Client) Start(ctx context.Context, ids []uint64) error {
 	return nil
 }
 
-func (c Client) Stop(ctx context.Context, ids []uint64) error {
-	if _, err := c.client.Stop(ctx, mapIDs(ids)); err != nil {
+func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64) error {
+	var apiSignal api.Signal
+	switch signal {
+	case syscall.SIGTERM:
+		apiSignal = api.Signal_SIGTERM
+	case syscall.SIGKILL:
+		apiSignal = api.Signal_SIGKILL
+	default:
+		return xerr.NewM("unknown signal", xerr.Fields{"signal": signal})
+	}
+
+	if _, err := c.client.Signal(ctx, &api.SignalRequest{
+		Ids:    fun.Map(ids, mapProcID),
+		Signal: apiSignal,
+	}); err != nil {
 		return xerr.NewWM(err, "server.stop", xerr.Fields{"ids": ids})
 	}
 	return nil
 }
 
+func mapProcID(id uint64) *api.ProcessID {
+	return &api.ProcessID{
+		Id: id,
+	}
+}
+
 func mapIDs(ids []uint64) *api.IDs {
 	return &api.IDs{
-		Ids: lo.Map(
-			ids,
-			func(procID uint64, _ int) *api.ProcessID {
-				return &api.ProcessID{
-					Id: procID,
-				}
-			},
-		),
+		Ids: fun.Map(ids, mapProcID),
 	}
 }
 
