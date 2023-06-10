@@ -11,10 +11,7 @@ import (
 
 func main() {
 	if errRun := cli.App.Run(os.Args); errRun != nil {
-		if s, e := xerr.MarshalJSON(errRun); e == nil {
-			log.Fatal(string(s)) // TODO: get error fields
-		} else {
-			log.Fatal(errRun.Error())
-		}
+		message, fields := xerr.UnwrapFields(errRun)
+		log.Fatalf(message, fields)
 	}
 }
