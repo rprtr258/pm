@@ -104,7 +104,7 @@ func (app App) Create(ctx context.Context, configs ...core.RunConfig) ([]core.Pr
 	for _, config := range configs {
 		command, errLook := exec.LookPath(config.Command)
 		if errLook != nil {
-			xerr.AppendInto(&errLook, xerr.NewWM(
+			xerr.AppendInto(&err, xerr.NewWM(
 				errLook,
 				"look for executable path",
 				xerr.Fields{"executable": config.Command},

@@ -300,7 +300,6 @@ func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty
 	if errDelete := srv.db.Delete(ids); errDelete != nil {
 		return nil, xerr.NewWM(errDelete, "delete proc", xerr.Fields{"procIDs": ids})
 	}
-	// TODO: add loggings
 
 	var merr error
 	for _, procID := range ids {
