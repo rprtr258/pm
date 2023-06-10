@@ -37,12 +37,12 @@ func (ps StatusType) String() string {
 
 type Status struct {
 	StartTime time.Time  `json:"start_time"` // StartTime, valid if running
-	Status    StatusType `json:"type"`
-	Pid       int        `json:"pid"`        // PID, valid if running
-	CPU       uint64     `json:"cpu"`        // CPU usage percentage rounded to integer, valid if running
-	Memory    uint64     `json:"memory"`     // Memory usage in bytes, valid if running
-	ExitCode  int        `json:"exit_code"`  // ExitCode of the process, valid if stopped
 	StoppedAt time.Time  `json:"stopped_at"` // StoppedAt - time when the process stopped, valid if stopped
+	Status    StatusType `json:"type"`
+	Pid       int        `json:"pid"`       // PID, valid if running
+	CPU       uint64     `json:"cpu"`       // CPU usage percentage rounded to integer, valid if running
+	Memory    uint64     `json:"memory"`    // Memory usage in bytes, valid if running
+	ExitCode  int        `json:"exit_code"` // ExitCode of the process, valid if stopped
 }
 
 func NewStatusInvalid() Status {
@@ -58,7 +58,7 @@ func NewStatusStarting() Status {
 }
 
 func NewStatusRunning(startTime time.Time, pid int, cpu, memory uint64) Status {
-	return Status{
+	return Status{ //nolint:exhaustruct // not needed
 		Status:    StatusRunning,
 		StartTime: startTime,
 		Pid:       pid,

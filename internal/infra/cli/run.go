@@ -82,11 +82,16 @@ var _runCmd = &cli.Command{
 			tags: ctx.StringSlice("tag"),
 			cwd:  ctx.String("pwd"),
 		}
-		if ctx.IsSet("config") {
-			return executeProcCommandWithConfig2(ctx.Context, client, props, ctx.String("config"))
+		if !ctx.IsSet("config") {
+			return execRun(ctx.Context, client, props)
 		}
 
-		return executeProcCommandWithoutConfig2(ctx.Context, client, props)
+		configs, errLoadConfigs := loadConfigs(ctx.String("config"))
+		if errLoadConfigs != nil {
+			return errLoadConfigs
+		}
+
+		return runConfigs(ctx.Context, props.args, configs, client)
 	},
 }
 
@@ -164,21 +169,7 @@ func run(
 	return nil
 }
 
-func executeProcCommandWithConfig2(
-	ctx context.Context,
-	client client.Client,
-	cmd runCmd,
-	configFilename string,
-) error {
-	configs, errLoadConfigs := loadConfigs(configFilename)
-	if errLoadConfigs != nil {
-		return errLoadConfigs
-	}
-
-	return runConfigs(ctx, cmd.args, configs, client)
-}
-
-func executeProcCommandWithoutConfig2(ctx context.Context, client client.Client, cmd runCmd) error {
+func execRun(ctx context.Context, client client.Client, cmd runCmd) error {
 	if len(cmd.args) == 0 {
 		return xerr.NewM("command expected")
 	}
@@ -188,13 +179,11 @@ func executeProcCommandWithoutConfig2(ctx context.Context, client client.Client,
 		return xerr.NewWM(err, "get cwd")
 	}
 
-	config := RunConfig{
+	return run(ctx, RunConfig{
 		Command: cmd.args[0],
 		Args:    cmd.args[1:],
 		Name:    fun.Optional(cmd.name, cmd.name != ""),
 		Tags:    cmd.tags,
 		Cwd:     cwd,
-	}
-
-	return run(ctx, config, client)
+	}, client)
 }

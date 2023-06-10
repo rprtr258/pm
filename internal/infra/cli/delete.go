@@ -53,7 +53,7 @@ var _deleteCmd = &cli.Command{
 			return xerr.NewWM(errList, "server.list")
 		}
 
-		if ctx.IsSet("config") {
+		if !ctx.IsSet("config") {
 			return delCmd.Run(ctx.Context, client, list)
 		}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"google.golang.org/grpc/codes"
@@ -143,8 +143,7 @@ func (srv *daemonServer) Stop(_ context.Context, req *api.IDs) (*emptypb.Empty, 
 
 func (srv *daemonServer) stop(proc db.ProcData) error {
 	if proc.Status.Status != db.StatusRunning {
-		// TODO: structured logging, INFO here
-		log.Printf("proc %+v was asked to be stopped, but not running\n", proc)
+		log.Infof("tried to stop non-running process", log.F{"proc": proc})
 		return nil
 	}
 
@@ -157,7 +156,9 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 	// TODO: kill after timeout
 	if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
 		if errors.Is(errKill, os.ErrProcessDone) {
-			log.Printf("[WARN] finished process %+v with running status", proc)
+			log.Warnf("tried to stop process which is done", log.F{"proc": proc})
+		} else if errors.Is(errKill, syscall.ESRCH) { // no such process
+			log.Warnf("tried to stop process which doesn't exist", log.F{"proc": proc})
 		} else {
 			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
 		}
@@ -169,9 +170,9 @@ func (srv *daemonServer) stop(proc db.ProcData) error {
 			return xerr.NewWM(errFindProc, "releasing process", xerr.Fields{"procData": proc})
 		}
 
-		fmt.Printf("[INFO] process %+v is not a child", proc)
+		log.Infof("process is not a child", log.F{"proc": proc})
 	} else {
-		fmt.Printf("[INFO] process %+v closed with state %+v\n", proc, state)
+		log.Infof("process is stopped", log.F{"proc": proc, "state": state})
 	}
 
 	if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusStopped(state.ExitCode())); errSetStatus != nil {
