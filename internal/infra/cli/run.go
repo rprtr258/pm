@@ -121,7 +121,7 @@ var _runCmd = &cli.Command{
 			return nil
 		}
 
-		configs, errLoadConfigs := loadConfigs(ctx.String("config"))
+		configs, errLoadConfigs := core.LoadConfigs(ctx.String("config"))
 		if errLoadConfigs != nil {
 			return errLoadConfigs
 		}

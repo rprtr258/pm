@@ -7,6 +7,7 @@ import (
 
 	"github.com/rprtr258/xerr"
 
+	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -71,7 +72,7 @@ var _deleteCmd = &cli.Command{
 			return nil
 		}
 
-		configs, errLoadConfigs := loadConfigs(ctx.String("config"))
+		configs, errLoadConfigs := core.LoadConfigs(ctx.String("config"))
 		if errLoadConfigs != nil {
 			return errLoadConfigs
 		}

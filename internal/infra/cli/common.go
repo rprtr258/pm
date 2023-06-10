@@ -1,19 +1,11 @@
 package cli
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
-	"path/filepath"
-	"time"
 
-	jsonnet "github.com/google/go-jsonnet"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
-	"github.com/rprtr258/fun"
 	"github.com/rprtr258/log"
-	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/xerr"
 )
 
@@ -41,80 +33,6 @@ var configFlag = &cli.StringFlag{
 	Usage:     "config file to use",
 	Aliases:   []string{"f"},
 	TakesFile: true,
-}
-
-func isConfigFile(arg string) bool {
-	stat, err := os.Stat(arg)
-	if err != nil {
-		return false
-	}
-
-	return !stat.IsDir()
-}
-
-func newVM() *jsonnet.VM {
-	vm := jsonnet.MakeVM()
-	vm.ExtVar("now", time.Now().Format("15:04:05"))
-	return vm
-}
-
-type configScanDTO struct {
-	Name    *string
-	Cwd     *string
-	Command string
-	Args    []any
-	Tags    []string
-}
-
-func loadConfigs(filename string) ([]core.RunConfig, error) {
-	if !isConfigFile(filename) {
-		return nil, xerr.NewM(
-			"invalid config file",
-			xerr.Fields{"configFilename": filename},
-			xerr.Stacktrace(0),
-		)
-	}
-
-	jsonText, err := newVM().EvaluateFile(filename)
-	if err != nil {
-		return nil, xerr.NewWM(err, "evaluate jsonnet file")
-	}
-
-	var scannedConfigs []configScanDTO
-	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
-		return nil, xerr.NewWM(err, "unmarshal configs json")
-	}
-
-	// TODO: validate configs
-	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) core.RunConfig {
-		return core.RunConfig{
-			Name:    fun.FromPtr(config.Name),
-			Command: config.Command,
-			Args: lo.Map(config.Args, func(arg any, i int) string { //nolint:varnamelen // i is index
-				switch a := arg.(type) {
-				case fmt.Stringer:
-					return a.String()
-				case int, int8, int16, int32, int64,
-					uint, uint8, uint16, uint32, uint64,
-					float32, float64, bool, string:
-					return fmt.Sprint(arg)
-				default:
-					argStr := fmt.Sprintf("%v", arg)
-					log.Errorf("unknown arg type", log.F{
-						"arg":    argStr,
-						"i":      i,
-						"config": config,
-					})
-
-					return argStr
-				}
-			}),
-			Tags: config.Tags,
-			Cwd: lo.
-				If(config.Cwd == nil, filepath.Dir(filename)).
-				ElseF(func() string { return *config.Cwd }),
-		}
-	}), nil
 }
 
 // { Name: "pid", commander.command('[app_name]')
