@@ -360,7 +360,8 @@ var (
 
 		// rofls
 		"satont", "fukushine", // author of https://github.com/Satont/tsuwari
-		"rprtr", // author of https://github.com/rprtr258/pm
+		"rprtr",      // author of https://github.com/rprtr258/pm
+		"coopertino", // C++ developer
 	}
 )
 

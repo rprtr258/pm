@@ -115,7 +115,6 @@ type Handle struct {
 	procs *simpdb.Table[ProcData]
 }
 
-// TODO: must call db.Close after this
 func New(dir string) (Handle, error) {
 	db := simpdb.New(dir)
 
@@ -128,14 +127,6 @@ func New(dir string) (Handle, error) {
 		db:    db,
 		procs: procs,
 	}, nil
-}
-
-func (handle Handle) Close() error {
-	if errFlush := handle.procs.Flush(); errFlush != nil {
-		return xerr.NewWM(errFlush, "flush procs table")
-	}
-
-	return nil
 }
 
 func (handle Handle) AddProc(metadata ProcData) (ProcID, error) {

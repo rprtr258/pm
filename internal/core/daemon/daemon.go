@@ -31,7 +31,6 @@ func Run(rpcSocket, dbDir, homeDir string) error {
 	if err != nil {
 		return xerr.NewWM(err, "create db")
 	}
-	defer dbHandle.Close()
 
 	srv := grpc.NewServer()
 	api.RegisterDaemonServer(srv, &daemonServer{
