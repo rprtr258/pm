@@ -82,7 +82,6 @@ func NewStatus() Status {
 
 type ProcID uint64
 
-// TODO: implement String()
 type ProcData struct {
 	// Command - executable to run
 	Command string `json:"command"`
@@ -104,34 +103,38 @@ type ProcData struct {
 }
 
 func (p ProcData) ID() string {
-	return strconv.FormatUint(uint64(p.ProcID), 10)
+	return strconv.FormatUint(uint64(p.ProcID), 10) //nolint:gomnd // decimal id
 }
 
-type DBHandle struct {
+type Handle struct {
 	db    *simpdb.DB
 	procs *simpdb.Table[ProcData]
 }
 
 // TODO: must call db.Close after this
-func New(dir string) (DBHandle, error) {
+func New(dir string) (Handle, error) {
 	db := simpdb.New(dir)
 
 	procs, err := simpdb.GetTable[ProcData](db, "procs", storages.NewJSONStorage[ProcData]())
 	if err != nil {
-		return DBHandle{}, err
+		return Handle{}, err
 	}
 
-	return DBHandle{
+	return Handle{
 		db:    db,
 		procs: procs,
 	}, nil
 }
 
-func (handle DBHandle) Close() error {
-	return handle.procs.Flush()
+func (handle Handle) Close() error {
+	if errFlush := handle.procs.Flush(); errFlush != nil {
+		return xerr.NewWM(errFlush, "flush procs table")
+	}
+
+	return nil
 }
 
-func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
+func (handle Handle) AddProc(metadata ProcData) (ProcID, error) {
 	maxProcID := uint64(0)
 	handle.procs.Iter(func(id string, _ ProcData) bool {
 		procID, _ := strconv.ParseUint(id, 10, 64) // TODO: remove, change ids to ints
@@ -156,7 +159,7 @@ func (handle DBHandle) AddProc(metadata ProcData) (ProcID, error) {
 	return metadata.ProcID, nil
 }
 
-func (handle DBHandle) UpdateProc(metadata ProcData) error {
+func (handle Handle) UpdateProc(metadata ProcData) error {
 	handle.procs.Upsert(metadata)
 
 	if err := handle.procs.Flush(); err != nil {
@@ -166,7 +169,7 @@ func (handle DBHandle) UpdateProc(metadata ProcData) error {
 	return nil
 }
 
-func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
+func (handle Handle) GetProcs(ids []ProcID) ([]ProcData, error) {
 	lookupTable := make(map[string]struct{}, len(ids))
 	for _, id := range ids {
 		lookupTable[strconv.FormatUint(uint64(id), 10)] = struct{}{}
@@ -180,7 +183,7 @@ func (handle DBHandle) GetProcs(ids []ProcID) ([]ProcData, error) {
 	return res, nil
 }
 
-func (handle DBHandle) List() map[ProcID]ProcData {
+func (handle Handle) List() map[ProcID]ProcData {
 	res := map[ProcID]ProcData{}
 	handle.procs.Iter(func(id string, pd ProcData) bool {
 		res[pd.ProcID] = pd
@@ -196,7 +199,7 @@ func (err ErrorProcNotFound) Error() string {
 	return fmt.Sprintf("proc #%d not found", err)
 }
 
-func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) error {
+func (handle Handle) SetStatus(procID ProcID, newStatus Status) error {
 	procDataMaybe := handle.procs.Get(strconv.FormatUint(uint64(procID), 10)) //nolint:gomnd // decimal
 	if !procDataMaybe.Valid {
 		return ErrorProcNotFound(procID)
@@ -212,7 +215,7 @@ func (handle DBHandle) SetStatus(procID ProcID, newStatus Status) error {
 	return nil
 }
 
-func (handle DBHandle) Delete(procIDs []uint64) error {
+func (handle Handle) Delete(procIDs []uint64) error {
 	lookupTable := make(map[uint64]struct{}, len(procIDs))
 	for _, procID := range procIDs {
 		lookupTable[procID] = struct{}{}

@@ -35,7 +35,7 @@ var (
 // TODO: logs for daemon everywhere
 type daemonServer struct {
 	api.UnimplementedDaemonServer
-	db      db.DBHandle
+	db      db.Handle
 	homeDir string
 }
 
