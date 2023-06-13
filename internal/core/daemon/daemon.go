@@ -236,6 +236,7 @@ func RunServer(pCtx context.Context) error {
 	}()
 
 	go cron{
+		l:                 log.Tag("cron"),
 		db:                dbHandle,
 		statusUpdateDelay: time.Second * 5, //nolint:gomnd // arbitrary timeout
 	}.start(ctx)

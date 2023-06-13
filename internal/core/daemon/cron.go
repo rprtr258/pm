@@ -12,6 +12,7 @@ import (
 )
 
 type cron struct {
+	l                 log.Logger
 	db                db.Handle
 	statusUpdateDelay time.Duration
 }
@@ -28,15 +29,15 @@ func (c cron) updateStatuses() {
 			// process stat file exists hence process is still running
 			continue
 		case !xerr.Is(errStat, linuxprocess.ErrStatFileNotFound):
-			log.Warnf("read proc stat", log.F{
+			c.l.Warnf("read proc stat", log.F{
 				"pid": proc.Status.Pid,
 				"err": errStat.Error(),
 			})
 		default:
-			log.Infof("process seems to be stopped, updating status...", log.F{"pid": proc.Status.Pid})
+			c.l.Infof("process seems to be stopped, updating status...", log.F{"pid": proc.Status.Pid})
 
 			if errUpdate := c.db.SetStatus(proc.ProcID, core.NewStatusStopped(-1)); errUpdate != nil {
-				log.Errorf("set stopped status", log.F{"procID": proc.ID})
+				c.l.Errorf("set stopped status", log.F{"procID": proc.ID})
 			}
 		}
 	}
@@ -44,11 +45,14 @@ func (c cron) updateStatuses() {
 
 func (c cron) start(ctx context.Context) {
 	ticker := time.NewTicker(c.statusUpdateDelay)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ticker.C:
 			c.updateStatuses()
 		case <-ctx.Done():
+			c.l.Info("context canceled, stopping...")
 			return
 		}
 	}
