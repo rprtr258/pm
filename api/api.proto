@@ -1,82 +1,83 @@
 syntax = "proto3";
 
+package api;
+
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/rprtr258/pm/api";
 
-package api;
-
 service Daemon {
-    // process management
-    rpc Start(IDs) returns (google.protobuf.Empty);
-    rpc Signal(SignalRequest) returns (google.protobuf.Empty);
+  // process management
+  rpc Start(IDs) returns (google.protobuf.Empty);
+  rpc Signal(SignalRequest) returns (google.protobuf.Empty);
 
-    // CRUD operations
-    rpc Create(ProcessOptions) returns (ProcessID);
-    rpc List(google.protobuf.Empty) returns (ProcessesList);
-    rpc Delete(IDs) returns (google.protobuf.Empty);
+  // CRUD operations
+  rpc Create(ProcessOptions) returns (ProcessID);
+  rpc List(google.protobuf.Empty) returns (ProcessesList);
+  rpc Delete(IDs) returns (google.protobuf.Empty);
 
-    rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
 message ProcessID {
-    uint64 id = 1;
+  uint64 id = 1;
 }
 
 message ProcessOptions {
-    string command = 1;
-    repeated string args = 2;
-    optional string name = 3;
-    string cwd = 4;
-    repeated string tags = 5;
+  string command = 1;
+  repeated string args = 2;
+  optional string name = 3;
+  string cwd = 4;
+  repeated string tags = 5;
 }
 
 message ProcessesList {
-    repeated Process list = 1;
+  repeated Process processes = 1;
 }
 
 message Process {
-    ProcessID id = 1;
-    ProcessStatus status = 2;
-    string name = 3;
-    string cwd = 4;
-    repeated string tags = 5;
-    string command = 6;
-    repeated string args = 7;
+  ProcessID id = 1;
+  ProcessStatus status = 2;
+  string name = 3;
+  string cwd = 4;
+  repeated string tags = 5;
+  string command = 6;
+  repeated string args = 7;
 }
 
 message ProcessStatus {
-    oneof status {
-        google.protobuf.Empty Invalid = 1;
-        google.protobuf.Empty Starting = 2;
-        RunningProcessStatus Running = 3;
-        StoppedProcessStatus Stopped = 4;
-    };
+  oneof status {
+    google.protobuf.Empty invalid = 1;
+    google.protobuf.Empty starting = 2;
+    RunningProcessStatus running = 3;
+    StoppedProcessStatus stopped = 4;
+  };
 }
 
 message RunningProcessStatus {
-    int64 pid = 1;
-    google.protobuf.Timestamp start_time = 2;
-    uint64 cpu = 3;
-    uint64 memory = 4;
+  int64 pid = 1;
+  google.protobuf.Timestamp start_time = 2;
+  uint64 cpu = 3;
+  uint64 memory = 4;
 }
 
 message StoppedProcessStatus {
-    int64 exit_code = 1;
-    google.protobuf.Timestamp stopped_at = 2;
+  int64 exit_code = 1;
+  google.protobuf.Timestamp stopped_at = 2;
 }
 
 message IDs {
-    repeated ProcessID ids = 1;
+  repeated ProcessID ids = 1;
 }
 
 enum Signal {
-    SIGTERM = 0;
-    SIGKILL = 1;
+  SIGNAL_UNSPECIFIED = 0;
+  SIGNAL_SIGTERM = 1;
+  SIGNAL_SIGKILL = 2;
 }
 
 message SignalRequest {
-    repeated ProcessID ids = 1;
-    Signal signal = 2;
+  repeated ProcessID ids = 1;
+  Signal signal = 2;
 }

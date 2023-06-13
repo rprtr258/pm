@@ -69,7 +69,7 @@ func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error)
 	}
 
 	return lo.SliceToMap(
-		resp.GetList(),
+		resp.GetProcesses(),
 		func(proc *api.Process) (core.ProcID, core.ProcData) {
 			procID := core.ProcID(proc.GetId().GetId())
 			return procID, core.ProcData{
@@ -125,9 +125,9 @@ func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64)
 	var apiSignal api.Signal
 	switch signal {
 	case syscall.SIGTERM:
-		apiSignal = api.Signal_SIGTERM
+		apiSignal = api.Signal_SIGNAL_SIGTERM
 	case syscall.SIGKILL:
-		apiSignal = api.Signal_SIGKILL
+		apiSignal = api.Signal_SIGNAL_SIGKILL
 	default:
 		return xerr.NewM("unknown signal", xerr.Fields{"signal": signal})
 	}

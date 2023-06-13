@@ -8,7 +8,6 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/google/go-jsonnet v0.20.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
-	github.com/kr/pretty v0.1.0
 	github.com/rprtr258/fun v0.0.4
 	github.com/rprtr258/log v0.0.7
 	github.com/rprtr258/simpdb v0.5.0
@@ -24,7 +23,6 @@ require (
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/kr/text v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect

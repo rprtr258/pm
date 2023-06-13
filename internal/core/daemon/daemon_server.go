@@ -135,9 +135,9 @@ func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emp
 
 	var signal syscall.Signal
 	switch req.GetSignal() {
-	case api.Signal_SIGTERM:
+	case api.Signal_SIGNAL_SIGTERM:
 		signal = syscall.SIGTERM
-	case api.Signal_SIGKILL:
+	case api.Signal_SIGNAL_SIGKILL:
 		signal = syscall.SIGKILL
 	default:
 		return nil, xerr.NewM("unknown signal", xerr.Fields{"signal": req.GetSignal()})
@@ -246,7 +246,7 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.Proce
 	list := srv.db.List()
 
 	return &api.ProcessesList{
-		List: lo.MapToSlice(
+		Processes: lo.MapToSlice(
 			list,
 			func(id core.ProcID, proc core.ProcData) *api.Process {
 				return &api.Process{
