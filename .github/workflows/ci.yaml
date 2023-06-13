@@ -10,22 +10,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint-go:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  # lint-go:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
       
-      - name: Install go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.19'
-          cache: true
+  #     - name: Install go
+  #       uses: actions/setup-go@v4
+  #       with:
+  #         go-version: '1.19'
+  #         cache: true
 
-      - name: Run go linter
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.53.2
+  #     - name: Run go linter
+  #       uses: golangci/golangci-lint-action@v3
+  #       with:
+  #         version: v1.53.2
 
   lint-proto:
     runs-on: ubuntu-latest

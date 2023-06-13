@@ -72,14 +72,14 @@ func (srv *daemonServer) start(ctx context.Context, proc core.ProcData) error {
 		Dir: getProcCwd(cwd, proc.Cwd),
 		Env: os.Environ(), // TODO: ???
 		Files: []*os.File{ // TODO: pid file is somehow passes to child
-			os.Stdin,
-			stdoutLogFile,
-			stderrLogFile,
+			0: os.Stdin,
+			1: stdoutLogFile,
+			2: stderrLogFile,
 			// TODO: very fucking dirty hack not to inherit pid (and possibly other fds from daemon)
 			// because I tried different variants, none of them worked out, including setting O_CLOEXEC on
 			// pid file open and fcntl FD_CLOEXEC on already opened pid file fd
 			// TODO: try if syscall.Getuid() == 0 {syscall.Setgid(GID) == nil && syscall.Setuid(UID) == nil}
-			nil, nil, nil, nil, nil, nil, nil, nil,
+			/* 3,4,5,6,7... */ nil, nil, nil, nil, nil, nil, nil, nil,
 		},
 		Sys: &syscall.SysProcAttr{
 			Setpgid: true,
