@@ -11,9 +11,8 @@ import (
 	"github.com/aquasecurity/table"
 	"github.com/fatih/color"
 	"github.com/kballard/go-shellquote"
-	"github.com/urfave/cli/v2"
-
 	"github.com/rprtr258/xerr"
+	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/fun"
