@@ -39,12 +39,27 @@ var _listCmd = &cli.Command{
 			Name:    "format",
 			Aliases: []string{"f"},
 			Usage: "Listing format: " + strings.Join([]string{
-				_formatTable,
-				_formatCompact,
-				_formatJSON,
-				_formatShort,
-			}, ", ") + ", any other string is rendred as Go template with core.ProcData struct",
+				color.YellowString(_formatTable),
+				color.YellowString(_formatCompact),
+				color.YellowString(_formatJSON),
+				color.YellowString(_formatShort),
+			}, ", ") + ", any other string is rendred as Go template with " +
+				color.GreenString("core.ProcData") +
+				" struct",
 			Value: "table",
+		},
+		&cli.StringFlag{
+			Name:    "sort",
+			Aliases: []string{"s"},
+			Usage: "Sort order. Available sort fields: " + strings.Join([]string{
+				color.YellowString("id"),
+				color.YellowString("name"),
+				color.YellowString("status"),
+				color.YellowString("pid"),
+				color.YellowString("uptime"),
+			}, ", ") + ". Order can be changed by adding " +
+				color.RedString(":asc") + " or " + color.RedString(":desc"),
+			Value: "id:asc",
 		},
 		&cli.StringSliceFlag{
 			Name:  "name",
@@ -64,6 +79,89 @@ var _listCmd = &cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
+		sortField := ctx.String("sort")
+		sortOrder := "asc"
+		if i := strings.IndexRune(sortField, ':'); i != -1 {
+			sortField, sortOrder = sortField[:i], sortField[i+1:]
+		}
+
+		var sortFunc func(a, b core.ProcData) bool
+		switch sortField {
+		case "id":
+			sortFunc = func(a, b core.ProcData) bool {
+				return a.ProcID < b.ProcID
+			}
+		case "name":
+			sortFunc = func(a, b core.ProcData) bool {
+				return a.Name < b.Name
+			}
+		case "status":
+			getOrder := func(p core.ProcData) int {
+				//nolint:gomnd // priority weights
+				switch p.Status.Status {
+				case core.StatusStarting:
+					return 0
+				case core.StatusRunning:
+					return 100
+				case core.StatusStopped:
+					return 200 + p.Status.ExitCode
+				case core.StatusInvalid:
+					return 300
+				default:
+					return 400
+				}
+			}
+			sortFunc = func(a, b core.ProcData) bool {
+				return getOrder(a) < getOrder(b)
+			}
+		case "pid":
+			sortFunc = func(a, b core.ProcData) bool {
+				if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
+					if a.Status.Status == core.StatusRunning {
+						return true
+					}
+
+					if b.Status.Status == core.StatusRunning {
+						return false
+					}
+
+					return a.ProcID < b.ProcID
+				}
+
+				return a.Status.Pid < b.Status.Pid
+			}
+		case "uptime":
+			now := time.Now()
+			sortFunc = func(a, b core.ProcData) bool {
+				if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
+					if a.Status.Status == core.StatusRunning {
+						return true
+					}
+
+					if b.Status.Status == core.StatusRunning {
+						return false
+					}
+
+					return a.ProcID < b.ProcID
+				}
+
+				return a.Status.StartTime.Sub(now) < b.Status.StartTime.Sub(now)
+			}
+		default:
+			return xerr.NewM("unknown sort field", xerr.Fields{"field": sortField})
+		}
+
+		switch sortOrder {
+		case "asc":
+		case "desc":
+			oldSortFunc := sortFunc
+			sortFunc = func(a, b core.ProcData) bool {
+				return !oldSortFunc(a, b)
+			}
+		default:
+			return xerr.NewM("unknown sort order", xerr.Fields{"order": sortOrder})
+		}
+
 		return list(
 			ctx.Context,
 			ctx.Args().Slice(),
@@ -72,6 +170,7 @@ var _listCmd = &cli.Command{
 			ctx.StringSlice("status"),
 			ctx.Uint64Slice("id"),
 			ctx.String("format"),
+			sortFunc,
 		)
 	},
 }
@@ -123,6 +222,7 @@ func list(
 	genericFilters, nameFilters, tagFilters, statusFilters []string,
 	idFilters []uint64,
 	format string,
+	sortFunc func(a, b core.ProcData) bool,
 ) error {
 	client, err := client.NewGrpcClient()
 	if err != nil {
@@ -148,7 +248,7 @@ func list(
 
 	procsToShow := fun.MapDict(procIDsToShow, list)
 	sort.Slice(procsToShow, func(i, j int) bool {
-		return procsToShow[i].ProcID < procsToShow[j].ProcID
+		return sortFunc(procsToShow[i], procsToShow[j])
 	})
 
 	switch format {
