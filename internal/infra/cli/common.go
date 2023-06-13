@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -15,7 +17,7 @@ func ensureDir(dirname string) error {
 		return nil
 	}
 
-	if !os.IsNotExist(errStat) {
+	if !errors.Is(errStat, fs.ErrNotExist) {
 		return xerr.NewWM(errStat, "stat home dir")
 	}
 

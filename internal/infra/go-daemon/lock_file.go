@@ -1,8 +1,10 @@
 package daemon
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"syscall"
 
@@ -100,7 +102,7 @@ func (e *PidFileNotFoundError) Error() string {
 func ReadPidFile(name string) (int, error) {
 	file, err := os.OpenFile(name, os.O_RDONLY, 0o640)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return 0, &PidFileNotFoundError{name, false}
 		}
 

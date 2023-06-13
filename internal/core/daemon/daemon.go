@@ -117,7 +117,7 @@ func Kill() error {
 }
 
 // Restart daemon and get it's pid.
-func Restart() (int, error) {
+func Restart(ctx context.Context) (int, error) {
 	if !daemon.AmIDaemon() {
 		if errKill := Kill(); errKill != nil {
 			return 0, xerr.NewWM(errKill, "kill daemon to restart")
@@ -135,10 +135,13 @@ func Restart() (int, error) {
 	}
 
 	// i am daemon here
-	return 0, RunServer()
+	return 0, RunServer(ctx)
 }
 
-func RunServer() error {
+func RunServer(pCtx context.Context) error {
+	ctx, cancel := context.WithCancel(pCtx)
+	defer cancel()
+
 	sock, errListen := net.Listen("unix", core.SocketRPC)
 	if errListen != nil {
 		return xerr.NewWM(errListen, "net.Listen on rpc socket", xerr.Fields{"socket": core.SocketRPC})
@@ -232,6 +235,11 @@ func RunServer() error {
 		}
 	}()
 
+	go cron{
+		db:                dbHandle,
+		statusUpdateDelay: time.Second * 5, //nolint:gomnd // arbitrary timeout
+	}.start(ctx)
+
 	doneCh := make(chan error, 1)
 	go func() {
 		if errServe := srv.Serve(sock); errServe != nil {
@@ -255,6 +263,7 @@ func RunServer() error {
 	select {
 	case sig := <-sigsCh:
 		log.Infof("received signal, exiting", log.F{"signal": fmt.Sprintf("%[1]T(%#[1]v)-%[1]s", sig)})
+		srv.GracefulStop()
 		return nil
 	case err := <-doneCh:
 		if err != nil {

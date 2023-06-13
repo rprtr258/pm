@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -329,7 +330,7 @@ func removeLogFiles(procID uint64) error {
 
 func removeFile(name string) error {
 	if _, errStat := os.Stat(name); errStat != nil {
-		if os.IsNotExist(errStat) {
+		if errors.Is(errStat, fs.ErrNotExist) {
 			return nil
 		}
 		return xerr.NewWM(errStat, "remove file, stat", xerr.Fields{"filename": name})

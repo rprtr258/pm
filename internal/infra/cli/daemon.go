@@ -19,7 +19,7 @@ var _daemonCmd = &cli.Command{
 			Aliases: []string{"restart"},
 			Usage:   "launch daemon process",
 			Action: func(ctx *cli.Context) error {
-				pid, errRestart := pm_daemon.Restart()
+				pid, errRestart := pm_daemon.Restart(ctx.Context)
 				if errRestart != nil {
 					return xerr.NewWM(errRestart, "restart daemon process")
 				}
@@ -48,7 +48,7 @@ var _daemonCmd = &cli.Command{
 			Name:  "run",
 			Usage: "run daemon server without daemonizing, DON'T USE BY HAND IF YOU DON'T KNOW WHAT YOU ARE DOING",
 			Action: func(ctx *cli.Context) error {
-				if errRun := pm_daemon.RunServer(); errRun != nil {
+				if errRun := pm_daemon.RunServer(ctx.Context); errRun != nil {
 					return xerr.NewWM(errRun, "run daemon process")
 				}
 

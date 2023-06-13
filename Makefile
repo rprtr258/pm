@@ -1,4 +1,4 @@
-PM := "go run cmd/main.go"
+PM := go run cmd/main.go
 
 CURDIR=$(shell pwd)
 BINDIR=${CURDIR}/bin
@@ -72,11 +72,11 @@ bump: # bump dependencies
 todo: # check todos
 	rg 'TODO' --glob '**/*.go' || echo 'All done!'
 
-daemon-restart: # restart daemon
-	{{PM}} daemon stop && {{PM}} daemon start
+watch-daemon: # start daemon and restart on file changes
+	reflex --start-service --regex='\.go$$' -- ${PM} daemon run
 
 run-task: # TODO: remove # run "long running" task
-	{{PM}} run --name qmen24-$(date +'%H:%M:%S') sleep 10
+	${PM} run --name qmen24-$(date +'%H:%M:%S') sleep 10
 
 install-protoc: bindir
 	@test -f ${PROTOCBIN} || \
