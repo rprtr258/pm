@@ -152,7 +152,7 @@ func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emp
 	return &emptypb.Empty{}, merr
 }
 
-func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*emptypb.Empty, error) {
+func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*api.IDs, error) {
 	procsList := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
 		return core.ProcID(id.GetId())
 	}))
@@ -160,6 +160,8 @@ func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*emptypb.Empty
 	procs := lo.SliceToMap(procsList, func(proc db.ProcData) (core.ProcID, db.ProcData) {
 		return proc.ProcID, proc
 	})
+
+	stoppedIDs := []core.ProcID{}
 
 	var merr error
 	for _, procID := range req.GetIds() {
@@ -239,9 +241,15 @@ func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*emptypb.Empty
 			xerr.AppendInto(&merr, xerr.NewWM(errSetStatus, "set status stopped", xerr.Fields{"procID": proc.ProcID}))
 			continue
 		}
+
+		stoppedIDs = append(stoppedIDs, proc.ProcID)
 	}
 
-	return &emptypb.Empty{}, nil
+	return &api.IDs{
+		Ids: lo.Map(stoppedIDs, func(id core.ProcID, _ int) *api.ProcessID {
+			return &api.ProcessID{Id: uint64(id)}
+		}),
+	}, nil
 }
 
 func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {

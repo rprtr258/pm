@@ -37,7 +37,7 @@ type DaemonClient interface {
 	// process management
 	Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Signal(ctx context.Context, in *SignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*IDs, error)
 	// CRUD operations
 	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*IDs, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
@@ -71,8 +71,8 @@ func (c *daemonClient) Signal(ctx context.Context, in *SignalRequest, opts ...gr
 	return out, nil
 }
 
-func (c *daemonClient) Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *daemonClient) Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*IDs, error) {
+	out := new(IDs)
 	err := c.cc.Invoke(ctx, Daemon_Stop_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ type DaemonServer interface {
 	// process management
 	Start(context.Context, *IDs) (*emptypb.Empty, error)
 	Signal(context.Context, *SignalRequest) (*emptypb.Empty, error)
-	Stop(context.Context, *IDs) (*emptypb.Empty, error)
+	Stop(context.Context, *IDs) (*IDs, error)
 	// CRUD operations
 	Create(context.Context, *CreateRequest) (*IDs, error)
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
@@ -142,7 +142,7 @@ func (UnimplementedDaemonServer) Start(context.Context, *IDs) (*emptypb.Empty, e
 func (UnimplementedDaemonServer) Signal(context.Context, *SignalRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Signal not implemented")
 }
-func (UnimplementedDaemonServer) Stop(context.Context, *IDs) (*emptypb.Empty, error) {
+func (UnimplementedDaemonServer) Stop(context.Context, *IDs) (*IDs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
 func (UnimplementedDaemonServer) Create(context.Context, *CreateRequest) (*IDs, error) {

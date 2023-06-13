@@ -125,11 +125,10 @@ func (cmd *stopCmd) Run(
 	}
 
 	procIDs, err := app.Stop(ctx, configList, cmd.args, cmd.names, cmd.tags, cmd.ids)
+	fmt.Println(lo.ToAnySlice(procIDs)...)
 	if err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}
-
-	fmt.Println(lo.ToAnySlice(procIDs)...)
 
 	return nil
 }

@@ -123,13 +123,18 @@ func (c Client) Start(ctx context.Context, ids []uint64) error {
 	return nil
 }
 
-func (c Client) Stop(ctx context.Context, ids []uint64) error {
-	if _, err := c.client.Stop(ctx, &api.IDs{
+func (c Client) Stop(ctx context.Context, ids []uint64) ([]uint64, error) {
+	resIDs, err := c.client.Stop(ctx, &api.IDs{
 		Ids: fun.Map(ids, mapProcID),
-	}); err != nil {
-		return xerr.NewWM(err, "server.stop", xerr.Fields{"ids": ids})
+	})
+	rawIDs := lo.Map(resIDs.GetIds(), func(procID *api.ProcessID, _ int) uint64 {
+		return procID.GetId()
+	})
+	if err != nil {
+		return rawIDs, xerr.NewWM(err, "server.stop", xerr.Fields{"ids": ids})
 	}
-	return nil
+
+	return rawIDs, nil
 }
 
 func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64) error {

@@ -94,13 +94,17 @@ func (app App) Stop(
 		return []core.ProcID{}, nil
 	}
 
-	if err := app.client.Stop(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
+	stoppedRawIDs, err := app.client.Stop(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
 		return uint64(procID)
-	})); err != nil {
-		return nil, xerr.NewWM(err, "client.stop")
+	}))
+	stoppedProcIDs := lo.Map(stoppedRawIDs, func(procID uint64, _ int) core.ProcID {
+		return core.ProcID(procID)
+	})
+	if err != nil {
+		return stoppedProcIDs, xerr.NewWM(err, "client.stop")
 	}
 
-	return procIDs, nil
+	return stoppedProcIDs, nil
 }
 
 func (app App) Delete(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcID, error) {
