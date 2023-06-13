@@ -98,20 +98,11 @@ var _runCmd = &cli.Command{
 				Cwd:     workDir,
 			}
 
-			procIDs, errRun := app.Create(ctx.Context, runConfig)
+			procIDs, errRun := app.Run(ctx.Context, runConfig)
+			fmt.Println(lo.ToAnySlice(procIDs)...)
 			if errRun != nil {
 				return xerr.NewWM(errRun, "run command", xerr.Fields{"runConfig": runConfig, "procIDs": procIDs})
 			}
-
-			if len(procIDs) != 1 {
-				return xerr.NewWM(errRun, "invalid procIDs count", xerr.Fields{"procIDs": procIDs})
-			}
-
-			if err := app.Start(ctx.Context, procIDs...); err != nil {
-				return xerr.NewWM(err, "run proc", xerr.Fields{"procID": procIDs[0]})
-			}
-
-			fmt.Println(procIDs[0])
 
 			return nil
 		}
@@ -124,17 +115,11 @@ var _runCmd = &cli.Command{
 		names := ctx.Args().Slice()
 		if len(names) == 0 {
 			// no filtering by names, run all processes
-			procIDs, err := app.Create(ctx.Context, configs...)
+			procIDs, err := app.Run(ctx.Context, configs...)
+			fmt.Println(lo.ToAnySlice(procIDs)...)
 			if err != nil {
 				return xerr.NewWM(err, "create all procs from config", xerr.Fields{"created procIDs": procIDs})
 			}
-
-			err = app.Start(ctx.Context, procIDs...)
-			if err != nil {
-				return xerr.NewWM(err, "run procs", xerr.Fields{"procIDs": procIDs})
-			}
-
-			fmt.Println(lo.ToAnySlice(procIDs)...)
 
 			return nil
 		}
@@ -159,17 +144,11 @@ var _runCmd = &cli.Command{
 			return merr
 		}
 
-		procIDs, err := app.Create(ctx.Context, lo.Values(configsByName)...)
-		if err != nil {
-			return xerr.NewWM(err, "run procs filtered by name from config", xerr.Fields{"names": names, "created procIDs": procIDs})
-		}
-
-		err = app.Start(ctx.Context, procIDs...)
-		if err != nil {
-			return xerr.NewWM(err, "run procs", xerr.Fields{"procIDs": procIDs})
-		}
-
+		procIDs, errCreate := app.Run(ctx.Context, lo.Values(configsByName)...)
 		fmt.Println(lo.ToAnySlice(procIDs)...)
+		if errCreate != nil {
+			return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{"names": names, "created procIDs": procIDs})
+		}
 
 		return nil
 	},
