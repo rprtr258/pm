@@ -3,12 +3,14 @@ package daemon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"reflect"
 	"syscall"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/rprtr258/log"
@@ -54,7 +56,7 @@ var _daemonCtx = &daemon.Context{
 	LogFilePerm: 0o640, //nolint:gomnd // default log file permissions, rwxr-----
 	WorkDir:     "./",
 	Umask:       0o27, //nolint:gomnd // don't know
-	Args:        []string{"pm", "daemon", "run"},
+	Args:        []string{"pm", "daemon", "start"},
 	Chroot:      "",
 	Env:         nil,
 	Credential:  nil,
@@ -76,7 +78,7 @@ func Kill() error {
 		return xerr.NewWM(err, "search daemon")
 	}
 
-	if err := proc.Kill(); err != nil {
+	if err := proc.Signal(syscall.SIGTERM); err != nil {
 		if xerr.Is(err, os.ErrProcessDone) {
 			log.Info("daemon is done while killing")
 			return nil
@@ -85,13 +87,41 @@ func Kill() error {
 		return xerr.NewWM(err, "kill daemon process")
 	}
 
+	doneCh := make(chan struct{}, 1)
+	go func() {
+		ticker := time.NewTicker(time.Second)
+		for {
+			<-ticker.C
+			if err := proc.Signal(syscall.Signal(0)); err != nil {
+				// process is dead, err is ignored
+				doneCh <- struct{}{}
+				ticker.Stop()
+			}
+		}
+	}()
+
+	select {
+	case <-doneCh:
+	case <-time.After(5 * time.Second): //nolint:gomnd // arbitrary timeout
+		if err := proc.Kill(); err != nil {
+			if xerr.Is(err, os.ErrProcessDone) {
+				log.Info("daemon is done while killing")
+				return nil
+			}
+
+			return xerr.NewWM(err, "kill daemon process")
+		}
+	}
+
 	return nil
 }
 
 // Restart daemon and get it's pid.
 func Restart() (int, error) {
-	if errKill := Kill(); errKill != nil {
-		return 0, xerr.NewWM(errKill, "kill daemon to restart")
+	if !daemon.AmIDaemon() {
+		if errKill := Kill(); errKill != nil {
+			return 0, xerr.NewWM(errKill, "kill daemon to restart")
+		}
 	}
 
 	proc, errReborn := _daemonCtx.Reborn()
@@ -108,8 +138,6 @@ func Restart() (int, error) {
 	return 0, RunServer()
 }
 
-// TODO: fix "reborn failed: daemon: Resource temporarily unavailable" on start when
-// daemon is already running
 func RunServer() error {
 	sock, errListen := net.Listen("unix", core.SocketRPC)
 	if errListen != nil {
@@ -226,7 +254,7 @@ func RunServer() error {
 
 	select {
 	case sig := <-sigsCh:
-		log.Infof("received signal, exiting", log.F{"signal": sig})
+		log.Infof("received signal, exiting", log.F{"signal": fmt.Sprintf("%[1]T(%#[1]v)-%[1]s", sig)})
 		return nil
 	case err := <-doneCh:
 		if err != nil {

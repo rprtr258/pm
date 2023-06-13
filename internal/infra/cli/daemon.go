@@ -24,7 +24,10 @@ var _daemonCmd = &cli.Command{
 					return xerr.NewWM(errRestart, "restart daemon process")
 				}
 
-				fmt.Println(pid)
+				// if in client, print daemon pid
+				if pid != 0 {
+					fmt.Println(pid)
+				}
 
 				return nil
 			},
