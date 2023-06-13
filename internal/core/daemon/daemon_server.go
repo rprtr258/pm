@@ -28,7 +28,6 @@ import (
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
-// TODO: logs for daemon everywhere
 type daemonServer struct {
 	api.UnimplementedDaemonServer
 	db               db.Handle
@@ -116,14 +115,15 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 	}
 
 	for _, proc := range procs {
-		srv.start(ctx, proc)
+		if errStart := srv.start(ctx, proc); errStart != nil {
+			return nil, xerr.New(xerr.Fields{"proc": proc})
+		}
 	}
 
 	return &emptypb.Empty{}, nil
 }
 
-// Stop - stop processes by their ids in database
-// TODO: change to sending signals
+// Signal - send signal processes to processes
 func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emptypb.Empty, error) {
 	procsToStop := lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
 		return core.ProcID(id.GetId())
@@ -140,31 +140,33 @@ func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emp
 		signal = syscall.SIGTERM
 	case api.Signal_SIGNAL_SIGKILL:
 		signal = syscall.SIGKILL
+	case api.Signal_SIGNAL_UNSPECIFIED:
+		return nil, xerr.NewM("signal was not specified")
 	default:
 		return nil, xerr.NewM("unknown signal", xerr.Fields{"signal": req.GetSignal()})
 	}
 
 	var merr error
 	for _, proc := range procsWeHaveAmongRequested {
-		xerr.AppendInto(&merr, srv.stop(proc, signal))
+		xerr.AppendInto(&merr, srv.signal(proc, signal))
 	}
 
 	return &emptypb.Empty{}, merr
 }
 
-func (srv *daemonServer) stop(proc core.ProcData, signal syscall.Signal) error {
+// TODO: separate method for SIGTERM and SIGkill after timeout
+
+func (srv *daemonServer) signal(proc core.ProcData, signal syscall.Signal) error {
 	if proc.Status.Status != core.StatusRunning {
 		log.Infof("tried to stop non-running process", log.F{"proc": proc})
 		return nil
 	}
 
-	// TODO: actually stop proc
 	process, errFindProc := os.FindProcess(proc.Status.Pid)
 	if errFindProc != nil {
 		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Fields{"pid": proc.Status.Pid})
 	}
 
-	// TODO: kill after timeout
 	if errKill := syscall.Kill(-process.Pid, signal); errKill != nil {
 		switch {
 		case errors.Is(errKill, os.ErrProcessDone):

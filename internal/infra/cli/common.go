@@ -29,7 +29,6 @@ func ensureDir(dirname string) error {
 	return nil
 }
 
-// TODO: move to core
 var configFlag = &cli.StringFlag{
 	Name:      "config",
 	Usage:     "config file to use",
