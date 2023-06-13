@@ -9,7 +9,7 @@ import (
 
 const _addr = ":8080"
 
-func handler(w http.ResponseWriter, r *http.Request) { //nolint:varnamelen // standard naming wtf
+func handler(w http.ResponseWriter, r *http.Request) {
 	dump, errDump := httputil.DumpRequest(r, true)
 	if errDump != nil {
 		log.Fatalf("dump request error", log.F{"err": errDump})

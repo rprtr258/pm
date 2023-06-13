@@ -51,7 +51,7 @@ func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
 
 		fields := make(log.F, reqType.NumField()+1)
 		fields["@type"] = reqType.Name()
-		for i := 0; i < reqType.NumField(); i++ { //nolint:varnamelen // wtf
+		for i := 0; i < reqType.NumField(); i++ {
 			field := reqType.Field(i)
 			if !field.IsExported() {
 				continue

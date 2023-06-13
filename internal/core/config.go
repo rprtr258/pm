@@ -82,7 +82,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		return RunConfig{
 			Name:    fun.FromPtr(config.Name),
 			Command: config.Command,
-			Args: lo.Map(config.Args, func(arg any, i int) string { //nolint:varnamelen // i is index
+			Args: lo.Map(config.Args, func(arg any, i int) string {
 				switch a := arg.(type) {
 				case fmt.Stringer:
 					return a.String()
