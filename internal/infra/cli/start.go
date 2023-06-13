@@ -82,14 +82,18 @@ var _startCmd = &cli.Command{
 			}
 		}
 
-		configs, errLoadConfigs := core.LoadConfigs(ctx.String("config"))
+		configFile := ctx.String("config")
+
+		configs, errLoadConfigs := core.LoadConfigs(configFile)
 		if errLoadConfigs != nil {
-			return errLoadConfigs
+			return xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{
+				"config": configFile,
+			})
 		}
 
 		filteredList, err := app.ListByRunConfigs(ctx.Context, configs)
 		if err != nil {
-			return err
+			return xerr.NewWM(err, "list procs by configs")
 		}
 
 		// TODO: reuse filter options
