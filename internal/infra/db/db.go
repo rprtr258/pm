@@ -94,13 +94,17 @@ func (err ProcNotFoundError) Error() string {
 }
 
 func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) error {
-	procDataMaybe := handle.procs.Get(procID.String())
-	if !procDataMaybe.Valid {
+	proc, ok := handle.procs.Get(procID.String())
+	if !ok {
 		return ProcNotFoundError(procID)
 	}
 
-	procDataMaybe.Value.Status = newStatus
-	handle.procs.Upsert(procDataMaybe.Value)
+	if newStatus.Status == core.StatusStopped {
+		newStatus.StartTime = proc.Status.StartTime
+	}
+
+	proc.Status = newStatus
+	handle.procs.Upsert(proc)
 
 	if err := handle.procs.Flush(); err != nil {
 		return xerr.NewWM(err, "set status: db flush")

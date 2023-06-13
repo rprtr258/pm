@@ -64,8 +64,9 @@ func NewStatusRunning(startTime time.Time, pid int, cpu, memory uint64) Status {
 
 func NewStatusStopped(exitCode int) Status {
 	return Status{ //nolint:exhaustruct // not needed
-		Status:   StatusStopped,
-		ExitCode: exitCode,
+		Status:    StatusStopped,
+		ExitCode:  exitCode,
+		StoppedAt: time.Now(),
 	}
 }
 

@@ -165,11 +165,12 @@ func (srv *daemonServer) stop(proc core.ProcData, signal syscall.Signal) error {
 
 	// TODO: kill after timeout
 	if errKill := syscall.Kill(-process.Pid, signal); errKill != nil {
-		if errors.Is(errKill, os.ErrProcessDone) {
+		switch {
+		case errors.Is(errKill, os.ErrProcessDone):
 			log.Warnf("tried to stop process which is done", log.F{"proc": proc})
-		} else if errors.Is(errKill, syscall.ESRCH) { // no such process
+		case errors.Is(errKill, syscall.ESRCH): // no such process
 			log.Warnf("tried to stop process which doesn't exist", log.F{"proc": proc})
-		} else {
+		default:
 			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
 		}
 	}
