@@ -15,8 +15,8 @@ import (
 
 // Mark of daemon process - system environment variable _GO_DAEMON=1.
 const (
-	MarkName  = "_GO_DAEMON"
-	MarkValue = "1"
+	_markName  = "_GO_DAEMON"
+	_markValue = "1"
 )
 
 // Default file permissions for log and pid files.
@@ -66,7 +66,7 @@ type Context struct {
 
 // AmIDaemon returns true in child process (daemon) and false in parent process.
 func AmIDaemon() bool {
-	return os.Getenv(MarkName) == MarkValue
+	return os.Getenv(_markName) == _markValue
 }
 
 // Reborn runs second copy of current process in the given context.
@@ -76,18 +76,18 @@ func AmIDaemon() bool {
 // In success returns *os.Process in parent process and nil in child process.
 // Otherwise returns error.
 func (d *Context) Reborn() (*os.Process, error) {
-	if !AmIDaemon() {
-		return d.parent()
+	if AmIDaemon() {
+		return nil, d.child()
 	}
 
-	return nil, d.child()
+	return d.parent()
 }
 
 var ErrDaemonNotFound = errors.New("daemon not found")
 
 // Search searches daemons process by given in context pid file name.
 // If success returns pointer on daemons os.Process structure,
-// else returns error. Returns nil if filename is empty.
+// else returns error.
 func (d *Context) Search() (*os.Process, error) {
 	if len(d.PidFileName) == 0 {
 		return nil, xerr.NewM("pidFileName is empty")
@@ -96,7 +96,7 @@ func (d *Context) Search() (*os.Process, error) {
 	pid, err := ReadPidFile(d.PidFileName)
 	if err != nil {
 		if _, ok := xerr.As[*PidFileNotFoundError](err); ok {
-			return nil, xerr.NewWM(err, "pid file not found", xerr.Fields{"pidFileName": d.PidFileName})
+			return nil, ErrDaemonNotFound
 		}
 
 		return nil, xerr.NewWM(err, "read pid file", xerr.Fields{"pidFileName": d.PidFileName})
@@ -268,7 +268,7 @@ func (d *Context) prepareEnv() error {
 		d.Args = os.Args
 	}
 
-	mark := fmt.Sprintf("%s=%s", MarkName, MarkValue)
+	mark := fmt.Sprintf("%s=%s", _markName, _markValue)
 	if len(d.Env) == 0 {
 		d.Env = os.Environ()
 	}

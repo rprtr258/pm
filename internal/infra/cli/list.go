@@ -2,10 +2,13 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
 	"strconv"
+	"strings"
+	"text/template"
 	"time"
 
 	"github.com/aquasecurity/table"
@@ -20,31 +23,29 @@ import (
 	"github.com/rprtr258/pm/pkg/client"
 )
 
-func mapStatus(status core.Status) (string, *int, time.Duration) {
-	switch status.Status {
-	case core.StatusStarting:
-		return color.YellowString("starting"), nil, 0
-	case core.StatusRunning:
-		return color.GreenString("running"), &status.Pid, time.Since(status.StartTime)
-	case core.StatusStopped:
-		return color.YellowString("stopped(%d)", status.ExitCode), nil, 0
-	case core.StatusInvalid:
-		return color.RedString("invalid(%T)", status), nil, 0
-	default:
-		return color.RedString("BROKEN(%T)", status), nil, 0
-	}
-}
+const (
+	_formatTable   = "table"
+	_formatCompact = "compact"
+	_formatJSON    = "json"
+	_formatShort   = "short"
+)
 
 var _listCmd = &cli.Command{
 	Name:    "list",
 	Aliases: []string{"l", "ls", "ps", "status"},
 	Usage:   "list processes",
 	Flags: []cli.Flag{
-		// &cli.StringFlag{
-		// 	Name:    "format",
-		// 	Aliases: []string{"f"},
-		// 	Usage:   "Go template string to use for formatting",
-		// },
+		&cli.StringFlag{
+			Name:    "format",
+			Aliases: []string{"f"},
+			Usage: "Listing format: " + strings.Join([]string{
+				_formatTable,
+				_formatCompact,
+				_formatJSON,
+				_formatShort,
+			}, ", ") + ", any other string is rendred as Go template with core.ProcData struct",
+			Value: "table",
+		},
 		&cli.StringSliceFlag{
 			Name:  "name",
 			Usage: "name(s) of process(es) to list",
@@ -70,14 +71,58 @@ var _listCmd = &cli.Command{
 			ctx.StringSlice("tags"),
 			ctx.StringSlice("status"),
 			ctx.Uint64Slice("id"),
+			ctx.String("format"),
 		)
 	},
+}
+
+func mapStatus(status core.Status) (string, *int, time.Duration) {
+	switch status.Status {
+	case core.StatusStarting:
+		return color.YellowString("starting"), nil, 0
+	case core.StatusRunning:
+		return color.GreenString("running"), &status.Pid, time.Since(status.StartTime)
+	case core.StatusStopped:
+		return color.YellowString("stopped(%d)", status.ExitCode), nil, 0
+	case core.StatusInvalid:
+		return color.RedString("invalid(%T)", status), nil, 0
+	default:
+		return color.RedString("BROKEN(%T)", status), nil, 0
+	}
+}
+
+func renderTable(procs []core.ProcData, setRowLines bool) {
+	procsTable := table.New(os.Stdout)
+	procsTable.SetDividers(table.UnicodeRoundedDividers)
+	procsTable.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
+	procsTable.SetHeaderStyle(table.StyleBold)
+	procsTable.SetLineStyle(table.StyleDim)
+	procsTable.SetRowLines(setRowLines)
+	for _, proc := range procs {
+		// TODO: if errored/stopped show time since start instead of uptime (not in place of)
+		status, pid, uptime := mapStatus(proc.Status)
+
+		procsTable.AddRow(
+			color.New(color.FgCyan, color.Bold).Sprint(proc.ProcID),
+			proc.Name,
+			status,
+			strconv.Itoa(fun.Deref(pid)),
+			// TODO: check status instead for following parameters
+			fun.If(pid == nil, "").Else(uptime.Truncate(time.Second).String()),
+			fmt.Sprint(strings.Join(proc.Tags, "\n")),
+			fmt.Sprint(proc.Status.CPU),
+			fmt.Sprint(proc.Status.Memory),
+			shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
+		)
+	}
+	procsTable.Render()
 }
 
 func list(
 	ctx context.Context,
 	genericFilters, nameFilters, tagFilters, statusFilters []string,
 	idFilters []uint64,
+	format string,
 ) error {
 	client, err := client.NewGrpcClient()
 	if err != nil {
@@ -106,29 +151,51 @@ func list(
 		return procsToShow[i].ProcID < procsToShow[j].ProcID
 	})
 
-	procsTable := table.New(os.Stdout)
-	procsTable.SetDividers(table.UnicodeRoundedDividers)
-	procsTable.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
-	procsTable.SetHeaderStyle(table.StyleBold)
-	procsTable.SetLineStyle(table.StyleDim)
-	for _, proc := range procsToShow {
-		// TODO: if errored/stopped show time since start instead of uptime (not in place of)
-		status, pid, uptime := mapStatus(proc.Status)
+	switch format {
+	case _formatTable:
+		renderTable(procsToShow, true)
+	case _formatCompact:
+		renderTable(procsToShow, false)
+	case _formatJSON:
+		jsonData, errMarshal := json.MarshalIndent(procsToShow, "", "  ")
+		if errMarshal != nil {
+			return xerr.NewWM(errMarshal, "marshal procs list to json")
+		}
 
-		procsTable.AddRow(
-			color.New(color.FgCyan, color.Bold).Sprint(proc.ProcID),
-			proc.Name,
-			status,
-			strconv.Itoa(fun.Deref(pid)),
-			// TODO: check status instead for following parameters
-			fun.If(pid == nil, "").Else(uptime.Truncate(time.Second).String()),
-			fmt.Sprint(proc.Tags),
-			fmt.Sprint(proc.Status.CPU),
-			fmt.Sprint(proc.Status.Memory),
-			shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
-		)
+		fmt.Println(string(jsonData))
+	case _formatShort:
+		for _, proc := range procsToShow {
+			fmt.Println(proc.Name)
+		}
+	default:
+		trimmedFormat := strings.Trim(format, " ")
+		finalFormat := strings.
+			NewReplacer(
+				`\t`, "\t",
+				`\n`, "\n",
+			).
+			Replace(trimmedFormat)
+
+		tmpl, errParse := template.New("list").Parse(finalFormat)
+		if errParse != nil {
+			return xerr.NewWM(errParse, "parse template")
+		}
+
+		var sb strings.Builder
+		for _, proc := range procsToShow {
+			errRender := tmpl.Execute(&sb, proc)
+			if errRender != nil {
+				return xerr.NewWM(errRender, "format proc line", xerr.Fields{
+					"format": format,
+					"proc":   proc,
+				})
+			}
+
+			sb.WriteRune('\n')
+		}
+
+		fmt.Println(sb.String())
 	}
-	procsTable.Render()
 
 	return nil
 }

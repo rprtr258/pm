@@ -23,7 +23,7 @@ type Client struct {
 
 func NewGrpcClient() (Client, error) {
 	conn, err := grpc.Dial(
-		core.SocketDaemonRPC,
+		core.SocketRPC,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
 			conn, err := net.Dial("unix", addr)

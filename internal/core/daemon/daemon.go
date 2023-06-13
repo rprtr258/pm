@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"reflect"
 	"syscall"
 
@@ -17,25 +18,110 @@ import (
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/go-daemon"
+	"github.com/rprtr258/pm/pkg/client"
 )
+
+var (
+	_dirProcsLogs = filepath.Join(core.DirHome, "logs")
+	_filePid      = filepath.Join(core.DirHome, "pm.pid")
+	_fileLog      = filepath.Join(core.DirHome, "pm.log")
+	_dirDB        = filepath.Join(core.DirHome, "db")
+)
+
+func Status(ctx context.Context) error {
+	client, errNewClient := client.NewGrpcClient()
+	if errNewClient != nil {
+		return xerr.NewWM(errNewClient, "create grpc client")
+	}
+
+	// TODO: print daemon process info
+
+	if errHealth := pm.New(client).CheckDaemon(ctx); errHealth != nil {
+		return xerr.NewWM(errHealth, "check daemon")
+	}
+
+	return nil
+}
+
+// TODO: move to daemon infra
+var _daemonCtx = &daemon.Context{
+	PidFileName: _filePid,
+	PidFilePerm: 0o644, //nolint:gomnd // default pid file permissions, rwxr--r--
+	LogFileName: _fileLog,
+	LogFilePerm: 0o640, //nolint:gomnd // default log file permissions, rwxr-----
+	WorkDir:     "./",
+	Umask:       0o27, //nolint:gomnd // don't know
+	Args:        []string{"pm", "daemon", "run"},
+	Chroot:      "",
+	Env:         nil,
+	Credential:  nil,
+}
+
+// Kill daemon. If daemon is already killed, do nothing.
+func Kill() error {
+	if err := os.Remove(core.SocketRPC); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return xerr.NewWM(err, "remove socket file")
+	}
+
+	proc, err := _daemonCtx.Search()
+	if err != nil {
+		if xerr.Is(err, daemon.ErrDaemonNotFound) {
+			log.Info("daemon already killed or did not exist")
+			return nil
+		}
+
+		return xerr.NewWM(err, "search daemon")
+	}
+
+	if err := proc.Kill(); err != nil {
+		if xerr.Is(err, os.ErrProcessDone) {
+			log.Info("daemon is done while killing")
+			return nil
+		}
+
+		return xerr.NewWM(err, "kill daemon process")
+	}
+
+	return nil
+}
+
+// Restart daemon and get it's pid.
+func Restart() (int, error) {
+	if errKill := Kill(); errKill != nil {
+		return 0, xerr.NewWM(errKill, "kill daemon to restart")
+	}
+
+	proc, errReborn := _daemonCtx.Reborn()
+	if errReborn != nil {
+		return 0, xerr.NewWM(errReborn, "reborn daemon")
+	}
+	defer deferErr(_daemonCtx.Release)()
+
+	if proc != nil { // i am client, daemon created, proc is handle to it
+		return proc.Pid, nil
+	}
+
+	// i am daemon here
+	return 0, RunServer()
+}
 
 // TODO: fix "reborn failed: daemon: Resource temporarily unavailable" on start when
 // daemon is already running
-// Run daemon.
-func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
-	sock, errListen := net.Listen("unix", rpcSocket)
+func RunServer() error {
+	sock, errListen := net.Listen("unix", core.SocketRPC)
 	if errListen != nil {
-		return xerr.NewWM(errListen, "net.Listen on rpc socket", xerr.Fields{"socket": rpcSocket})
+		return xerr.NewWM(errListen, "net.Listen on rpc socket", xerr.Fields{"socket": core.SocketRPC})
 	}
 	defer sock.Close()
 
-	if errMkdirLogs := os.Mkdir(logsDir, os.ModePerm); errMkdirLogs != nil && !errors.Is(errMkdirLogs, os.ErrExist) {
-		return xerr.NewWM(errMkdirLogs, "create logs dir", xerr.Fields{"dir": logsDir})
+	if errMkdirLogs := os.Mkdir(_dirProcsLogs, os.ModePerm); errMkdirLogs != nil && !errors.Is(errMkdirLogs, os.ErrExist) {
+		return xerr.NewWM(errMkdirLogs, "create logs dir", xerr.Fields{"dir": _dirProcsLogs})
 	}
 
-	dbHandle, errDBNew := db.New(dbDir)
+	dbHandle, errDBNew := db.New(_dirDB)
 	if errDBNew != nil {
 		return xerr.NewWM(errDBNew, "create db")
 	}
@@ -67,8 +153,8 @@ func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
 	api.RegisterDaemonServer(srv, &daemonServer{
 		UnimplementedDaemonServer: api.UnimplementedDaemonServer{},
 		db:                        dbHandle,
-		homeDir:                   homeDir,
-		logsDir:                   logsDir,
+		homeDir:                   core.DirHome,
+		logsDir:                   _dirProcsLogs,
 	})
 
 	log.Infof("daemon started", log.F{"socket": sock.Addr()})
@@ -127,49 +213,34 @@ func Run(rpcSocket, dbDir, homeDir, logsDir string) error {
 		}
 	}()
 	defer func() {
-		if errRm := os.Remove(core.SocketDaemonRPC); errRm != nil && !errors.Is(errRm, os.ErrNotExist) {
+		if errRm := os.Remove(core.SocketRPC); errRm != nil && !errors.Is(errRm, os.ErrNotExist) {
 			log.Fatalf("remove pid file", log.F{
-				"file":  core.FileDaemonPid,
+				"file":  _filePid,
 				"error": errRm.Error(),
 			})
 		}
 	}()
 
 	sigsCh := make(chan os.Signal, 1)
-	signal.Notify(sigsCh, syscall.SIGINT)
+	signal.Notify(sigsCh, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
-	case <-sigsCh:
+	case sig := <-sigsCh:
+		log.Infof("received signal, exiting", log.F{"signal": sig})
 		return nil
 	case err := <-doneCh:
-		return err
+		if err != nil {
+			return xerr.NewWM(err, "server stopped")
+		}
+
+		return nil
 	}
 }
 
-// Kill daemon.
-func Kill(daemonCtx *daemon.Context, rpcSocket string) error {
-	if err := os.Remove(rpcSocket); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return xerr.NewWM(err, "remove socket file")
-	}
-
-	proc, err := daemonCtx.Search()
-	if err != nil && !os.IsNotExist(err) {
-		if xerr.Is(err, daemon.ErrDaemonNotFound) {
-			log.Info("daemon already killed or did not exist")
-			return nil
-		}
-
-		return xerr.NewWM(err, "search daemon")
-	}
-
-	for {
-		if err := proc.Kill(); err != nil {
-			if xerr.Is(err, os.ErrProcessDone) {
-				break
-			}
-			return xerr.NewWM(err, "kill daemon process")
+func deferErr(closer func() error) func() {
+	return func() {
+		if err := closer(); err != nil {
+			log.Errorf("some defer action failed:", log.F{"error": err.Error()})
 		}
 	}
-
-	return nil
 }

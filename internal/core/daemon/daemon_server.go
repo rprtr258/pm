@@ -78,6 +78,7 @@ func (srv *daemonServer) start(ctx context.Context, proc core.ProcData) error {
 			// TODO: very fucking dirty hack not to inherit pid (and possibly other fds from daemon)
 			// because I tried different variants, none of them worked out, including setting O_CLOEXEC on
 			// pid file open and fcntl FD_CLOEXEC on already opened pid file fd
+			// TODO: try if syscall.Getuid() == 0 {syscall.Setgid(GID) == nil && syscall.Setuid(UID) == nil}
 			nil, nil, nil, nil, nil, nil, nil, nil,
 		},
 		Sys: &syscall.SysProcAttr{
@@ -312,12 +313,12 @@ func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty
 }
 
 func removeLogFiles(procID uint64) error {
-	stdoutFilename := filepath.Join(core.DirDaemonLogs, fmt.Sprintf("%d.stdout", procID))
+	stdoutFilename := filepath.Join(_dirProcsLogs, fmt.Sprintf("%d.stdout", procID))
 	if errRmStdout := removeFile(stdoutFilename); errRmStdout != nil {
 		return errRmStdout
 	}
 
-	stderrFilename := filepath.Join(core.DirDaemonLogs, fmt.Sprintf("%d.stderr", procID))
+	stderrFilename := filepath.Join(_dirProcsLogs, fmt.Sprintf("%d.stderr", procID))
 	if errRmStderr := removeFile(stderrFilename); errRmStderr != nil {
 		return errRmStderr
 	}

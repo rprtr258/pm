@@ -6,6 +6,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -97,4 +98,12 @@ var _deleteCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func deferErr(closer func() error) func() {
+	return func() {
+		if err := closer(); err != nil {
+			log.Errorf("some defer action failed:", log.F{"error": err.Error()})
+		}
+	}
 }

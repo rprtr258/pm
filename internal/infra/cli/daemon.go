@@ -5,14 +5,9 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 
-	"github.com/rprtr258/pm/internal/core"
 	pm_daemon "github.com/rprtr258/pm/internal/core/daemon"
-	"github.com/rprtr258/pm/internal/core/pm"
-	"github.com/rprtr258/pm/internal/infra/go-daemon"
-	"github.com/rprtr258/pm/pkg/client"
 )
 
 var _daemonCmd = &cli.Command{
@@ -24,26 +19,14 @@ var _daemonCmd = &cli.Command{
 			Aliases: []string{"restart"},
 			Usage:   "launch daemon process",
 			Action: func(ctx *cli.Context) error {
-				if errKill := pm_daemon.Kill(_daemonCtx, core.SocketDaemonRPC); errKill != nil {
-					return xerr.NewWM(errKill, "kill daemon process")
+				pid, errRestart := pm_daemon.Restart()
+				if errRestart != nil {
+					return xerr.NewWM(errRestart, "restart daemon process")
 				}
 
-				daemonProcess, errReborn := _daemonCtx.Reborn()
-				if errReborn != nil {
-					return xerr.NewWM(errReborn, "reborn daemon")
-				}
+				fmt.Println(pid)
 
-				if daemonProcess != nil { // parent
-					fmt.Println(daemonProcess.Pid)
-					if err := _daemonCtx.Release(); err != nil {
-						return xerr.NewWM(err, "daemon release")
-					}
-					return nil
-				}
-
-				defer deferErr(_daemonCtx.Release)()
-
-				return daemonRun()
+				return nil
 			},
 		},
 		{
@@ -51,14 +34,22 @@ var _daemonCmd = &cli.Command{
 			Aliases: []string{"kill"},
 			Usage:   "stop daemon process",
 			Action: func(ctx *cli.Context) error {
-				return daemonStop()
+				if errStop := pm_daemon.Kill(); errStop != nil {
+					return xerr.NewWM(errStop, "stop daemon process")
+				}
+
+				return nil
 			},
 		},
 		{
 			Name:  "run",
-			Usage: "run daemon, DON'T USE BY HAND IF YOU DON'T KNOW WHAT YOU ARE DOING",
+			Usage: "run daemon server without daemonizing, DON'T USE BY HAND IF YOU DON'T KNOW WHAT YOU ARE DOING",
 			Action: func(ctx *cli.Context) error {
-				return daemonRun()
+				if errRun := pm_daemon.RunServer(); errRun != nil {
+					return xerr.NewWM(errRun, "run daemon process")
+				}
+
+				return nil
 			},
 		},
 		{
@@ -66,15 +57,8 @@ var _daemonCmd = &cli.Command{
 			Usage:   "check daemon status",
 			Aliases: []string{"ps"},
 			Action: func(ctx *cli.Context) error {
-				client, errNewClient := client.NewGrpcClient()
-				if errNewClient != nil {
-					return xerr.NewWM(errNewClient, "create grpc client")
-				}
-
-				// TODO: print daemon process info
-
-				if errHealth := pm.New(client).CheckDaemon(ctx.Context); errHealth != nil {
-					return xerr.NewWM(errHealth, "check daemon")
+				if errStatus := pm_daemon.Status(ctx.Context); errStatus != nil {
+					return xerr.NewWM(errStatus, "check daemon status")
 				}
 
 				fmt.Println("ok")
@@ -83,47 +67,4 @@ var _daemonCmd = &cli.Command{
 			},
 		},
 	},
-}
-
-// TODO: move to daemon infra
-var _daemonCtx = &daemon.Context{
-	PidFileName: core.FileDaemonPid,
-	PidFilePerm: 0o644, //nolint:gomnd // default pid file permissions, rwxr--r--
-	LogFileName: core.FileDaemonLog,
-	LogFilePerm: 0o640, //nolint:gomnd // default log file permissions, rwxr-----
-	WorkDir:     "./",
-	Umask:       0o27, //nolint:gomnd // don't know
-	Args:        []string{"pm", "daemon", "start"},
-	Chroot:      "",
-	Env:         nil,
-	Credential:  nil,
-}
-
-func daemonStop() error {
-	if errKill := pm_daemon.Kill(_daemonCtx, core.SocketDaemonRPC); errKill != nil {
-		return xerr.NewWM(errKill, "kill daemon process")
-	}
-
-	return nil
-}
-
-func daemonRun() error {
-	if errRun := pm_daemon.Run(
-		core.SocketDaemonRPC,
-		core.FileDaemonDBDir,
-		core.DirHome,
-		core.DirDaemonLogs,
-	); errRun != nil {
-		return xerr.NewWM(errRun, "run daemon")
-	}
-
-	return nil
-}
-
-func deferErr(closer func() error) func() {
-	return func() {
-		if err := closer(); err != nil {
-			log.Errorf("some defer action failed:", log.F{"error": err.Error()})
-		}
-	}
 }
