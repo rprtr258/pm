@@ -9,6 +9,7 @@ import (
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon"
 	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -38,6 +39,10 @@ var _startCmd = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
+		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
+			return xerr.NewWM(errDaemon, "ensure daemon is running")
+		}
+
 		names := ctx.StringSlice("name")
 		tags := ctx.StringSlice("tags")
 		statuses := ctx.StringSlice("status")

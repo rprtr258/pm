@@ -18,6 +18,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon"
 	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/pkg/client"
@@ -79,6 +80,10 @@ var _listCmd = &cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
+		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
+			return xerr.NewWM(errDaemon, "ensure daemon is running")
+		}
+
 		sortField := ctx.String("sort")
 		sortOrder := "asc"
 		if i := strings.IndexRune(sortField, ':'); i != -1 {

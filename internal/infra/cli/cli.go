@@ -34,9 +34,7 @@ var App = &cli.App{
 			// TODO: implement
 		},
 	},
-	Before: func(*cli.Context) error {
-		// TODO: run daemon if not running
-
+	Before: func(ctx *cli.Context) error {
 		// if err := ensureDir(core.DirHome); err != nil {
 		// 	return xerr.NewWM(err, "ensure home dir", xerr.Fields{"dir": core.DirHome})
 		// }

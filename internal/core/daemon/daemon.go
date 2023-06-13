@@ -116,14 +116,7 @@ func Kill() error {
 	return nil
 }
 
-// Restart daemon and get it's pid.
-func Restart(ctx context.Context) (int, error) {
-	if !daemon.AmIDaemon() {
-		if errKill := Kill(); errKill != nil {
-			return 0, xerr.NewWM(errKill, "kill daemon to restart")
-		}
-	}
-
+func startDaemon(ctx context.Context) (int, error) {
 	proc, errReborn := _daemonCtx.Reborn()
 	if errReborn != nil {
 		return 0, xerr.NewWM(errReborn, "reborn daemon")
@@ -136,6 +129,47 @@ func Restart(ctx context.Context) (int, error) {
 
 	// i am daemon here
 	return 0, RunServer(ctx)
+}
+
+func EnsureRunning(ctx context.Context) error {
+	_, errSearch := _daemonCtx.Search()
+	if errSearch == nil {
+		return nil
+	}
+
+	_, errRestart := startDaemon(ctx)
+	if errRestart != nil {
+		return errRestart
+	}
+
+	tries := 5
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		if client, errClient := client.NewGrpcClient(); errClient == nil {
+			if errPing := client.HealthCheck(ctx); errPing == nil {
+				return nil
+			}
+		}
+
+		<-ticker.C
+
+		tries--
+		if tries == 0 {
+			return xerr.NewM("daemon didn't started in time")
+		}
+	}
+}
+
+// Restart daemon and get it's pid.
+func Restart(ctx context.Context) (int, error) {
+	if !daemon.AmIDaemon() {
+		if errKill := Kill(); errKill != nil {
+			return 0, xerr.NewWM(errKill, "kill daemon to restart")
+		}
+	}
+
+	return startDaemon(ctx)
 }
 
 func RunServer(pCtx context.Context) error {
