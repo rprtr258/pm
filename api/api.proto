@@ -13,7 +13,7 @@ service Daemon {
   rpc Signal(SignalRequest) returns (google.protobuf.Empty);
 
   // CRUD operations
-  rpc Create(ProcessOptions) returns (ProcessID);
+  rpc Create(CreateRequest) returns (IDs);
   rpc List(google.protobuf.Empty) returns (ProcessesList);
   rpc Delete(IDs) returns (google.protobuf.Empty);
 
@@ -22,6 +22,10 @@ service Daemon {
 
 message ProcessID {
   uint64 id = 1;
+}
+
+message CreateRequest {
+  repeated ProcessOptions options = 1;
 }
 
 message ProcessOptions {

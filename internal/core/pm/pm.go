@@ -100,7 +100,7 @@ func (app App) List(ctx context.Context) (map[core.ProcID]core.ProcData, error) 
 // processes and error contains info about all failed processes, not only first.
 func (app App) Create(ctx context.Context, configs ...core.RunConfig) ([]core.ProcID, error) {
 	var err error
-	procIDs := make([]core.ProcID, 0, len(configs))
+	requests := make([]*api.ProcessOptions, 0, len(configs))
 	for _, config := range configs {
 		command, errLook := exec.LookPath(config.Command)
 		if errLook != nil {
@@ -112,27 +112,27 @@ func (app App) Create(ctx context.Context, configs ...core.RunConfig) ([]core.Pr
 			continue
 		}
 
-		req := &api.ProcessOptions{
+		requests = append(requests, &api.ProcessOptions{
 			Command: command,
 			Args:    config.Args,
 			Name:    config.Name.Ptr(),
 			Cwd:     config.Cwd,
 			Tags:    config.Tags,
-		}
-		procID, errCreate := app.client.Create(ctx, req)
-		if errCreate != nil {
-			xerr.AppendInto(&err, xerr.NewWM(
-				errCreate,
-				"server.create",
-				xerr.Fields{"processOptions": req},
-			))
-			continue
-		}
-
-		procIDs = append(procIDs, core.ProcID(procID))
+		})
 	}
 
-	return procIDs, err
+	procIDs, errCreate := app.client.Create(ctx, requests)
+	if errCreate != nil {
+		xerr.AppendInto(&err, xerr.NewWM(
+			errCreate,
+			"server.create",
+			xerr.Fields{"processOptions": requests},
+		))
+	}
+
+	return lo.Map(procIDs, func(procID uint64, _ int) core.ProcID {
+		return core.ProcID(procID)
+	}), err
 }
 
 func (app App) Start(ctx context.Context, procIDs ...core.ProcID) error {

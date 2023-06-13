@@ -194,7 +194,26 @@ func (srv *daemonServer) stop(proc core.ProcData, signal syscall.Signal) error {
 	return nil
 }
 
-func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOptions) (*api.ProcessID, error) {
+func (srv *daemonServer) Create(ctx context.Context, req *api.CreateRequest) (*api.IDs, error) {
+	procIDs := make([]core.ProcID, len(req.GetOptions()))
+	for i, opts := range req.GetOptions() {
+		var errCreate error
+		procIDs[i], errCreate = srv.create(ctx, opts)
+		if errCreate != nil {
+			return nil, errCreate
+		}
+	}
+
+	return &api.IDs{
+		Ids: lo.Map(procIDs, func(procID core.ProcID, _ int) *api.ProcessID {
+			return &api.ProcessID{
+				Id: uint64(procID),
+			}
+		}),
+	}, nil
+}
+
+func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOptions) (core.ProcID, error) {
 	if procOpts.Name != nil {
 		procs := srv.db.List()
 
@@ -216,10 +235,10 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 			}
 
 			if errUpdate := srv.db.UpdateProc(procData); errUpdate != nil {
-				return nil, xerr.NewWM(errUpdate, "update proc", xerr.Fields{"procData": procData})
+				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{"procData": procData})
 			}
 
-			return &api.ProcessID{Id: uint64(procID)}, nil
+			return procID, nil
 		}
 	}
 
@@ -238,10 +257,10 @@ func (srv *daemonServer) Create(ctx context.Context, procOpts *api.ProcessOption
 
 	procID, err := srv.db.AddProc(procData)
 	if err != nil {
-		return nil, xerr.NewWM(err, "save proc")
+		return 0, xerr.NewWM(err, "save proc")
 	}
 
-	return &api.ProcessID{Id: uint64(procID)}, nil
+	return procID, nil
 }
 
 func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.ProcessesList, error) {

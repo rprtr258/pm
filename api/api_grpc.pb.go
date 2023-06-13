@@ -36,7 +36,7 @@ type DaemonClient interface {
 	Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Signal(ctx context.Context, in *SignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// CRUD operations
-	Create(ctx context.Context, in *ProcessOptions, opts ...grpc.CallOption) (*ProcessID, error)
+	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*IDs, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
 	Delete(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -68,8 +68,8 @@ func (c *daemonClient) Signal(ctx context.Context, in *SignalRequest, opts ...gr
 	return out, nil
 }
 
-func (c *daemonClient) Create(ctx context.Context, in *ProcessOptions, opts ...grpc.CallOption) (*ProcessID, error) {
-	out := new(ProcessID)
+func (c *daemonClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*IDs, error) {
+	out := new(IDs)
 	err := c.cc.Invoke(ctx, Daemon_Create_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ type DaemonServer interface {
 	Start(context.Context, *IDs) (*emptypb.Empty, error)
 	Signal(context.Context, *SignalRequest) (*emptypb.Empty, error)
 	// CRUD operations
-	Create(context.Context, *ProcessOptions) (*ProcessID, error)
+	Create(context.Context, *CreateRequest) (*IDs, error)
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
 	Delete(context.Context, *IDs) (*emptypb.Empty, error)
 	HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
@@ -129,7 +129,7 @@ func (UnimplementedDaemonServer) Start(context.Context, *IDs) (*emptypb.Empty, e
 func (UnimplementedDaemonServer) Signal(context.Context, *SignalRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Signal not implemented")
 }
-func (UnimplementedDaemonServer) Create(context.Context, *ProcessOptions) (*ProcessID, error) {
+func (UnimplementedDaemonServer) Create(context.Context, *CreateRequest) (*IDs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
 func (UnimplementedDaemonServer) List(context.Context, *emptypb.Empty) (*ProcessesList, error) {
@@ -191,7 +191,7 @@ func _Daemon_Signal_Handler(srv interface{}, ctx context.Context, dec func(inter
 }
 
 func _Daemon_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ProcessOptions)
+	in := new(CreateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func _Daemon_Create_Handler(srv interface{}, ctx context.Context, dec func(inter
 		FullMethod: Daemon_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).Create(ctx, req.(*ProcessOptions))
+		return srv.(DaemonServer).Create(ctx, req.(*CreateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

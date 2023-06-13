@@ -118,6 +118,53 @@ func (x *ProcessID) GetId() uint64 {
 	return 0
 }
 
+type CreateRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Options []*ProcessOptions `protobuf:"bytes,1,rep,name=options,proto3" json:"options,omitempty"`
+}
+
+func (x *CreateRequest) Reset() {
+	*x = CreateRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_api_api_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CreateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRequest) ProtoMessage() {}
+
+func (x *CreateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_api_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRequest.ProtoReflect.Descriptor instead.
+func (*CreateRequest) Descriptor() ([]byte, []int) {
+	return file_api_api_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CreateRequest) GetOptions() []*ProcessOptions {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
 type ProcessOptions struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -133,7 +180,7 @@ type ProcessOptions struct {
 func (x *ProcessOptions) Reset() {
 	*x = ProcessOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_api_proto_msgTypes[1]
+		mi := &file_api_api_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -146,7 +193,7 @@ func (x *ProcessOptions) String() string {
 func (*ProcessOptions) ProtoMessage() {}
 
 func (x *ProcessOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[1]
+	mi := &file_api_api_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -159,7 +206,7 @@ func (x *ProcessOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessOptions.ProtoReflect.Descriptor instead.
 func (*ProcessOptions) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{1}
+	return file_api_api_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ProcessOptions) GetCommand() string {
@@ -208,7 +255,7 @@ type ProcessesList struct {
 func (x *ProcessesList) Reset() {
 	*x = ProcessesList{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_api_proto_msgTypes[2]
+		mi := &file_api_api_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -221,7 +268,7 @@ func (x *ProcessesList) String() string {
 func (*ProcessesList) ProtoMessage() {}
 
 func (x *ProcessesList) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[2]
+	mi := &file_api_api_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -234,7 +281,7 @@ func (x *ProcessesList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessesList.ProtoReflect.Descriptor instead.
 func (*ProcessesList) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{2}
+	return file_api_api_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ProcessesList) GetProcesses() []*Process {
@@ -261,7 +308,7 @@ type Process struct {
 func (x *Process) Reset() {
 	*x = Process{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_api_proto_msgTypes[3]
+		mi := &file_api_api_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -274,7 +321,7 @@ func (x *Process) String() string {
 func (*Process) ProtoMessage() {}
 
 func (x *Process) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[3]
+	mi := &file_api_api_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -287,7 +334,7 @@ func (x *Process) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Process.ProtoReflect.Descriptor instead.
 func (*Process) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{3}
+	return file_api_api_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *Process) GetId() *ProcessID {
@@ -356,7 +403,7 @@ type ProcessStatus struct {
 func (x *ProcessStatus) Reset() {
 	*x = ProcessStatus{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_api_proto_msgTypes[4]
+		mi := &file_api_api_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -369,7 +416,7 @@ func (x *ProcessStatus) String() string {
 func (*ProcessStatus) ProtoMessage() {}
 
 func (x *ProcessStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[4]
+	mi := &file_api_api_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -382,7 +429,7 @@ func (x *ProcessStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessStatus.ProtoReflect.Descriptor instead.
 func (*ProcessStatus) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{4}
+	return file_api_api_proto_rawDescGZIP(), []int{5}
 }
 
 func (m *ProcessStatus) GetStatus() isProcessStatus_Status {
@@ -462,7 +509,7 @@ type RunningProcessStatus struct {
 func (x *RunningProcessStatus) Reset() {
 	*x = RunningProcessStatus{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_api_proto_msgTypes[5]
+		mi := &file_api_api_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -475,7 +522,7 @@ func (x *RunningProcessStatus) String() string {
 func (*RunningProcessStatus) ProtoMessage() {}
 
 func (x *RunningProcessStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[5]
+	mi := &file_api_api_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -488,7 +535,7 @@ func (x *RunningProcessStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunningProcessStatus.ProtoReflect.Descriptor instead.
 func (*RunningProcessStatus) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{5}
+	return file_api_api_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *RunningProcessStatus) GetPid() int64 {
@@ -531,7 +578,7 @@ type StoppedProcessStatus struct {
 func (x *StoppedProcessStatus) Reset() {
 	*x = StoppedProcessStatus{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_api_proto_msgTypes[6]
+		mi := &file_api_api_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -544,7 +591,7 @@ func (x *StoppedProcessStatus) String() string {
 func (*StoppedProcessStatus) ProtoMessage() {}
 
 func (x *StoppedProcessStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[6]
+	mi := &file_api_api_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -557,7 +604,7 @@ func (x *StoppedProcessStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StoppedProcessStatus.ProtoReflect.Descriptor instead.
 func (*StoppedProcessStatus) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{6}
+	return file_api_api_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *StoppedProcessStatus) GetExitCode() int64 {
@@ -585,7 +632,7 @@ type IDs struct {
 func (x *IDs) Reset() {
 	*x = IDs{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_api_proto_msgTypes[7]
+		mi := &file_api_api_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -598,7 +645,7 @@ func (x *IDs) String() string {
 func (*IDs) ProtoMessage() {}
 
 func (x *IDs) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[7]
+	mi := &file_api_api_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -611,7 +658,7 @@ func (x *IDs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IDs.ProtoReflect.Descriptor instead.
 func (*IDs) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{7}
+	return file_api_api_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *IDs) GetIds() []*ProcessID {
@@ -633,7 +680,7 @@ type SignalRequest struct {
 func (x *SignalRequest) Reset() {
 	*x = SignalRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_api_proto_msgTypes[8]
+		mi := &file_api_api_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -646,7 +693,7 @@ func (x *SignalRequest) String() string {
 func (*SignalRequest) ProtoMessage() {}
 
 func (x *SignalRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_api_proto_msgTypes[8]
+	mi := &file_api_api_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -659,7 +706,7 @@ func (x *SignalRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignalRequest.ProtoReflect.Descriptor instead.
 func (*SignalRequest) Descriptor() ([]byte, []int) {
-	return file_api_api_proto_rawDescGZIP(), []int{8}
+	return file_api_api_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SignalRequest) GetIds() []*ProcessID {
@@ -686,6 +733,10 @@ var file_api_api_proto_rawDesc = []byte{
 	0x75, 0x66, 0x2f, 0x74, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x2e, 0x70, 0x72, 0x6f,
 	0x74, 0x6f, 0x22, 0x1b, 0x0a, 0x09, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x49, 0x44, 0x12,
 	0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x02, 0x69, 0x64, 0x22,
+	0x3e, 0x0a, 0x0d, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
+	0x12, 0x2d, 0x0a, 0x07, 0x6f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28,
+	0x0b, 0x32, 0x13, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x4f,
+	0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x07, 0x6f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x22,
 	0x86, 0x01, 0x0a, 0x0e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x4f, 0x70, 0x74, 0x69, 0x6f,
 	0x6e, 0x73, 0x12, 0x18, 0x0a, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x18, 0x01, 0x20,
 	0x01, 0x28, 0x09, 0x52, 0x07, 0x63, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x12, 0x12, 0x0a, 0x04,
@@ -754,29 +805,28 @@ var file_api_api_proto_rawDesc = []byte{
 	0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10, 0x00, 0x12, 0x12, 0x0a, 0x0e,
 	0x53, 0x49, 0x47, 0x4e, 0x41, 0x4c, 0x5f, 0x53, 0x49, 0x47, 0x54, 0x45, 0x52, 0x4d, 0x10, 0x01,
 	0x12, 0x12, 0x0a, 0x0e, 0x53, 0x49, 0x47, 0x4e, 0x41, 0x4c, 0x5f, 0x53, 0x49, 0x47, 0x4b, 0x49,
-	0x4c, 0x4c, 0x10, 0x02, 0x32, 0xb7, 0x02, 0x0a, 0x06, 0x44, 0x61, 0x65, 0x6d, 0x6f, 0x6e, 0x12,
+	0x4c, 0x4c, 0x10, 0x02, 0x32, 0xb0, 0x02, 0x0a, 0x06, 0x44, 0x61, 0x65, 0x6d, 0x6f, 0x6e, 0x12,
 	0x29, 0x0a, 0x05, 0x53, 0x74, 0x61, 0x72, 0x74, 0x12, 0x08, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x49,
 	0x44, 0x73, 0x1a, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74,
 	0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x34, 0x0a, 0x06, 0x53, 0x69,
 	0x67, 0x6e, 0x61, 0x6c, 0x12, 0x12, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x53, 0x69, 0x67, 0x6e, 0x61,
 	0x6c, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c,
 	0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79,
-	0x12, 0x2d, 0x0a, 0x06, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x12, 0x13, 0x2e, 0x61, 0x70, 0x69,
-	0x2e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x1a,
-	0x0e, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x49, 0x44, 0x12,
-	0x32, 0x0a, 0x04, 0x4c, 0x69, 0x73, 0x74, 0x12, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
+	0x12, 0x26, 0x0a, 0x06, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x12, 0x12, 0x2e, 0x61, 0x70, 0x69,
+	0x2e, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x08,
+	0x2e, 0x61, 0x70, 0x69, 0x2e, 0x49, 0x44, 0x73, 0x12, 0x32, 0x0a, 0x04, 0x4c, 0x69, 0x73, 0x74,
+	0x12, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
+	0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x12, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x50,
+	0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x65, 0x73, 0x4c, 0x69, 0x73, 0x74, 0x12, 0x2a, 0x0a, 0x06,
+	0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x12, 0x08, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x49, 0x44, 0x73,
+	0x1a, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62,
+	0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12, 0x3d, 0x0a, 0x0b, 0x48, 0x65, 0x61, 0x6c,
+	0x74, 0x68, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x12, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
 	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a,
-	0x12, 0x2e, 0x61, 0x70, 0x69, 0x2e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x65, 0x73, 0x4c,
-	0x69, 0x73, 0x74, 0x12, 0x2a, 0x0a, 0x06, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x12, 0x08, 0x2e,
-	0x61, 0x70, 0x69, 0x2e, 0x49, 0x44, 0x73, 0x1a, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65,
-	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x12,
-	0x3d, 0x0a, 0x0b, 0x48, 0x65, 0x61, 0x6c, 0x74, 0x68, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x12, 0x16,
-	0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66,
-	0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e,
-	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x42, 0x1c,
-	0x5a, 0x1a, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x72, 0x70, 0x72,
-	0x74, 0x72, 0x32, 0x35, 0x38, 0x2f, 0x70, 0x6d, 0x2f, 0x61, 0x70, 0x69, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75,
+	0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x42, 0x1c, 0x5a, 0x1a, 0x67, 0x69, 0x74, 0x68, 0x75,
+	0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x72, 0x70, 0x72, 0x74, 0x72, 0x32, 0x35, 0x38, 0x2f, 0x70,
+	0x6d, 0x2f, 0x61, 0x70, 0x69, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -792,51 +842,53 @@ func file_api_api_proto_rawDescGZIP() []byte {
 }
 
 var file_api_api_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_api_api_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_api_api_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_api_api_proto_goTypes = []interface{}{
 	(Signal)(0),                   // 0: api.Signal
 	(*ProcessID)(nil),             // 1: api.ProcessID
-	(*ProcessOptions)(nil),        // 2: api.ProcessOptions
-	(*ProcessesList)(nil),         // 3: api.ProcessesList
-	(*Process)(nil),               // 4: api.Process
-	(*ProcessStatus)(nil),         // 5: api.ProcessStatus
-	(*RunningProcessStatus)(nil),  // 6: api.RunningProcessStatus
-	(*StoppedProcessStatus)(nil),  // 7: api.StoppedProcessStatus
-	(*IDs)(nil),                   // 8: api.IDs
-	(*SignalRequest)(nil),         // 9: api.SignalRequest
-	(*emptypb.Empty)(nil),         // 10: google.protobuf.Empty
-	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(*CreateRequest)(nil),         // 2: api.CreateRequest
+	(*ProcessOptions)(nil),        // 3: api.ProcessOptions
+	(*ProcessesList)(nil),         // 4: api.ProcessesList
+	(*Process)(nil),               // 5: api.Process
+	(*ProcessStatus)(nil),         // 6: api.ProcessStatus
+	(*RunningProcessStatus)(nil),  // 7: api.RunningProcessStatus
+	(*StoppedProcessStatus)(nil),  // 8: api.StoppedProcessStatus
+	(*IDs)(nil),                   // 9: api.IDs
+	(*SignalRequest)(nil),         // 10: api.SignalRequest
+	(*emptypb.Empty)(nil),         // 11: google.protobuf.Empty
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
 }
 var file_api_api_proto_depIdxs = []int32{
-	4,  // 0: api.ProcessesList.processes:type_name -> api.Process
-	1,  // 1: api.Process.id:type_name -> api.ProcessID
-	5,  // 2: api.Process.status:type_name -> api.ProcessStatus
-	10, // 3: api.ProcessStatus.invalid:type_name -> google.protobuf.Empty
-	10, // 4: api.ProcessStatus.starting:type_name -> google.protobuf.Empty
-	6,  // 5: api.ProcessStatus.running:type_name -> api.RunningProcessStatus
-	7,  // 6: api.ProcessStatus.stopped:type_name -> api.StoppedProcessStatus
-	11, // 7: api.RunningProcessStatus.start_time:type_name -> google.protobuf.Timestamp
-	11, // 8: api.StoppedProcessStatus.stopped_at:type_name -> google.protobuf.Timestamp
-	1,  // 9: api.IDs.ids:type_name -> api.ProcessID
-	1,  // 10: api.SignalRequest.ids:type_name -> api.ProcessID
-	0,  // 11: api.SignalRequest.signal:type_name -> api.Signal
-	8,  // 12: api.Daemon.Start:input_type -> api.IDs
-	9,  // 13: api.Daemon.Signal:input_type -> api.SignalRequest
-	2,  // 14: api.Daemon.Create:input_type -> api.ProcessOptions
-	10, // 15: api.Daemon.List:input_type -> google.protobuf.Empty
-	8,  // 16: api.Daemon.Delete:input_type -> api.IDs
-	10, // 17: api.Daemon.HealthCheck:input_type -> google.protobuf.Empty
-	10, // 18: api.Daemon.Start:output_type -> google.protobuf.Empty
-	10, // 19: api.Daemon.Signal:output_type -> google.protobuf.Empty
-	1,  // 20: api.Daemon.Create:output_type -> api.ProcessID
-	3,  // 21: api.Daemon.List:output_type -> api.ProcessesList
-	10, // 22: api.Daemon.Delete:output_type -> google.protobuf.Empty
-	10, // 23: api.Daemon.HealthCheck:output_type -> google.protobuf.Empty
-	18, // [18:24] is the sub-list for method output_type
-	12, // [12:18] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	3,  // 0: api.CreateRequest.options:type_name -> api.ProcessOptions
+	5,  // 1: api.ProcessesList.processes:type_name -> api.Process
+	1,  // 2: api.Process.id:type_name -> api.ProcessID
+	6,  // 3: api.Process.status:type_name -> api.ProcessStatus
+	11, // 4: api.ProcessStatus.invalid:type_name -> google.protobuf.Empty
+	11, // 5: api.ProcessStatus.starting:type_name -> google.protobuf.Empty
+	7,  // 6: api.ProcessStatus.running:type_name -> api.RunningProcessStatus
+	8,  // 7: api.ProcessStatus.stopped:type_name -> api.StoppedProcessStatus
+	12, // 8: api.RunningProcessStatus.start_time:type_name -> google.protobuf.Timestamp
+	12, // 9: api.StoppedProcessStatus.stopped_at:type_name -> google.protobuf.Timestamp
+	1,  // 10: api.IDs.ids:type_name -> api.ProcessID
+	1,  // 11: api.SignalRequest.ids:type_name -> api.ProcessID
+	0,  // 12: api.SignalRequest.signal:type_name -> api.Signal
+	9,  // 13: api.Daemon.Start:input_type -> api.IDs
+	10, // 14: api.Daemon.Signal:input_type -> api.SignalRequest
+	2,  // 15: api.Daemon.Create:input_type -> api.CreateRequest
+	11, // 16: api.Daemon.List:input_type -> google.protobuf.Empty
+	9,  // 17: api.Daemon.Delete:input_type -> api.IDs
+	11, // 18: api.Daemon.HealthCheck:input_type -> google.protobuf.Empty
+	11, // 19: api.Daemon.Start:output_type -> google.protobuf.Empty
+	11, // 20: api.Daemon.Signal:output_type -> google.protobuf.Empty
+	9,  // 21: api.Daemon.Create:output_type -> api.IDs
+	4,  // 22: api.Daemon.List:output_type -> api.ProcessesList
+	11, // 23: api.Daemon.Delete:output_type -> google.protobuf.Empty
+	11, // 24: api.Daemon.HealthCheck:output_type -> google.protobuf.Empty
+	19, // [19:25] is the sub-list for method output_type
+	13, // [13:19] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_api_api_proto_init() }
@@ -858,7 +910,7 @@ func file_api_api_proto_init() {
 			}
 		}
 		file_api_api_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessOptions); i {
+			switch v := v.(*CreateRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -870,7 +922,7 @@ func file_api_api_proto_init() {
 			}
 		}
 		file_api_api_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessesList); i {
+			switch v := v.(*ProcessOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -882,7 +934,7 @@ func file_api_api_proto_init() {
 			}
 		}
 		file_api_api_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Process); i {
+			switch v := v.(*ProcessesList); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -894,7 +946,7 @@ func file_api_api_proto_init() {
 			}
 		}
 		file_api_api_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessStatus); i {
+			switch v := v.(*Process); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -906,7 +958,7 @@ func file_api_api_proto_init() {
 			}
 		}
 		file_api_api_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RunningProcessStatus); i {
+			switch v := v.(*ProcessStatus); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -918,7 +970,7 @@ func file_api_api_proto_init() {
 			}
 		}
 		file_api_api_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StoppedProcessStatus); i {
+			switch v := v.(*RunningProcessStatus); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -930,7 +982,7 @@ func file_api_api_proto_init() {
 			}
 		}
 		file_api_api_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*IDs); i {
+			switch v := v.(*StoppedProcessStatus); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -942,6 +994,18 @@ func file_api_api_proto_init() {
 			}
 		}
 		file_api_api_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*IDs); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_api_api_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*SignalRequest); i {
 			case 0:
 				return &v.state
@@ -954,8 +1018,8 @@ func file_api_api_proto_init() {
 			}
 		}
 	}
-	file_api_api_proto_msgTypes[1].OneofWrappers = []interface{}{}
-	file_api_api_proto_msgTypes[4].OneofWrappers = []interface{}{
+	file_api_api_proto_msgTypes[2].OneofWrappers = []interface{}{}
+	file_api_api_proto_msgTypes[5].OneofWrappers = []interface{}{
 		(*ProcessStatus_Invalid)(nil),
 		(*ProcessStatus_Starting)(nil),
 		(*ProcessStatus_Running)(nil),
@@ -967,7 +1031,7 @@ func file_api_api_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_api_api_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

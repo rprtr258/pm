@@ -53,13 +53,15 @@ func (c Client) Close() error {
 	return nil
 }
 
-func (c Client) Create(ctx context.Context, r *api.ProcessOptions) (uint64, error) {
-	resp, err := c.client.Create(ctx, r)
+func (c Client) Create(ctx context.Context, opts []*api.ProcessOptions) ([]uint64, error) {
+	resp, err := c.client.Create(ctx, &api.CreateRequest{Options: opts})
 	if err != nil {
-		return 0, xerr.NewWM(err, "server.create")
+		return nil, xerr.NewWM(err, "server.create")
 	}
 
-	return resp.GetId(), nil
+	return fun.Map(resp.GetIds(), func(procID *api.ProcessID) uint64 {
+		return procID.Id
+	}), nil
 }
 
 func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error) {
