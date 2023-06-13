@@ -42,7 +42,7 @@ func getProcCwd(cwd, procCwd string) string {
 	return filepath.Join(cwd, procCwd)
 }
 
-func (srv *daemonServer) start(ctx context.Context, proc db.ProcData) error {
+func (srv *daemonServer) start(proc db.ProcData) error {
 	procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
 	stdoutLogFilename := path.Join(srv.logsDir, procIDStr+".stdout")
 	stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
@@ -115,8 +115,14 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 	}
 
 	for _, proc := range procs {
-		if errStart := srv.start(ctx, proc); errStart != nil {
+		if errStart := srv.start(proc); errStart != nil {
 			return nil, xerr.New(xerr.Fields{"proc": proc})
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, xerr.NewWM(ctx.Err(), "context canceled")
+		default:
 		}
 	}
 
