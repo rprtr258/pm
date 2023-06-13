@@ -115,7 +115,25 @@ func New(dir string) (Handle, error) {
 	}, nil
 }
 
-func (handle Handle) AddProc(metadata ProcData) (core.ProcID, error) {
+type CreateQuery struct {
+	// Command - executable to run
+	Command string
+	Cwd     string
+	Name    string
+	// Args - arguments for executable, not including executable itself as first argument
+	Args  []string
+	Tags  []string
+	Watch []string
+
+	// StdoutFile  string
+	// StderrFile  string
+	// RestartTries int
+	// RestartDelay    time.Duration
+	// Pid      int
+	// Respawns int
+}
+
+func (handle Handle) AddProc(query CreateQuery) (core.ProcID, error) {
 	maxProcID := core.ProcID(0)
 	handle.procs.Iter(func(_ string, proc ProcData) bool {
 		if proc.ProcID > maxProcID {
@@ -125,10 +143,18 @@ func (handle Handle) AddProc(metadata ProcData) (core.ProcID, error) {
 		return true
 	})
 
-	// TODO: remove mutation?
-	metadata.ProcID = maxProcID + 1
+	newProcID := maxProcID + 1
 
-	if !handle.procs.Insert(metadata) {
+	if !handle.procs.Insert(ProcData{
+		ProcID:  newProcID,
+		Command: query.Command,
+		Cwd:     query.Cwd,
+		Name:    query.Name,
+		Args:    query.Args,
+		Tags:    query.Tags,
+		Watch:   query.Watch,
+		Status:  NewStatusStarting(),
+	}) {
 		return 0, xerr.NewM("insert: already present")
 	}
 
@@ -136,7 +162,7 @@ func (handle Handle) AddProc(metadata ProcData) (core.ProcID, error) {
 		return 0, xerr.NewWM(err, "insert: db flush")
 	}
 
-	return metadata.ProcID, nil
+	return newProcID, nil
 }
 
 func (handle Handle) UpdateProc(metadata ProcData) error {
@@ -149,7 +175,7 @@ func (handle Handle) UpdateProc(metadata ProcData) error {
 	return nil
 }
 
-func (handle Handle) GetProcs(ids []core.ProcID) ([]ProcData, error) {
+func (handle Handle) GetProcs(ids []core.ProcID) []ProcData {
 	lookupTable := lo.SliceToMap(ids, func(id core.ProcID) (string, struct{}) {
 		return id.String(), struct{}{}
 	})
@@ -160,7 +186,7 @@ func (handle Handle) GetProcs(ids []core.ProcID) ([]ProcData, error) {
 			return ok
 		}).
 		List().
-		All(), nil
+		All()
 }
 
 func (handle Handle) List() map[core.ProcID]ProcData {

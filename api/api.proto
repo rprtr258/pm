@@ -11,6 +11,7 @@ service Daemon {
   // process management
   rpc Start(IDs) returns (google.protobuf.Empty);
   rpc Signal(SignalRequest) returns (google.protobuf.Empty);
+  rpc Stop(IDs) returns (google.protobuf.Empty);
 
   // CRUD operations
   rpc Create(CreateRequest) returns (IDs);

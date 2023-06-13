@@ -48,7 +48,7 @@ func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig
 	return configList, nil
 }
 
-func (app App) Stop(
+func (app App) Signal(
 	ctx context.Context,
 	signal syscall.Signal,
 	procs map[core.ProcID]core.ProcData,
@@ -68,6 +68,33 @@ func (app App) Stop(
 	}
 
 	if err := app.client.Signal(ctx, signal, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
+		return uint64(procID)
+	})); err != nil {
+		return nil, xerr.NewWM(err, "client.stop")
+	}
+
+	return procIDs, nil
+}
+
+func (app App) Stop(
+	ctx context.Context,
+	procs map[core.ProcID]core.ProcData,
+	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
+) ([]core.ProcID, error) {
+	procIDs := core.FilterProcs[core.ProcID](
+		procs,
+		core.WithGeneric(args),
+		core.WithIDs(ids),
+		core.WithNames(names),
+		core.WithTags(tags),
+		core.WithAllIfNoFilters,
+	)
+
+	if len(procIDs) == 0 {
+		return []core.ProcID{}, nil
+	}
+
+	if err := app.client.Stop(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
 		return uint64(procID)
 	})); err != nil {
 		return nil, xerr.NewWM(err, "client.stop")

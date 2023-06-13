@@ -16,8 +16,6 @@ import (
 	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -107,22 +105,19 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empty, error) {
-	procs, err := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
+	procs := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
 		return core.ProcID(id.GetId())
 	}))
-	if err != nil {
-		return nil, xerr.NewWM(err, "daemon.start")
-	}
 
 	for _, proc := range procs {
-		if errStart := srv.start(proc); errStart != nil {
-			return nil, xerr.New(xerr.Fields{"proc": proc})
-		}
-
 		select {
 		case <-ctx.Done():
 			return nil, xerr.NewWM(ctx.Err(), "context canceled")
 		default:
+		}
+
+		if errStart := srv.start(proc); errStart != nil {
+			return nil, xerr.New(xerr.Fields{"proc": proc})
 		}
 	}
 
@@ -135,10 +130,7 @@ func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emp
 		return core.ProcID(id.GetId())
 	})
 
-	procsWeHaveAmongRequested, err := srv.db.GetProcs(procsToStop)
-	if err != nil {
-		return nil, xerr.NewWM(err, "getting procs to stop")
-	}
+	procsWeHaveAmongRequested := srv.db.GetProcs(procsToStop)
 
 	var signal syscall.Signal
 	switch req.GetSignal() {
@@ -160,43 +152,130 @@ func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emp
 	return &emptypb.Empty{}, merr
 }
 
-// TODO: separate method for SIGTERM and SIGkill after timeout
+func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*emptypb.Empty, error) {
+	procsList := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
+		return core.ProcID(id.GetId())
+	}))
+
+	procs := lo.SliceToMap(procsList, func(proc db.ProcData) (core.ProcID, db.ProcData) {
+		return proc.ProcID, proc
+	})
+
+	var merr error
+	for _, procID := range req.GetIds() {
+		select {
+		case <-ctx.Done():
+			return nil, xerr.NewWM(ctx.Err(), "context canceled")
+		default:
+		}
+
+		proc, ok := procs[core.ProcID(procID.GetId())]
+		if !ok {
+			log.Infof("tried to stop non-existing process", log.F{"proc": procID.GetId()})
+			continue
+		}
+
+		if proc.Status.Status != db.StatusRunning {
+			log.Infof("tried to stop non-running process", log.F{"proc": proc})
+			continue
+		}
+
+		process, errFindProc := os.FindProcess(proc.Status.Pid)
+		if errFindProc != nil {
+			xerr.AppendInto(&merr, xerr.NewWM(errFindProc, "find process", xerr.Fields{"pid": proc.Status.Pid}))
+			continue
+		}
+
+		if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
+			switch {
+			case errors.Is(errKill, os.ErrProcessDone):
+				log.Warnf("tried stop process which is done", log.F{"proc": proc})
+			case errors.Is(errKill, syscall.ESRCH): // no such process
+				log.Warnf("tried stop process which doesn't exist", log.F{"proc": proc})
+			default:
+				xerr.AppendInto(&merr, xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid}))
+				continue
+			}
+		}
+
+		doneCh := make(chan *os.ProcessState, 1)
+		go func() {
+			state, errFindProc := process.Wait()
+			if errFindProc != nil {
+				if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
+					xerr.AppendInto(&merr, xerr.NewWM(errFindProc, "releasing process", xerr.Fields{"pid": process.Pid}))
+					doneCh <- nil
+					return
+				}
+
+				log.Infof("process is not a child", log.F{"proc": proc})
+			} else {
+				log.Infof("process is stopped", log.F{"proc": proc, "state": state})
+			}
+			doneCh <- state
+		}()
+
+		timer := time.NewTimer(time.Second * 5) //nolint:gomnd // arbitrary timeout
+		defer timer.Stop()
+
+		var state *os.ProcessState
+		select {
+		case <-timer.C:
+			log.Warnf("timed out waiting for process to stop from SIGTERM, killing it", log.F{"proc": proc})
+
+			if errKill := syscall.Kill(-process.Pid, syscall.SIGKILL); errKill != nil {
+				xerr.AppendInto(&merr, xerr.NewWM(errKill, "kill process", xerr.Fields{"pid": process.Pid}))
+				continue
+			}
+		case <-ctx.Done():
+			return nil, xerr.NewWM(ctx.Err(), "context canceled")
+		case state = <-doneCh:
+		}
+
+		exitCode := lo.If(state == nil, -1).ElseF(func() int {
+			return state.ExitCode()
+		})
+		if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusStopped(exitCode)); errSetStatus != nil {
+			xerr.AppendInto(&merr, xerr.NewWM(errSetStatus, "set status stopped", xerr.Fields{"procID": proc.ProcID}))
+			continue
+		}
+	}
+
+	return &emptypb.Empty{}, nil
+}
 
 func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {
 	if proc.Status.Status != db.StatusRunning {
-		log.Infof("tried to stop non-running process", log.F{"proc": proc})
+		log.Infof("tried to send signal to non-running process", log.F{
+			"proc":   proc,
+			"signal": signal,
+		})
 		return nil
 	}
 
 	process, errFindProc := os.FindProcess(proc.Status.Pid)
 	if errFindProc != nil {
-		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Fields{"pid": proc.Status.Pid})
+		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Fields{
+			"pid":    proc.Status.Pid,
+			"signal": signal,
+		})
 	}
 
 	if errKill := syscall.Kill(-process.Pid, signal); errKill != nil {
 		switch {
 		case errors.Is(errKill, os.ErrProcessDone):
-			log.Warnf("tried to stop process which is done", log.F{"proc": proc})
+			log.Warnf("tried to send signal to process which is done", log.F{
+				"proc":   proc,
+				"signal": signal,
+			})
 		case errors.Is(errKill, syscall.ESRCH): // no such process
-			log.Warnf("tried to stop process which doesn't exist", log.F{"proc": proc})
+			log.Warnf("tried to send signal to process which doesn't exist", log.F{
+				"proc":   proc,
+				"signal": signal,
+			})
 		default:
 			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
 		}
-	}
-
-	state, errFindProc := process.Wait()
-	if errFindProc != nil {
-		if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
-			return xerr.NewWM(errFindProc, "releasing process", xerr.Fields{"procData": proc})
-		}
-
-		log.Infof("process is not a child", log.F{"proc": proc})
-	} else {
-		log.Infof("process is stopped", log.F{"proc": proc, "state": state})
-	}
-
-	if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusStopped(state.ExitCode())); errSetStatus != nil {
-		return status.Errorf(codes.DataLoss, "set status stopped, procID=%d: %s", proc.ProcID, errSetStatus.Error())
 	}
 
 	return nil
@@ -252,18 +331,14 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 
 	name := fun.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(namegen.New)
 
-	procData := db.ProcData{
-		ProcID:  0, // TODO: create instead proc create query
-		Status:  db.NewStatusStarting(),
+	procID, err := srv.db.AddProc(db.CreateQuery{
 		Name:    name,
 		Cwd:     procOpts.GetCwd(),
 		Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
 		Command: procOpts.GetCommand(),
 		Args:    procOpts.GetArgs(),
 		Watch:   nil,
-	}
-
-	procID, err := srv.db.AddProc(procData)
+	})
 	if err != nil {
 		return 0, xerr.NewWM(err, "save proc")
 	}

@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"syscall"
 
 	"github.com/urfave/cli/v2"
 
@@ -59,7 +58,7 @@ var _deleteCmd = &cli.Command{
 		}
 
 		if !ctx.IsSet("config") {
-			procIDs, err := app.Stop(ctx.Context, syscall.SIGTERM, list, args, names, tags, ids)
+			procIDs, err := app.Stop(ctx.Context, list, args, names, tags, ids)
 			if err != nil {
 				return xerr.NewWM(err, "delete")
 			}
@@ -89,7 +88,7 @@ var _deleteCmd = &cli.Command{
 			return xerr.NewWM(errList, "list by run configs", xerr.Fields{"configs": configs})
 		}
 
-		procIDs, err := app.Stop(ctx.Context, syscall.SIGTERM, list, args, names, tags, ids)
+		procIDs, err := app.Stop(ctx.Context, list, args, names, tags, ids)
 		if err != nil {
 			return xerr.NewWM(err, "stop")
 		}

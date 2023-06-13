@@ -123,9 +123,18 @@ func (c Client) Start(ctx context.Context, ids []uint64) error {
 	return nil
 }
 
+func (c Client) Stop(ctx context.Context, ids []uint64) error {
+	if _, err := c.client.Stop(ctx, &api.IDs{
+		Ids: fun.Map(ids, mapProcID),
+	}); err != nil {
+		return xerr.NewWM(err, "server.stop", xerr.Fields{"ids": ids})
+	}
+	return nil
+}
+
 func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64) error {
 	var apiSignal api.Signal
-	switch signal {
+	switch signal { //nolint:exhaustive // other signals are not supported now
 	case syscall.SIGTERM:
 		apiSignal = api.Signal_SIGNAL_SIGTERM
 	case syscall.SIGKILL:
@@ -138,8 +147,9 @@ func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64)
 		Ids:    fun.Map(ids, mapProcID),
 		Signal: apiSignal,
 	}); err != nil {
-		return xerr.NewWM(err, "server.stop", xerr.Fields{"ids": ids})
+		return xerr.NewWM(err, "server.signal", xerr.Fields{"ids": ids})
 	}
+
 	return nil
 }
 

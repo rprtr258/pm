@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	Daemon_Start_FullMethodName       = "/api.Daemon/Start"
 	Daemon_Signal_FullMethodName      = "/api.Daemon/Signal"
+	Daemon_Stop_FullMethodName        = "/api.Daemon/Stop"
 	Daemon_Create_FullMethodName      = "/api.Daemon/Create"
 	Daemon_List_FullMethodName        = "/api.Daemon/List"
 	Daemon_Delete_FullMethodName      = "/api.Daemon/Delete"
@@ -36,6 +37,7 @@ type DaemonClient interface {
 	// process management
 	Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Signal(ctx context.Context, in *SignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// CRUD operations
 	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*IDs, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
@@ -63,6 +65,15 @@ func (c *daemonClient) Start(ctx context.Context, in *IDs, opts ...grpc.CallOpti
 func (c *daemonClient) Signal(ctx context.Context, in *SignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Daemon_Signal_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *daemonClient) Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Daemon_Stop_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +123,7 @@ type DaemonServer interface {
 	// process management
 	Start(context.Context, *IDs) (*emptypb.Empty, error)
 	Signal(context.Context, *SignalRequest) (*emptypb.Empty, error)
+	Stop(context.Context, *IDs) (*emptypb.Empty, error)
 	// CRUD operations
 	Create(context.Context, *CreateRequest) (*IDs, error)
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
@@ -129,6 +141,9 @@ func (UnimplementedDaemonServer) Start(context.Context, *IDs) (*emptypb.Empty, e
 }
 func (UnimplementedDaemonServer) Signal(context.Context, *SignalRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Signal not implemented")
+}
+func (UnimplementedDaemonServer) Stop(context.Context, *IDs) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
 func (UnimplementedDaemonServer) Create(context.Context, *CreateRequest) (*IDs, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
@@ -187,6 +202,24 @@ func _Daemon_Signal_Handler(srv interface{}, ctx context.Context, dec func(inter
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DaemonServer).Signal(ctx, req.(*SignalRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Daemon_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IDs)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DaemonServer).Stop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Daemon_Stop_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DaemonServer).Stop(ctx, req.(*IDs))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -277,6 +310,10 @@ var Daemon_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Signal",
 			Handler:    _Daemon_Signal_Handler,
+		},
+		{
+			MethodName: "Stop",
+			Handler:    _Daemon_Stop_Handler,
 		},
 		{
 			MethodName: "Create",
