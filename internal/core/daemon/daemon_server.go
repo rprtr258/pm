@@ -42,7 +42,7 @@ func getProcCwd(cwd, procCwd string) string {
 	return filepath.Join(cwd, procCwd)
 }
 
-func (srv *daemonServer) start(ctx context.Context, proc core.ProcData) error {
+func (srv *daemonServer) start(ctx context.Context, proc db.ProcData) error {
 	procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
 	stdoutLogFilename := path.Join(srv.logsDir, procIDStr+".stdout")
 	stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
@@ -89,14 +89,14 @@ func (srv *daemonServer) start(ctx context.Context, proc core.ProcData) error {
 	args := append([]string{proc.Command}, proc.Args...)
 	process, err := os.StartProcess(proc.Command, args, &procAttr)
 	if err != nil {
-		if errSetStatus := srv.db.SetStatus(proc.ProcID, core.NewStatusInvalid()); errSetStatus != nil {
+		if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusInvalid()); errSetStatus != nil {
 			return xerr.NewWM(xerr.Combine(err, errSetStatus), "running failed, setting errored status failed")
 		}
 
 		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": spew.Sprint(proc)})
 	}
 
-	runningStatus := core.NewStatusRunning(time.Now(), process.Pid, 0, 0)
+	runningStatus := db.NewStatusRunning(time.Now(), process.Pid)
 	if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
 		return xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ProcID})
 	}
@@ -156,8 +156,8 @@ func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emp
 
 // TODO: separate method for SIGTERM and SIGkill after timeout
 
-func (srv *daemonServer) signal(proc core.ProcData, signal syscall.Signal) error {
-	if proc.Status.Status != core.StatusRunning {
+func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {
+	if proc.Status.Status != db.StatusRunning {
 		log.Infof("tried to stop non-running process", log.F{"proc": proc})
 		return nil
 	}
@@ -189,7 +189,7 @@ func (srv *daemonServer) signal(proc core.ProcData, signal syscall.Signal) error
 		log.Infof("process is stopped", log.F{"proc": proc, "state": state})
 	}
 
-	if errSetStatus := srv.db.SetStatus(proc.ProcID, core.NewStatusStopped(state.ExitCode())); errSetStatus != nil {
+	if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusStopped(state.ExitCode())); errSetStatus != nil {
 		return status.Errorf(codes.DataLoss, "set status stopped, procID=%d: %s", proc.ProcID, errSetStatus.Error())
 	}
 
@@ -221,13 +221,13 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 
 		if procID, ok := lo.FindKeyBy(
 			procs,
-			func(_ core.ProcID, procData core.ProcData) bool {
+			func(_ core.ProcID, procData db.ProcData) bool {
 				return procData.Name == procOpts.GetName()
 			},
 		); ok {
-			procData := core.ProcData{
+			procData := db.ProcData{
 				ProcID:  procID,
-				Status:  core.NewStatusStarting(),
+				Status:  db.NewStatusStarting(),
 				Name:    procOpts.GetName(),
 				Cwd:     procOpts.GetCwd(),
 				Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
@@ -246,9 +246,9 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 
 	name := fun.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(namegen.New)
 
-	procData := core.ProcData{
+	procData := db.ProcData{
 		ProcID:  0, // TODO: create instead proc create query
-		Status:  core.NewStatusStarting(),
+		Status:  db.NewStatusStarting(),
 		Name:    name,
 		Cwd:     procOpts.GetCwd(),
 		Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
@@ -269,44 +269,42 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.Proce
 	list := srv.db.List()
 
 	return &api.ProcessesList{
-		Processes: lo.MapToSlice(
-			list,
-			func(id core.ProcID, proc core.ProcData) *api.Process {
-				return &api.Process{
-					Id:      &api.ProcessID{Id: uint64(id)},
-					Status:  mapStatus(proc.Status),
-					Name:    proc.Name,
-					Cwd:     proc.Cwd,
-					Tags:    proc.Tags,
-					Command: proc.Command,
-					Args:    proc.Args,
-				}
-			},
-		),
+		Processes: lo.MapToSlice(list, func(id core.ProcID, proc db.ProcData) *api.Process {
+			return &api.Process{
+				Id:      &api.ProcessID{Id: uint64(id)},
+				Status:  mapStatus(proc.Status),
+				Name:    proc.Name,
+				Cwd:     proc.Cwd,
+				Tags:    proc.Tags,
+				Command: proc.Command,
+				Args:    proc.Args,
+			}
+		}),
 	}, nil
 }
 
 //nolint:exhaustruct // can't return api.isProcessStatus_Status
-func mapStatus(status core.Status) *api.ProcessStatus {
+func mapStatus(status db.Status) *api.ProcessStatus {
 	switch status.Status {
-	case core.StatusInvalid:
+	case db.StatusInvalid:
 		return &api.ProcessStatus{Status: &api.ProcessStatus_Invalid{}}
-	case core.StatusStarting:
+	case db.StatusStarting:
 		return &api.ProcessStatus{Status: &api.ProcessStatus_Starting{}}
-	case core.StatusStopped:
+	case db.StatusStopped:
 		return &api.ProcessStatus{Status: &api.ProcessStatus_Stopped{
 			Stopped: &api.StoppedProcessStatus{
 				ExitCode:  int64(status.ExitCode),
 				StoppedAt: timestamppb.New(status.StoppedAt),
 			},
 		}}
-	case core.StatusRunning:
+	case db.StatusRunning:
 		return &api.ProcessStatus{Status: &api.ProcessStatus_Running{
 			Running: &api.RunningProcessStatus{
 				Pid:       int64(status.Pid),
 				StartTime: timestamppb.New(status.StartTime),
-				Cpu:       status.CPU,
-				Memory:    status.Memory,
+				// TODO: get from /proc/PID/stat
+				// Cpu:       status.CPU,
+				// Memory:    status.Memory,
 			},
 		}}
 	default:

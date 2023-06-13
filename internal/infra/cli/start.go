@@ -17,9 +17,8 @@ import (
 var _startCmd = &cli.Command{
 	Name:      "start",
 	ArgsUsage: "<name|tag|id|status>...",
-	Usage:     "start process and manage it",
+	Usage:     "start already added process",
 	Flags: []cli.Flag{
-		// &cli.BoolFlag{Name:        "only", Usage: "with json declaration, allow to only act on one application"},
 		&cli.StringSliceFlag{
 			Name:  "name",
 			Usage: "name(s) of process(es) to run",

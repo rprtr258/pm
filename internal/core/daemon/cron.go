@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/rprtr258/log"
-	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/xerr"
+
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
-	"github.com/rprtr258/xerr"
 )
 
 type cron struct {
@@ -19,7 +19,7 @@ type cron struct {
 
 func (c cron) updateStatuses() {
 	for _, proc := range c.db.List() {
-		if proc.Status.Status != core.StatusRunning {
+		if proc.Status.Status != db.StatusRunning {
 			continue
 		}
 
@@ -36,7 +36,7 @@ func (c cron) updateStatuses() {
 		default:
 			c.l.Infof("process seems to be stopped, updating status...", log.F{"pid": proc.Status.Pid})
 
-			if errUpdate := c.db.SetStatus(proc.ProcID, core.NewStatusStopped(-1)); errUpdate != nil {
+			if errUpdate := c.db.SetStatus(proc.ProcID, db.NewStatusStopped(-1)); errUpdate != nil {
 				c.l.Errorf("set stopped status", log.F{"procID": proc.ID})
 			}
 		}

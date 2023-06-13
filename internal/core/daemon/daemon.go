@@ -240,18 +240,17 @@ func RunServer(pCtx context.Context) error {
 					continue
 				}
 
-				dbStatus := core.NewStatusStopped(status.ExitStatus())
-
 				allProcs := dbHandle.List()
 
-				procID, procFound := lo.FindKeyBy(allProcs, func(_ core.ProcID, procData core.ProcData) bool {
-					return procData.Status.Status == core.StatusRunning &&
+				procID, procFound := lo.FindKeyBy(allProcs, func(_ core.ProcID, procData db.ProcData) bool {
+					return procData.Status.Status == db.StatusRunning &&
 						procData.Status.Pid == pid
 				})
 				if !procFound {
 					continue
 				}
 
+				dbStatus := db.NewStatusStopped(status.ExitStatus())
 				if err := dbHandle.SetStatus(procID, dbStatus); err != nil {
 					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
 						log.Errorf("proc not found while trying to set status", log.F{

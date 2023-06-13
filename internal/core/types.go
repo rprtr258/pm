@@ -31,13 +31,13 @@ func (ps StatusType) String() string {
 }
 
 type Status struct {
-	StartTime time.Time  `json:"start_time"` // StartTime, valid if running
-	StoppedAt time.Time  `json:"stopped_at"` // StoppedAt - time when the process stopped, valid if stopped
-	Status    StatusType `json:"type"`
-	Pid       int        `json:"pid"`       // PID, valid if running
-	CPU       uint64     `json:"cpu"`       // CPU usage percentage rounded to integer, valid if running
-	Memory    uint64     `json:"memory"`    // Memory usage in bytes, valid if running
-	ExitCode  int        `json:"exit_code"` // ExitCode of the process, valid if stopped
+	StartTime time.Time // StartTime, valid if running
+	StoppedAt time.Time // StoppedAt - time when the process stopped, valid if stopped
+	Status    StatusType
+	Pid       int    // PID, valid if running
+	CPU       uint64 // CPU usage percentage rounded to integer, valid if running
+	Memory    uint64 // Memory usage in bytes, valid if running
+	ExitCode  int    // ExitCode of the process, valid if stopped
 }
 
 func NewStatusInvalid() Status {
@@ -70,12 +70,6 @@ func NewStatusStopped(exitCode int) Status {
 	}
 }
 
-func NewStatus() Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusInvalid,
-	}
-}
-
 type ProcID uint64
 
 func (id ProcID) String() string {
@@ -84,15 +78,15 @@ func (id ProcID) String() string {
 
 type ProcData struct {
 	// Command - executable to run
-	Command string `json:"command"`
-	Cwd     string `json:"cwd"`
-	Name    string `json:"name"`
+	Command string
+	Cwd     string
+	Name    string
 	// Args - arguments for executable, not including executable itself as first argument
-	Args   []string `json:"args"`
-	Tags   []string `json:"tags"`
-	Watch  []string `json:"watch"`
-	Status Status   `json:"status"`
-	ProcID ProcID   `json:"id"`
+	Args   []string
+	Tags   []string
+	Watch  []string
+	Status Status
+	ProcID ProcID
 
 	// StdoutFile  string
 	// StderrFile  string
@@ -100,8 +94,4 @@ type ProcData struct {
 	// RestartDelay    time.Duration
 	// Pid      int
 	// Respawns int
-}
-
-func (p ProcData) ID() string {
-	return p.ProcID.String()
 }
