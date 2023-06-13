@@ -152,6 +152,74 @@ func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emp
 	return &emptypb.Empty{}, merr
 }
 
+func (srv *daemonServer) stop(ctx context.Context, proc db.ProcData) (bool, error) {
+	if proc.Status.Status != db.StatusRunning {
+		log.Infof("tried to stop non-running process", log.F{"proc": proc})
+		return false, nil
+	}
+
+	process, errFindProc := os.FindProcess(proc.Status.Pid)
+	if errFindProc != nil {
+		return false, xerr.NewWM(errFindProc, "find process", xerr.Fields{"pid": proc.Status.Pid})
+	}
+
+	if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
+		switch {
+		case errors.Is(errKill, os.ErrProcessDone):
+			log.Warnf("tried stop process which is done", log.F{"proc": proc})
+		case errors.Is(errKill, syscall.ESRCH): // no such process
+			log.Warnf("tried stop process which doesn't exist", log.F{"proc": proc})
+		default:
+			return false, xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
+		}
+	}
+
+	doneCh := make(chan *os.ProcessState, 1)
+	go func() {
+		state, errFindProc := process.Wait()
+		if errFindProc != nil {
+			if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
+				log.Errorf("releasing process", log.F{
+					"pid": process.Pid,
+					"err": errFindProc.Error(),
+				})
+				doneCh <- nil
+				return
+			}
+
+			log.Infof("process is not a child", log.F{"proc": proc})
+		} else {
+			log.Infof("process is stopped", log.F{"proc": proc, "state": state})
+		}
+		doneCh <- state
+	}()
+
+	timer := time.NewTimer(time.Second * 5) //nolint:gomnd // arbitrary timeout
+	defer timer.Stop()
+
+	var state *os.ProcessState
+	select {
+	case <-timer.C:
+		log.Warnf("timed out waiting for process to stop from SIGTERM, killing it", log.F{"proc": proc})
+
+		if errKill := syscall.Kill(-process.Pid, syscall.SIGKILL); errKill != nil {
+			return false, xerr.NewWM(errKill, "kill process", xerr.Fields{"pid": process.Pid})
+		}
+	case <-ctx.Done():
+		return false, xerr.NewWM(ctx.Err(), "context canceled")
+	case state = <-doneCh:
+	}
+
+	exitCode := lo.If(state == nil, -1).ElseF(func() int {
+		return state.ExitCode()
+	})
+	if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusStopped(exitCode)); errSetStatus != nil {
+		return false, xerr.NewWM(errSetStatus, "set status stopped", xerr.Fields{"procID": proc.ProcID})
+	}
+
+	return true, nil
+}
+
 func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*api.IDs, error) {
 	procsList := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
 		return core.ProcID(id.GetId())
@@ -177,72 +245,15 @@ func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*api.IDs, erro
 			continue
 		}
 
-		if proc.Status.Status != db.StatusRunning {
-			log.Infof("tried to stop non-running process", log.F{"proc": proc})
+		stopped, errStop := srv.stop(ctx, proc)
+		if errStop != nil {
+			xerr.AppendInto(&merr, errStop)
 			continue
 		}
 
-		process, errFindProc := os.FindProcess(proc.Status.Pid)
-		if errFindProc != nil {
-			xerr.AppendInto(&merr, xerr.NewWM(errFindProc, "find process", xerr.Fields{"pid": proc.Status.Pid}))
-			continue
+		if stopped {
+			stoppedIDs = append(stoppedIDs, proc.ProcID)
 		}
-
-		if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
-			switch {
-			case errors.Is(errKill, os.ErrProcessDone):
-				log.Warnf("tried stop process which is done", log.F{"proc": proc})
-			case errors.Is(errKill, syscall.ESRCH): // no such process
-				log.Warnf("tried stop process which doesn't exist", log.F{"proc": proc})
-			default:
-				xerr.AppendInto(&merr, xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid}))
-				continue
-			}
-		}
-
-		doneCh := make(chan *os.ProcessState, 1)
-		go func() {
-			state, errFindProc := process.Wait()
-			if errFindProc != nil {
-				if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
-					xerr.AppendInto(&merr, xerr.NewWM(errFindProc, "releasing process", xerr.Fields{"pid": process.Pid}))
-					doneCh <- nil
-					return
-				}
-
-				log.Infof("process is not a child", log.F{"proc": proc})
-			} else {
-				log.Infof("process is stopped", log.F{"proc": proc, "state": state})
-			}
-			doneCh <- state
-		}()
-
-		timer := time.NewTimer(time.Second * 5) //nolint:gomnd // arbitrary timeout
-		defer timer.Stop()
-
-		var state *os.ProcessState
-		select {
-		case <-timer.C:
-			log.Warnf("timed out waiting for process to stop from SIGTERM, killing it", log.F{"proc": proc})
-
-			if errKill := syscall.Kill(-process.Pid, syscall.SIGKILL); errKill != nil {
-				xerr.AppendInto(&merr, xerr.NewWM(errKill, "kill process", xerr.Fields{"pid": process.Pid}))
-				continue
-			}
-		case <-ctx.Done():
-			return nil, xerr.NewWM(ctx.Err(), "context canceled")
-		case state = <-doneCh:
-		}
-
-		exitCode := lo.If(state == nil, -1).ElseF(func() int {
-			return state.ExitCode()
-		})
-		if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusStopped(exitCode)); errSetStatus != nil {
-			xerr.AppendInto(&merr, xerr.NewWM(errSetStatus, "set status stopped", xerr.Fields{"procID": proc.ProcID}))
-			continue
-		}
-
-		stoppedIDs = append(stoppedIDs, proc.ProcID)
 	}
 
 	return &api.IDs{
