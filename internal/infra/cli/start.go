@@ -67,7 +67,6 @@ var _startCmd = &cli.Command{
 		if !ctx.IsSet("config") {
 			procIDs := core.FilterProcs[core.ProcID](
 				list,
-				core.WithAllIfNoFilters,
 				core.WithGeneric(args),
 				core.WithIDs(ids),
 				core.WithNames(names),
@@ -83,6 +82,8 @@ var _startCmd = &cli.Command{
 			if err := app.Start(ctx.Context, procIDs...); err != nil {
 				return xerr.NewWM(err, "client.start")
 			}
+
+			return nil
 		}
 
 		configFile := ctx.String("config")

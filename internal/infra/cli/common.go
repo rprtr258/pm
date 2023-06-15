@@ -9,6 +9,7 @@ var configFlag = &cli.StringFlag{
 	Usage:     "config file to use",
 	Aliases:   []string{"f"},
 	TakesFile: true,
+	Required:  false,
 }
 
 // { Name: "pid", commander.command('[app_name]')
