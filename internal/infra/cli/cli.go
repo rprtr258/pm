@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 
 	"github.com/rprtr258/log"
-	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
+
+	"github.com/rprtr258/pm/internal/core"
 )
 
 func ensureDir(dirname string) error {

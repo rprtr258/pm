@@ -4,9 +4,10 @@ import (
 	"path/filepath"
 
 	"github.com/rprtr258/log"
-	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/xerr"
 	"golang.org/x/mod/semver"
+
+	"github.com/rprtr258/pm/internal/core"
 )
 
 type migration struct {
