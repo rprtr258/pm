@@ -2,6 +2,7 @@ package pm
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 	"syscall"
 
@@ -15,12 +16,23 @@ import (
 
 type App struct {
 	client client.Client
+	config core.Config
 }
 
-func New(client client.Client) App {
+func New(client client.Client) (App, error) {
+	config, errConfig := core.ReadConfig()
+	if errConfig != nil {
+		if !errors.Is(errConfig, core.ErrConfigFileNotExists) {
+			return App{}, xerr.NewWM(errConfig, "read app config")
+		}
+
+		config = core.DefaultConfig
+	}
+
 	return App{
 		client: client,
-	}
+		config: config,
+	}, nil
 }
 
 func (app App) CheckDaemon(ctx context.Context) error {
@@ -31,7 +43,9 @@ func (app App) CheckDaemon(ctx context.Context) error {
 	return nil
 }
 
-func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig) (map[core.ProcID]core.ProcData, error) {
+func (app App) ListByRunConfigs(
+	ctx context.Context, runConfigs []core.RunConfig,
+) (map[core.ProcID]core.ProcData, error) {
 	list, errList := app.client.List(ctx)
 	if errList != nil {
 		return nil, xerr.NewWM(errList, "ListByRunConfigs: list procs")

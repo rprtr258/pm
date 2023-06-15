@@ -50,7 +50,10 @@ var _deleteCmd = &cli.Command{
 		}
 		defer deferErr(client.Close)()
 
-		app := pm.New(client)
+		app, errNewApp := pm.New(client)
+		if errNewApp != nil {
+			return xerr.NewWM(errNewApp, "new app")
+		}
 
 		list, errList := client.List(ctx.Context)
 		if errList != nil {

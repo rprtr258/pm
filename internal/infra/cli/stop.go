@@ -108,7 +108,10 @@ func (cmd *stopCmd) Run(
 	client client.Client,
 	configList map[core.ProcID]core.ProcData,
 ) error {
-	app := pm.New(client)
+	app, errNewApp := pm.New(client)
+	if errNewApp != nil {
+		return xerr.NewWM(errNewApp, "new app")
+	}
 
 	ids := core.FilterProcs[core.ProcID](
 		configList,

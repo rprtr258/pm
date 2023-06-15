@@ -27,12 +27,7 @@ var App = &cli.App{
 		// inspection
 		_listCmd,
 		// other
-		{
-			Name:    "version",
-			Aliases: []string{"v"},
-			Usage:   "print pm version",
-			// TODO: implement
-		},
+		_versionCmd,
 	},
 	Before: func(ctx *cli.Context) error {
 		// if err := ensureDir(core.DirHome); err != nil {

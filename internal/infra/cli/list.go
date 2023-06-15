@@ -235,7 +235,11 @@ func list(
 	}
 	defer deferErr(client.Close)()
 
-	app := pm.New(client)
+	app, errNewApp := pm.New(client)
+	if errNewApp != nil {
+		return xerr.NewWM(errNewApp, "new app")
+	}
+
 	list, err := app.List(ctx) // TODO: move in filters which are bit below
 	if err != nil {
 		return xerr.NewWM(err, "list server call")

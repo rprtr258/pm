@@ -39,9 +39,13 @@ func Status(ctx context.Context) error {
 		return xerr.NewWM(errNewClient, "create grpc client")
 	}
 
-	// TODO: print daemon process info
+	app, errNewApp := pm.New(client)
+	if errNewApp != nil {
+		return xerr.NewWM(errNewApp, "create app")
+	}
 
-	if errHealth := pm.New(client).CheckDaemon(ctx); errHealth != nil {
+	// TODO: print daemon process info
+	if errHealth := app.CheckDaemon(ctx); errHealth != nil {
 		return xerr.NewWM(errHealth, "check daemon")
 	}
 

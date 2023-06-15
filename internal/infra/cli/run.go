@@ -70,7 +70,10 @@ var _runCmd = &cli.Command{
 		}
 		defer deferErr(client.Close)()
 
-		app := pm.New(client)
+		app, errNewApp := pm.New(client)
+		if errNewApp != nil {
+			return xerr.NewWM(errNewApp, "new app")
+		}
 
 		command := ctx.Args().First()
 		commandArgs := ctx.Args().Tail()
