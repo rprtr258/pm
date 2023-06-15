@@ -61,22 +61,32 @@ var _deleteCmd = &cli.Command{
 		}
 
 		if !ctx.IsSet("config") {
-			procIDs, err := app.Stop(ctx.Context, list, args, names, tags, ids)
-			if err != nil {
-				return xerr.NewWM(err, "delete")
-			}
-			fmt.Println("stopped", procIDs)
+			// TODO: extract to filter struct
+			procIDs := core.FilterProcs[core.ProcID](
+				list,
+				core.WithGeneric(args),
+				core.WithIDs(ids),
+				core.WithNames(names),
+				core.WithTags(tags),
+				core.WithAllIfNoFilters,
+			)
 
 			if len(procIDs) == 0 {
-				fmt.Println("Nothing to stop, leaving")
+				fmt.Println("Nothing to delete, leaving")
 				return nil
 			}
 
-			procIDs, err = app.Delete(ctx.Context, procIDs...)
+			stoppedProcIDs, err := app.Stop(ctx.Context, procIDs)
 			if err != nil {
 				return xerr.NewWM(err, "delete")
 			}
-			fmt.Println("deleted", procIDs)
+			fmt.Println("stopped", stoppedProcIDs)
+
+			deletedProcIDs, errDelete := app.Delete(ctx.Context, procIDs...)
+			fmt.Println("deleted", deletedProcIDs)
+			if errDelete != nil {
+				return xerr.NewWM(errDelete, "delete")
+			}
 
 			return nil
 		}
@@ -91,11 +101,20 @@ var _deleteCmd = &cli.Command{
 			return xerr.NewWM(errList, "list by run configs", xerr.Fields{"configs": configs})
 		}
 
-		procIDs, err := app.Stop(ctx.Context, list, args, names, tags, ids)
+		procIDs := core.FilterProcs[core.ProcID](
+			list,
+			core.WithGeneric(args),
+			core.WithIDs(ids),
+			core.WithNames(names),
+			core.WithTags(tags),
+			core.WithAllIfNoFilters,
+		)
+
+		stoppedProcIDs, err := app.Stop(ctx.Context, procIDs)
 		if err != nil {
 			return xerr.NewWM(err, "stop")
 		}
-		fmt.Println("stoped", procIDs)
+		fmt.Println("stoped", stoppedProcIDs)
 
 		procIDs, err = app.Delete(ctx.Context, procIDs...)
 		if err != nil {

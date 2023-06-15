@@ -81,7 +81,7 @@ var _stopCmd = &cli.Command{
 
 		configs, errLoadConfigs := core.LoadConfigs(ctx.String("config"))
 		if errLoadConfigs != nil {
-			return errLoadConfigs
+			return xerr.NewWM(errLoadConfigs, "load configs")
 		}
 
 		names := lo.FilterMap(configs, func(cfg core.RunConfig, _ int) (string, bool) {
@@ -113,7 +113,7 @@ func (cmd *stopCmd) Run(
 		return xerr.NewWM(errNewApp, "new app")
 	}
 
-	ids := core.FilterProcs[core.ProcID](
+	procIDs := core.FilterProcs[core.ProcID](
 		configList,
 		core.WithGeneric(cmd.args),
 		core.WithIDs(cmd.ids),
@@ -122,13 +122,13 @@ func (cmd *stopCmd) Run(
 		core.WithAllIfNoFilters,
 	)
 
-	if len(ids) == 0 {
+	if len(procIDs) == 0 {
 		fmt.Println("nothing to stop")
 		return nil
 	}
 
-	procIDs, err := app.Stop(ctx, configList, cmd.args, cmd.names, cmd.tags, cmd.ids)
-	fmt.Println(lo.ToAnySlice(procIDs)...)
+	stoppedProcIDs, err := app.Stop(ctx, procIDs)
+	fmt.Println(lo.ToAnySlice(stoppedProcIDs)...)
 	if err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}

@@ -92,18 +92,8 @@ func (app App) Signal(
 
 func (app App) Stop(
 	ctx context.Context,
-	procs map[core.ProcID]core.ProcData,
-	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
+	procIDs []core.ProcID,
 ) ([]core.ProcID, error) {
-	procIDs := core.FilterProcs[core.ProcID](
-		procs,
-		core.WithGeneric(args),
-		core.WithIDs(ids),
-		core.WithNames(names),
-		core.WithTags(tags),
-		core.WithAllIfNoFilters,
-	)
-
 	if len(procIDs) == 0 {
 		return []core.ProcID{}, nil
 	}
