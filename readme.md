@@ -6,12 +6,9 @@ PM is available only for linux due to heavy usage of linux mechanisms. For now o
 go install github.com/rprtr258/pm@latest
 ```
 
-Then start/restart `pm` daemon:
-```sh
-pm daemon restart
-```
-
 ## Configuration
+[jsonnet](https://jsonnet.org/) configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead.
+
 See [example configuration file](./config.jsonnet).
 
 ## Usage
@@ -40,7 +37,7 @@ pm start <id or name or tag...>
 ```sh
 pm stop <id or name or tag...>
 
-# e.g. stop all addedprocesses (all processes has tag `all` by default)
+# e.g. stop all added processes (all processes has tag `all` by default)
 pm stop all
 ```
 
@@ -74,4 +71,22 @@ flowchart TB
   RC -->|stop/SIGCHLD| S
   RD -->|stop/process died| S1
   Stopped -->|start| RC
+```
+
+## Development
+
+### PM directory structure
+`pm` uses directory `$HOME/.pm` to store data. Layout is following:
+
+```sh
+$HOME/.pm/
+├── config.json # pm config file
+├── rpc.sock    # socket used to rpc daemon
+├── pm.log      # daemon logs
+├── pm.pid      # daemon pid
+├── db/ # database tables
+│   └── procs.json # processes table
+└── logs/ # processes logs
+    ├── <ID>.stdout # stdout of process with id ID
+    └── <ID>.stderr # stderr of process with id ID
 ```
