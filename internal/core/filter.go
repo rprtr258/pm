@@ -57,8 +57,8 @@ func WithStatuses(args []string) FilterProcsOption {
 		switch status {
 		case "invalid":
 			return StatusInvalid
-		case "starting":
-			return StatusStarting
+		case "created":
+			return StatusCreated
 		case "running":
 			return StatusRunning
 		case "stopped":

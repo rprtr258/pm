@@ -92,8 +92,8 @@ func mapPbStatus(status *api.ProcessStatus) core.Status {
 	switch {
 	case status.GetInvalid() != nil:
 		return core.NewStatusInvalid()
-	case status.GetStarting() != nil:
-		return core.NewStatusStarting()
+	case status.GetCreated() != nil:
+		return core.NewStatusCreated()
 	case status.GetStopped() != nil:
 		return core.NewStatusStopped(int(status.GetStopped().GetExitCode()))
 	case status.GetRunning() != nil:

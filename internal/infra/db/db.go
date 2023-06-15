@@ -16,7 +16,7 @@ type StatusType int
 
 const (
 	StatusInvalid StatusType = iota
-	StatusStarting
+	StatusCreated
 	StatusRunning
 	StatusStopped
 )
@@ -25,8 +25,8 @@ func (ps StatusType) String() string {
 	switch ps {
 	case StatusInvalid:
 		return "invalid"
-	case StatusStarting:
-		return "starting"
+	case StatusCreated:
+		return "created"
 	case StatusRunning:
 		return "running"
 	case StatusStopped:
@@ -50,9 +50,9 @@ func NewStatusInvalid() Status {
 	}
 }
 
-func NewStatusStarting() Status {
+func NewStatusCreated() Status {
 	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusStarting,
+		Status: StatusCreated,
 	}
 }
 
@@ -153,7 +153,7 @@ func (handle Handle) AddProc(query CreateQuery) (core.ProcID, error) {
 		Args:    query.Args,
 		Tags:    query.Tags,
 		Watch:   query.Watch,
-		Status:  NewStatusStarting(),
+		Status:  NewStatusCreated(),
 	}) {
 		return 0, xerr.NewM("insert: already present")
 	}

@@ -104,7 +104,7 @@ var _listCmd = &cli.Command{
 			getOrder := func(p core.ProcData) int {
 				//nolint:gomnd // priority weights
 				switch p.Status.Status {
-				case core.StatusStarting:
+				case core.StatusCreated:
 					return 0
 				case core.StatusRunning:
 					return 100
@@ -182,8 +182,8 @@ var _listCmd = &cli.Command{
 
 func mapStatus(status core.Status) (string, *int, time.Duration) {
 	switch status.Status {
-	case core.StatusStarting:
-		return color.YellowString("starting"), nil, 0
+	case core.StatusCreated:
+		return color.YellowString("created"), nil, 0
 	case core.StatusRunning:
 		return color.GreenString("running"), &status.Pid, time.Since(status.StartTime)
 	case core.StatusStopped:

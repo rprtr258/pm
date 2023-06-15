@@ -54,7 +54,7 @@ message Process {
 message ProcessStatus {
   oneof status {
     google.protobuf.Empty invalid = 1;
-    google.protobuf.Empty starting = 2;
+    google.protobuf.Empty created = 2;
     RunningProcessStatus running = 3;
     StoppedProcessStatus stopped = 4;
   };

@@ -331,7 +331,7 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 		); ok {
 			procData := db.ProcData{
 				ProcID:  procID,
-				Status:  db.NewStatusStarting(),
+				Status:  db.NewStatusCreated(),
 				Name:    procOpts.GetName(),
 				Cwd:     procOpts.GetCwd(),
 				Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
@@ -388,8 +388,8 @@ func mapStatus(status db.Status) *api.ProcessStatus {
 	switch status.Status {
 	case db.StatusInvalid:
 		return &api.ProcessStatus{Status: &api.ProcessStatus_Invalid{}}
-	case db.StatusStarting:
-		return &api.ProcessStatus{Status: &api.ProcessStatus_Starting{}}
+	case db.StatusCreated:
+		return &api.ProcessStatus{Status: &api.ProcessStatus_Created{}}
 	case db.StatusStopped:
 		return &api.ProcessStatus{Status: &api.ProcessStatus_Stopped{
 			Stopped: &api.StoppedProcessStatus{
