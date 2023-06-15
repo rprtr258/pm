@@ -13,7 +13,7 @@ import (
 const Version = "0.0.1"
 
 var (
-	ErrConfigFileNotExists = errors.New("config file not exists")
+	ErrConfigNotExists = errors.New("config file not exists")
 
 	_configPath = filepath.Join(DirHome, "config.json")
 )
@@ -30,7 +30,7 @@ func ReadConfig() (Config, error) {
 	configBytes, errRead := os.ReadFile(_configPath)
 	if errRead != nil {
 		if errors.Is(errRead, fs.ErrNotExist) {
-			return Config{}, ErrConfigFileNotExists
+			return Config{}, ErrConfigNotExists
 		}
 
 		return Config{}, xerr.NewWM(errRead, "read config file", xerr.Fields{

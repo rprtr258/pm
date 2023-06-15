@@ -21,7 +21,7 @@ var _versionCmd = &cli.Command{
 
 		config, errRead := core.ReadConfig()
 		if errRead != nil {
-			if errors.Is(errRead, core.ErrConfigFileNotExists) {
+			if errors.Is(errRead, core.ErrConfigNotExists) {
 				return nil
 			}
 

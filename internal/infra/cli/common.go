@@ -1,33 +1,8 @@
 package cli
 
 import (
-	"errors"
-	"io/fs"
-	"os"
-
 	"github.com/urfave/cli/v2"
-
-	"github.com/rprtr258/log"
-	"github.com/rprtr258/xerr"
 )
-
-func ensureDir(dirname string) error {
-	_, errStat := os.Stat(dirname)
-	if errStat == nil {
-		return nil
-	}
-
-	if !errors.Is(errStat, fs.ErrNotExist) {
-		return xerr.NewWM(errStat, "stat home dir")
-	}
-
-	log.Infof("creating home dir...", log.F{"dir": dirname})
-	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
-		return xerr.NewWM(errMkdir, "create home dir")
-	}
-
-	return nil
-}
 
 var configFlag = &cli.StringFlag{
 	Name:      "config",

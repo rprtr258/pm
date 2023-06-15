@@ -22,7 +22,7 @@ type App struct {
 func New(client client.Client) (App, error) {
 	config, errConfig := core.ReadConfig()
 	if errConfig != nil {
-		if !errors.Is(errConfig, core.ErrConfigFileNotExists) {
+		if !errors.Is(errConfig, core.ErrConfigNotExists) {
 			return App{}, xerr.NewWM(errConfig, "read app config")
 		}
 

@@ -176,7 +176,62 @@ func Restart(ctx context.Context) (int, error) {
 	return startDaemon(ctx)
 }
 
+func migrate() error {
+	config, errRead := core.ReadConfig()
+	if errRead != nil {
+		if !xerr.Is(errRead, core.ErrConfigNotExists) {
+			return xerr.NewWM(errRead, "read config for migrate")
+		}
+
+		log.Info("writing initial config...")
+
+		if errWrite := core.WriteConfig(core.DefaultConfig); errWrite != nil {
+			return xerr.NewWM(errWrite, "write initial config")
+		}
+	}
+
+	if config.Version == core.Version {
+		return nil
+	}
+
+	config.Version = core.Version
+	if errWrite := core.WriteConfig(config); errWrite != nil {
+		return xerr.NewWM(errWrite, "write config for migrate")
+	}
+
+	return nil
+}
+
+func unaryLoggerInterceptor(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
+	reqType := reflect.TypeOf(req).Elem()
+	reqVal := reflect.ValueOf(req).Elem()
+
+	fields := make(log.F, reqType.NumField()+1)
+	fields["@type"] = reqType.Name()
+	for i := 0; i < reqType.NumField(); i++ {
+		field := reqType.Field(i)
+		if !field.IsExported() {
+			continue
+		}
+
+		fields[field.Name] = spew.Sprint(reqVal.Field(i).Interface())
+	}
+
+	log.Infof(info.FullMethod, fields)
+
+	return handler(ctx, req)
+}
+
 func RunServer(pCtx context.Context) error {
+	if errMigrate := migrate(); errMigrate != nil {
+		return xerr.NewWM(errMigrate, "migrate to latest version", xerr.Fields{"version": core.Version})
+	}
+
 	ctx, cancel := context.WithCancel(pCtx)
 	defer cancel()
 
@@ -186,39 +241,12 @@ func RunServer(pCtx context.Context) error {
 	}
 	defer sock.Close()
 
-	if errMkdirLogs := os.Mkdir(_dirProcsLogs, os.ModePerm); errMkdirLogs != nil && !errors.Is(errMkdirLogs, os.ErrExist) {
-		return xerr.NewWM(errMkdirLogs, "create logs dir", xerr.Fields{"dir": _dirProcsLogs})
-	}
-
 	dbHandle, errDBNew := db.New(_dirDB)
 	if errDBNew != nil {
 		return xerr.NewWM(errDBNew, "create db")
 	}
 
-	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(func(
-		ctx context.Context,
-		req any,
-		info *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler,
-	) (any, error) {
-		reqType := reflect.TypeOf(req).Elem()
-		reqVal := reflect.ValueOf(req).Elem()
-
-		fields := make(log.F, reqType.NumField()+1)
-		fields["@type"] = reqType.Name()
-		for i := 0; i < reqType.NumField(); i++ {
-			field := reqType.Field(i)
-			if !field.IsExported() {
-				continue
-			}
-
-			fields[field.Name] = spew.Sprint(reqVal.Field(i).Interface())
-		}
-
-		log.Infof(info.FullMethod, fields)
-
-		return handler(ctx, req)
-	}))
+	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(unaryLoggerInterceptor))
 	api.RegisterDaemonServer(srv, &daemonServer{
 		UnimplementedDaemonServer: api.UnimplementedDaemonServer{},
 		db:                        dbHandle,

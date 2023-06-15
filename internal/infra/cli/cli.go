@@ -1,8 +1,33 @@
 package cli
 
 import (
+	"errors"
+	"io/fs"
+	"os"
+	"path/filepath"
+
+	"github.com/rprtr258/log"
+	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
 )
+
+func ensureDir(dirname string) error {
+	_, errStat := os.Stat(dirname)
+	if errStat == nil {
+		return nil
+	}
+	if !errors.Is(errStat, fs.ErrNotExist) {
+		return xerr.NewWM(errStat, "stat dir")
+	}
+
+	log.Infof("creating home dir...", log.F{"dir": dirname})
+	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
+		return xerr.NewWM(errMkdir, "create dir")
+	}
+
+	return nil
+}
 
 var App = &cli.App{
 	Name:  "pm",
@@ -29,10 +54,15 @@ var App = &cli.App{
 		// other
 		_versionCmd,
 	},
-	Before: func(ctx *cli.Context) error {
-		// if err := ensureDir(core.DirHome); err != nil {
-		// 	return xerr.NewWM(err, "ensure home dir", xerr.Fields{"dir": core.DirHome})
-		// }
+	Before: func(c *cli.Context) error {
+		if err := ensureDir(core.DirHome); err != nil {
+			return xerr.NewWM(err, "ensure home dir", xerr.Fields{"dir": core.DirHome})
+		}
+
+		_dirProcsLogs := filepath.Join(core.DirHome, "logs")
+		if err := ensureDir(_dirProcsLogs); err != nil {
+			return xerr.NewWM(err, "ensure logs dir", xerr.Fields{"dir": _dirProcsLogs})
+		}
 
 		return nil
 	},
