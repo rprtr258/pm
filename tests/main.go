@@ -43,12 +43,12 @@ func HTTPResponse(
 ) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return xerr.NewWM(err, "failed to create request")
+		return xerr.NewWM(err, "create request")
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return xerr.NewWM(err, "failed to get response")
+		return xerr.NewWM(err, "get response")
 	}
 	defer resp.Body.Close()
 
@@ -58,7 +58,7 @@ func HTTPResponse(
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return xerr.NewWM(err, "failed to read response body")
+		return xerr.NewWM(err, "read response body")
 	}
 
 	body = bytes.TrimSpace(body)
@@ -86,7 +86,6 @@ var tests = map[string]testcase{
 			Cwd:     "",
 		},
 		testFunc: func(ctx context.Context, client pmclient.Client) error {
-			time.Sleep(3 * time.Second)
 			if errHTTP := HTTPResponse(ctx, "http://localhost:8080/", "hello world"); errHTTP != nil {
 				return errHTTP
 			}
@@ -96,13 +95,14 @@ var tests = map[string]testcase{
 	},
 }
 
+//nolint:nonamedreturns // required to check test result
 func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 	log.Infof("running test", log.F{"test": name})
 	defer func() {
 		if ererer == nil {
 			log.Infof("test succeeded", log.F{"test": name})
 		} else {
-			log.Errorf("test failed", log.F{"test": name, "err": ererer})
+			log.Errorf("test failed", log.F{"test": name, "err": ererer.Error()})
 		}
 	}()
 
@@ -114,23 +114,27 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 		Tags:    test.runConfig.Tags,
 	}})
 	if errCreate != nil {
-		return errCreate
+		return xerr.NewWM(errCreate, "create process")
+	}
+
+	if len(ids) != 1 {
+		return xerr.NewM("unexpected number of processes", xerr.Fields{"ids": ids})
 	}
 
 	if errStart := client.Start(ctx, ids); errStart != nil {
-		return errStart
+		return xerr.NewWM(errStart, "start process", xerr.Fields{"id": ids[0]})
 	}
 
 	if errTest := test.testFunc(ctx, client); errTest != nil {
-		return errTest
+		return xerr.NewWM(errTest, "run test func")
 	}
 
 	if _, errStop := client.Stop(ctx, ids); errStop != nil {
-		return errStop
+		return xerr.NewWM(errStop, "stop process", xerr.Fields{"id": ids[0]})
 	}
 
 	if errDelete := client.Delete(ctx, ids); errDelete != nil {
-		return errDelete
+		return xerr.NewWM(errDelete, "delete process", xerr.Fields{"id": ids[0]})
 	}
 
 	return nil
@@ -154,15 +158,15 @@ func main() {
 			var errClient error
 			client, errClient = pmclient.NewGrpcClient()
 			if errClient != nil {
-				return errClient
+				return xerr.NewWM(errClient, "create client")
 			}
 
 			_, errRestart := daemon.Restart(ctx.Context)
 			if errRestart != nil {
-				return errRestart
+				return xerr.NewWM(errRestart, "restart daemon")
 			}
 
-			ticker := time.NewTicker(100 * time.Millisecond)
+			ticker := time.NewTicker(100 * time.Millisecond) //nolint:gomnd // arbitrary time
 			defer ticker.Stop()
 			for {
 				if client.HealthCheck(ctx.Context) == nil {
@@ -171,7 +175,7 @@ func main() {
 
 				select {
 				case <-ctx.Done():
-					return ctx.Err()
+					return xerr.NewWM(ctx.Err(), "context done while waiting for daemon to start")
 				case <-ticker.C:
 				}
 			}
@@ -180,7 +184,7 @@ func main() {
 		},
 		After: func(ctx *cli.Context) error {
 			if errKill := daemon.Kill(); errKill != nil {
-				return errKill
+				return xerr.NewWM(errKill, "kill daemon")
 			}
 
 			if errHealth := client.HealthCheck(ctx.Context); errHealth == nil {
@@ -194,5 +198,4 @@ func main() {
 	if err := pmcli.App.Run(os.Args); err != nil {
 		log.Fatal(err.Error())
 	}
-
 }
