@@ -10,14 +10,14 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/fun v0.0.4
 	github.com/rprtr258/log v0.0.7
-	github.com/rprtr258/simpdb v0.6.0
+	github.com/rprtr258/simpdb v0.6.1
 	github.com/rprtr258/xerr v0.0.7
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.6
 	golang.org/x/mod v0.11.0
 	golang.org/x/sys v0.9.0
-	google.golang.org/grpc v1.55.0
+	google.golang.org/grpc v1.56.0
 	google.golang.org/protobuf v1.30.0
 )
 
