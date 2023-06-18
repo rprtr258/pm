@@ -168,6 +168,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 	}
 
 	// START DAEMON
+	log.Debug("starting daemon...")
 	_, errRestart := daemon.Restart(ctx)
 	if errRestart != nil {
 		return xerr.NewWM(errRestart, "restart daemon")
@@ -187,74 +188,96 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 		}
 	}
 
-	// TODO: delete all processes
-
-	// START TEST
-	log.Infof("running test", log.F{"test": name})
-	defer func() {
-		if ererer == nil {
-			log.Infof("test succeeded", log.F{"test": name})
-		} else {
-			log.Errorf("test failed", log.F{"test": name, "err": ererer.Error()})
-		}
-	}()
-
-	// RUN TEST BEFORE HOOK
-	if test.beforeFunc != nil {
-		if errTest := test.beforeFunc(ctx, client); errTest != nil {
-			return xerr.NewWM(errTest, "run test before hook")
-		}
+	// DELETE ALL PROCS
+	list, errList := client.List(ctx)
+	if errList != nil {
+		return xerr.NewWM(errList, "list processes")
 	}
 
-	// START TEST PROCESSES
-	processesOptions := fun.Map(test.runConfigs, func(c core.RunConfig) *api.ProcessOptions {
-		return &api.ProcessOptions{
-			Name:    c.Name.Ptr(),
-			Command: c.Command,
-			Args:    c.Args,
-			Cwd:     c.Cwd,
-			Tags:    c.Tags,
-		}
+	oldIDs := fun.Map(fun.Keys(list), func(id core.ProcID) uint64 {
+		return uint64(id)
 	})
 
-	ids, errCreate := client.Create(ctx, processesOptions)
-	if errCreate != nil {
-		return xerr.NewWM(errCreate, "create process")
+	if _, errStop := client.Stop(ctx, oldIDs); errStop != nil {
+		return xerr.NewWM(errStop, "stop all old processes")
 	}
 
-	if len(ids) != len(test.runConfigs) {
-		return xerr.NewM("unexpected number of processes", xerr.Fields{"ids": ids})
-	}
-
-	if errStart := client.Start(ctx, ids); errStart != nil {
-		return xerr.NewWM(errStart, "start process", xerr.Fields{"ids": ids})
+	if errDelete := client.Delete(ctx, oldIDs); errDelete != nil {
+		return xerr.NewWM(errDelete, "delete all old processes")
 	}
 
 	// RUN TEST
-	if test.testFunc != nil {
-		if errTest := test.testFunc(ctx, client); errTest != nil {
-			return xerr.NewWM(errTest, "run test func")
+	if errTest := func() error {
+		log.Infof("running test", log.F{"test": name})
+		defer func() {
+			if ererer == nil {
+				log.Infof("test succeeded", log.F{"test": name})
+			} else {
+				log.Errorf("test failed", log.F{"test": name, "err": ererer.Error()})
+			}
+		}()
+
+		// RUN TEST BEFORE HOOK
+		if test.beforeFunc != nil {
+			if errTest := test.beforeFunc(ctx, client); errTest != nil {
+				return xerr.NewWM(errTest, "run test before hook")
+			}
 		}
-	}
 
-	// STOP AND REMOVE TEST PROCESSES
-	if _, errStop := client.Stop(ctx, ids); errStop != nil {
-		return xerr.NewWM(errStop, "stop process", xerr.Fields{"ids": ids})
-	}
+		// START TEST PROCESSES
+		processesOptions := fun.Map(test.runConfigs, func(c core.RunConfig) *api.ProcessOptions {
+			return &api.ProcessOptions{
+				Name:    c.Name.Ptr(),
+				Command: c.Command,
+				Args:    c.Args,
+				Cwd:     c.Cwd,
+				Tags:    c.Tags,
+			}
+		})
 
-	if errDelete := client.Delete(ctx, ids); errDelete != nil {
-		return xerr.NewWM(errDelete, "delete process", xerr.Fields{"ids": ids})
-	}
-
-	// RUN TEST AFTER HOOK
-	if test.afterFunc != nil {
-		if errTest := test.afterFunc(ctx, client); errTest != nil {
-			return xerr.NewWM(errTest, "run test after hook")
+		ids, errCreate := client.Create(ctx, processesOptions)
+		if errCreate != nil {
+			return xerr.NewWM(errCreate, "create process")
 		}
+
+		if len(ids) != len(test.runConfigs) {
+			return xerr.NewM("unexpected number of processes", xerr.Fields{"ids": ids})
+		}
+
+		if errStart := client.Start(ctx, ids); errStart != nil {
+			return xerr.NewWM(errStart, "start process", xerr.Fields{"ids": ids})
+		}
+
+		// RUN TEST
+		if test.testFunc != nil {
+			if errTest := test.testFunc(ctx, client); errTest != nil {
+				return xerr.NewWM(errTest, "run test func")
+			}
+		}
+
+		// STOP AND REMOVE TEST PROCESSES
+		if _, errStop := client.Stop(ctx, ids); errStop != nil {
+			return xerr.NewWM(errStop, "stop process", xerr.Fields{"ids": ids})
+		}
+
+		if errDelete := client.Delete(ctx, ids); errDelete != nil {
+			return xerr.NewWM(errDelete, "delete process", xerr.Fields{"ids": ids})
+		}
+
+		// RUN TEST AFTER HOOK
+		if test.afterFunc != nil {
+			if errTest := test.afterFunc(ctx, client); errTest != nil {
+				return xerr.NewWM(errTest, "run test after hook")
+			}
+		}
+
+		return nil
+	}(); errTest != nil {
+		return errTest
 	}
 
 	// KILL DAEMON
-
+	log.Debug("killing daemon...")
 	if errKill := daemon.Kill(); errKill != nil {
 		return xerr.NewWM(errKill, "kill daemon")
 	}
