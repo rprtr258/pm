@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/rprtr258/fun"
@@ -25,10 +24,8 @@ import (
 	pmclient "github.com/rprtr258/pm/pkg/client"
 )
 
-// TCPPortAvailable checks if a given TCP port is bound on the local network interface.
-func TCPPortAvailable(t *testing.T, port int, timeout time.Duration) bool {
-	t.Helper()
-
+// tcpPortAvailable checks if a given TCP port is bound on the local network interface.
+func tcpPortAvailable(port int, timeout time.Duration) bool {
 	address := net.JoinHostPort("localhost", strconv.Itoa(port))
 	conn, err := net.DialTimeout("tcp", address, timeout)
 	if err != nil {
@@ -39,7 +36,7 @@ func TCPPortAvailable(t *testing.T, port int, timeout time.Duration) bool {
 	return true
 }
 
-func HTTPResponse(
+func httpResponse(
 	ctx context.Context,
 	endpoint, expectedResponse string,
 ) error {
@@ -86,7 +83,7 @@ var tests = map[string]testcase{
 			Args:    []string{"run", "tests/hello-http/main.go"},
 		}},
 		testFunc: func(ctx context.Context, client pmclient.Client) error {
-			if errHTTP := HTTPResponse(ctx, "http://localhost:8080/", "hello world"); errHTTP != nil {
+			if errHTTP := httpResponse(ctx, "http://localhost:8080/", "hello world"); errHTTP != nil {
 				return errHTTP
 			}
 
@@ -118,7 +115,7 @@ var tests = map[string]testcase{
 
 			d, err := os.ReadFile(filepath.Join(homeDir, ".pm/logs/1.stdout"))
 			if err != nil {
-				return err
+				return xerr.NewWM(err, "read server stdout")
 			}
 
 			if strings.TrimSpace(string(d)) != "123" {
@@ -132,6 +129,35 @@ var tests = map[string]testcase{
 
 //nolint:nonamedreturns // required to check test result
 func runTest(ctx context.Context, name string, test testcase) (ererer error) {
+	var errClient error
+	client, errClient = pmclient.NewGrpcClient()
+	if errClient != nil {
+		return xerr.NewWM(errClient, "create client")
+	}
+
+	// START DAEMON
+	_, errRestart := daemon.Restart(ctx)
+	if errRestart != nil {
+		return xerr.NewWM(errRestart, "restart daemon")
+	}
+
+	ticker := time.NewTicker(100 * time.Millisecond) //nolint:gomnd // arbitrary time
+	defer ticker.Stop()
+	for {
+		if client.HealthCheck(ctx) == nil {
+			break
+		}
+
+		select {
+		case <-ctx.Done():
+			return xerr.NewWM(ctx.Err(), "context done while waiting for daemon to start")
+		case <-ticker.C:
+		}
+	}
+
+	// TODO: delete all processes
+
+	// START TEST
 	log.Infof("running test", log.F{"test": name})
 	defer func() {
 		if ererer == nil {
@@ -141,6 +167,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 		}
 	}()
 
+	// START TEST PROCESSES
 	processesOptions := fun.Map(test.runConfigs, func(c core.RunConfig) *api.ProcessOptions {
 		return &api.ProcessOptions{
 			Name:    c.Name.Ptr(),
@@ -164,16 +191,28 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 		return xerr.NewWM(errStart, "start process", xerr.Fields{"ids": ids})
 	}
 
+	// RUN TEST
 	if errTest := test.testFunc(ctx, client); errTest != nil {
 		return xerr.NewWM(errTest, "run test func")
 	}
 
+	// STOP AND REMOVE TEST PROCESSES
 	if _, errStop := client.Stop(ctx, ids); errStop != nil {
 		return xerr.NewWM(errStop, "stop process", xerr.Fields{"ids": ids})
 	}
 
 	if errDelete := client.Delete(ctx, ids); errDelete != nil {
 		return xerr.NewWM(errDelete, "delete process", xerr.Fields{"ids": ids})
+	}
+
+	// KILL DAEMON
+
+	if errKill := daemon.Kill(); errKill != nil {
+		return xerr.NewWM(errKill, "kill daemon")
+	}
+
+	if errHealth := client.HealthCheck(ctx); errHealth == nil {
+		return xerr.NewM("daemon is healthy but must not")
 	}
 
 	return nil
@@ -207,47 +246,6 @@ func main() {
 		Name:        "test",
 		Usage:       "run e2e tests",
 		Subcommands: append(_testsCmds, _testAllCmd),
-		Before: func(ctx *cli.Context) error {
-			var errClient error
-			client, errClient = pmclient.NewGrpcClient()
-			if errClient != nil {
-				return xerr.NewWM(errClient, "create client")
-			}
-
-			_, errRestart := daemon.Restart(ctx.Context)
-			if errRestart != nil {
-				return xerr.NewWM(errRestart, "restart daemon")
-			}
-
-			ticker := time.NewTicker(100 * time.Millisecond) //nolint:gomnd // arbitrary time
-			defer ticker.Stop()
-			for {
-				if client.HealthCheck(ctx.Context) == nil {
-					break
-				}
-
-				select {
-				case <-ctx.Done():
-					return xerr.NewWM(ctx.Err(), "context done while waiting for daemon to start")
-				case <-ticker.C:
-				}
-			}
-
-			// TODO: delete all processes
-
-			return nil
-		},
-		After: func(ctx *cli.Context) error {
-			if errKill := daemon.Kill(); errKill != nil {
-				return xerr.NewWM(errKill, "kill daemon")
-			}
-
-			if errHealth := client.HealthCheck(ctx.Context); errHealth == nil {
-				return xerr.NewM("daemon is healthy but must not")
-			}
-
-			return nil
-		},
 	})
 
 	if err := pmcli.App.Run(os.Args); err != nil {
