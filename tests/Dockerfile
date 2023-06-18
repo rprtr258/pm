@@ -1,6 +1,9 @@
 FROM golang:1.19-alpine AS build
 WORKDIR /app
-COPY . .
+COPY go.mod go.sum /app/
 RUN go mod download
-RUN go build -o /pm ./cmd/main.go
-CMD ["/pm", "daemon", "run"]
+COPY . .
+RUN go build -o /pm ./tests/main.go
+RUN go build -o hello-http tests/hello-http/main.go
+ENTRYPOINT ["/pm", "test"]
+CMD ["all"]

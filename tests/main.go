@@ -83,8 +83,8 @@ var tests = map[string]testcase{
 	"hello-http-server": {
 		runConfigs: []core.RunConfig{{
 			Name:    fun.Valid("http-hello-server"),
-			Command: "/home/rprtr258/.gvm/gos/go1.19.5/bin/go",
-			Args:    []string{"run", "tests/hello-http/main.go"},
+			Command: "hello-http",
+			Args:    []string{},
 		}},
 		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
 			if !tcpPortAvailable(8080) {
@@ -119,7 +119,7 @@ var tests = map[string]testcase{
 			},
 			{
 				Name:    fun.Valid("nc-client"),
-				Command: "/usr/bin/sh",
+				Command: "/bin/sh",
 				Args:    []string{"-c", `echo "123" | nc localhost 8080`},
 			},
 		},
