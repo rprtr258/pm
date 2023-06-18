@@ -31,11 +31,11 @@ PROTOCGENGOGRPCBIN=${BINDIR}/protoc-gen-go-grpc
 .PHONY: help
 help: # show list of all commands
 	@awk 'BEGIN {FS = ":.*?# "} { \
-	if (/^[/%.a-zA-Z0-9_-]+:.*?#.*$$/) \
-		{ printf "  ${YELLOW}%-30s${RESET}${WHTIE}%s${RESET}\n", $$1, $$2} \
-	else if (/^## .*$$/) \
-		{ printf "${CYAN}%s:${RESET}\n", substr($$1,4)} \
-	}' $(MAKEFILE_LIST)
+		if (/^[/%.a-zA-Z0-9_-]+:.*?#.*$$/) \
+			{ printf "  ${YELLOW}%-30s${RESET}${WHTIE}%s${RESET}\n", $$1, $$2} \
+		else if (/^## .*$$/) \
+			{ printf "${CYAN}%s:${RESET}\n", substr($$1,4)} \
+		}' $(MAKEFILE_LIST)
 
 bindir:
 	mkdir -p ${BINDIR}
