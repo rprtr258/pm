@@ -7,7 +7,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -82,12 +84,45 @@ var tests = map[string]testcase{
 			Name:    fun.Valid("http-hello-server"),
 			Command: "/home/rprtr258/.gvm/gos/go1.19.5/bin/go",
 			Args:    []string{"run", "tests/hello-http/main.go"},
-			Tags:    nil,
-			Cwd:     "",
 		}},
 		testFunc: func(ctx context.Context, client pmclient.Client) error {
 			if errHTTP := HTTPResponse(ctx, "http://localhost:8080/", "hello world"); errHTTP != nil {
 				return errHTTP
+			}
+
+			// TODO: check that before test port was free and after test is also free
+
+			return nil
+		},
+	},
+	"client-server-netcat": {
+		runConfigs: []core.RunConfig{
+			{
+				Name:    fun.Valid("nc-server"),
+				Command: "/usr/bin/nc",
+				Args:    []string{"-l", "-p", "8080"},
+			},
+			{
+				Name:    fun.Valid("nc-client"),
+				Command: "/usr/bin/sh",
+				Args:    []string{"-c", `echo "123" | nc localhost 8080`},
+			},
+		},
+		testFunc: func(ctx context.Context, client pmclient.Client) error {
+			homeDir, errHome := os.UserHomeDir()
+			if errHome != nil {
+				return xerr.NewWM(errHome, "get home dir")
+			}
+
+			time.Sleep(time.Second)
+
+			d, err := os.ReadFile(filepath.Join(homeDir, ".pm/logs/1.stdout"))
+			if err != nil {
+				return err
+			}
+
+			if strings.TrimSpace(string(d)) != "123" {
+				return xerr.NewM("unexpected request", xerr.Fields{"request": string(d)})
 			}
 
 			return nil
@@ -197,6 +232,8 @@ func main() {
 				case <-ticker.C:
 				}
 			}
+
+			// TODO: delete all processes
 
 			return nil
 		},
