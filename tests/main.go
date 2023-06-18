@@ -72,19 +72,19 @@ func HTTPResponse(
 var client pmclient.Client
 
 type testcase struct {
-	testFunc  func(ctx context.Context, client pmclient.Client) error
-	runConfig core.RunConfig
+	testFunc   func(ctx context.Context, client pmclient.Client) error
+	runConfigs []core.RunConfig
 }
 
 var tests = map[string]testcase{
 	"hello-http-server": {
-		runConfig: core.RunConfig{
+		runConfigs: []core.RunConfig{{
 			Name:    fun.Valid("http-hello-server"),
 			Command: "/home/rprtr258/.gvm/gos/go1.19.5/bin/go",
 			Args:    []string{"run", "tests/hello-http/main.go"},
 			Tags:    nil,
 			Cwd:     "",
-		},
+		}},
 		testFunc: func(ctx context.Context, client pmclient.Client) error {
 			if errHTTP := HTTPResponse(ctx, "http://localhost:8080/", "hello world"); errHTTP != nil {
 				return errHTTP
@@ -106,23 +106,27 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 		}
 	}()
 
-	ids, errCreate := client.Create(ctx, []*api.ProcessOptions{{
-		Name:    test.runConfig.Name.Ptr(),
-		Command: test.runConfig.Command,
-		Args:    test.runConfig.Args,
-		Cwd:     test.runConfig.Cwd,
-		Tags:    test.runConfig.Tags,
-	}})
+	processesOptions := fun.Map(test.runConfigs, func(c core.RunConfig) *api.ProcessOptions {
+		return &api.ProcessOptions{
+			Name:    c.Name.Ptr(),
+			Command: c.Command,
+			Args:    c.Args,
+			Cwd:     c.Cwd,
+			Tags:    c.Tags,
+		}
+	})
+
+	ids, errCreate := client.Create(ctx, processesOptions)
 	if errCreate != nil {
 		return xerr.NewWM(errCreate, "create process")
 	}
 
-	if len(ids) != 1 {
+	if len(ids) != len(test.runConfigs) {
 		return xerr.NewM("unexpected number of processes", xerr.Fields{"ids": ids})
 	}
 
 	if errStart := client.Start(ctx, ids); errStart != nil {
-		return xerr.NewWM(errStart, "start process", xerr.Fields{"id": ids[0]})
+		return xerr.NewWM(errStart, "start process", xerr.Fields{"ids": ids})
 	}
 
 	if errTest := test.testFunc(ctx, client); errTest != nil {
@@ -130,18 +134,18 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 	}
 
 	if _, errStop := client.Stop(ctx, ids); errStop != nil {
-		return xerr.NewWM(errStop, "stop process", xerr.Fields{"id": ids[0]})
+		return xerr.NewWM(errStop, "stop process", xerr.Fields{"ids": ids})
 	}
 
 	if errDelete := client.Delete(ctx, ids); errDelete != nil {
-		return xerr.NewWM(errDelete, "delete process", xerr.Fields{"id": ids[0]})
+		return xerr.NewWM(errDelete, "delete process", xerr.Fields{"ids": ids})
 	}
 
 	return nil
 }
 
-func main() {
-	testCommands := fun.ToSlice(tests, func(name string, test testcase) *cli.Command {
+var (
+	_testsCmds = fun.ToSlice(tests, func(name string, test testcase) *cli.Command {
 		return &cli.Command{
 			Name: name,
 			Action: func(ctx *cli.Context) error {
@@ -149,7 +153,7 @@ func main() {
 			},
 		}
 	})
-	testCommands = append(testCommands, &cli.Command{
+	_testAllCmd = &cli.Command{
 		Name: "all",
 		Action: func(ctx *cli.Context) error {
 			for name, test := range tests {
@@ -160,12 +164,14 @@ func main() {
 
 			return nil
 		},
-	})
+	}
+)
 
+func main() {
 	pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
 		Name:        "test",
 		Usage:       "run e2e tests",
-		Subcommands: testCommands,
+		Subcommands: append(_testsCmds, _testAllCmd),
 		Before: func(ctx *cli.Context) error {
 			var errClient error
 			client, errClient = pmclient.NewGrpcClient()
