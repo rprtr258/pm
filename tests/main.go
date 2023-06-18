@@ -25,15 +25,15 @@ import (
 )
 
 // tcpPortAvailable checks if a given TCP port is bound on the local network interface.
-func tcpPortAvailable(port int, timeout time.Duration) bool {
+func tcpPortAvailable(port int) bool {
 	address := net.JoinHostPort("localhost", strconv.Itoa(port))
-	conn, err := net.DialTimeout("tcp", address, timeout)
+	conn, err := net.DialTimeout("tcp", address, time.Second) //nolint:gomnd // arbitrary time
 	if err != nil {
-		return false
+		return true
 	}
 	defer conn.Close()
 
-	return true
+	return false
 }
 
 func httpResponse(
@@ -70,8 +70,12 @@ func httpResponse(
 
 var client pmclient.Client
 
+type testHook func(ctx context.Context, client pmclient.Client) error
+
 type testcase struct {
-	testFunc   func(ctx context.Context, client pmclient.Client) error
+	beforeFunc testHook
+	testFunc   testHook
+	afterFunc  testHook
 	runConfigs []core.RunConfig
 }
 
@@ -82,12 +86,26 @@ var tests = map[string]testcase{
 			Command: "/home/rprtr258/.gvm/gos/go1.19.5/bin/go",
 			Args:    []string{"run", "tests/hello-http/main.go"},
 		}},
+		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
+			if !tcpPortAvailable(8080) {
+				return xerr.NewM("port not available", xerr.Fields{"port": 8080})
+			}
+
+			return nil
+		},
 		testFunc: func(ctx context.Context, client pmclient.Client) error {
+			time.Sleep(time.Second)
+
 			if errHTTP := httpResponse(ctx, "http://localhost:8080/", "hello world"); errHTTP != nil {
 				return errHTTP
 			}
 
-			// TODO: check that before test port was free and after test is also free
+			return nil
+		},
+		afterFunc: func(ctx context.Context, client pmclient.Client) error {
+			if !tcpPortAvailable(8080) {
+				return xerr.NewM("server not stopped", xerr.Fields{"port": 8080})
+			}
 
 			return nil
 		},
@@ -105,6 +123,13 @@ var tests = map[string]testcase{
 				Args:    []string{"-c", `echo "123" | nc localhost 8080`},
 			},
 		},
+		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
+			if !tcpPortAvailable(8080) {
+				return xerr.NewM("port not available", xerr.Fields{"port": 8080})
+			}
+
+			return nil
+		},
 		testFunc: func(ctx context.Context, client pmclient.Client) error {
 			homeDir, errHome := os.UserHomeDir()
 			if errHome != nil {
@@ -120,6 +145,13 @@ var tests = map[string]testcase{
 
 			if strings.TrimSpace(string(d)) != "123" {
 				return xerr.NewM("unexpected request", xerr.Fields{"request": string(d)})
+			}
+
+			return nil
+		},
+		afterFunc: func(ctx context.Context, client pmclient.Client) error {
+			if !tcpPortAvailable(8080) {
+				return xerr.NewM("server not stopped", xerr.Fields{"port": 8080})
 			}
 
 			return nil
@@ -167,6 +199,13 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 		}
 	}()
 
+	// RUN TEST BEFORE HOOK
+	if test.beforeFunc != nil {
+		if errTest := test.beforeFunc(ctx, client); errTest != nil {
+			return xerr.NewWM(errTest, "run test before hook")
+		}
+	}
+
 	// START TEST PROCESSES
 	processesOptions := fun.Map(test.runConfigs, func(c core.RunConfig) *api.ProcessOptions {
 		return &api.ProcessOptions{
@@ -192,8 +231,10 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 	}
 
 	// RUN TEST
-	if errTest := test.testFunc(ctx, client); errTest != nil {
-		return xerr.NewWM(errTest, "run test func")
+	if test.testFunc != nil {
+		if errTest := test.testFunc(ctx, client); errTest != nil {
+			return xerr.NewWM(errTest, "run test func")
+		}
 	}
 
 	// STOP AND REMOVE TEST PROCESSES
@@ -203,6 +244,13 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) {
 
 	if errDelete := client.Delete(ctx, ids); errDelete != nil {
 		return xerr.NewWM(errDelete, "delete process", xerr.Fields{"ids": ids})
+	}
+
+	// RUN TEST AFTER HOOK
+	if test.afterFunc != nil {
+		if errTest := test.afterFunc(ctx, client); errTest != nil {
+			return xerr.NewWM(errTest, "run test after hook")
+		}
 	}
 
 	// KILL DAEMON
