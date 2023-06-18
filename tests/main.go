@@ -149,6 +149,18 @@ func main() {
 			},
 		}
 	})
+	testCommands = append(testCommands, &cli.Command{
+		Name: "all",
+		Action: func(ctx *cli.Context) error {
+			for name, test := range tests {
+				if errTest := runTest(ctx.Context, name, test); errTest != nil {
+					return xerr.NewWM(errTest, "run test", xerr.Fields{"test": name})
+				}
+			}
+
+			return nil
+		},
+	})
 
 	pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
 		Name:        "test",
