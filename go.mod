@@ -13,7 +13,6 @@ require (
 	github.com/rprtr258/simpdb v0.6.0
 	github.com/rprtr258/xerr v0.0.7
 	github.com/samber/lo v1.38.1
-	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.6
 	golang.org/x/mod v0.11.0

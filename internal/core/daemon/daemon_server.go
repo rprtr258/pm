@@ -117,7 +117,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 		}
 
 		if errStart := srv.start(proc); errStart != nil {
-			return nil, xerr.New(xerr.Fields{"proc": proc})
+			return nil, xerr.NewW(errStart, xerr.Fields{"proc": proc})
 		}
 	}
 
