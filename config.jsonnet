@@ -30,6 +30,6 @@
   {
     name: "http-hello-server",
     command: "go",
-    args: ["run", "tests/main.go"],
+    args: ["run", "tests/hello-http/main.go"],
   },
 ]
