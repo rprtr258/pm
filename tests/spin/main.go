@@ -9,6 +9,6 @@ import (
 
 func main() {
 	signal.Ignore(os.Interrupt, os.Interrupt)
-	for {
+	for { //nolint:staticcheck // of course it will use 100% of cpu
 	}
 }
