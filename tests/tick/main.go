@@ -29,7 +29,7 @@ func main() {
 
 				select {
 				case <-ctx.Context.Done():
-					return ctx.Err()
+					return nil
 				default:
 				}
 
