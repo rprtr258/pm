@@ -9,7 +9,7 @@ go install github.com/rprtr258/pm@latest
 ## Configuration
 [jsonnet](https://jsonnet.org/) configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead.
 
-See [example configuration file](./config.jsonnet).
+See [example configuration file](./config.jsonnet). Other examples can be found in [tests](./tests) directory.
 
 ## Usage
 Most fresh usage descriptions can be seen using `pm <command> --help`.
@@ -68,12 +68,18 @@ flowchart TB
   S["Stopped(ExitCode)"]
   S1["Stopped(-1)"]
   C -->|start| RC
-  RC -->|stop/SIGCHLD| S
+  RC -->|SIGCHLD| S
+  RC -->|stop| S1
   RD -->|stop/process died| S1
   Stopped -->|start| RC
 ```
 
 ## Development
+
+### Architecture
+`pm` consists of two parts:
+- cli client - requests server, does nothing by itself
+- server - runs as daemon, dedicated to launch, stop, bookkeep, etc. processes
 
 ### PM directory structure
 `pm` uses directory `$HOME/.pm` to store data. Layout is following:
@@ -90,3 +96,10 @@ $HOME/.pm/
     ├── <ID>.stdout # stdout of process with id ID
     └── <ID>.stderr # stderr of process with id ID
 ```
+
+### Differences from [pm2](https://github.com/Unitech/pm2)
+- `pm` is just a single binary, not dependent on `nodejs` and bunch of `js` scripts
+- [jsonnet](https://jsonnet.org/) configuration language, back compatible with `JSON`, and allows to thoroughly configure processes, e.g. separate environments without requiring corresponding mechanism in `pm` (others configuration languages might be added in future such as `Procfile`, `HCL`, etc.)
+- supports only `linux` now
+- I can fix problems/add features as I need, independent of whether they work or not in `pm2`, because I don't know `js`
+- fast and convenient (I hope so)
