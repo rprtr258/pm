@@ -1,4 +1,0 @@
-# TODO: Make this example dependency-free.
-echo: socat TCP4-LISTEN:2000,fork EXEC:cat
-tick: tick
-#spawn: npx sleep infinity
