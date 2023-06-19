@@ -121,7 +121,7 @@ test: # run tests
 	@go run gotest.tools/gotestsum@latest ./...
 
 test-e2e: # run integration tests
-	go build -o hello-http tests/hello-http/main.go
+	go build -o tests/hello-http tests/hello-http/main.go
 	@go run tests/main.go test all
 
 test-e2e-docker: # run integration tests in docker

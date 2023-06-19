@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 
 	"github.com/rprtr258/xerr"
@@ -134,17 +135,28 @@ func (app App) List(ctx context.Context) (map[core.ProcID]core.ProcData, error) 
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
 func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcID, error) {
-	var err error
+	var merr error
 	requests := make([]*api.ProcessOptions, 0, len(configs))
 	for _, config := range configs {
 		command, errLook := exec.LookPath(config.Command)
 		if errLook != nil {
-			xerr.AppendInto(&err, xerr.NewWM(
+			xerr.AppendInto(&merr, xerr.NewWM(
 				errLook,
 				"look for executable path",
 				xerr.Fields{"executable": config.Command},
 			))
 			continue
+		}
+		if command == config.Command { // command contains slash and might be relative
+			var errAbs error
+			command, errAbs = filepath.Abs(command)
+			if errAbs != nil {
+				xerr.AppendInto(&merr, xerr.NewWM(
+					errAbs,
+					"abs",
+					xerr.Fields{"command": command},
+				))
+			}
 		}
 
 		requests = append(requests, &api.ProcessOptions{
@@ -158,7 +170,7 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcI
 
 	procIDs, errCreate := app.client.Create(ctx, requests)
 	if errCreate != nil {
-		xerr.AppendInto(&err, xerr.NewWM(
+		xerr.AppendInto(&merr, xerr.NewWM(
 			errCreate,
 			"server.create",
 			xerr.Fields{"processOptions": requests},
@@ -173,7 +185,7 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcI
 		return createdProcIDs, xerr.NewWM(errStart, "start processes")
 	}
 
-	return createdProcIDs, nil
+	return createdProcIDs, merr
 }
 
 // Start already created processes

@@ -25,9 +25,9 @@ import (
 )
 
 // tcpPortAvailable checks if a given TCP port is bound on the local network interface.
-func tcpPortAvailable(port int) bool {
+func tcpPortAvailable(port int) bool { //nolint:unparam // someday will receive something except 8080
 	address := net.JoinHostPort("localhost", strconv.Itoa(port))
-	conn, err := net.DialTimeout("tcp", address, time.Second) //nolint:gomnd // arbitrary time
+	conn, err := net.DialTimeout("tcp", address, time.Second)
 	if err != nil {
 		return true
 	}
@@ -79,16 +79,21 @@ type testcase struct {
 	runConfigs []core.RunConfig
 }
 
+const (
+	_helloHTTPServerPort = 8080
+	_ncServerPort        = 8080
+)
+
 var tests = map[string]testcase{
 	"hello-http-server": {
 		runConfigs: []core.RunConfig{{
 			Name:    fun.Valid("http-hello-server"),
-			Command: "hello-http",
+			Command: "./tests/hello-http/main",
 			Args:    []string{},
 		}},
 		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
-			if !tcpPortAvailable(8080) {
-				return xerr.NewM("port not available", xerr.Fields{"port": 8080})
+			if !tcpPortAvailable(_helloHTTPServerPort) {
+				return xerr.NewM("port not available", xerr.Fields{"port": _helloHTTPServerPort})
 			}
 
 			return nil
@@ -103,8 +108,8 @@ var tests = map[string]testcase{
 			return nil
 		},
 		afterFunc: func(ctx context.Context, client pmclient.Client) error {
-			if !tcpPortAvailable(8080) {
-				return xerr.NewM("server not stopped", xerr.Fields{"port": 8080})
+			if !tcpPortAvailable(_helloHTTPServerPort) {
+				return xerr.NewM("server not stopped", xerr.Fields{"port": _helloHTTPServerPort})
 			}
 
 			return nil
@@ -115,17 +120,17 @@ var tests = map[string]testcase{
 			{
 				Name:    fun.Valid("nc-server"),
 				Command: "/usr/bin/nc",
-				Args:    []string{"-l", "-p", "8080"},
+				Args:    []string{"-l", "-p", strconv.Itoa(_ncServerPort)},
 			},
 			{
 				Name:    fun.Valid("nc-client"),
 				Command: "/bin/sh",
-				Args:    []string{"-c", `echo "123" | nc localhost 8080`},
+				Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(_ncServerPort)},
 			},
 		},
 		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
-			if !tcpPortAvailable(8080) {
-				return xerr.NewM("port not available", xerr.Fields{"port": 8080})
+			if !tcpPortAvailable(_ncServerPort) {
+				return xerr.NewM("port not available", xerr.Fields{"port": _ncServerPort})
 			}
 
 			return nil
@@ -150,8 +155,8 @@ var tests = map[string]testcase{
 			return nil
 		},
 		afterFunc: func(ctx context.Context, client pmclient.Client) error {
-			if !tcpPortAvailable(8080) {
-				return xerr.NewM("server not stopped", xerr.Fields{"port": 8080})
+			if !tcpPortAvailable(_ncServerPort) {
+				return xerr.NewM("server not stopped", xerr.Fields{"port": _ncServerPort})
 			}
 
 			return nil
@@ -160,7 +165,7 @@ var tests = map[string]testcase{
 }
 
 //nolint:nonamedreturns // required to check test result
-func runTest(ctx context.Context, name string, test testcase) (ererer error) {
+func runTest(ctx context.Context, name string, test testcase) (ererer error) { //nolint:funlen,gocognit,lll // no idea how to refactor right now
 	var errClient error
 	client, errClient = pmclient.NewGrpcClient()
 	if errClient != nil {

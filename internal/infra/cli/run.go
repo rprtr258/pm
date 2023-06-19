@@ -112,7 +112,7 @@ var _runCmd = &cli.Command{
 
 		configs, errLoadConfigs := core.LoadConfigs(ctx.String("config"))
 		if errLoadConfigs != nil {
-			return errLoadConfigs
+			return xerr.NewWM(errLoadConfigs, "load run configs")
 		}
 
 		names := ctx.Args().Slice()
