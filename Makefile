@@ -7,7 +7,7 @@ CYAN   := $(shell tput -Txterm setaf 6)
 WHITE  := $(shell tput -Txterm setaf 7)
 RESET  := $(shell tput -Txterm sgr0)
 
-PM := go run cmd/main.go
+PM := go run main.go
 
 CURDIR=$(shell pwd)
 BINDIR=${CURDIR}/bin

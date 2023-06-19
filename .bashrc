@@ -1,1 +1,1 @@
-alias pm='go run cmd/main.go'
+alias pm='go run main.go'
