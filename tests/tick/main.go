@@ -26,6 +26,13 @@ func main() {
 			for {
 				i++
 				fmt.Printf("tick %d at %v\n", i, time.Now())
+
+				select {
+				case <-ctx.Context.Done():
+					return ctx.Err()
+				default:
+				}
+
 				<-ticker.C
 			}
 		},
