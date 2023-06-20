@@ -41,6 +41,19 @@ func getProcCwd(cwd, procCwd string) string {
 }
 
 func (srv *daemonServer) start(proc db.ProcData) error {
+	if procs := srv.db.GetProcs([]core.ProcID{proc.ProcID}); len(procs) > 0 {
+		if len(procs) > 1 {
+			return xerr.NewF("invalid procs count got by id", xerr.Fields{
+				"id":    proc.ProcID,
+				"procs": procs,
+			})
+		}
+
+		if procs[0].Status.Status == db.StatusRunning {
+			return xerr.NewF("process is already running", xerr.Fields{"id": proc.ProcID})
+		}
+	}
+
 	procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
 	stdoutLogFilename := path.Join(srv.logsDir, procIDStr+".stdout")
 	stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
@@ -340,6 +353,25 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 				Watch:   nil,
 			}
 
+			proc := procs[procID]
+			if proc.Status.Status != db.StatusRunning ||
+				proc.Cwd == procData.Cwd &&
+					len(proc.Tags) == len(procData.Tags) && // TODO: compare lists, not lengths
+					proc.Command == procData.Command &&
+					len(proc.Args) == len(procData.Args) && // TODO: compare lists, not lengths
+					len(proc.Watch) == len(procData.Watch) { // TODO: compare lists, not lengths
+				// not updated, do nothing
+				return procID, nil
+			}
+
+			if _, errStop := srv.stop(ctx, proc); errStop != nil {
+				return 0, xerr.NewWM(errStop, "stop process to update", xerr.Fields{
+					"procID":  procID,
+					"oldProc": proc,
+					"newProc": procData,
+				})
+			}
+
 			if errUpdate := srv.db.UpdateProc(procData); errUpdate != nil {
 				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{"procData": procData})
 			}
@@ -366,6 +398,7 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 }
 
 func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.ProcessesList, error) {
+	// TODO: update statuses here also
 	list := srv.db.List()
 
 	return &api.ProcessesList{
