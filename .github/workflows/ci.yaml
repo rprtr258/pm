@@ -1,0 +1,52 @@
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push events
+  push:
+    branches: ["*"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  # lint-go:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+      
+  #     - name: Install go
+  #       uses: actions/setup-go@v4
+  #       with:
+  #         go-version: '1.19'
+  #         cache: true
+
+  #     - name: Run go linter
+  #       uses: golangci/golangci-lint-action@v3
+  #       with:
+  #         version: v1.53.2
+
+  lint-proto:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Run proto linter
+        run: make lint-proto
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Install go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.19'
+          cache: true
+
+      - name: Run tests
+        run: make test
