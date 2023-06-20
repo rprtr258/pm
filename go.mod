@@ -10,9 +10,9 @@ require (
 	github.com/google/go-jsonnet v0.20.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/fun v0.0.4
-	github.com/rprtr258/log v0.0.10
+	github.com/rprtr258/log v0.0.11
 	github.com/rprtr258/simpdb v0.6.1
-	github.com/rprtr258/xerr v0.0.8
+	github.com/rprtr258/xerr v0.0.9
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.7
@@ -20,11 +20,6 @@ require (
 	golang.org/x/sys v0.9.0
 	google.golang.org/grpc v1.56.0
 	google.golang.org/protobuf v1.30.0
-)
-
-replace (
-	github.com/rprtr258/log v0.0.10 => ../log
-	github.com/rprtr258/xerr v0.0.8 => ../xerr
 )
 
 require (
