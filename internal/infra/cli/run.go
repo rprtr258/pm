@@ -150,7 +150,10 @@ var _runCmd = &cli.Command{
 		procIDs, errCreate := app.Run(ctx.Context, lo.Values(configsByName)...)
 		fmt.Println(lo.ToAnySlice(procIDs)...)
 		if errCreate != nil {
-			return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{"names": names, "created procIDs": procIDs})
+			return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{
+				"names":           names,
+				"created procIDs": procIDs,
+			})
 		}
 
 		return nil

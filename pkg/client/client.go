@@ -111,14 +111,14 @@ func mapPbStatus(status *api.ProcessStatus) core.Status {
 
 func (c Client) Delete(ctx context.Context, ids []uint64) error {
 	if _, err := c.client.Delete(ctx, mapIDs(ids)); err != nil {
-		return xerr.NewWM(err, "server.delete", xerr.Fields{"ids": ids, "err": err.Error()})
+		return xerr.NewWM(err, "server.delete", xerr.Fields{"ids": ids})
 	}
 	return nil
 }
 
 func (c Client) Start(ctx context.Context, ids []uint64) error {
 	if _, err := c.client.Start(ctx, mapIDs(ids)); err != nil {
-		return xerr.NewWM(err, "server.start", xerr.Fields{"ids": ids, "err": err.Error()})
+		return xerr.NewWM(err, "server.start", xerr.Fields{"ids": ids})
 	}
 
 	return nil

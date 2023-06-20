@@ -207,12 +207,17 @@ func unaryLoggerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (any, error) {
+	response, err := handler(ctx, req)
+
 	log.Infof(info.FullMethod, log.F{
-		"@type":   reflect.TypeOf(req).Elem().Name(),
-		"request": req,
+		"@request.type":  reflect.TypeOf(req).Elem().Name(),
+		"request":        req,
+		"@response.type": reflect.TypeOf(response).Elem().Name(),
+		"response":       response,
+		"err":            err,
 	})
 
-	return handler(ctx, req)
+	return response, err
 }
 
 func RunServer(pCtx context.Context) error {
