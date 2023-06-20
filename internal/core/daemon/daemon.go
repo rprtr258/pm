@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
@@ -208,21 +207,10 @@ func unaryLoggerInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (any, error) {
-	reqType := reflect.TypeOf(req).Elem()
-	reqVal := reflect.ValueOf(req).Elem()
-
-	fields := make(log.F, reqType.NumField()+1)
-	fields["@type"] = reqType.Name()
-	for i := 0; i < reqType.NumField(); i++ {
-		field := reqType.Field(i)
-		if !field.IsExported() {
-			continue
-		}
-
-		fields[field.Name] = spew.Sprint(reqVal.Field(i).Interface())
-	}
-
-	log.Infof(info.FullMethod, fields)
+	log.Infof(info.FullMethod, log.F{
+		"@type":   reflect.TypeOf(req).Elem().Name(),
+		"request": req,
+	})
 
 	return handler(ctx, req)
 }
