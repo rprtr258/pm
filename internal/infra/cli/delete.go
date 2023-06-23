@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/exp/slog"
 
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -129,7 +129,7 @@ var _deleteCmd = &cli.Command{
 func deferErr(closer func() error) func() {
 	return func() {
 		if err := closer(); err != nil {
-			log.Errorf("some defer action failed:", log.F{"error": err.Error()})
+			slog.Error("some defer action failed:", "error", err.Error())
 		}
 	}
 }

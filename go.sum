@@ -40,12 +40,12 @@ github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjR
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
 github.com/rprtr258/fun v0.1.0 h1:ZaRCvJPT8ZyRieIiaJFUEDHUCwwwVE9XaNP0fqLfRi8=
 github.com/rprtr258/fun v0.1.0/go.mod h1:xxOYkmNW7A7DEw07iuHv2NAB75HHDBqQB6Xf21k0sFU=
-github.com/rprtr258/log v0.0.11 h1:wsrqhntev2SqhUmkdVqPmmaWnBq7ln9stPjU5OhdtBU=
-github.com/rprtr258/log v0.0.11/go.mod h1:SfyUc5q/QEh22hW5kaCzKQnqCV6eordEO2ESwYGtzLA=
+github.com/rprtr258/log v0.1.0 h1:3XeEUa9YbhOF1ilZeDhLH9Btz2R57kvAvcSyz3pqLaU=
+github.com/rprtr258/log v0.1.0/go.mod h1:UT+VI8d5NKmv9eFVA9a5ZzzO3GPrmDcB4EyrhL9OdeA=
 github.com/rprtr258/simpdb v0.6.1 h1:F0UxUaMCLLy0NRQ9AGuqwrIiZ+Ma7/0qmL8DLtmTY5U=
 github.com/rprtr258/simpdb v0.6.1/go.mod h1:SWABSA4NxFt634AdUErBSF7b1zw9Kv85VhgS8IYga1I=
-github.com/rprtr258/xerr v0.1.0 h1:2cGh0K6ESewpcyb0HNKbdbXGWG+cnPOGevW9O09ALlA=
-github.com/rprtr258/xerr v0.1.0/go.mod h1:B5QX6EGviITQqSoQbV2C+lpRR5kFPQJqMfL8/Y3MAR4=
+github.com/rprtr258/xerr v0.1.2 h1:f3/2+5oTWY89i1iKzocmyhxPtsVLveB6v8168vN/CBY=
+github.com/rprtr258/xerr v0.1.2/go.mod h1:B5QX6EGviITQqSoQbV2C+lpRR5kFPQJqMfL8/Y3MAR4=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/samber/lo v1.38.1 h1:j2XEAqXKb09Am4ebOg31SpvzUTTs6EN3VfgeLUhPdXM=

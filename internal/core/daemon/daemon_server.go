@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slog"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -69,7 +69,7 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 	}
 	defer func() {
 		if errClose := stderrLogFile.Close(); errClose != nil {
-			log.Error(errClose.Error())
+			slog.Error(errClose.Error())
 		}
 	}()
 	// TODO: syscall.CloseOnExec(pidFile.Fd()) or just close pid file
@@ -167,7 +167,7 @@ func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emp
 
 func (srv *daemonServer) stop(ctx context.Context, proc db.ProcData) (bool, error) {
 	if proc.Status.Status != db.StatusRunning {
-		log.Infof("tried to stop non-running process", log.F{"proc": proc})
+		slog.Info("tried to stop non-running process", "proc", proc)
 		return false, nil
 	}
 
@@ -179,9 +179,9 @@ func (srv *daemonServer) stop(ctx context.Context, proc db.ProcData) (bool, erro
 	if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
 		switch {
 		case errors.Is(errKill, os.ErrProcessDone):
-			log.Warnf("tried stop process which is done", log.F{"proc": proc})
+			slog.Warn("tried stop process which is done", "proc", proc)
 		case errors.Is(errKill, syscall.ESRCH): // no such process
-			log.Warnf("tried stop process which doesn't exist", log.F{"proc": proc})
+			slog.Warn("tried stop process which doesn't exist", "proc", proc)
 		default:
 			return false, xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
 		}
@@ -192,17 +192,17 @@ func (srv *daemonServer) stop(ctx context.Context, proc db.ProcData) (bool, erro
 		state, errFindProc := process.Wait()
 		if errFindProc != nil {
 			if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
-				log.Errorf("releasing process", log.F{
-					"pid": process.Pid,
-					"err": errFindProc.Error(),
-				})
+				slog.Error("releasing process",
+					"pid", process.Pid,
+					"err", errFindProc.Error(),
+				)
 				doneCh <- nil
 				return
 			}
 
-			log.Infof("process is not a child", log.F{"proc": proc})
+			slog.Info("process is not a child", "proc", proc)
 		} else {
-			log.Infof("process is stopped", log.F{"proc": proc, "state": state})
+			slog.Info("process is stopped", "proc", proc, "state", state)
 		}
 		doneCh <- state
 	}()
@@ -213,7 +213,7 @@ func (srv *daemonServer) stop(ctx context.Context, proc db.ProcData) (bool, erro
 	var state *os.ProcessState
 	select {
 	case <-timer.C:
-		log.Warnf("timed out waiting for process to stop from SIGTERM, killing it", log.F{"proc": proc})
+		slog.Warn("timed out waiting for process to stop from SIGTERM, killing it", "proc", proc)
 
 		if errKill := syscall.Kill(-process.Pid, syscall.SIGKILL); errKill != nil {
 			return false, xerr.NewWM(errKill, "kill process", xerr.Fields{"pid": process.Pid})
@@ -254,7 +254,7 @@ func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*api.IDs, erro
 
 		proc, ok := procs[core.ProcID(procID.GetId())]
 		if !ok {
-			log.Infof("tried to stop non-existing process", log.F{"proc": procID.GetId()})
+			slog.Info("tried to stop non-existing process", "proc", procID.GetId())
 			continue
 		}
 
@@ -278,10 +278,10 @@ func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*api.IDs, erro
 
 func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {
 	if proc.Status.Status != db.StatusRunning {
-		log.Infof("tried to send signal to non-running process", log.F{
-			"proc":   proc,
-			"signal": signal,
-		})
+		slog.Info("tried to send signal to non-running process",
+			"proc", proc,
+			"signal", signal,
+		)
 		return nil
 	}
 
@@ -296,15 +296,15 @@ func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {
 	if errKill := syscall.Kill(-process.Pid, signal); errKill != nil {
 		switch {
 		case errors.Is(errKill, os.ErrProcessDone):
-			log.Warnf("tried to send signal to process which is done", log.F{
-				"proc":   proc,
-				"signal": signal,
-			})
+			slog.Warn("tried to send signal to process which is done",
+				"proc", proc,
+				"signal", signal,
+			)
 		case errors.Is(errKill, syscall.ESRCH): // no such process
-			log.Warnf("tried to send signal to process which doesn't exist", log.F{
-				"proc":   proc,
-				"signal": signal,
-			})
+			slog.Warn("tried to send signal to process which doesn't exist",
+				"proc", proc,
+				"signal", signal,
+			)
 		default:
 			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
 		}

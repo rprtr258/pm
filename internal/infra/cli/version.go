@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/exp/slog"
 	"golang.org/x/mod/semver"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -30,12 +30,12 @@ var _versionCmd = &cli.Command{
 
 		switch cmp := semver.Compare(config.Version, core.Version); cmp {
 		case -1:
-			log.Infof("current version is older, run `pm daemon restart` to update", log.F{
-				"curVersion": config.Version,
-			})
+			slog.Info("current version is older, run `pm daemon restart` to update",
+				"curVersion", config.Version,
+			)
 		case 0:
 		case 1:
-			log.Warnf("current version is newer, please update pm", log.F{"curVersion": config.Version})
+			slog.Warn("current version is newer, please update pm", "curVersion", config.Version)
 		default:
 			return xerr.NewM("invalid version compare result", xerr.Fields{"cmp": cmp})
 		}

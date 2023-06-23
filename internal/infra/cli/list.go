@@ -187,7 +187,10 @@ func mapStatus(status core.Status) (string, *int, time.Duration) {
 	case core.StatusRunning:
 		return color.GreenString("running"), &status.Pid, time.Since(status.StartTime)
 	case core.StatusStopped:
-		return color.YellowString("stopped(%d)", status.ExitCode), nil, 0
+		if status.ExitCode == 0 {
+			return color.GreenString("exited"), nil, 0
+		}
+		return color.RedString("stopped(%d)", status.ExitCode), nil, 0
 	case core.StatusInvalid:
 		return color.RedString("invalid(%T)", status), nil, 0
 	default:

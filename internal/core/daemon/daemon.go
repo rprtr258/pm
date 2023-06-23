@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slog"
 	"google.golang.org/grpc"
 
 	"github.com/rprtr258/pm/api"
@@ -74,7 +74,7 @@ func Kill() error {
 	proc, err := _daemonCtx.Search()
 	if err != nil {
 		if err == daemon.ErrDaemonNotFound {
-			log.Info("daemon already killed or did not exist")
+			slog.Info("daemon already killed or did not exist")
 			return nil
 		}
 
@@ -83,7 +83,7 @@ func Kill() error {
 
 	if err := proc.Signal(syscall.SIGTERM); err != nil {
 		if err == os.ErrProcessDone {
-			log.Info("daemon is done while killing")
+			slog.Info("daemon is done while killing")
 			return nil
 		}
 
@@ -108,7 +108,7 @@ func Kill() error {
 	case <-time.After(5 * time.Second): //nolint:gomnd // arbitrary timeout
 		if err := proc.Kill(); err != nil {
 			if err == os.ErrProcessDone {
-				log.Info("daemon is done while killing")
+				slog.Info("daemon is done while killing")
 				return nil
 			}
 
@@ -182,7 +182,7 @@ func migrate() error {
 			return xerr.NewWM(errRead, "read config for migrate")
 		}
 
-		log.Info("writing initial config...")
+		slog.Info("writing initial config...")
 
 		if errWrite := core.WriteConfig(core.DefaultConfig); errWrite != nil {
 			return xerr.NewWM(errWrite, "write initial config")
@@ -209,13 +209,13 @@ func unaryLoggerInterceptor(
 ) (any, error) {
 	response, err := handler(ctx, req)
 
-	log.Infof(info.FullMethod, log.F{
-		"@request.type":  reflect.TypeOf(req).Elem().Name(),
-		"request":        req,
-		"@response.type": reflect.TypeOf(response).Elem().Name(),
-		"response":       response,
-		"err":            err,
-	})
+	slog.Info(info.FullMethod,
+		"@request.type", reflect.TypeOf(req).Elem().Name(),
+		"request", req,
+		"@response.type", reflect.TypeOf(response).Elem().Name(),
+		"response", response,
+		"err", err,
+	)
 
 	return response, err
 }
@@ -247,7 +247,7 @@ func RunServer(pCtx context.Context) error {
 		logsDir:                   _dirProcsLogs,
 	})
 
-	log.Infof("daemon started", log.F{"socket": sock.Addr()})
+	slog.Info("daemon started", "socket", sock.Addr())
 
 	go func() {
 		c := make(chan os.Signal, 10) //nolint:gomnd // arbitrary buffer size
@@ -261,7 +261,7 @@ func RunServer(pCtx context.Context) error {
 					break
 				}
 				if errWait != nil {
-					log.Errorf("Wait4 failed", log.F{"err": errWait.Error()})
+					slog.Error("Wait4 failed", "err", errWait.Error())
 					continue
 				}
 
@@ -278,15 +278,15 @@ func RunServer(pCtx context.Context) error {
 				dbStatus := db.NewStatusStopped(status.ExitStatus())
 				if err := dbHandle.SetStatus(procID, dbStatus); err != nil {
 					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
-						log.Errorf("proc not found while trying to set status", log.F{
-							"procID":     procID,
-							"new status": dbStatus,
-						})
+						slog.Error("proc not found while trying to set status",
+							"procID", procID,
+							"new status", dbStatus,
+						)
 					} else {
-						log.Errorf("set proc status", log.F{
-							"procID":     procID,
-							"new status": dbStatus,
-						})
+						slog.Error("set proc status",
+							"procID", procID,
+							"new status", dbStatus,
+						)
 					}
 				}
 			}
@@ -294,7 +294,7 @@ func RunServer(pCtx context.Context) error {
 	}()
 
 	go cron{
-		l:                 log.Tag("cron"),
+		l:                 slog.Default().WithGroup("cron"),
 		db:                dbHandle,
 		statusUpdateDelay: time.Second * 5, //nolint:gomnd // arbitrary timeout
 	}.start(ctx)
@@ -309,10 +309,10 @@ func RunServer(pCtx context.Context) error {
 	}()
 	defer func() {
 		if errRm := os.Remove(core.SocketRPC); errRm != nil && !errors.Is(errRm, os.ErrNotExist) {
-			log.Fatalf("remove pid file", log.F{
-				"file":  _filePid,
-				"error": errRm.Error(),
-			})
+			slog.Error("remove pid file",
+				"file", _filePid,
+				"error", errRm.Error(),
+			)
 		}
 	}()
 
@@ -321,7 +321,7 @@ func RunServer(pCtx context.Context) error {
 
 	select {
 	case sig := <-sigsCh:
-		log.Infof("received signal, exiting", log.F{"signal": fmt.Sprintf("%[1]T(%#[1]v)-%[1]s", sig)})
+		slog.Info("received signal, exiting", "signal", fmt.Sprintf("%[1]T(%#[1]v)-%[1]s", sig))
 		srv.GracefulStop()
 		return nil
 	case err := <-doneCh:
@@ -336,7 +336,7 @@ func RunServer(pCtx context.Context) error {
 func deferErr(closer func() error) func() {
 	return func() {
 		if err := closer(); err != nil {
-			log.Errorf("some defer action failed:", log.F{"error": err.Error()})
+			slog.Error("some defer action failed", "error", err.Error())
 		}
 	}
 }

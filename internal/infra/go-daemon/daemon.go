@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slog"
 	"golang.org/x/sys/unix"
 )
 
@@ -139,7 +139,7 @@ func (d *Context) parent() (*os.Process, error) {
 	}
 	defer func() {
 		if errClose := d.closeFiles(); errClose != nil {
-			log.Error(errClose.Error())
+			slog.Error(errClose.Error())
 		}
 	}()
 
