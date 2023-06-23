@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
-	"github.com/rprtr258/log"
 	"github.com/urfave/cli/v2"
 )
 

@@ -9,9 +9,9 @@ import (
 
 	"github.com/google/go-jsonnet"
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slog"
 )
 
 type RunConfig struct {
@@ -92,11 +92,11 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 					return fmt.Sprint(arg)
 				default:
 					argStr := fmt.Sprintf("%v", arg)
-					log.Errorf("unknown arg type", log.F{
-						"arg":    argStr,
-						"i":      i,
-						"config": config,
-					})
+					slog.Error("unknown arg type",
+						"arg", argStr,
+						"i", i,
+						"config", config,
+					)
 
 					return argStr
 				}

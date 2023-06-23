@@ -10,12 +10,13 @@ require (
 	github.com/google/go-jsonnet v0.20.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/fun v0.1.0
-	github.com/rprtr258/log v0.0.11
+	github.com/rprtr258/log v0.1.0
 	github.com/rprtr258/simpdb v0.6.1
-	github.com/rprtr258/xerr v0.1.0
+	github.com/rprtr258/xerr v0.1.2
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.7
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/mod v0.11.0
 	golang.org/x/sys v0.9.0
 	google.golang.org/grpc v1.56.1
@@ -34,7 +35,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.mongodb.org/mongo-driver v1.12.0 // indirect
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/net v0.11.0 // indirect
 	golang.org/x/term v0.9.0 // indirect
 	golang.org/x/text v0.10.0 // indirect

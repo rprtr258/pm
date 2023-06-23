@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/exp/slog"
 
 	"github.com/rprtr258/pm/internal/core"
 )
@@ -22,7 +22,7 @@ func ensureDir(dirname string) error {
 		return xerr.NewWM(errStat, "stat dir")
 	}
 
-	log.Infof("creating home dir...", log.F{"dir": dirname})
+	slog.Info("creating home dir...", "dir", dirname)
 	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
 		return xerr.NewWM(errMkdir, "create dir")
 	}

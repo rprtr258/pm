@@ -4,14 +4,14 @@ import (
 	"context"
 	"time"
 
-	"github.com/rprtr258/log"
+	"golang.org/x/exp/slog"
 
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
 type cron struct {
-	l                 log.Logger
+	l                 *slog.Logger
 	db                db.Handle
 	statusUpdateDelay time.Duration
 }
@@ -27,16 +27,16 @@ func (c cron) updateStatuses() {
 			// process stat file exists hence process is still running
 			continue
 		case linuxprocess.ErrStatFileNotFound:
-			c.l.Infof("process seems to be stopped, updating status...", log.F{"pid": proc.Status.Pid})
+			c.l.Info("process seems to be stopped, updating status...", "pid", proc.Status.Pid)
 
 			if errUpdate := c.db.SetStatus(proc.ProcID, db.NewStatusStopped(-1)); errUpdate != nil {
-				c.l.Errorf("set stopped status", log.F{"procID": proc.ID})
+				c.l.Error("set stopped status", "procID", proc.ID)
 			}
 		default:
-			c.l.Warnf("read proc stat", log.F{
-				"pid": proc.Status.Pid,
-				"err": errStat.Error(),
-			})
+			c.l.Warn("read proc stat",
+				"pid", proc.Status.Pid,
+				"err", errStat.Error(),
+			)
 		}
 	}
 }

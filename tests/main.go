@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
+	"golang.org/x/exp/slog"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
@@ -173,7 +173,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	}
 
 	// START DAEMON
-	log.Debug("starting daemon...")
+	slog.Debug("starting daemon...")
 	_, errRestart := daemon.Restart(ctx)
 	if errRestart != nil {
 		return xerr.NewWM(errRestart, "restart daemon")
@@ -213,12 +213,14 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 
 	// RUN TEST
 	if errTest := func() error {
-		log.Infof("running test", log.F{"test": name})
+		l := slog.With("test", name)
+
+		l.Info("running test")
 		defer func() {
 			if ererer == nil {
-				log.Infof("test succeeded", log.F{"test": name})
+				l.Info("test succeeded")
 			} else {
-				log.Errorf("test failed", log.F{"test": name, "err": ererer.Error()})
+				l.Error("test failed", "err", ererer.Error())
 			}
 		}()
 
@@ -282,7 +284,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	}
 
 	// KILL DAEMON
-	log.Debug("killing daemon...")
+	slog.Debug("killing daemon...")
 	if errKill := daemon.Kill(); errKill != nil {
 		return xerr.NewWM(errKill, "kill daemon")
 	}
@@ -325,6 +327,7 @@ func main() {
 	})
 
 	if err := pmcli.App.Run(os.Args); err != nil {
-		log.Fatal(err.Error())
+		slog.Error(err.Error())
+		os.Exit(1)
 	}
 }

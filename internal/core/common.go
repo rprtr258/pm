@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rprtr258/log"
+	"golang.org/x/exp/slog"
 )
 
 var (
@@ -16,7 +16,8 @@ var (
 func userHomeDir() string {
 	dir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatalf("can't get home dir", log.F{"err": err.Error()})
+		slog.Error("can't get home dir", "err", err.Error())
+		os.Exit(1)
 	}
 
 	return dir

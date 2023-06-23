@@ -3,8 +3,8 @@ package db
 import (
 	"path/filepath"
 
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
+	"golang.org/x/exp/slog"
 	"golang.org/x/mod/semver"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -39,10 +39,10 @@ func Migrate(fromVersion, toVersion string) (string, error) {
 	for _, m := range Migrations {
 		if semver.Compare(fromVersion, m.version) == -1 &&
 			semver.Compare(m.version, toVersion) == -1 {
-			log.Infof("migrating...", log.F{
-				"from": lastVersion,
-				"to":   m.version,
-			})
+			slog.Info("migrating...",
+				"from", lastVersion,
+				"to", m.version,
+			)
 
 			if err := m.do(); err != nil {
 				return lastVersion, xerr.NewWM(err, "migrate", xerr.Fields{
