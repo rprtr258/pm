@@ -73,7 +73,7 @@ func Kill() error {
 
 	proc, err := _daemonCtx.Search()
 	if err != nil {
-		if xerr.Is(err, daemon.ErrDaemonNotFound) {
+		if err == daemon.ErrDaemonNotFound {
 			log.Info("daemon already killed or did not exist")
 			return nil
 		}
@@ -82,7 +82,7 @@ func Kill() error {
 	}
 
 	if err := proc.Signal(syscall.SIGTERM); err != nil {
-		if xerr.Is(err, os.ErrProcessDone) {
+		if err == os.ErrProcessDone {
 			log.Info("daemon is done while killing")
 			return nil
 		}
@@ -107,7 +107,7 @@ func Kill() error {
 	case <-doneCh:
 	case <-time.After(5 * time.Second): //nolint:gomnd // arbitrary timeout
 		if err := proc.Kill(); err != nil {
-			if xerr.Is(err, os.ErrProcessDone) {
+			if err == os.ErrProcessDone {
 				log.Info("daemon is done while killing")
 				return nil
 			}
@@ -178,7 +178,7 @@ func Restart(ctx context.Context) (int, error) {
 func migrate() error {
 	config, errRead := core.ReadConfig()
 	if errRead != nil {
-		if !xerr.Is(errRead, core.ErrConfigNotExists) {
+		if errRead != core.ErrConfigNotExists {
 			return xerr.NewWM(errRead, "read config for migrate")
 		}
 

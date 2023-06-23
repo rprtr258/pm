@@ -42,7 +42,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		return nil, xerr.NewM(
 			"invalid config file",
 			xerr.Fields{"configFilename": filename},
-			xerr.Stacktrace(0),
+			xerr.Stacktrace,
 		)
 	}
 
