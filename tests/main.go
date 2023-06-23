@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/slog"
@@ -320,6 +321,8 @@ var (
 )
 
 func main() {
+	slog.SetDefault(slog.New(log.New()))
+
 	pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
 		Name:        "test",
 		Usage:       "run e2e tests",
