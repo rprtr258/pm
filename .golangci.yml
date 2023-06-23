@@ -238,7 +238,6 @@ linters:
     - importas # enforces consistent import aliases
     - maintidx # measures the maintainability index of each function
     - misspell # [useless] finds commonly misspelled English words in comments
-    - nlreturn # [too strict and mostly code is not more readable] checks for a new line before return and branch statements to increase code clarity
     # - paralleltest # [too many false positives] detects missing usage of t.Parallel() method in your Go test # TODO: get back
     - thelper # detects golang test helpers without t.Helper() call and checks the consistency of test helpers
 

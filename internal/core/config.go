@@ -11,7 +11,7 @@ import (
 )
 
 // TODO: https://developers.redhat.com/articles/2022/11/14/3-ways-embed-commit-hash-go-programs#2__using_go_generate
-const Version = "0.0.1"
+const Version = "0.1.0"
 
 var (
 	ErrConfigNotExists = errors.New("config file not exists")
