@@ -104,9 +104,9 @@ type Handle struct {
 func New(dir string) (Handle, error) {
 	db := simpdb.New(dir)
 
-	procs, err := simpdb.GetTable(db, "procs", storages.NewJSONStorage[ProcData]())
-	if err != nil {
-		return Handle{}, err
+	procs, errTableProcs := simpdb.GetTable(db, "procs", storages.NewJSONStorage[ProcData]())
+	if errTableProcs != nil {
+		return Handle{}, xerr.NewWM(errTableProcs, "get table", xerr.Fields{"table": "procs"})
 	}
 
 	return Handle{

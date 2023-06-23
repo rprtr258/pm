@@ -36,28 +36,62 @@ var _runCmd = &cli.Command{
 			Usage: "set working directory",
 		},
 		configFlag,
-		// &cli.BoolFlag{Name:        "watch", Usage: "Watch current working directory for changes"}, // or
+		// TODO: not yet implemented run parameters
+		// // watch parameters
+		// &cli.BoolFlag{Name: "watch-cwd", Usage: "Watch current working directory for changes"}, // or
 		// &cli.StringSliceFlag{Name: "watch", Usage: "watch provided paths for changes"},
-		// &cli.StringSliceFlag{Name: "ext", Usage: "watch only this file extensions"},
-		// &cli.StringFlag{Name:      "cron-restart", Aliases: []string{"c", "cron"}, Usage: "restart a running process based on a cron pattern"},
-		// &cli.BoolFlag{Name:        "wait-ready", Usage: "ask pm2 to wait for ready event from your app"},
-		// &cli.DurationFlag{Name:    "watch-delay", Usage: "specify a restart delay after changing files (--watch-delay 4 (in sec) or 4000ms)"},
-		// &cli.BoolFlag{Name:        "output", Aliases: []string{"o"}, Usage: "specify log file for stdout"},
-		// &cli.PathFlag{Name:        "error", Aliases: []string{"e"}, Usage: "specify log file for stderr"},
-		// &cli.PathFlag{Name:        "log", Aliases: []string{"l"}, Usage: "specify log file which gathers both stdout and stderr"},
-		// &cli.BoolFlag{Name:        "disable-logs", Usage: "disable all logs storage"},
-		// &cli.BoolFlag{Name:        "time", Usage: "enable time logging"},
-		// &cli.StringFlag{Name:      "log-type", Usage: "specify log output style (raw by default, json optional)", Value: "raw"},
-		// &cli.IntFlag{Name:         "max-restarts", Usage: "only restart the script COUNT times"},
-		// &cli.IntFlag{Name:         "pid", Aliases: []string{"p"}, Usage: "specify pid file"},
-		// &cli.StringFlag{Name:      "env", Usage: "specify which set of environment variables from ecosystem file must be injected"},
-		// &cli.StringSliceFlag{Name: "filter-env", Usage: "filter out outgoing global values that contain provided strings"},
-		// &cli.DurationFlag{Name:    "exp-backoff-restart-delay", Usage: "specify a delay between restarts"},
-		// &cli.IntFlag{Name:         "gid", Usage: "run target script with <gid> rights"},
-		// &cli.IntFlag{Name:         "uid", Usage: "run target script with <uid> rights"},
+		// &cli.DurationFlag{
+		// 	Name:  "watch-delay",
+		// 	Usage: "specify a restart delay after changing files (--watch-delay 4 (in sec) or 4000ms)",
+		// },
 		// &cli.StringSliceFlag{Name: "ignore-watch", Usage: "List of paths to ignore (name or regex)"},
-		// &cli.BoolFlag{Name:        "no-autorestart", Usage: "start an app without automatic restart"},
-		// &cli.DurationFlag{Name:    "restart-delay", Usage: "specify a delay between restarts"},
+		// &cli.StringSliceFlag{Name: "ext", Usage: "watch files with these extensions"},
+		// // logs parameters
+		// &cli.BoolFlag{Name: "output", Aliases: []string{"o"}, Usage: "specify log file for stdout"},
+		// &cli.PathFlag{Name: "error", Aliases: []string{"e"}, Usage: "specify log file for stderr"},
+		// &cli.PathFlag{
+		// 	Name:    "log",
+		// 	Aliases: []string{"l"},
+		// 	Usage:   "specify log file which gathers both stdout and stderr",
+		// },
+		// &cli.BoolFlag{Name: "disable-logs", Usage: "disable all logs storage"},
+		// &cli.BoolFlag{Name: "time", Usage: "enable time logging"},
+		// &cli.StringFlag{
+		// 	Name:  "log-type",
+		// 	Usage: "specify log output style (raw by default, json optional)",
+		// 	Value: "raw",
+		// },
+		// // restart parameters
+		// &cli.StringFlag{
+		// 	Name:    "cron-restart",
+		// 	Aliases: []string{"c", "cron"},
+		// 	Usage:   "restart a running process based on a cron pattern",
+		// },
+		// &cli.IntFlag{
+		// 	Name:  "max-restarts",
+		// 	Usage: "only restart the script COUNT times",
+		// },
+		// &cli.BoolFlag{Name: "no-autorestart", Usage: "start an app without automatic restart"},
+		// &cli.DurationFlag{Name: "restart-delay", Usage: "specify a delay between restarts"},
+		// &cli.DurationFlag{Name: "exp-backoff-restart-delay", Usage: "specify a delay between restarts"},
+		// // env parameters
+		// &cli.StringFlag{
+		// 	Name:  "env",
+		// 	Usage: "specify which set of environment variables from ecosystem file must be injected",
+		// },
+		// &cli.StringSliceFlag{
+		// 	Name:  "filter-env",
+		// 	Usage: "filter out outgoing global values that contain provided strings",
+		// },
+		// // others
+		// &cli.BoolFlag{Name: "wait-ready", Usage: "ask pm to wait for ready event from your app"},
+		// &cli.IntFlag{
+		// 	Name:    "pid",
+		// 	Aliases: []string{"p"},
+		// 	Usage:   "specify pid file",
+		// },
+		// &cli.IntFlag{Name: "gid", Usage: "run process with <gid> rights"},
+		// &cli.IntFlag{Name: "uid", Usage: "run process with <uid> rights"},
 	},
 	Action: func(ctx *cli.Context) error {
 		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {

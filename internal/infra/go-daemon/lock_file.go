@@ -75,7 +75,7 @@ func (file *LockFile) Lock() error {
 // Unlock remove exclusive lock on an open file.
 func (file *LockFile) Unlock() error {
 	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
-		if xerr.Is(err, syscall.EWOULDBLOCK) {
+		if err == syscall.EWOULDBLOCK {
 			return xerr.NewM("file unlocking would block", xerr.Fields{"filename": file.Name()})
 		}
 
@@ -113,7 +113,7 @@ func ReadPidFile(name string) (int, error) {
 	lock := &LockFile{file}
 	pid, err := lock.ReadPid()
 	if err != nil {
-		if xerr.Is(err, io.EOF) {
+		if err == io.EOF {
 			return 0, &PidFileNotFoundError{name, true}
 		}
 

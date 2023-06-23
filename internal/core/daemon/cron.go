@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/rprtr258/log"
-	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
@@ -23,22 +22,21 @@ func (c cron) updateStatuses() {
 			continue
 		}
 
-		_, errStat := linuxprocess.ReadProcessStat(proc.Status.Pid)
-		switch {
-		case errStat == nil:
+		switch _, errStat := linuxprocess.ReadProcessStat(proc.Status.Pid); errStat {
+		case nil:
 			// process stat file exists hence process is still running
 			continue
-		case !xerr.Is(errStat, linuxprocess.ErrStatFileNotFound):
-			c.l.Warnf("read proc stat", log.F{
-				"pid": proc.Status.Pid,
-				"err": errStat.Error(),
-			})
-		default:
+		case linuxprocess.ErrStatFileNotFound:
 			c.l.Infof("process seems to be stopped, updating status...", log.F{"pid": proc.Status.Pid})
 
 			if errUpdate := c.db.SetStatus(proc.ProcID, db.NewStatusStopped(-1)); errUpdate != nil {
 				c.l.Errorf("set stopped status", log.F{"procID": proc.ID})
 			}
+		default:
+			c.l.Warnf("read proc stat", log.F{
+				"pid": proc.Status.Pid,
+				"err": errStat.Error(),
+			})
 		}
 	}
 }

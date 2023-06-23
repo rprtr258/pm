@@ -235,9 +235,10 @@ func (d *Context) openFiles() error {
 }
 
 func (d *Context) closeFiles() error {
-	closeAndEmpty := func(file **os.File) error {
-		if *file == nil {
-			return nil
+	var merr error
+	for _, file := range []**os.File{&d.logFile, &d.nullFile, &d.pidFile.File} {
+		if file == nil {
+			continue
 		}
 
 		errClose := (*file).Close()
@@ -245,17 +246,10 @@ func (d *Context) closeFiles() error {
 		*file = nil
 
 		if errClose != nil {
-			return xerr.NewWM(errClose, "close file", xerr.Fields{"filename": filename})
+			xerr.AppendInto(&merr, xerr.NewWM(errClose, "close file", xerr.Fields{"filename": filename}))
 		}
-
-		return nil
 	}
-
-	return xerr.Combine(
-		closeAndEmpty(&d.logFile),
-		closeAndEmpty(&d.nullFile),
-		closeAndEmpty(&d.pidFile.File),
-	)
+	return merr
 }
 
 func (d *Context) prepareEnv() error {

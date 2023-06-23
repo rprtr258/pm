@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	"github.com/rprtr258/log"
-	"github.com/rprtr258/xerr"
 )
 
 // ErrStop should be returned signal handler function
@@ -41,7 +40,7 @@ func ServeSignals() error {
 
 	signal.Stop(sigsCh)
 
-	if xerr.Is(err, ErrStop) {
+	if err == ErrStop {
 		return nil
 	}
 
