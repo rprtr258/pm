@@ -79,9 +79,14 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 		return xerr.NewWM(err, "os.Getwd")
 	}
 
+	env := os.Environ()
+	for k, v := range proc.Env {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
 	procAttr := os.ProcAttr{
 		Dir: getProcCwd(cwd, proc.Cwd),
-		Env: os.Environ(), // TODO: ???
+		Env: env,
 		Files: []*os.File{ // TODO: pid file is somehow passes to child
 			0: os.Stdin,
 			1: stdoutLogFile,
@@ -351,6 +356,7 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 				Command: procOpts.GetCommand(),
 				Args:    procOpts.GetArgs(),
 				Watch:   nil,
+				Env:     procOpts.GetEnv(),
 			}
 
 			proc := procs[procID]
@@ -389,6 +395,7 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 		Command: procOpts.GetCommand(),
 		Args:    procOpts.GetArgs(),
 		Watch:   nil,
+		Env:     procOpts.Env,
 	})
 	if err != nil {
 		return 0, xerr.NewWM(err, "save proc")

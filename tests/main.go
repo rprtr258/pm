@@ -240,6 +240,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 				Args:    c.Args,
 				Cwd:     c.Cwd,
 				Tags:    c.Tags,
+				Env:     c.Env,
 			}
 		})
 

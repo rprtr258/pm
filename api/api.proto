@@ -35,6 +35,7 @@ message ProcessOptions {
   optional string name = 3;
   string cwd = 4;
   repeated string tags = 5;
+  map<string, string> env = 6;
 }
 
 message ProcessesList {

@@ -8,19 +8,20 @@ require (
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
 	github.com/fatih/color v1.15.0
 	github.com/google/go-jsonnet v0.20.0
+	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/fun v0.1.0
-	github.com/rprtr258/log v0.1.0
+	github.com/rprtr258/log v0.1.2
 	github.com/rprtr258/simpdb v0.6.1
 	github.com/rprtr258/xerr v0.1.2
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.7
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
+	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df
 	golang.org/x/mod v0.11.0
 	golang.org/x/sys v0.9.0
 	google.golang.org/grpc v1.56.1
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (
@@ -38,7 +39,7 @@ require (
 	golang.org/x/net v0.11.0 // indirect
 	golang.org/x/term v0.9.0 // indirect
 	golang.org/x/text v0.10.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20230629202037-9506855d4529 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect

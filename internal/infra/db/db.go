@@ -78,11 +78,12 @@ type ProcData struct {
 	Cwd     string `json:"cwd"`
 	Name    string `json:"name"`
 	// Args - arguments for executable, not including executable itself as first argument
-	Args   []string    `json:"args"`
-	Tags   []string    `json:"tags"`
-	Watch  []string    `json:"watch"`
-	Status Status      `json:"status"`
-	ProcID core.ProcID `json:"id"`
+	Args   []string          `json:"args"`
+	Tags   []string          `json:"tags"`
+	Watch  []string          `json:"watch"`
+	Status Status            `json:"status"`
+	ProcID core.ProcID       `json:"id"`
+	Env    map[string]string `json:"env"`
 
 	// StdoutFile  string
 	// StderrFile  string
@@ -124,6 +125,7 @@ type CreateQuery struct {
 	Args  []string
 	Tags  []string
 	Watch []string
+	Env   map[string]string
 
 	// StdoutFile  string
 	// StderrFile  string
@@ -154,6 +156,7 @@ func (handle Handle) AddProc(query CreateQuery) (core.ProcID, error) {
 		Tags:    query.Tags,
 		Watch:   query.Watch,
 		Status:  NewStatusCreated(),
+		Env:     query.Env,
 	}) {
 		return 0, xerr.NewM("insert: already present")
 	}

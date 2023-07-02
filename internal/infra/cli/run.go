@@ -133,6 +133,7 @@ var _runCmd = &cli.Command{
 				Name:    fun.Optional(name, name != ""),
 				Tags:    tags,
 				Cwd:     workDir,
+				Env:     nil,
 			}
 
 			procIDs, errRun := app.Run(ctx.Context, runConfig)

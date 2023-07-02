@@ -165,6 +165,7 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcI
 			Name:    config.Name.Ptr(),
 			Cwd:     config.Cwd,
 			Tags:    config.Tags,
+			Env:     config.Env,
 		})
 	}
 
