@@ -32,4 +32,11 @@
     command: "go",
     args: ["run", "tests/hello-http/main.go"],
   },
+  {
+    name: "test-env",
+    command: "rwenv",
+    env: {
+      TEST_VAR: "test1",
+    } + std.native("dotenv")(".test.env")
+  },
 ]
