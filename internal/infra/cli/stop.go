@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
-
-	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
@@ -17,8 +16,8 @@ import (
 
 var _stopCmd = &cli.Command{
 	Name:      "stop",
-	Usage:     "stop a process",
-	ArgsUsage: "<id|name|namespace|all|json>...",
+	Usage:     "stop process(es)",
+	ArgsUsage: "(id|name|tag|all)...",
 	Flags: []cli.Flag{
 		// &cli.BoolFlag{
 		// 	Name:  "watch",

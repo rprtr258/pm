@@ -18,7 +18,7 @@ import (
 var _runCmd = &cli.Command{
 	Name:      "run",
 	ArgsUsage: "cmd args...",
-	Usage:     "run new process and manage it",
+	Usage:     "create and run new process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "name",
