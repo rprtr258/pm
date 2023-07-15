@@ -84,6 +84,8 @@ var _startCmd = &cli.Command{
 				return xerr.NewWM(err, "client.start")
 			}
 
+			fmt.Println(lo.ToAnySlice(procIDs)...)
+
 			return nil
 		}
 

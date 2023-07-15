@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/go-faster/tail"
 	fun2 "github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
@@ -528,29 +530,52 @@ func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
 		go func(id core.ProcID) {
 			defer wg.Done()
 
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			// TODO: proc.StdoutFile, proc.StderrFile
+			t := tail.File(filepath.Join(srv.logsDir, fmt.Sprintf("%d.stdout", id)), tail.Config{
+				Follow:        true,
+				BufferSize:    1024 * 128,
+				NotifyTimeout: time.Minute,
+				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -100},
+			})
+			linesCh := make(chan []byte)
+			go func() {
+				if err := t.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case linesCh <- append([]byte(nil), l.Data...):
+					}
+					return nil
+				}); err != nil {
+					slog.Error("failed to tail log", slog.Uint64("procID", uint64(id)), slog.Any("err", err))
+					// TODO: somehow call wg.Done() once with parent call
+				}
+			}()
 			for {
 				select {
 				case <-done:
 					return
-				default:
-				}
-
-				if errSend := kek.Send(&pb.ProcsLogs{
-					Id: uint64(id),
-					Lines: []*pb.LogLine{
-						{
-							Line: "test line",
-							Time: timestamppb.Now(),
-							Type: pb.LogLine_TYPE_STDERR,
+				case line := <-linesCh:
+					if errSend := kek.Send(&pb.ProcsLogs{
+						Id: uint64(id),
+						Lines: []*pb.LogLine{ // TODO: collect lines for some time and send all at once
+							{
+								Line: string(line),
+								Time: timestamppb.Now(),
+								Type: pb.LogLine_TYPE_STDERR,
+							},
 						},
-					},
-				}); errSend != nil {
-					slog.Error(
-						"failed to send log",
-						slog.Uint64("procID", uint64(id)),
-						slog.Any("err", errSend),
-					)
-					return
+					}); errSend != nil {
+						slog.Error(
+							"failed to send log",
+							slog.Uint64("procID", uint64(id)),
+							slog.Any("err", errSend),
+						)
+						return
+					}
 				}
 			}
 		}(core.ProcID(id.GetId()))
