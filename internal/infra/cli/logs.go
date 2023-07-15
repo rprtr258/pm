@@ -7,6 +7,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
+	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
@@ -35,15 +36,17 @@ func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
 					lineType = color.HiBlackString
 				}
 
-				fmt.Printf(
-					"%s %s %s %s\n",
-					color.HiBlackString("%s", line.At.Format("2006-01-02 15:04:05")),
-					// TODO: different colors for different IDs
-					// TODO: pass proc name
-					color.RedString("%d|%s", procLines.ID, "proc-name"),
-					color.GreenString("|"),
-					lineType(line.Line),
-				)
+				fmt.Println(fmt2.FormatComplex(
+					"{at} {proc} {sep} {line}",
+					map[string]any{
+						"at": color.HiBlackString("%s", line.At.Format("2006-01-02 15:04:05")),
+						// TODO: different colors for different IDs
+						// TODO: pass proc name
+						"proc": color.RedString("%d|%s", procLines.ID, "proc-name"),
+						"sep":  color.GreenString("%s", "|"),
+						"line": lineType(line.Line),
+					},
+				))
 			}
 		}
 	}
