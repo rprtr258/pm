@@ -19,6 +19,7 @@ var _deleteCmd = &cli.Command{
 	Aliases:   []string{"del", "rm"},
 	Usage:     "stop and remove process(es)",
 	ArgsUsage: "<name|id|namespace|tag|json>...",
+	Category:  "management",
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "name",

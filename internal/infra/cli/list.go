@@ -32,9 +32,10 @@ const (
 )
 
 var _listCmd = &cli.Command{
-	Name:    "list",
-	Aliases: []string{"l", "ls", "ps", "status"},
-	Usage:   "list processes",
+	Name:     "list",
+	Aliases:  []string{"l", "ls", "ps", "status"},
+	Usage:    "list processes",
+	Category: "inspection",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    "format",

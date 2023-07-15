@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
+	"golang.org/x/exp/slog"
 
-	"github.com/rprtr258/pm/api"
+	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -136,7 +138,7 @@ func (app App) List(ctx context.Context) (map[core.ProcID]core.ProcData, error) 
 // processes and error contains info about all failed processes, not only first.
 func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcID, error) {
 	var merr error
-	requests := make([]*api.ProcessOptions, 0, len(configs))
+	requests := make([]*pb.ProcessOptions, 0, len(configs))
 	for _, config := range configs {
 		command, errLook := exec.LookPath(config.Command)
 		if errLook != nil {
@@ -159,7 +161,7 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcI
 			}
 		}
 
-		requests = append(requests, &api.ProcessOptions{
+		requests = append(requests, &pb.ProcessOptions{
 			Command: command,
 			Args:    config.Args,
 			Name:    config.Name.Ptr(),
@@ -198,4 +200,57 @@ func (app App) Start(ctx context.Context, ids ...core.ProcID) error {
 	}
 
 	return nil
+}
+
+// Logs - watch for processes logs
+func (app App) Logs(ctx context.Context, ids ...core.ProcID) (<-chan core.ProcLogs, error) {
+	iter, errLogs := app.client.Logs(ctx, lo.Map(ids, func(procID core.ProcID, _ int) uint64 {
+		return uint64(procID)
+	})...)
+	if errLogs != nil {
+		return nil, xerr.NewWM(errLogs, "start processes")
+	}
+
+	res := make(chan core.ProcLogs)
+	go func() {
+		defer close(res)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				procLogs, err := iter.Recv()
+				if err != nil {
+					slog.Error("failed to receive log line", slog.Any("err", err))
+					return
+				}
+
+				res <- core.ProcLogs{
+					ID: core.ProcID(procLogs.GetId()),
+					Lines: fun.Map(procLogs.GetLines(), func(line *pb.LogLine) core.LogLine {
+						var logType core.LogType
+						switch line.GetType() {
+						case pb.LogLine_TYPE_STDOUT:
+							logType = core.LogTypeStdout
+						case pb.LogLine_TYPE_STDERR:
+							logType = core.LogTypeStderr
+						case pb.LogLine_TYPE_UNSPECIFIED:
+							logType = core.LogTypeUnspecified
+						default:
+							logType = core.LogTypeUnspecified
+						}
+
+						return core.LogLine{
+							At:   line.GetTime().AsTime(),
+							Line: line.GetLine(),
+							Type: logType,
+						}
+					}),
+				}
+			}
+		}
+	}()
+
+	return res, nil
 }

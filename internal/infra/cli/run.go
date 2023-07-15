@@ -19,6 +19,7 @@ var _runCmd = &cli.Command{
 	Name:      "run",
 	ArgsUsage: "cmd args...",
 	Usage:     "create and run new process",
+	Category:  "management",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "name",

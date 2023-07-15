@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -20,7 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/rprtr258/pm/api"
+	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/core/namegen"
@@ -28,7 +29,7 @@ import (
 )
 
 type daemonServer struct {
-	api.UnimplementedDaemonServer
+	pb.UnimplementedDaemonServer
 	db               db.Handle
 	homeDir, logsDir string
 }
@@ -123,8 +124,8 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
-func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empty, error) {
-	procs := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
+func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
+	procs := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) core.ProcID {
 		return core.ProcID(id.GetId())
 	}))
 
@@ -144,8 +145,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *api.IDs) (*emptypb.Empt
 }
 
 // Signal - send signal processes to processes
-func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emptypb.Empty, error) {
-	procsToStop := lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
+func (srv *daemonServer) Signal(_ context.Context, req *pb.SignalRequest) (*emptypb.Empty, error) {
+	procsToStop := lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) core.ProcID {
 		return core.ProcID(id.GetId())
 	})
 
@@ -153,11 +154,11 @@ func (srv *daemonServer) Signal(_ context.Context, req *api.SignalRequest) (*emp
 
 	var signal syscall.Signal
 	switch req.GetSignal() {
-	case api.Signal_SIGNAL_SIGTERM:
+	case pb.Signal_SIGNAL_SIGTERM:
 		signal = syscall.SIGTERM
-	case api.Signal_SIGNAL_SIGKILL:
+	case pb.Signal_SIGNAL_SIGKILL:
 		signal = syscall.SIGKILL
-	case api.Signal_SIGNAL_UNSPECIFIED:
+	case pb.Signal_SIGNAL_UNSPECIFIED:
 		return nil, xerr.NewM("signal was not specified")
 	default:
 		return nil, xerr.NewM("unknown signal", xerr.Fields{"signal": req.GetSignal()})
@@ -239,8 +240,8 @@ func (srv *daemonServer) stop(ctx context.Context, proc db.ProcData) (bool, erro
 	return true, nil
 }
 
-func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*api.IDs, error) {
-	procsList := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *api.ProcessID, _ int) core.ProcID {
+func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error) {
+	procsList := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) core.ProcID {
 		return core.ProcID(id.GetId())
 	}))
 
@@ -275,9 +276,9 @@ func (srv *daemonServer) Stop(ctx context.Context, req *api.IDs) (*api.IDs, erro
 		}
 	}
 
-	return &api.IDs{
-		Ids: lo.Map(stoppedIDs, func(id core.ProcID, _ int) *api.ProcessID {
-			return &api.ProcessID{Id: uint64(id)}
+	return &pb.IDs{
+		Ids: lo.Map(stoppedIDs, func(id core.ProcID, _ int) *pb.ProcessID {
+			return &pb.ProcessID{Id: uint64(id)}
 		}),
 	}, nil
 }
@@ -319,7 +320,7 @@ func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {
 	return nil
 }
 
-func (srv *daemonServer) Create(ctx context.Context, req *api.CreateRequest) (*api.IDs, error) {
+func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.IDs, error) {
 	procIDs := make([]core.ProcID, len(req.GetOptions()))
 	for i, opts := range req.GetOptions() {
 		var errCreate error
@@ -329,16 +330,16 @@ func (srv *daemonServer) Create(ctx context.Context, req *api.CreateRequest) (*a
 		}
 	}
 
-	return &api.IDs{
-		Ids: lo.Map(procIDs, func(procID core.ProcID, _ int) *api.ProcessID {
-			return &api.ProcessID{
+	return &pb.IDs{
+		Ids: lo.Map(procIDs, func(procID core.ProcID, _ int) *pb.ProcessID {
+			return &pb.ProcessID{
 				Id: uint64(procID),
 			}
 		}),
 	}, nil
 }
 
-func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOptions) (core.ProcID, error) {
+func (srv *daemonServer) create(ctx context.Context, procOpts *pb.ProcessOptions) (core.ProcID, error) {
 	if procOpts.Name != nil {
 		procs := srv.db.List()
 
@@ -405,14 +406,14 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 	return procID, nil
 }
 
-func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.ProcessesList, error) {
+func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
 	// TODO: update statuses here also
 	list := srv.db.List()
 
-	return &api.ProcessesList{
-		Processes: lo.MapToSlice(list, func(id core.ProcID, proc db.ProcData) *api.Process {
-			return &api.Process{
-				Id:      &api.ProcessID{Id: uint64(id)},
+	return &pb.ProcessesList{
+		Processes: lo.MapToSlice(list, func(id core.ProcID, proc db.ProcData) *pb.Process {
+			return &pb.Process{
+				Id:      &pb.ProcessID{Id: uint64(id)},
 				Status:  mapStatus(proc.Status),
 				Name:    proc.Name,
 				Cwd:     proc.Cwd,
@@ -425,22 +426,22 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*api.Proce
 }
 
 //nolint:exhaustruct // can't return api.isProcessStatus_Status
-func mapStatus(status db.Status) *api.ProcessStatus {
+func mapStatus(status db.Status) *pb.ProcessStatus {
 	switch status.Status {
 	case db.StatusInvalid:
-		return &api.ProcessStatus{Status: &api.ProcessStatus_Invalid{}}
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Invalid{}}
 	case db.StatusCreated:
-		return &api.ProcessStatus{Status: &api.ProcessStatus_Created{}}
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Created{}}
 	case db.StatusStopped:
-		return &api.ProcessStatus{Status: &api.ProcessStatus_Stopped{
-			Stopped: &api.StoppedProcessStatus{
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Stopped{
+			Stopped: &pb.StoppedProcessStatus{
 				ExitCode:  int64(status.ExitCode),
 				StoppedAt: timestamppb.New(status.StoppedAt),
 			},
 		}}
 	case db.StatusRunning:
-		return &api.ProcessStatus{Status: &api.ProcessStatus_Running{
-			Running: &api.RunningProcessStatus{
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Running{
+			Running: &pb.RunningProcessStatus{
 				Pid:       int64(status.Pid),
 				StartTime: timestamppb.New(status.StartTime),
 				// TODO: get from /proc/PID/stat
@@ -449,14 +450,14 @@ func mapStatus(status db.Status) *api.ProcessStatus {
 			},
 		}}
 	default:
-		return &api.ProcessStatus{Status: &api.ProcessStatus_Invalid{}}
+		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Invalid{}}
 	}
 }
 
-func (srv *daemonServer) Delete(ctx context.Context, r *api.IDs) (*emptypb.Empty, error) {
+func (srv *daemonServer) Delete(ctx context.Context, r *pb.IDs) (*emptypb.Empty, error) {
 	ids := lo.Map(
 		r.GetIds(),
-		func(procID *api.ProcessID, _ int) uint64 {
+		func(procID *pb.ProcessID, _ int) uint64 {
 			return procID.GetId()
 		},
 	)
@@ -505,4 +506,73 @@ func removeFile(name string) error {
 
 func (srv *daemonServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
+}
+
+func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
+	procs := srv.db.List() // TODO: filter by ids
+	done := make(chan struct{})
+
+	var wg sync.WaitGroup
+	for _, id := range req.GetIds() {
+		proc, ok := procs[core.ProcID(id.GetId())]
+		if !ok {
+			slog.Info("tried to log unknown process", "procID", id.GetId())
+			continue
+		}
+		if proc.Status.Status != db.StatusRunning {
+			slog.Info("tried to log non-running process", "procID", id.GetId())
+			continue
+		}
+
+		wg.Add(1)
+		go func(id core.ProcID) {
+			defer wg.Done()
+
+			for {
+				select {
+				case <-done:
+					return
+				default:
+				}
+
+				if errSend := kek.Send(&pb.ProcsLogs{
+					Id: uint64(id),
+					Lines: []*pb.LogLine{
+						{
+							Line: "test line",
+							Time: timestamppb.Now(),
+							Type: pb.LogLine_TYPE_STDERR,
+						},
+					},
+				}); errSend != nil {
+					slog.Error(
+						"failed to send log",
+						slog.Uint64("procID", uint64(id)),
+						slog.Any("err", errSend),
+					)
+					return
+				}
+			}
+		}(core.ProcID(id.GetId()))
+	}
+
+	allStopped := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(allStopped)
+	}()
+
+	go func() {
+		defer close(done)
+
+		select {
+		case <-allStopped:
+			return
+		case <-kek.Context().Done():
+			return
+		}
+	}()
+
+	<-done
+	return nil
 }

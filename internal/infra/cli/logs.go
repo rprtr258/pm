@@ -1,12 +1,12 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/samber/lo"
-	"github.com/urfave/cli/v2"
-
+	"github.com/fatih/color"
 	"github.com/rprtr258/xerr"
+	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
@@ -14,11 +14,46 @@ import (
 	"github.com/rprtr258/pm/pkg/client"
 )
 
-var _startCmd = &cli.Command{
-	Name:      "start",
+func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return xerr.NewWM(ctx.Err(), "context canceled")
+		case procLines, ok := <-ch:
+			if !ok {
+				return nil
+			}
+
+			for _, line := range procLines.Lines {
+				// TODO: color package does not allow to use format with color parameter,
+				// so we carry whole formatting function
+				lineType := color.RedString
+				switch line.Type { //nolint:exhaustive // all interesting cases are handled
+				case core.LogTypeStdout:
+					lineType = color.HiWhiteString
+				case core.LogTypeStderr:
+					lineType = color.HiBlackString
+				}
+
+				fmt.Printf(
+					"%s %s %s %s\n",
+					color.HiBlackString("%s", line.At.Format("2006-01-02 15:04:05")),
+					// TODO: different colors for different IDs
+					// TODO: pass proc name
+					color.RedString("%d|%s", procLines.ID, "proc-name"),
+					color.GreenString("|"),
+					lineType(line.Line),
+				)
+			}
+		}
+	}
+}
+
+var _logsCmd = &cli.Command{
+	Name:      "logs",
 	ArgsUsage: "<name|tag|id|status>...",
-	Usage:     "start already added process",
-	Category:  "management",
+	Usage:     "watch for processes logs",
+	Category:  "inspection",
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "name",
@@ -32,22 +67,12 @@ var _startCmd = &cli.Command{
 			Name:  "id",
 			Usage: "id(s) of process(es) to run",
 		},
-		&cli.StringSliceFlag{
-			Name:  "status",
-			Usage: "status(es) of process(es) to run",
-		},
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
 		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
 			return xerr.NewWM(errDaemon, "ensure daemon is running")
 		}
-
-		names := ctx.StringSlice("name")
-		tags := ctx.StringSlice("tag")
-		statuses := ctx.StringSlice("status")
-		ids := ctx.Uint64Slice("id")
-		args := ctx.Args().Slice()
 
 		client, errList := client.NewGrpcClient()
 		if errList != nil {
@@ -60,6 +85,11 @@ var _startCmd = &cli.Command{
 			return xerr.NewWM(errNewApp, "new app")
 		}
 
+		names := ctx.StringSlice("name")
+		tags := ctx.StringSlice("tag")
+		ids := ctx.Uint64Slice("id")
+		args := ctx.Args().Slice()
+
 		list, errList := client.List(ctx.Context)
 		if errList != nil {
 			return xerr.NewWM(errList, "server.list")
@@ -71,20 +101,20 @@ var _startCmd = &cli.Command{
 				core.WithGeneric(args),
 				core.WithIDs(ids),
 				core.WithNames(names),
-				core.WithStatuses(statuses),
 				core.WithTags(tags),
 			)
 
 			if len(procIDs) == 0 {
-				fmt.Println("nothing to start")
+				fmt.Println("nothing to watch")
 				return nil
 			}
 
-			if err := app.Start(ctx.Context, procIDs...); err != nil {
-				return xerr.NewWM(err, "client.start")
+			logsCh, errLogs := app.Logs(ctx.Context, procIDs...)
+			if errLogs != nil {
+				return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
 			}
 
-			return nil
+			return watchLogs(ctx.Context, logsCh)
 		}
 
 		configFile := ctx.String("config")
@@ -108,21 +138,19 @@ var _startCmd = &cli.Command{
 			core.WithGeneric(args),
 			core.WithIDs(ids),
 			core.WithNames(names),
-			core.WithStatuses(statuses),
 			core.WithTags(tags),
 		)
 
 		if len(procIDs) == 0 {
-			fmt.Println("nothing to start")
+			fmt.Println("nothing to watch")
 			return nil
 		}
 
-		if err := app.Start(ctx.Context, procIDs...); err != nil {
-			return xerr.NewWM(err, "client.start")
+		logsCh, errLogs := app.Logs(ctx.Context, procIDs...)
+		if errLogs != nil {
+			return xerr.NewWM(errLogs, "watch procs from config", xerr.Fields{"procIDs": procIDs})
 		}
 
-		fmt.Println(lo.ToAnySlice(procIDs)...)
-
-		return nil
+		return watchLogs(ctx.Context, logsCh)
 	},
 }

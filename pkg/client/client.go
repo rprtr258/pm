@@ -12,12 +12,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/rprtr258/pm/api"
+	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 )
 
 type Client struct {
-	client api.DaemonClient
+	client pb.DaemonClient
 	conn   *grpc.ClientConn
 }
 
@@ -40,7 +40,7 @@ func NewGrpcClient() (Client, error) {
 	}
 
 	return Client{
-		client: api.NewDaemonClient(conn),
+		client: pb.NewDaemonClient(conn),
 		conn:   conn,
 	}, nil
 }
@@ -53,13 +53,13 @@ func (c Client) Close() error {
 	return nil
 }
 
-func (c Client) Create(ctx context.Context, opts []*api.ProcessOptions) ([]uint64, error) {
-	resp, err := c.client.Create(ctx, &api.CreateRequest{Options: opts})
+func (c Client) Create(ctx context.Context, opts []*pb.ProcessOptions) ([]uint64, error) {
+	resp, err := c.client.Create(ctx, &pb.CreateRequest{Options: opts})
 	if err != nil {
 		return nil, xerr.NewWM(err, "server.create")
 	}
 
-	return fun.Map(resp.GetIds(), func(procID *api.ProcessID) uint64 {
+	return fun.Map(resp.GetIds(), func(procID *pb.ProcessID) uint64 {
 		return procID.Id
 	}), nil
 }
@@ -72,7 +72,7 @@ func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error)
 
 	return lo.SliceToMap(
 		resp.GetProcesses(),
-		func(proc *api.Process) (core.ProcID, core.ProcData) {
+		func(proc *pb.Process) (core.ProcID, core.ProcData) {
 			procID := core.ProcID(proc.GetId().GetId())
 			return procID, core.ProcData{
 				ProcID:  procID,
@@ -88,7 +88,7 @@ func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error)
 	), nil
 }
 
-func mapPbStatus(status *api.ProcessStatus) core.Status {
+func mapPbStatus(status *pb.ProcessStatus) core.Status {
 	switch {
 	case status.GetInvalid() != nil:
 		return core.NewStatusInvalid()
@@ -125,10 +125,10 @@ func (c Client) Start(ctx context.Context, ids []uint64) error {
 }
 
 func (c Client) Stop(ctx context.Context, ids []uint64) ([]uint64, error) {
-	resIDs, err := c.client.Stop(ctx, &api.IDs{
+	resIDs, err := c.client.Stop(ctx, &pb.IDs{
 		Ids: fun.Map(ids, mapProcID),
 	})
-	rawIDs := lo.Map(resIDs.GetIds(), func(procID *api.ProcessID, _ int) uint64 {
+	rawIDs := lo.Map(resIDs.GetIds(), func(procID *pb.ProcessID, _ int) uint64 {
 		return procID.GetId()
 	})
 	if err != nil {
@@ -139,17 +139,17 @@ func (c Client) Stop(ctx context.Context, ids []uint64) ([]uint64, error) {
 }
 
 func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64) error {
-	var apiSignal api.Signal
+	var apiSignal pb.Signal
 	switch signal { //nolint:exhaustive // other signals are not supported now
 	case syscall.SIGTERM:
-		apiSignal = api.Signal_SIGNAL_SIGTERM
+		apiSignal = pb.Signal_SIGNAL_SIGTERM
 	case syscall.SIGKILL:
-		apiSignal = api.Signal_SIGNAL_SIGKILL
+		apiSignal = pb.Signal_SIGNAL_SIGKILL
 	default:
 		return xerr.NewM("unknown signal", xerr.Fields{"signal": signal})
 	}
 
-	if _, err := c.client.Signal(ctx, &api.SignalRequest{
+	if _, err := c.client.Signal(ctx, &pb.SignalRequest{
 		Ids:    fun.Map(ids, mapProcID),
 		Signal: apiSignal,
 	}); err != nil {
@@ -159,21 +159,37 @@ func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64)
 	return nil
 }
 
-func mapProcID(id uint64) *api.ProcessID {
-	return &api.ProcessID{
+func mapProcID(id uint64) *pb.ProcessID {
+	return &pb.ProcessID{
 		Id: id,
 	}
 }
 
-func mapIDs(ids []uint64) *api.IDs {
-	return &api.IDs{
+func mapIDs(ids []uint64) *pb.IDs {
+	return &pb.IDs{
 		Ids: fun.Map(ids, mapProcID),
 	}
 }
 
 func (c Client) HealthCheck(ctx context.Context) error {
 	if _, err := c.client.HealthCheck(ctx, &emptypb.Empty{}); err != nil {
-		return xerr.NewW(err)
+		return xerr.NewWM(err, "server.healthcheck")
 	}
+
 	return nil
+}
+
+type LogsIterator interface {
+	Recv() (*pb.ProcsLogs, error)
+}
+
+func (c Client) Logs(ctx context.Context, ids ...uint64) (LogsIterator, error) {
+	res, err := c.client.Logs(ctx, &pb.IDs{
+		Ids: fun.Map(ids, mapProcID),
+	})
+	if err != nil {
+		return nil, xerr.NewWM(err, "server.logs")
+	}
+
+	return res, nil
 }

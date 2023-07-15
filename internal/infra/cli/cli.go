@@ -48,11 +48,8 @@ var App = &cli.App{
 	},
 	Commands: []*cli.Command{
 		_daemonCmd,
-		// process management
 		_runCmd, _startCmd, _stopCmd, _deleteCmd,
-		// inspection
-		_listCmd,
-		// other
+		_listCmd, _logsCmd,
 		_versionCmd,
 	},
 	Before: func(c *cli.Context) error {

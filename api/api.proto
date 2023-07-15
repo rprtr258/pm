@@ -19,6 +19,8 @@ service Daemon {
   rpc Delete(IDs) returns (google.protobuf.Empty);
 
   rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
+
+  rpc Logs(IDs) returns (stream ProcsLogs);
 }
 
 message ProcessID {
@@ -86,4 +88,21 @@ enum Signal {
 message SignalRequest {
   repeated ProcessID ids = 1;
   Signal signal = 2;
+}
+
+message LogLine {
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    TYPE_STDOUT = 1;
+    TYPE_STDERR = 2;
+  };
+
+  string line = 1;
+  google.protobuf.Timestamp time = 2;
+  Type type = 3;
+}
+
+message ProcsLogs {
+  uint64 id = 1;
+  repeated LogLine lines = 2;
 }

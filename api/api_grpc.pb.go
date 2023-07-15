@@ -8,6 +8,7 @@ package api
 
 import (
 	context "context"
+
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -27,6 +28,7 @@ const (
 	Daemon_List_FullMethodName        = "/api.Daemon/List"
 	Daemon_Delete_FullMethodName      = "/api.Daemon/Delete"
 	Daemon_HealthCheck_FullMethodName = "/api.Daemon/HealthCheck"
+	Daemon_Logs_FullMethodName        = "/api.Daemon/Logs"
 )
 
 // DaemonClient is the client API for Daemon service.
@@ -42,6 +44,7 @@ type DaemonClient interface {
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
 	Delete(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Logs(ctx context.Context, in *IDs, opts ...grpc.CallOption) (Daemon_LogsClient, error)
 }
 
 type daemonClient struct {
@@ -115,6 +118,38 @@ func (c *daemonClient) HealthCheck(ctx context.Context, in *emptypb.Empty, opts 
 	return out, nil
 }
 
+func (c *daemonClient) Logs(ctx context.Context, in *IDs, opts ...grpc.CallOption) (Daemon_LogsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Daemon_ServiceDesc.Streams[0], Daemon_Logs_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &daemonLogsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Daemon_LogsClient interface {
+	Recv() (*ProcsLogs, error)
+	grpc.ClientStream
+}
+
+type daemonLogsClient struct {
+	grpc.ClientStream
+}
+
+func (x *daemonLogsClient) Recv() (*ProcsLogs, error) {
+	m := new(ProcsLogs)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // DaemonServer is the server API for Daemon service.
 // All implementations must embed UnimplementedDaemonServer
 // for forward compatibility
@@ -128,6 +163,7 @@ type DaemonServer interface {
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
 	Delete(context.Context, *IDs) (*emptypb.Empty, error)
 	HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	Logs(*IDs, Daemon_LogsServer) error
 	mustEmbedUnimplementedDaemonServer()
 }
 
@@ -155,6 +191,9 @@ func (UnimplementedDaemonServer) Delete(context.Context, *IDs) (*emptypb.Empty, 
 }
 func (UnimplementedDaemonServer) HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
+}
+func (UnimplementedDaemonServer) Logs(*IDs, Daemon_LogsServer) error {
+	return status.Errorf(codes.Unimplemented, "method Logs not implemented")
 }
 func (UnimplementedDaemonServer) mustEmbedUnimplementedDaemonServer() {}
 
@@ -295,6 +334,27 @@ func _Daemon_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Daemon_Logs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(IDs)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DaemonServer).Logs(m, &daemonLogsServer{stream})
+}
+
+type Daemon_LogsServer interface {
+	Send(*ProcsLogs) error
+	grpc.ServerStream
+}
+
+type daemonLogsServer struct {
+	grpc.ServerStream
+}
+
+func (x *daemonLogsServer) Send(m *ProcsLogs) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // Daemon_ServiceDesc is the grpc.ServiceDesc for Daemon service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -331,6 +391,12 @@ var Daemon_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Daemon_HealthCheck_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Logs",
+			Handler:       _Daemon_Logs_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "api/api.proto",
 }

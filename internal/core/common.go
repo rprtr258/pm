@@ -3,6 +3,7 @@ package core
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"golang.org/x/exp/slog"
 )
@@ -21,4 +22,23 @@ func userHomeDir() string {
 	}
 
 	return dir
+}
+
+type LogType int
+
+const (
+	LogTypeUnspecified LogType = iota
+	LogTypeStdout
+	LogTypeStderr
+)
+
+type LogLine struct {
+	At   time.Time
+	Line string
+	Type LogType
+}
+
+type ProcLogs struct {
+	Lines []LogLine
+	ID    ProcID
 }

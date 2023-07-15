@@ -18,6 +18,7 @@ var _stopCmd = &cli.Command{
 	Name:      "stop",
 	Usage:     "stop process(es)",
 	ArgsUsage: "(id|name|tag|all)...",
+	Category:  "management",
 	Flags: []cli.Flag{
 		// &cli.BoolFlag{
 		// 	Name:  "watch",
