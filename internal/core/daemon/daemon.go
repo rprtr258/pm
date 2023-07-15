@@ -220,6 +220,20 @@ func unaryLoggerInterceptor(
 	return response, err
 }
 
+func streamLoggerInterceptor(
+	srv any,
+	ss grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+) error {
+	err := handler(srv, ss)
+
+	// log method and resulting error if any
+	slog.Info(info.FullMethod, slog.Any("err", err))
+
+	return err
+}
+
 func RunServer(pCtx context.Context) error {
 	if errMigrate := migrate(); errMigrate != nil {
 		return xerr.NewWM(errMigrate, "migrate to latest version", xerr.Fields{"version": core.Version})
@@ -239,7 +253,10 @@ func RunServer(pCtx context.Context) error {
 		return xerr.NewWM(errDBNew, "create db")
 	}
 
-	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(unaryLoggerInterceptor))
+	srv := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
+		grpc.ChainStreamInterceptor(streamLoggerInterceptor),
+	)
 	api.RegisterDaemonServer(srv, &daemonServer{
 		UnimplementedDaemonServer: api.UnimplementedDaemonServer{},
 		db:                        dbHandle,

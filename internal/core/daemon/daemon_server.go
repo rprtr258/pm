@@ -511,6 +511,11 @@ func (srv *daemonServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*em
 }
 
 func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
+	// can't get incoming query in interceptor, so logging here also
+	slog.Info("Logs method called",
+		slog.Any("ids", req.GetIds()),
+	)
+
 	procs := srv.db.List() // TODO: filter by ids
 	done := make(chan struct{})
 
