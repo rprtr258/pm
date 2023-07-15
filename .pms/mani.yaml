@@ -1,0 +1,57 @@
+# some projects to inspire from
+projects:
+  pm2:
+    url: https://github.com/Unitech/pm2
+  
+  apm:
+    url: https://github.com/topfreegames/apm
+  
+  cmd:
+    url: https://github.com/go-cmd/cmd
+  
+  exo:
+    url: https://github.com/deref/exo
+  
+  godpm:
+    url: https://github.com/godpm/godpm
+  
+  goreman:
+    url: https://github.com/mattn/goreman
+  
+  gowl:
+    url: https://github.com/hmdsefi/gowl
+  
+  hivemind:
+    url: https://github.com/DarthSim/hivemind
+  
+  immortal:
+    url: https://github.com/immortal/immortal
+  
+  overmind:
+    url: https://github.com/DarthSim/overmind
+  
+  overseer:
+    url: https://github.com/ShinyTrinkets/overseer
+  
+  pm:
+    url: https://github.com/VividCortex/pm
+  
+  pmgo:
+    url: https://github.com/struCoder/pmgo
+  
+  procs:
+    url: https://github.com/ionrock/procs
+  
+  pst:
+    url: https://github.com/skanehira/pst
+  
+  runsit:
+    url: https://github.com/bradfitz/runsit
+  
+  supervisord:
+    url: https://github.com/ochinchina/supervisord
+  
+tasks:
+  hello:
+    desc: Print Hello World
+    cmd: echo "Hello World"
