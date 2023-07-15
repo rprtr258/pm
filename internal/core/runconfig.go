@@ -32,7 +32,7 @@ type RunConfig struct {
 	// Name of a process if defined, otherwise generated
 	Name fun.Option[string]
 	// Watch - regexp for files to watch and restart on changes
-	Watch fun.Option[regexp.Regexp]
+	Watch fun.Option[*regexp.Regexp]
 }
 
 func isConfigFile(arg string) bool {
@@ -99,6 +99,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		Command string         `json:"command"`
 		Args    []any          `json:"args"`
 		Tags    []string       `json:"tags"`
+		Watch   *string        `json:"watch"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
@@ -121,6 +122,16 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
+		watch := fun.Option[*regexp.Regexp]{}
+		if config.Watch != nil {
+			re, err := regexp.Compile(*config.Watch)
+			if err != nil {
+				// TODO: fail
+				slog.Error("invalid watch pattern", "pattern", *config.Watch)
+			}
+			watch = fun.Valid(re)
+		}
+
 		return RunConfig{
 			Name:    fun.FromPtr(config.Name),
 			Command: config.Command,
@@ -166,6 +177,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 					return valStr
 				}
 			}),
+			Watch: watch,
 		}
 	}), nil
 }
