@@ -550,7 +550,6 @@ func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
 				if err := t.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
 					select {
 					case <-ctx.Done():
-						return nil
 					case linesCh <- append([]byte(nil), l.Data...):
 					}
 					return nil
