@@ -17,22 +17,47 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+type Actions struct {
+	Healthcheck any // TODO: tcp port listen check/http check/command run
+	// Custom actions
+	Custom map[string]struct {
+		Command string
+		Args    []string
+	}
+}
+
 // RunConfig - configuration of process to manage
 type RunConfig struct {
 	// Env - environment variables
 	Env map[string]string
+	// Actions to perform on process by name
+	Actions Actions
+	// Watch - regexp for files to watch and restart on changes
+	Watch fun.Option[*regexp.Regexp]
 	// Command - process command, full path
 	Command string
 	// Cwd - working directory
 	Cwd string
+	// StdoutFile - file to write stdout to
+	StdoutFile string
+	// StderrFile - file to write stderr to
+	StderrFile string
 	// Args - arguments for process, not including executable itself as first argument
 	Args []string
 	// Tags - process tags, exluding `all` tag
 	Tags []string
 	// Name of a process if defined, otherwise generated
 	Name fun.Option[string]
-	// Watch - regexp for files to watch and restart on changes
-	Watch fun.Option[*regexp.Regexp]
+	// KillTimeout - before sending SIGKILL after SIGINT
+	// TODO: use
+	KillTimeout time.Duration
+	// KillChildren - stop children processes on process stop
+	// TODO: use
+	KillChildren bool
+	// Autorestart - restart process automatically after its death
+	Autorestart bool
+	// MaxRestarts - maximum number of restarts, 0 means no limit
+	MaxRestarts uint
 }
 
 func isConfigFile(arg string) bool {
