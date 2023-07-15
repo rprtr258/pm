@@ -26,7 +26,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	slog.SetDefault(slog.New(log.New()))
+	slog.SetDefault(slog.New(log.NewPrettyHandler(os.Stderr)))
 
 	slog.Info("listening", "addr", _addr)
 

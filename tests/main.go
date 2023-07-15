@@ -322,7 +322,7 @@ var (
 )
 
 func main() {
-	slog.SetDefault(slog.New(log.New()))
+	slog.SetDefault(slog.New(log.NewPrettyHandler(os.Stderr)))
 
 	pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
 		Name:        "test",

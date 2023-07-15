@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	slog.SetDefault(slog.New(log.New()))
+	slog.SetDefault(slog.New(log.NewDestructorHandler(log.NewPrettyHandler(os.Stderr))))
 
 	if errRun := cli.App.Run(os.Args); errRun != nil {
 		slog.Error("app exited abnormally", "err", errRun)
