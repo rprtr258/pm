@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	fun2 "github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slog"
@@ -365,7 +366,7 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 					len(proc.Tags) == len(procData.Tags) && // TODO: compare lists, not lengths
 					proc.Command == procData.Command &&
 					len(proc.Args) == len(procData.Args) && // TODO: compare lists, not lengths
-					len(proc.Watch) == len(procData.Watch) { // TODO: compare lists, not lengths
+					(proc.Watch == nil) == (procData.Watch == nil) && (proc.Watch == nil || *proc.Watch == *procData.Watch) { // TODO: compare pointers
 				// not updated, do nothing
 				return procID, nil
 			}
@@ -394,7 +395,7 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *api.ProcessOption
 		Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
 		Command: procOpts.GetCommand(),
 		Args:    procOpts.GetArgs(),
-		Watch:   nil,
+		Watch:   fun2.Option[string]{},
 		Env:     procOpts.Env,
 	})
 	if err != nil {

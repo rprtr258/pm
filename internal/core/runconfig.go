@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/google/go-jsonnet"
@@ -16,13 +17,22 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+// RunConfig - configuration of process to manage
 type RunConfig struct {
-	Args    []string
-	Tags    []string
+	// Env - environment variables
+	Env map[string]string
+	// Command - process command, full path
 	Command string
-	Cwd     string
-	Name    fun.Option[string]
-	Env     map[string]string
+	// Cwd - working directory
+	Cwd string
+	// Args - arguments for process, not including executable itself as first argument
+	Args []string
+	// Tags - process tags, exluding `all` tag
+	Tags []string
+	// Name of a process if defined, otherwise generated
+	Name fun.Option[string]
+	// Watch - regexp for files to watch and restart on changes
+	Watch fun.Option[regexp.Regexp]
 }
 
 func isConfigFile(arg string) bool {

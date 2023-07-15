@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/simpdb"
 	"github.com/rprtr258/simpdb/storages"
 	"github.com/rprtr258/xerr"
@@ -80,7 +81,7 @@ type ProcData struct {
 	// Args - arguments for executable, not including executable itself as first argument
 	Args   []string          `json:"args"`
 	Tags   []string          `json:"tags"`
-	Watch  []string          `json:"watch"`
+	Watch  *string           `json:"watch"`
 	Status Status            `json:"status"`
 	ProcID core.ProcID       `json:"id"`
 	Env    map[string]string `json:"env"`
@@ -117,15 +118,20 @@ func New(dir string) (Handle, error) {
 }
 
 type CreateQuery struct {
+	// Env - environment variables
+	Env map[string]string
 	// Command - executable to run
 	Command string
-	Cwd     string
-	Name    string
+	// Cwd - working directory
+	Cwd string
+	// Name - name of the process
+	Name string
 	// Args - arguments for executable, not including executable itself as first argument
-	Args  []string
-	Tags  []string
-	Watch []string
-	Env   map[string]string
+	Args []string
+	// Tags - process tags
+	Tags []string
+	// Watch - regex pattern for file watching
+	Watch fun.Option[string]
 
 	// StdoutFile  string
 	// StderrFile  string
@@ -154,7 +160,7 @@ func (handle Handle) AddProc(query CreateQuery) (core.ProcID, error) {
 		Name:    query.Name,
 		Args:    query.Args,
 		Tags:    query.Tags,
-		Watch:   query.Watch,
+		Watch:   query.Watch.Ptr(),
 		Status:  NewStatusCreated(),
 		Env:     query.Env,
 	}) {
