@@ -52,6 +52,6 @@ projects:
     url: https://github.com/ochinchina/supervisord
   
 tasks:
-  hello:
-    desc: Print Hello World
-    cmd: echo "Hello World"
+  pull:
+    desc: Pull the latest code
+    cmd: git pull
