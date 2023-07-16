@@ -541,7 +541,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
 			// TODO: proc.StdoutFile, proc.StderrFile
 			t := tail.File(filepath.Join(srv.logsDir, fmt.Sprintf("%d.stdout", id)), tail.Config{
 				Follow:        true,
-				BufferSize:    1024 * 128,
+				BufferSize:    1024 * 128, // 128 kb
 				NotifyTimeout: time.Minute,
 				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -100},
 			})

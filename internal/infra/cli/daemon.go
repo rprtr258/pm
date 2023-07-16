@@ -69,5 +69,26 @@ var _daemonCmd = &cli.Command{
 				return nil
 			},
 		},
+		{
+			Name:  "logs",
+			Usage: "check daemon logs",
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:    "follow",
+					Aliases: []string{"f"},
+					Usage:   "follow logs",
+					Value:   false,
+				},
+			},
+			Action: func(ctx *cli.Context) error {
+				follow := ctx.Bool("follow")
+
+				if errLogs := pm_daemon.Logs(ctx.Context, follow); errLogs != nil {
+					return xerr.NewWM(errLogs, "check daemon logs")
+				}
+
+				return nil
+			},
+		},
 	},
 }
