@@ -76,8 +76,9 @@ func NewStatusStopped(exitCode int) Status {
 type ProcData struct {
 	// Command - executable to run
 	Command string `json:"command"`
-	Cwd     string `json:"cwd"`
-	Name    string `json:"name"`
+	// Cwd - working directory, should be absolute
+	Cwd  string `json:"cwd"`
+	Name string `json:"name"`
 	// Args - arguments for executable, not including executable itself as first argument
 	Args   []string          `json:"args"`
 	Tags   []string          `json:"tags"`

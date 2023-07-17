@@ -36,14 +36,6 @@ type daemonServer struct {
 	homeDir, logsDir string
 }
 
-func getProcCwd(cwd, procCwd string) string {
-	if filepath.IsAbs(procCwd) {
-		return procCwd
-	}
-
-	return filepath.Join(cwd, procCwd)
-}
-
 func (srv *daemonServer) start(proc db.ProcData) error {
 	if procs := srv.db.GetProcs([]core.ProcID{proc.ProcID}); len(procs) > 0 {
 		if len(procs) > 1 {
@@ -78,18 +70,13 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 	}()
 	// TODO: syscall.CloseOnExec(pidFile.Fd()) or just close pid file
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return xerr.NewWM(err, "os.Getwd")
-	}
-
 	env := os.Environ()
 	for k, v := range proc.Env {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
 	procAttr := os.ProcAttr{
-		Dir: getProcCwd(cwd, proc.Cwd),
+		Dir: proc.Cwd,
 		Env: env,
 		Files: []*os.File{ // TODO: pid file is somehow passes to child
 			0: os.Stdin,

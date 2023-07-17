@@ -157,6 +157,18 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			watch = fun.Valid(re)
 		}
 
+		relativeCwd := lo.
+			If(config.Cwd == nil, filepath.Dir(filename)).
+			ElseF(func() string { return *config.Cwd })
+		cwd, err := filepath.Abs(relativeCwd)
+		if err != nil {
+			slog.Error( // TODO: fail
+				"can't get absolute cwd",
+				slog.String("cwd", *config.Cwd),
+				slog.Any("err", err),
+			)
+		}
+
 		return RunConfig{
 			Name:    fun.FromPtr(config.Name),
 			Command: config.Command,
@@ -180,9 +192,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 				}
 			}),
 			Tags: config.Tags,
-			Cwd: lo.
-				If(config.Cwd == nil, filepath.Dir(filename)).
-				ElseF(func() string { return *config.Cwd }),
+			Cwd:  cwd,
 			Env: lo.MapValues(config.Env, func(value any, name string) string {
 				switch v := value.(type) {
 				case fmt.Stringer:
