@@ -32,10 +32,6 @@ var _startCmd = &cli.Command{
 			Name:  "id",
 			Usage: "id(s) of process(es) to run",
 		},
-		&cli.StringSliceFlag{
-			Name:  "status",
-			Usage: "status(es) of process(es) to run",
-		},
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
@@ -45,7 +41,6 @@ var _startCmd = &cli.Command{
 
 		names := ctx.StringSlice("name")
 		tags := ctx.StringSlice("tag")
-		statuses := ctx.StringSlice("status")
 		ids := ctx.Uint64Slice("id")
 		args := ctx.Args().Slice()
 
@@ -71,7 +66,6 @@ var _startCmd = &cli.Command{
 				core.WithGeneric(args),
 				core.WithIDs(ids),
 				core.WithNames(names),
-				core.WithStatuses(statuses),
 				core.WithTags(tags),
 			)
 
@@ -110,7 +104,6 @@ var _startCmd = &cli.Command{
 			core.WithGeneric(args),
 			core.WithIDs(ids),
 			core.WithNames(names),
-			core.WithStatuses(statuses),
 			core.WithTags(tags),
 		)
 

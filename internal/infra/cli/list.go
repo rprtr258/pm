@@ -75,10 +75,6 @@ var _listCmd = &cli.Command{
 			Name:  "id",
 			Usage: "id(s) of process(es) to list",
 		},
-		&cli.StringSliceFlag{
-			Name:  "status",
-			Usage: "status(es) of process(es) to list",
-		},
 	},
 	Action: func(ctx *cli.Context) error {
 		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
@@ -173,7 +169,6 @@ var _listCmd = &cli.Command{
 			ctx.Args().Slice(),
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
-			ctx.StringSlice("status"),
 			ctx.Uint64Slice("id"),
 			ctx.String("format"),
 			sortFunc,
@@ -232,7 +227,7 @@ func renderTable(procs []core.ProcData, setRowLines bool) {
 
 func list(
 	ctx context.Context,
-	genericFilters, nameFilters, tagFilters, statusFilters []string,
+	genericFilters, nameFilters, tagFilters []string,
 	idFilters []uint64,
 	format string,
 	sortFunc func(a, b core.ProcData) bool,
@@ -259,7 +254,6 @@ func list(
 		core.WithGeneric(genericFilters),
 		core.WithIDs(idFilters),
 		core.WithNames(nameFilters),
-		core.WithStatuses(statusFilters),
 		core.WithTags(tagFilters),
 	)
 

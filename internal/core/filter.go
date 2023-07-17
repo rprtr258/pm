@@ -1,7 +1,6 @@
 package core
 
 import (
-	"log"
 	"strconv"
 
 	"github.com/samber/lo"
@@ -10,10 +9,9 @@ import (
 )
 
 type filter struct {
-	Names    []string
-	Tags     []string
-	Statuses []StatusType
-	IDs      []ProcID
+	Names []string
+	Tags  []string
+	IDs   []ProcID
 }
 
 type filterConfig struct {
@@ -52,28 +50,6 @@ func WithTags(args []string) FilterProcsOption {
 	}
 }
 
-func WithStatuses(args []string) FilterProcsOption {
-	statuses := lo.Map(args, func(status string, _ int) StatusType {
-		switch status {
-		case "invalid":
-			return StatusInvalid
-		case "created":
-			return StatusCreated
-		case "running":
-			return StatusRunning
-		case "stopped":
-			return StatusStopped
-		default:
-			log.Printf("unknown status %q\n", status)
-			return lo.Empty[StatusType]()
-		}
-	})
-
-	return func(cfg *filterConfig) {
-		cfg.filter.Statuses = append(cfg.filter.Statuses, statuses...)
-	}
-}
-
 func WithIDs[T uint64](args []T) FilterProcsOption {
 	return func(cfg *filterConfig) {
 		cfg.filter.IDs = append(cfg.filter.IDs, lo.Map(args, func(id T, _ int) ProcID {
@@ -92,10 +68,9 @@ func FilterProcs[T ~uint64](procs map[ProcID]ProcData, opts ...FilterProcsOption
 		opt(&cfg)
 	}
 
-	// if no filters, return all
+	// if no filters, return all if allIfNoFilter, nothing otherwise
 	if len(cfg.filter.Names) == 0 &&
 		len(cfg.filter.Tags) == 0 &&
-		len(cfg.filter.Statuses) == 0 &&
 		len(cfg.filter.IDs) == 0 {
 		if !cfg.allIfNoFilters {
 			return nil
@@ -109,7 +84,6 @@ func FilterProcs[T ~uint64](procs map[ProcID]ProcData, opts ...FilterProcsOption
 	return fun.FilterMapToSlice(procs, func(procID ProcID, proc ProcData) (T, bool) {
 		return T(procID), lo.Contains(cfg.filter.Names, proc.Name) ||
 			lo.Some(cfg.filter.Tags, proc.Tags) ||
-			lo.Contains(cfg.filter.Statuses, proc.Status.Status) ||
 			lo.Contains(cfg.filter.IDs, proc.ProcID)
 	})
 }
