@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/fatih/color"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/slog"
@@ -30,10 +31,46 @@ func ensureDir(dirname string) error {
 	return nil
 }
 
+//nolint:lll // setting template strings
+func Init() {
+	cli.AppHelpTemplate = color.BlueString(`{{template "helpNameTemplate" .}}`) + `
+
+Usage:
+	{{if .UsageText}}{{wrap .UsageText 3}}{{else}}{{.HelpName}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Description}}
+
+Description:
+   {{template "descriptionTemplate" .}}{{end}}
+{{- if len .Authors}}
+
+Author{{template "authorsTemplate" .}}{{end}}{{if .VisibleCommands}}
+
+Commands:{{range .VisibleCategories}}{{if .Name}}
+   ` + color.CyanString(`{{.Name}}`) + `:{{range .VisibleCommands}}
+     ` + color.GreenString(`{{join .Names ", "}}`) + `{{"\t"}}` + color.WhiteString(`{{.Usage}}`) + `{{end}}{{else}}{{ $cv := offsetCommands .VisibleCommands 5}}{{range .VisibleCommands}}
+   {{$s := join .Names ", "}}` + color.GreenString(`{{$s}}`) + `{{ $sp := subtract $cv (offset $s 3) }}{{ indent $sp ""}}` + color.WhiteString(`{{wrap .Usage $cv}}`) + `{{end}}{{end}}{{end}}{{end}}
+`
+
+	cli.CommandHelpTemplate = color.BlueString(`{{template "helpNameTemplate" .}}`) + `
+
+Usage:
+   {{template "usageTemplate" .}}{{if .Description}}
+
+Description:
+   {{template "descriptionTemplate" .}}{{end}}{{if .VisibleFlagCategories}}
+
+Options:{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
+
+Options:{{range $i, $e := .VisibleFlags}}
+   ` + color.GreenString(`{{wrap $e.String 6}}`) + `{{end}}{{end}}
+` // TODO: color flags similar to coloring commands in app help
+	// TODO: fix coloring for `pm ls --help“
+}
+
 var App = &cli.App{
-	Name:  "pm",
-	Usage: "manage running processes",
-	Flags: []cli.Flag{
+	Name:    "pm",
+	Version: "0.2.0", // TODO: set at compile time
+	Usage:   "manage running processes",
+	Flags:   []cli.Flag{
 		// If sets and script’s memory usage goes about the configured number, pm2 restarts the script.
 		// Uses human-friendly suffixes: ‘K’ for kilobytes, ‘M’ for megabytes, ‘G’ for gigabytes’, etc. Eg “150M”.
 		// &cli.IntFlag{Name: "max-memory-restart", Usage: "Restart the app if an amount of memory is exceeded (in bytes)"},
@@ -52,6 +89,7 @@ var App = &cli.App{
 		_listCmd, _logsCmd,
 		_versionCmd,
 	},
+	HideHelpCommand: true,
 	Before: func(c *cli.Context) error {
 		if err := ensureDir(core.DirHome); err != nil {
 			return xerr.NewWM(err, "ensure home dir", xerr.Fields{"dir": core.DirHome})
