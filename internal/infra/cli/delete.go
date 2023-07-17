@@ -77,7 +77,7 @@ var _deleteCmd = &cli.Command{
 				return nil
 			}
 
-			stoppedProcIDs, err := app.Stop(ctx.Context, procIDs)
+			stoppedProcIDs, err := app.Stop(ctx.Context, procIDs...)
 			if err != nil {
 				return xerr.NewWM(err, "delete")
 			}
@@ -111,7 +111,7 @@ var _deleteCmd = &cli.Command{
 			core.WithAllIfNoFilters,
 		)
 
-		stoppedProcIDs, err := app.Stop(ctx.Context, procIDs)
+		stoppedProcIDs, err := app.Stop(ctx.Context, procIDs...)
 		if err != nil {
 			return xerr.NewWM(err, "stop")
 		}

@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/xerr"
@@ -14,23 +13,23 @@ import (
 	"github.com/rprtr258/pm/pkg/client"
 )
 
-var _startCmd = &cli.Command{
-	Name:      "start",
+var _restartCmd = &cli.Command{
+	Name:      "restart",
 	ArgsUsage: "<name|tag|id|status>...",
-	Usage:     "start already added process(es)",
+	Usage:     "restart already added process(es)",
 	Category:  "management",
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:  "name",
-			Usage: "name(s) of process(es) to start",
+			Usage: "name(s) of process(es) to restart",
 		},
 		&cli.StringSliceFlag{
 			Name:  "tag",
-			Usage: "tag(s) of process(es) to start",
+			Usage: "tag(s) of process(es) to restart",
 		},
 		&cli.Uint64SliceFlag{
 			Name:  "id",
-			Usage: "id(s) of process(es) to start",
+			Usage: "id(s) of process(es) to restart",
 		},
 		configFlag,
 	},
@@ -70,15 +69,20 @@ var _startCmd = &cli.Command{
 			)
 
 			if len(procIDs) == 0 {
-				fmt.Println("nothing to start")
+				fmt.Println("nothing to restart")
 				return nil
 			}
 
-			if err := app.Start(ctx.Context, procIDs...); err != nil {
-				return xerr.NewWM(err, "client.start")
+			stoppedProcIDs, err := app.Stop(ctx.Context, procIDs...)
+			fmt.Printf("stopped %v\n", stoppedProcIDs)
+			if err != nil {
+				return xerr.NewWM(err, "client.stop")
 			}
 
-			fmt.Println(lo.ToAnySlice(procIDs)...)
+			fmt.Printf("starting %v\n", procIDs)
+			if errRun := app.Start(ctx.Context, procIDs...); errRun != nil {
+				return xerr.NewWM(err, "client.start")
+			}
 
 			return nil
 		}
@@ -112,11 +116,16 @@ var _startCmd = &cli.Command{
 			return nil
 		}
 
-		if err := app.Start(ctx.Context, procIDs...); err != nil {
-			return xerr.NewWM(err, "client.start")
+		stoppedProcIDs, err := app.Stop(ctx.Context, procIDs...)
+		fmt.Printf("stopped %v\n", stoppedProcIDs)
+		if err != nil {
+			return xerr.NewWM(err, "client.stop")
 		}
 
-		fmt.Println(lo.ToAnySlice(procIDs)...)
+		fmt.Printf("starting %v\n", procIDs)
+		if errRun := app.Start(ctx.Context, procIDs...); errRun != nil {
+			return xerr.NewWM(err, "client.start")
+		}
 
 		return nil
 	},

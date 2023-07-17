@@ -95,7 +95,7 @@ func (app App) Signal(
 
 func (app App) Stop(
 	ctx context.Context,
-	procIDs []core.ProcID,
+	procIDs ...core.ProcID,
 ) ([]core.ProcID, error) {
 	if len(procIDs) == 0 {
 		return []core.ProcID{}, nil
