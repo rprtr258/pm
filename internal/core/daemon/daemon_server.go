@@ -510,7 +510,7 @@ func (srv *daemonServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*em
 	return &emptypb.Empty{}, nil
 }
 
-func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
+func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 	// can't get incoming query in interceptor, so logging here also
 	slog.Info("Logs method called",
 		slog.Any("ids", req.GetIds()),
@@ -531,7 +531,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
 			continue
 		}
 
-		wg.Add(1)
+		wg.Add(2)
 		go func(id core.ProcID) {
 			defer wg.Done()
 
@@ -539,18 +539,19 @@ func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
 			defer cancel()
 
 			// TODO: proc.StdoutFile, proc.StderrFile
-			t := tail.File(filepath.Join(srv.logsDir, fmt.Sprintf("%d.stdout", id)), tail.Config{
+			stdoutTailer := tail.File(filepath.Join(srv.logsDir, fmt.Sprintf("%d.stdout", id)), tail.Config{
 				Follow:        true,
 				BufferSize:    1024 * 128, // 128 kb
 				NotifyTimeout: time.Minute,
-				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -100},
+				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -1000}, // TODO: limit offset by file size as with daemon logs
 			})
-			linesCh := make(chan []byte)
+			stdoutLinesCh := make(chan []byte)
 			go func() {
-				if err := t.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
+				if err := stdoutTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
 					select {
 					case <-ctx.Done():
-					case linesCh <- append([]byte(nil), l.Data...):
+						close(stdoutLinesCh)
+					case stdoutLinesCh <- append([]byte(nil), l.Data...):
 					}
 					return nil
 				}); err != nil {
@@ -558,28 +559,58 @@ func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
 					// TODO: somehow call wg.Done() once with parent call
 				}
 			}()
+
+			stderrTailer := tail.File(filepath.Join(srv.logsDir, fmt.Sprintf("%d.stderr", id)), tail.Config{
+				Follow:        true,
+				BufferSize:    1024 * 128, // 128 kb
+				NotifyTimeout: time.Minute,
+				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -1000}, // TODO: limit offset by file size as with daemon logs
+			})
+			stderrLinesCh := make(chan []byte)
+			go func() {
+				if err := stderrTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
+					select {
+					case <-ctx.Done():
+						close(stderrLinesCh)
+					case stderrLinesCh <- append([]byte(nil), l.Data...):
+					}
+					return nil
+				}); err != nil {
+					slog.Error("failed to tail log", slog.Uint64("procID", uint64(id)), slog.Any("err", err))
+					// TODO: somehow call wg.Done() once with parent call
+				}
+			}()
+
+			var (
+				line     string
+				lineType pb.LogLine_Type
+			)
 			for {
 				select {
 				case <-done:
 					return
-				case line := <-linesCh:
-					if errSend := kek.Send(&pb.ProcsLogs{
-						Id: uint64(id),
-						Lines: []*pb.LogLine{ // TODO: collect lines for some time and send all at once
-							{
-								Line: string(line),
-								Time: timestamppb.Now(),
-								Type: pb.LogLine_TYPE_STDERR,
-							},
+				case lineBytes := <-stdoutLinesCh:
+					line, lineType = string(lineBytes), pb.LogLine_TYPE_STDOUT
+				case lineBytes := <-stderrLinesCh:
+					line, lineType = string(lineBytes), pb.LogLine_TYPE_STDERR
+				}
+
+				if errSend := stream.Send(&pb.ProcsLogs{
+					Id: uint64(id),
+					Lines: []*pb.LogLine{ // TODO: collect lines for some time and send all at once
+						{
+							Line: line,
+							Time: timestamppb.Now(),
+							Type: lineType,
 						},
-					}); errSend != nil {
-						slog.Error(
-							"failed to send log",
-							slog.Uint64("procID", uint64(id)),
-							slog.Any("err", errSend),
-						)
-						return
-					}
+					},
+				}); errSend != nil {
+					slog.Error(
+						"failed to send log lines",
+						slog.Uint64("procID", uint64(id)),
+						slog.Any("err", errSend),
+					)
+					return
 				}
 			}
 		}(core.ProcID(id.GetId()))
@@ -597,7 +628,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, kek pb.Daemon_LogsServer) error {
 		select {
 		case <-allStopped:
 			return
-		case <-kek.Context().Done():
+		case <-stream.Context().Done():
 			return
 		}
 	}()
