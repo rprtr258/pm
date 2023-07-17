@@ -508,25 +508,19 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 
 	var wg sync.WaitGroup
 	for _, id := range req.GetIds() {
-		proc, ok := procs[core.ProcID(id.GetId())]
-		if !ok {
+		if _, ok := procs[core.ProcID(id.GetId())]; !ok {
 			slog.Info("tried to log unknown process", "procID", id.GetId())
-			continue
-		}
-		if proc.Status.Status != db.StatusRunning {
-			slog.Info("tried to log non-running process", "procID", id.GetId())
 			continue
 		}
 
 		wg.Add(2)
 		go func(id core.ProcID) {
-			defer wg.Done()
-
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
 			// TODO: proc.StdoutFile, proc.StderrFile
-			stdoutTailer := tail.File(filepath.Join(srv.logsDir, fmt.Sprintf("%d.stdout", id)), tail.Config{
+			stdoutFile := filepath.Join(srv.logsDir, fmt.Sprintf("%d.stdout", id))
+			stdoutTailer := tail.File(stdoutFile, tail.Config{
 				Follow:        true,
 				BufferSize:    1024 * 128, // 128 kb
 				NotifyTimeout: time.Minute,
@@ -538,16 +532,24 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 					select {
 					case <-ctx.Done():
 						close(stdoutLinesCh)
+						wg.Done()
+						return ctx.Err()
 					case stdoutLinesCh <- append([]byte(nil), l.Data...):
 					}
 					return nil
 				}); err != nil {
-					slog.Error("failed to tail log", slog.Uint64("procID", uint64(id)), slog.Any("err", err))
+					slog.Error(
+						"failed to tail log",
+						slog.Uint64("procID", uint64(id)),
+						slog.String("file", stdoutFile),
+						slog.Any("err", err),
+					)
 					// TODO: somehow call wg.Done() once with parent call
 				}
 			}()
 
-			stderrTailer := tail.File(filepath.Join(srv.logsDir, fmt.Sprintf("%d.stderr", id)), tail.Config{
+			stderrFile := filepath.Join(srv.logsDir, fmt.Sprintf("%d.stderr", id))
+			stderrTailer := tail.File(stderrFile, tail.Config{
 				Follow:        true,
 				BufferSize:    1024 * 128, // 128 kb
 				NotifyTimeout: time.Minute,
@@ -559,11 +561,18 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 					select {
 					case <-ctx.Done():
 						close(stderrLinesCh)
+						wg.Done()
+						return ctx.Err()
 					case stderrLinesCh <- append([]byte(nil), l.Data...):
 					}
 					return nil
 				}); err != nil {
-					slog.Error("failed to tail log", slog.Uint64("procID", uint64(id)), slog.Any("err", err))
+					slog.Error(
+						"failed to tail log",
+						slog.Uint64("procID", uint64(id)),
+						slog.String("file", stderrFile),
+						slog.Any("err", err),
+					)
 					// TODO: somehow call wg.Done() once with parent call
 				}
 			}()
