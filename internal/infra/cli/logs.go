@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/rprtr258/xerr"
@@ -39,7 +40,7 @@ func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
 				fmt.Println(fmt2.FormatComplex(
 					"{at} {proc} {sep} {line}",
 					map[string]any{
-						"at": color.HiBlackString("%s", line.At.Format("2006-01-02 15:04:05")),
+						"at": color.HiBlackString("%s", line.At.In(time.Local).Format("2006-01-02 15:04:05")),
 						// TODO: different colors for different IDs
 						// TODO: pass proc name
 						"proc": color.RedString("%d|%s", procLines.ID, "proc-name"),
