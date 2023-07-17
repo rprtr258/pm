@@ -84,6 +84,8 @@ func newVM() *jsonnet.VM {
 				return nil, xerr.NewM("filename must be a string", xerr.Fields{"filename": args[0]})
 			}
 
+			// TODO: somehow relative to cwd
+
 			data, errRead := os.ReadFile(filename)
 			if errRead != nil {
 				return nil, xerr.NewWM(errRead, "read env file", xerr.Fields{"filename": filename})
@@ -160,7 +162,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		relativeCwd := lo.
 			If(config.Cwd == nil, filepath.Dir(filename)).
 			ElseF(func() string { return *config.Cwd })
-		cwd, err := filepath.Abs(relativeCwd)
+		cwd, err := filepath.Abs(relativeCwd) // TODO: add config abs path instead
 		if err != nil {
 			slog.Error( // TODO: fail
 				"can't get absolute cwd",
