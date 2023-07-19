@@ -91,7 +91,6 @@ type ProcData struct {
 	// StderrFile  string
 	// RestartTries int
 	// RestartDelay    time.Duration
-	// Pid      int
 	// Respawns int
 }
 

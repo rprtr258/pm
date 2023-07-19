@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-faster/tail"
 	fun2 "github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
@@ -30,6 +29,25 @@ import (
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
+func procFields(proc db.ProcData) map[string]any {
+	return map[string]any{
+		"id":      proc.ProcID,
+		"command": proc.Command,
+		"cwd":     proc.Cwd,
+		"name":    proc.Name,
+		"args":    proc.Args,
+		"tags":    proc.Tags,
+		"watch":   proc.Watch,
+		"status":  proc.Status,
+		// TODO: uncomment
+		// "stdout_file": proc.StdoutFile,
+		// "stderr_file": proc.StderrFile,
+		// "restart_tries": proc.RestartTries,
+		// "restart_delay": proc.RestartDelay,
+		// "respawns":     proc.Respawns,
+	}
+}
+
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
 	db               db.Handle
@@ -40,8 +58,10 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 	if procs := srv.db.GetProcs([]core.ProcID{proc.ProcID}); len(procs) > 0 {
 		if len(procs) > 1 {
 			return xerr.NewF("invalid procs count got by id", xerr.Fields{
-				"id":    proc.ProcID,
-				"procs": procs,
+				"id": proc.ProcID,
+				"procs": lo.Map(procs, func(proc db.ProcData, _ int) map[string]any {
+					return procFields(proc)
+				}),
 			})
 		}
 
@@ -54,7 +74,7 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 	stdoutLogFilename := path.Join(srv.logsDir, procIDStr+".stdout")
 	stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": stdoutLogFile})
+		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": stdoutLogFilename})
 	}
 	defer stdoutLogFile.Close()
 
@@ -97,10 +117,10 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 	process, err := os.StartProcess(proc.Command, args, &procAttr)
 	if err != nil {
 		if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusInvalid()); errSetStatus != nil {
-			return xerr.NewWM(xerr.Combine(err, errSetStatus), "running failed, setting errored status failed")
+			return xerr.NewM("running failed, setting errored status failed", xerr.Errors{err, errSetStatus})
 		}
 
-		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": spew.Sprint(proc)})
+		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
 	}
 
 	runningStatus := db.NewStatusRunning(time.Now(), process.Pid)
@@ -126,7 +146,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 		}
 
 		if errStart := srv.start(proc); errStart != nil {
-			return nil, xerr.NewW(errStart, xerr.Fields{"proc": proc})
+			return nil, xerr.NewW(errStart, xerr.Fields{"proc": procFields(proc)})
 		}
 	}
 
@@ -364,13 +384,13 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *pb.ProcessOptions
 			if _, errStop := srv.stop(ctx, proc); errStop != nil {
 				return 0, xerr.NewWM(errStop, "stop process to update", xerr.Fields{
 					"procID":  procID,
-					"oldProc": proc,
-					"newProc": procData,
+					"oldProc": procFields(proc),
+					"newProc": procFields(procData),
 				})
 			}
 
 			if errUpdate := srv.db.UpdateProc(procData); errUpdate != nil {
-				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{"procData": procData})
+				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{"procData": procFields(procData)})
 			}
 
 			return procID, nil
