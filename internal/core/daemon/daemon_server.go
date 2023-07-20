@@ -216,9 +216,17 @@ func (srv *daemonServer) stop(ctx context.Context, proc db.ProcData) (bool, erro
 				return
 			}
 
-			slog.Info("process is not a child", "proc", proc)
+			slog.Info(
+				"process is not a child",
+				slog.Any("proc", procFields(proc)),
+			)
 		} else {
-			slog.Info("process is stopped", "proc", proc, "state", state)
+			slog.Info(
+				"process is stopped",
+				slog.Any("proc", procFields(proc)),
+				slog.Bool("is_state_nil", state == nil),
+				slog.Int("exit_code", state.ExitCode()),
+			)
 		}
 		doneCh <- state
 	}()

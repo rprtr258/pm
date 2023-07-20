@@ -301,10 +301,10 @@ func DaemonMain(ctx context.Context) error {
 		c := make(chan os.Signal, 10) //nolint:gomnd // arbitrary buffer size
 		signal.Notify(c, syscall.SIGCHLD)
 		for range c {
+			// wait for any of childs' death
 			for {
 				var status syscall.WaitStatus
-				var rusage syscall.Rusage
-				pid, errWait := syscall.Wait4(-1, &status, 0, &rusage)
+				pid, errWait := syscall.Wait4(-1, &status, 0, nil)
 				if pid < 0 {
 					break
 				}
