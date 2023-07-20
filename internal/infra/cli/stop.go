@@ -129,7 +129,7 @@ func (cmd *stopCmd) Run(
 
 	stoppedProcIDs, err := app.Stop(ctx, procIDs...)
 	if len(stoppedProcIDs) > 0 {
-		printIDs("", procIDs...)
+		printIDs("", stoppedProcIDs...)
 	} else {
 		fmt.Println("Nothing to stop")
 	}

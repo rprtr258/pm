@@ -17,10 +17,13 @@ var configFlag = &cli.StringFlag{
 }
 
 func printIDs(prefix string, ids ...core.ProcID) {
-	fmt.Print(prefix, ' ')
+	if prefix != "" {
+		fmt.Print(prefix, " ")
+	}
+
 	for i, id := range ids {
 		if i > 0 {
-			fmt.Print(' ')
+			fmt.Print(" ")
 		}
 		fmt.Print(id)
 	}

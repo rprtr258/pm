@@ -525,6 +525,8 @@ func (srv *daemonServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*em
 	return &emptypb.Empty{}, nil
 }
 
+const _procLogsBufferSize = 128 * 1024 // 128 kb
+
 func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 	// can't get incoming query in interceptor, so logging here also
 	slog.Info("Logs method called",
@@ -534,37 +536,44 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 	procs := srv.db.List() // TODO: filter by ids
 	done := make(chan struct{})
 
-	var wg sync.WaitGroup
+	var wgGlobal sync.WaitGroup
 	for _, id := range req.GetIds() {
 		if _, ok := procs[core.ProcID(id.GetId())]; !ok {
 			slog.Info("tried to log unknown process", "procID", id.GetId())
 			continue
 		}
 
-		wg.Add(2)
+		wgGlobal.Add(2)
 		go func(id core.ProcID) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			var wgLocal sync.WaitGroup
+
+			logLinesCh := make(chan *pb.LogLine)
+
 			// TODO: proc.StdoutFile, proc.StderrFile
+			wgLocal.Add(1)
 			stdoutFile := filepath.Join(srv.logsDir, fmt.Sprintf("%d.stdout", id))
 			stdoutTailer := tail.File(stdoutFile, tail.Config{
 				Follow:        true,
-				BufferSize:    1024 * 128, // 128 kb
+				BufferSize:    _procLogsBufferSize,
 				NotifyTimeout: time.Minute,
 				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -1000}, // TODO: limit offset by file size as with daemon logs
 			})
-			stdoutLinesCh := make(chan []byte)
 			go func() {
 				if err := stdoutTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
 					select {
 					case <-ctx.Done():
-						close(stdoutLinesCh)
-						wg.Done()
+						wgGlobal.Done()
 						return ctx.Err()
-					case stdoutLinesCh <- append([]byte(nil), l.Data...):
+					case logLinesCh <- &pb.LogLine{
+						Line: string(l.Data),
+						Time: timestamppb.Now(),
+						Type: pb.LogLine_TYPE_STDOUT,
+					}:
+						return nil
 					}
-					return nil
 				}); err != nil {
 					slog.Error(
 						"failed to tail log",
@@ -576,22 +585,25 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 				}
 			}()
 
+			wgLocal.Add(1)
 			stderrFile := filepath.Join(srv.logsDir, fmt.Sprintf("%d.stderr", id))
 			stderrTailer := tail.File(stderrFile, tail.Config{
 				Follow:        true,
-				BufferSize:    1024 * 128, // 128 kb
+				BufferSize:    _procLogsBufferSize,
 				NotifyTimeout: time.Minute,
 				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -1000}, // TODO: limit offset by file size as with daemon logs
 			})
-			stderrLinesCh := make(chan []byte)
 			go func() {
 				if err := stderrTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
 					select {
 					case <-ctx.Done():
-						close(stderrLinesCh)
-						wg.Done()
+						wgGlobal.Done()
 						return ctx.Err()
-					case stderrLinesCh <- append([]byte(nil), l.Data...):
+					case logLinesCh <- &pb.LogLine{
+						Line: string(l.Data),
+						Time: timestamppb.Now(),
+						Type: pb.LogLine_TYPE_STDERR,
+					}:
 					}
 					return nil
 				}); err != nil {
@@ -605,36 +617,31 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 				}
 			}()
 
-			var (
-				line     string
-				lineType pb.LogLine_Type
-			)
+			go func() {
+				wgLocal.Wait()
+				close(logLinesCh)
+			}()
+
 			for {
 				select {
 				case <-done:
 					return
-				case lineBytes := <-stdoutLinesCh:
-					line, lineType = string(lineBytes), pb.LogLine_TYPE_STDOUT
-				case lineBytes := <-stderrLinesCh:
-					line, lineType = string(lineBytes), pb.LogLine_TYPE_STDERR
-				}
+				case line, ok := <-logLinesCh:
+					if !ok {
+						return
+					}
 
-				if errSend := stream.Send(&pb.ProcsLogs{
-					Id: uint64(id),
-					Lines: []*pb.LogLine{ // TODO: collect lines for some time and send all at once
-						{
-							Line: line,
-							Time: timestamppb.Now(),
-							Type: lineType,
-						},
-					},
-				}); errSend != nil {
-					slog.Error(
-						"failed to send log lines",
-						slog.Uint64("procID", uint64(id)),
-						slog.Any("err", errSend),
-					)
-					return
+					if errSend := stream.Send(&pb.ProcsLogs{
+						Id:    uint64(id),
+						Lines: []*pb.LogLine{line}, // TODO: collect lines for some time and send all at once
+					}); errSend != nil {
+						slog.Error(
+							"failed to send log lines",
+							slog.Uint64("procID", uint64(id)),
+							slog.Any("err", errSend),
+						)
+						return
+					}
 				}
 			}
 		}(core.ProcID(id.GetId()))
@@ -642,7 +649,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 
 	allStopped := make(chan struct{})
 	go func() {
-		wg.Wait()
+		wgGlobal.Wait()
 		close(allStopped)
 	}()
 
