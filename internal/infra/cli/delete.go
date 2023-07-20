@@ -81,10 +81,10 @@ var _deleteCmd = &cli.Command{
 			if err != nil {
 				return xerr.NewWM(err, "delete")
 			}
-			fmt.Println("stopped", stoppedProcIDs)
+			printIDs("stopped", stoppedProcIDs...)
 
 			deletedProcIDs, errDelete := app.Delete(ctx.Context, procIDs...)
-			fmt.Println("deleted", deletedProcIDs)
+			printIDs("deleted", deletedProcIDs...)
 			if errDelete != nil {
 				return xerr.NewWM(errDelete, "delete")
 			}
@@ -115,13 +115,13 @@ var _deleteCmd = &cli.Command{
 		if err != nil {
 			return xerr.NewWM(err, "stop")
 		}
-		fmt.Println("stoped", stoppedProcIDs)
+		printIDs("stopped", stoppedProcIDs...)
 
-		procIDs, err = app.Delete(ctx.Context, procIDs...)
+		deletedProcIDs, err := app.Delete(ctx.Context, procIDs...)
+		printIDs("deleted", deletedProcIDs...)
 		if err != nil {
 			return xerr.NewWM(err, "delete")
 		}
-		fmt.Println("deleted", procIDs)
 
 		return nil
 	},

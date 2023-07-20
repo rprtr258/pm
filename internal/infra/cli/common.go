@@ -1,7 +1,11 @@
 package cli
 
 import (
+	"fmt"
+
 	"github.com/urfave/cli/v2"
+
+	"github.com/rprtr258/pm/internal/core"
 )
 
 var configFlag = &cli.StringFlag{
@@ -10,6 +14,17 @@ var configFlag = &cli.StringFlag{
 	Aliases:   []string{"f"},
 	TakesFile: true,
 	Required:  false,
+}
+
+func printIDs(prefix string, ids ...core.ProcID) {
+	fmt.Print(prefix, ' ')
+	for i, id := range ids {
+		if i > 0 {
+			fmt.Print(' ')
+		}
+		fmt.Print(id)
+	}
+	fmt.Println()
 }
 
 // { Name: "pid", commander.command('[app_name]')

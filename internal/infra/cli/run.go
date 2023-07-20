@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/rprtr258/fun"
@@ -138,7 +137,7 @@ var _runCmd = &cli.Command{
 			}
 
 			procIDs, errRun := app.Run(ctx.Context, runConfig)
-			fmt.Println(lo.ToAnySlice(procIDs)...)
+			printIDs("", procIDs...)
 			if errRun != nil {
 				return xerr.NewWM(errRun, "run command", xerr.Fields{"runConfig": runConfig, "procIDs": procIDs})
 			}
@@ -155,7 +154,7 @@ var _runCmd = &cli.Command{
 		if len(names) == 0 {
 			// no filtering by names, run all processes
 			procIDs, err := app.Run(ctx.Context, configs...)
-			fmt.Println(lo.ToAnySlice(procIDs)...)
+			printIDs("", procIDs...)
 			if err != nil {
 				return xerr.NewWM(err, "create all procs from config", xerr.Fields{"created procIDs": procIDs})
 			}
@@ -184,7 +183,7 @@ var _runCmd = &cli.Command{
 		}
 
 		procIDs, errCreate := app.Run(ctx.Context, lo.Values(configsByName)...)
-		fmt.Println(lo.ToAnySlice(procIDs)...)
+		printIDs("", procIDs...)
 		if errCreate != nil {
 			return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{
 				"names":           names,

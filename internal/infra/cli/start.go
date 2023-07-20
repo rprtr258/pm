@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/xerr"
@@ -78,7 +77,7 @@ var _startCmd = &cli.Command{
 				return xerr.NewWM(err, "client.start")
 			}
 
-			fmt.Println(lo.ToAnySlice(procIDs)...)
+			printIDs("", procIDs...)
 
 			return nil
 		}
@@ -116,7 +115,7 @@ var _startCmd = &cli.Command{
 			return xerr.NewWM(err, "client.start")
 		}
 
-		fmt.Println(lo.ToAnySlice(procIDs)...)
+		printIDs("", procIDs...)
 
 		return nil
 	},

@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/aquasecurity/table v1.8.0
-	github.com/davecgh/go-spew v1.1.1
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
 	github.com/fatih/color v1.15.0
 	github.com/go-faster/tail v0.3.0
@@ -28,6 +27,7 @@ require (
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-faster/errors v0.6.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
