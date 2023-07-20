@@ -21,10 +21,12 @@ var (
 
 type Config struct {
 	Version string
+	Debug   bool
 }
 
 var DefaultConfig = Config{
 	Version: Version,
+	Debug:   false,
 }
 
 func ReadConfig() (Config, error) {

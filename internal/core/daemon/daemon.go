@@ -16,6 +16,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	fmt2 "github.com/wissance/stringFormatter"
@@ -136,7 +137,7 @@ func startDaemon(ctx context.Context) (int, error) {
 	}
 
 	// i am daemon here
-	return 0, RunServer(ctx)
+	return 0, DaemonMain(ctx)
 }
 
 func EnsureRunning(ctx context.Context) error {
@@ -180,20 +181,26 @@ func Restart(ctx context.Context) (int, error) {
 	return startDaemon(ctx)
 }
 
-func migrate() error {
+func readPmConfig() (core.Config, error) {
 	config, errRead := core.ReadConfig()
 	if errRead != nil {
 		if errRead != core.ErrConfigNotExists {
-			return xerr.NewWM(errRead, "read config for migrate")
+			return core.Config{}, xerr.NewWM(errRead, "read config for migrate")
 		}
 
 		slog.Info("writing initial config...")
 
 		if errWrite := core.WriteConfig(core.DefaultConfig); errWrite != nil {
-			return xerr.NewWM(errWrite, "write initial config")
+			return core.Config{}, xerr.NewWM(errWrite, "write initial config")
 		}
+
+		return core.DefaultConfig, nil
 	}
 
+	return config, nil
+}
+
+func migrate(config core.Config) error {
 	if config.Version == core.Version {
 		return nil
 	}
@@ -239,12 +246,31 @@ func streamLoggerInterceptor(
 	return err
 }
 
-func RunServer(pCtx context.Context) error {
-	if errMigrate := migrate(); errMigrate != nil {
+func DaemonMain(ctx context.Context) error {
+	config, errConfig := readPmConfig()
+	if errConfig != nil {
+		return xerr.NewWM(errConfig, "read pm config")
+	}
+
+	slog.SetDefault(slog.New(lo.IfF(
+		config.Debug,
+		func() slog.Handler {
+			return log.NewDestructorHandler(log.NewPrettyHandler(os.Stderr))
+		}).ElseF(
+		func() slog.Handler {
+			return slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+				AddSource:   true,
+				Level:       slog.LevelInfo,
+				ReplaceAttr: nil,
+			})
+		})))
+
+	if errMigrate := migrate(config); errMigrate != nil {
 		return xerr.NewWM(errMigrate, "migrate to latest version", xerr.Fields{"version": core.Version})
 	}
 
-	ctx, cancel := context.WithCancel(pCtx)
+	var cancel func()
+	ctx, cancel = context.WithCancel(ctx)
 	defer cancel()
 
 	sock, errListen := net.Listen("unix", core.SocketRPC)

@@ -128,7 +128,11 @@ func (cmd *stopCmd) Run(
 	}
 
 	stoppedProcIDs, err := app.Stop(ctx, procIDs...)
-	fmt.Println(lo.ToAnySlice(stoppedProcIDs)...)
+	if len(stoppedProcIDs) > 0 {
+		fmt.Println(stoppedProcIDs)
+	} else {
+		fmt.Println("Nothing to stop")
+	}
 	if err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}
