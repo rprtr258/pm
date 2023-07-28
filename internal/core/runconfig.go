@@ -39,9 +39,9 @@ type RunConfig struct {
 	// Cwd - working directory
 	Cwd string
 	// StdoutFile - file to write stdout to
-	StdoutFile string
+	StdoutFile fun.Option[string]
 	// StderrFile - file to write stderr to
-	StderrFile string
+	StderrFile fun.Option[string]
 	// Args - arguments for process, not including executable itself as first argument
 	Args []string
 	// Tags - process tags, exluding `all` tag

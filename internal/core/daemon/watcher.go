@@ -15,25 +15,79 @@ import (
 type watcherEntry struct {
 	rootDir string
 	pattern *regexp.Regexp
-	fn      func() error
+	fn      func(context.Context) error
 }
 
 type watcher struct {
 	watcher     *fsnotify.Watcher
 	watchplaces map[core.ProcID]watcherEntry
+	dirs        map[string][]core.ProcID // dir -> proc ids using that dir
+}
+
+func (w watcher) Add(procID core.ProcID, dir string, pattern string, fn func(context.Context) error) {
+	if _, ok := w.watchplaces[procID]; ok {
+		return
+	}
+
+	re, errCompilePattern := regexp.Compile(pattern)
+	if errCompilePattern != nil {
+		slog.Error(
+			"pattern compilation failed",
+			slog.Uint64("proc_id", uint64(procID)),
+			slog.String("pattern", pattern),
+			slog.Any("err", errCompilePattern),
+		)
+		return
+	}
+
+	w.watchplaces[procID] = watcherEntry{
+		rootDir: dir,
+		pattern: re,
+		fn:      fn,
+	}
+
+	if errWalk := filepath.Walk(dir, w.walker(procID)); errWalk != nil {
+		slog.Error(
+			"walk failed",
+			slog.String("rootDir", dir),
+			slog.Any("err", errWalk),
+		)
+	}
+}
+
+func (w watcher) Remove(procIDs ...core.ProcID) {
+	for dir, procs := range w.dirs {
+		leftProcIDs := []core.ProcID{}
+		for _, procID := range procs {
+			take := true
+			for _, procID2 := range procIDs {
+				if procID == procID2 {
+					take = false
+					break
+				}
+			}
+			if take {
+				leftProcIDs = append(leftProcIDs, procID)
+			}
+		}
+
+		if len(leftProcIDs) > 0 {
+			w.dirs[dir] = leftProcIDs
+		} else {
+			delete(w.dirs, dir)
+			if errRm := w.watcher.Remove(dir); errRm != nil {
+				slog.Error(
+					"remove watch on dir failed",
+					slog.Any("proc_ids", procIDs),
+					slog.String("dir", dir),
+					slog.Any("err", errRm),
+				)
+			}
+		}
+	}
 }
 
 func (w watcher) start(ctx context.Context) {
-	for _, wp := range w.watchplaces {
-		if err := filepath.Walk(wp.rootDir, w.walker); err != nil {
-			slog.Error(
-				"initial walk failed",
-				slog.String("rootDir", wp.rootDir),
-				slog.Any("err", err),
-			)
-		}
-	}
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -50,7 +104,7 @@ func (w watcher) start(ctx context.Context) {
 					continue
 				}
 
-				if err := wp.fn(); err != nil {
+				if err := wp.fn(ctx); err != nil {
 					slog.Error(
 						"call watcher function failed",
 						slog.Uint64("procID", uint64(procID)),
@@ -61,7 +115,8 @@ func (w watcher) start(ctx context.Context) {
 			}
 
 			if e.Op&fsnotify.Create != 0 && stat.IsDir() {
-				if err := filepath.Walk(e.Name, w.walker); err != nil {
+				procIDs := w.dirs[filepath.Dir(e.Name)]
+				if err := filepath.Walk(e.Name, w.walker(procIDs...)); err != nil {
 					slog.Error(
 						"walk for created dir failed",
 						slog.String("dirname", e.Name),
@@ -75,18 +130,32 @@ func (w watcher) start(ctx context.Context) {
 	}
 }
 
-func (w watcher) walker(path string, f os.FileInfo, err error) error {
-	if err != nil || !f.IsDir() {
-		return nil //nolint:nilerr // skip if not dir
+func (w watcher) walker(procIDs ...core.ProcID) filepath.WalkFunc {
+	if len(procIDs) == 0 {
+		return func(path string, f os.FileInfo, err error) error {
+			return filepath.SkipDir
+		}
 	}
 
-	if err := w.watcher.Add(path); err != nil {
-		slog.Error(
-			"watch new path",
-			slog.String("path", path),
-			slog.Any("err", err),
-		)
-	}
+	return func(path string, f os.FileInfo, err error) error {
+		if _, ok := w.dirs[path]; ok {
+			return filepath.SkipDir
+		}
 
-	return nil
+		if err != nil || !f.IsDir() {
+			return nil //nolint:nilerr // skip if not dir
+		}
+
+		if err := w.watcher.Add(path); err != nil {
+			slog.Error(
+				"watch new path",
+				slog.String("path", path),
+				slog.Any("err", err),
+			)
+		}
+
+		w.dirs[path] = append(w.dirs[path], procIDs...)
+
+		return nil
+	}
 }

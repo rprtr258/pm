@@ -40,6 +40,8 @@ help: # show list of all commands
 bindir:
 	mkdir -p ${BINDIR}
 
+
+
 ## Development
 
 db: # open database
@@ -68,6 +70,10 @@ install-protoc-gen-go-grpc: bindir
 	@test -f ${PROTOCGENGOGRPCBIN} || \
 		(GOBIN=${BINDIR} go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${PROTOCGENGOGRPCVER})
 
+
+
+## Generators
+
 gen-proto: install-protoc install-protoc-gen-go install-protoc-gen-go-grpc # compile go sources for protobuf
 	# service proto
 	rm api/*.pb.go || true
@@ -79,6 +85,8 @@ gen-proto: install-protoc install-protoc-gen-go install-protoc-gen-go-grpc # com
 		--go-grpc_out=. \
 		--go-grpc_opt=paths=source_relative \
 		api/api.proto
+
+
 
 ## CI
 
@@ -115,6 +123,8 @@ lint-go: install-linter # run go linter
 
 lint: lint-proto lint-go # run all linters
 
+
+
 ## Test
 
 test: # run tests
@@ -127,6 +137,8 @@ test-e2e: # run integration tests
 test-e2e-docker: # run integration tests in docker
 	@docker build -t pm-e2e --file tests/Dockerfile .
 	@docker run pm-e2e
+
+
 
 ## Run & test
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"syscall"
 
 	"github.com/rprtr258/fun"
@@ -168,6 +169,11 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcI
 			Cwd:     config.Cwd,
 			Tags:    config.Tags,
 			Env:     config.Env,
+			Watch: fun.OptMap(config.Watch, func(r *regexp.Regexp) string {
+				return r.String()
+			}).Ptr(),
+			StdoutFile: config.StdoutFile.Ptr(),
+			StderrFile: config.StdoutFile.Ptr(),
 		})
 	}
 
@@ -185,7 +191,7 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcI
 	})
 
 	if errStart := app.client.Start(ctx, procIDs); errStart != nil {
-		return createdProcIDs, xerr.NewWM(errStart, "start processes")
+		return createdProcIDs, xerr.NewWM(errStart, "start processes", xerr.Errors{merr})
 	}
 
 	return createdProcIDs, merr

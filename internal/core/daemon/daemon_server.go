@@ -51,6 +51,7 @@ func procFields(proc db.ProcData) map[string]any {
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
 	db               db.Handle
+	watcher          watcher
 	homeDir, logsDir string
 }
 
@@ -121,6 +122,27 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 		}
 
 		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
+	}
+
+	if proc.Watch != nil {
+		srv.watcher.Add(
+			proc.ProcID,
+			proc.Cwd,
+			*proc.Watch,
+			func(ctx context.Context) error {
+				ids := &pb.IDs{
+					Ids: []*pb.ProcessID{{Id: uint64(proc.ProcID)}},
+				}
+
+				// TODO: do not touch watcher during stopping, starting
+				if _, errStop := srv.Stop(ctx, ids); errStop != nil {
+					return errStop
+				}
+
+				_, errStart := srv.Start(ctx, ids)
+				return errStart
+			},
+		)
 	}
 
 	runningStatus := db.NewStatusRunning(time.Now(), process.Pid)
@@ -293,6 +315,8 @@ func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error)
 		}
 	}
 
+	srv.watcher.Remove(stoppedIDs...)
+
 	return &pb.IDs{
 		Ids: lo.Map(stoppedIDs, func(id core.ProcID, _ int) *pb.ProcessID {
 			return &pb.ProcessID{Id: uint64(id)}
@@ -374,7 +398,7 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *pb.ProcessOptions
 				Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
 				Command: procOpts.GetCommand(),
 				Args:    procOpts.GetArgs(),
-				Watch:   nil,
+				Watch:   procOpts.Watch,
 				Env:     procOpts.GetEnv(),
 			}
 
@@ -413,7 +437,7 @@ func (srv *daemonServer) create(ctx context.Context, procOpts *pb.ProcessOptions
 		Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
 		Command: procOpts.GetCommand(),
 		Args:    procOpts.GetArgs(),
-		Watch:   fun2.Option[string]{},
+		Watch:   fun2.FromPtr(procOpts.Watch),
 		Env:     procOpts.Env,
 	})
 	if err != nil {

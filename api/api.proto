@@ -38,6 +38,9 @@ message ProcessOptions {
   string cwd = 4;
   repeated string tags = 5;
   map<string, string> env = 6;
+  optional string watch = 7;
+  optional string stdout_file = 8;
+  optional string stderr_file = 9;
 }
 
 message ProcessesList {

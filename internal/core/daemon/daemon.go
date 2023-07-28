@@ -278,12 +278,26 @@ func DaemonMain(ctx context.Context) error {
 	if errListen != nil {
 		return xerr.NewWM(errListen, "net.Listen on rpc socket", xerr.Fields{"socket": core.SocketRPC})
 	}
-	defer sock.Close()
+	defer deferErr(sock.Close)
 
 	dbHandle, errDBNew := db.New(_dirDB)
 	if errDBNew != nil {
 		return xerr.NewWM(errDBNew, "create db")
 	}
+
+	watcherr, err := fsnotify.NewWatcher()
+	if err != nil {
+		return xerr.NewWM(err, "create watcher")
+	}
+	defer deferErr(watcherr.Close)
+
+	// TODO: rewrite in EDA style, remove from daemonServer
+	watcher := watcher{
+		watcher:     watcherr,
+		watchplaces: map[core.ProcID]watcherEntry{},
+		dirs:        map[string][]core.ProcID{},
+	}
+	go watcher.start(ctx)
 
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
@@ -294,6 +308,7 @@ func DaemonMain(ctx context.Context) error {
 		db:                        dbHandle,
 		homeDir:                   core.DirHome,
 		logsDir:                   _dirProcsLogs,
+		watcher:                   watcher,
 	})
 
 	slog.Info("daemon started", "socket", sock.Addr())
@@ -342,15 +357,6 @@ func DaemonMain(ctx context.Context) error {
 		}
 	}()
 
-	watcherr, err := fsnotify.NewWatcher()
-	if err != nil {
-		return xerr.NewWM(err, "create watcher")
-	}
-
-	go watcher{
-		watcher:     watcherr,
-		watchplaces: map[core.ProcID]watcherEntry{},
-	}.start(ctx)
 	go cron{
 		l:                 slog.Default().WithGroup("cron"),
 		db:                dbHandle,
