@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/log"
@@ -341,6 +342,15 @@ func DaemonMain(ctx context.Context) error {
 		}
 	}()
 
+	watcherr, err := fsnotify.NewWatcher()
+	if err != nil {
+		return xerr.NewWM(err, "create watcher")
+	}
+
+	go watcher{
+		watcher:     watcherr,
+		watchplaces: map[core.ProcID]watcherEntry{},
+	}.start(ctx)
 	go cron{
 		l:                 slog.Default().WithGroup("cron"),
 		db:                dbHandle,
