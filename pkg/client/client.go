@@ -186,7 +186,7 @@ func (c Client) Logs(ctx context.Context, ids ...uint64) (LogsIterator, error) {
 		for {
 			select {
 			case <-ctx.Done():
-				res2.Err <- ctx.Err()
+				res2.Err <- nil
 				return
 			default:
 				line, err := res.Recv()

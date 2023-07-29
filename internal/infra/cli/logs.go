@@ -20,7 +20,7 @@ func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return xerr.NewWM(ctx.Err(), "context canceled")
+			return nil
 		case procLines, ok := <-ch:
 			if !ok {
 				return nil

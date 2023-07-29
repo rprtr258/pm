@@ -202,7 +202,7 @@ func (r Runner) Start1(procID core.ProcID) (int, error) {
 // 	for _, proc := range procs {
 // 		select {
 // 		case <-ctx.Done():
-// 			return xerr.NewWM(ctx.Err(), "context canceled")
+// 			return nil
 // 		default:
 // 		}
 
@@ -277,7 +277,7 @@ func (r Runner) Stop1(ctx context.Context, procID core.ProcID) (bool, error) {
 			return false, xerr.NewWM(errKill, "kill process", xerr.Fields{"pid": process.Pid})
 		}
 	case <-ctx.Done():
-		return false, xerr.NewWM(ctx.Err(), "context canceled")
+		return false, nil
 	case <-doneCh:
 	}
 
@@ -291,7 +291,7 @@ func (r Runner) Stop1(ctx context.Context, procID core.ProcID) (bool, error) {
 // 	for _, procID := range procIDs {
 // 		select {
 // 		case <-ctx.Done():
-// 			return nil, xerr.NewWM(ctx.Err(), "context canceled")
+// 			return nil, nil
 // 		default:
 // 		}
 
@@ -317,7 +317,7 @@ func (r Runner) signal(
 ) error {
 	select {
 	case <-ctx.Done():
-		return xerr.NewWM(ctx.Err(), "context canceled")
+		return nil
 	default:
 	}
 

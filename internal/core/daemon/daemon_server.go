@@ -233,7 +233,7 @@ func streamFile(
 			select {
 			case <-ctx.Done():
 				wgGlobal.Done()
-				return ctx.Err()
+				return nil
 			case logLinesCh <- &pb.LogLine{
 				Line: string(l.Data),
 				Time: timestamppb.Now(),
