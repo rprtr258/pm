@@ -63,13 +63,15 @@ var _deleteCmd = &cli.Command{
 
 		if !ctx.IsSet("config") {
 			// TODO: extract to filter struct
-			procIDs := core.FilterProcs[core.ProcID](
+			procIDs := core.FilterProcMap[core.ProcID](
 				list,
-				core.WithGeneric(args),
-				core.WithIDs(ids),
-				core.WithNames(names),
-				core.WithTags(tags),
-				core.WithAllIfNoFilters,
+				core.NewFilter(
+					core.WithGeneric(args),
+					core.WithIDs(ids),
+					core.WithNames(names),
+					core.WithTags(tags),
+					core.WithAllIfNoFilters,
+				),
 			)
 
 			if len(procIDs) == 0 {
@@ -102,13 +104,15 @@ var _deleteCmd = &cli.Command{
 			return xerr.NewWM(errList, "list by run configs", xerr.Fields{"configs": configs})
 		}
 
-		procIDs := core.FilterProcs[core.ProcID](
+		procIDs := core.FilterProcMap[core.ProcID](
 			list,
-			core.WithGeneric(args),
-			core.WithIDs(ids),
-			core.WithNames(names),
-			core.WithTags(tags),
-			core.WithAllIfNoFilters,
+			core.NewFilter(
+				core.WithGeneric(args),
+				core.WithIDs(ids),
+				core.WithNames(names),
+				core.WithTags(tags),
+				core.WithAllIfNoFilters,
+			),
 		)
 
 		stoppedProcIDs, err := app.Stop(ctx.Context, procIDs...)

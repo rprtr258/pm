@@ -101,12 +101,14 @@ var _logsCmd = &cli.Command{
 		}
 
 		if !ctx.IsSet("config") {
-			procIDs := core.FilterProcs[core.ProcID](
+			procIDs := core.FilterProcMap[core.ProcID](
 				list,
-				core.WithGeneric(args),
-				core.WithIDs(ids),
-				core.WithNames(names),
-				core.WithTags(tags),
+				core.NewFilter(
+					core.WithGeneric(args),
+					core.WithIDs(ids),
+					core.WithNames(names),
+					core.WithTags(tags),
+				),
 			)
 
 			if len(procIDs) == 0 {
@@ -137,13 +139,15 @@ var _logsCmd = &cli.Command{
 		}
 
 		// TODO: reuse filter options
-		procIDs := core.FilterProcs[core.ProcID](
+		procIDs := core.FilterProcMap[core.ProcID](
 			filteredList,
-			core.WithAllIfNoFilters,
-			core.WithGeneric(args),
-			core.WithIDs(ids),
-			core.WithNames(names),
-			core.WithTags(tags),
+			core.NewFilter(
+				core.WithGeneric(args),
+				core.WithIDs(ids),
+				core.WithNames(names),
+				core.WithTags(tags),
+				core.WithAllIfNoFilters,
+			),
 		)
 
 		if len(procIDs) == 0 {

@@ -72,13 +72,15 @@ func (app App) Signal(
 	procs map[core.ProcID]core.Proc,
 	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
 ) ([]core.ProcID, error) {
-	procIDs := core.FilterProcs[core.ProcID](
+	procIDs := core.FilterProcMap[core.ProcID](
 		procs,
-		core.WithGeneric(args),
-		core.WithIDs(ids),
-		core.WithNames(names),
-		core.WithTags(tags),
-		core.WithAllIfNoFilters,
+		core.NewFilter(
+			core.WithGeneric(args),
+			core.WithIDs(ids),
+			core.WithNames(names),
+			core.WithTags(tags),
+			core.WithAllIfNoFilters,
+		),
 	)
 
 	if len(procIDs) == 0 {

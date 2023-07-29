@@ -248,13 +248,15 @@ func list(
 		return xerr.NewWM(err, "list server call")
 	}
 
-	procIDsToShow := core.FilterProcs[core.ProcID](
+	procIDsToShow := core.FilterProcMap[core.ProcID](
 		list,
-		core.WithAllIfNoFilters,
-		core.WithGeneric(genericFilters),
-		core.WithIDs(idFilters),
-		core.WithNames(nameFilters),
-		core.WithTags(tagFilters),
+		core.NewFilter(
+			core.WithAllIfNoFilters,
+			core.WithGeneric(genericFilters),
+			core.WithIDs(idFilters),
+			core.WithNames(nameFilters),
+			core.WithTags(tagFilters),
+		),
 	)
 
 	procsToShow := fun.MapDict(procIDsToShow, list)

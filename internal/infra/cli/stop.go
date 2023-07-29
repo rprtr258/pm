@@ -113,13 +113,15 @@ func (cmd *stopCmd) Run(
 		return xerr.NewWM(errNewApp, "new app")
 	}
 
-	procIDs := core.FilterProcs[core.ProcID](
+	procIDs := core.FilterProcMap[core.ProcID](
 		configList,
-		core.WithGeneric(cmd.args),
-		core.WithIDs(cmd.ids),
-		core.WithNames(cmd.names),
-		core.WithTags(cmd.tags),
-		core.WithAllIfNoFilters,
+		core.NewFilter(
+			core.WithGeneric(cmd.args),
+			core.WithIDs(cmd.ids),
+			core.WithNames(cmd.names),
+			core.WithTags(cmd.tags),
+			core.WithAllIfNoFilters,
+		),
 	)
 
 	if len(procIDs) == 0 {
