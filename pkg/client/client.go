@@ -164,8 +164,9 @@ func (c Client) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-type LogsIterator interface {
-	Recv() (*pb.ProcsLogs, error)
+type LogsIterator struct {
+	Logs chan *pb.ProcsLogs
+	Err  chan error
 }
 
 func (c Client) Logs(ctx context.Context, ids ...uint64) (LogsIterator, error) {
@@ -173,8 +174,31 @@ func (c Client) Logs(ctx context.Context, ids ...uint64) (LogsIterator, error) {
 		Ids: ids,
 	})
 	if err != nil {
-		return nil, xerr.NewWM(err, "server.logs")
+		return fun.Zero[LogsIterator](), xerr.NewWM(err, "server.logs")
 	}
 
-	return res, nil
+	res2 := LogsIterator{
+		Logs: make(chan *pb.ProcsLogs),
+		Err:  make(chan error, 1),
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				res2.Err <- ctx.Err()
+				return
+			default:
+				line, err := res.Recv()
+				if err != nil {
+					res2.Err <- err
+					return
+				}
+
+				res2.Logs <- line
+			}
+		}
+	}()
+
+	return res2, nil
 }

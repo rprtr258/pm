@@ -227,32 +227,21 @@ func (app App) Logs(ctx context.Context, ids ...core.ProcID) (<-chan core.ProcLo
 			select {
 			case <-ctx.Done():
 				return
-			default:
-				procLogs, err := iter.Recv()
-				if err != nil {
-					slog.Error("failed to receive log line", slog.Any("err", err))
-					return
-				}
-
+			case errIter := <-iter.Err:
+				slog.Error("failed to receive log line", slog.Any("err", errIter))
+				return
+			case procLogs := <-iter.Logs:
 				res <- core.ProcLogs{
 					ID: core.ProcID(procLogs.GetId()),
 					Lines: fun.Map(procLogs.GetLines(), func(line *pb.LogLine) core.LogLine {
-						var logType core.LogType
-						switch line.GetType() {
-						case pb.LogLine_TYPE_STDOUT:
-							logType = core.LogTypeStdout
-						case pb.LogLine_TYPE_STDERR:
-							logType = core.LogTypeStderr
-						case pb.LogLine_TYPE_UNSPECIFIED:
-							logType = core.LogTypeUnspecified
-						default:
-							logType = core.LogTypeUnspecified
-						}
-
 						return core.LogLine{
 							At:   line.GetTime().AsTime(),
 							Line: line.GetLine(),
-							Type: logType,
+							Type: lo.
+								Switch[pb.LogLine_Type, core.LogType](line.GetType()).
+								Case(pb.LogLine_TYPE_STDOUT, core.LogTypeStdout).
+								Case(pb.LogLine_TYPE_STDERR, core.LogTypeStderr).
+								Default(core.LogTypeUnspecified),
 						}
 					}),
 				}
