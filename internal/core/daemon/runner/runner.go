@@ -15,6 +15,7 @@ import (
 	"golang.org/x/exp/slog"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/db"
@@ -43,6 +44,7 @@ type Runner struct {
 	DB      db.Handle
 	Watcher watcher.Watcher
 	LogsDir string
+	Ebus    *eventbus.EventBus
 }
 
 type CreateQuery struct {
@@ -201,11 +203,7 @@ func (r Runner) start(procID core.ProcID) error {
 		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
 	}
 
-	// TODO: fill/remove cpu, memory
-	runningStatus := core.NewStatusRunning(time.Now(), process.Pid, 0, 0)
-	if err := r.DB.SetStatus(proc.ID, runningStatus); err != nil {
-		return xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ID})
-	}
+	r.Ebus.PublishProcStarted(proc, process.Pid)
 
 	return nil
 }
@@ -222,27 +220,6 @@ func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
 
 		if errStart := r.start(proc.ID); errStart != nil {
 			return xerr.NewW(errStart, xerr.Fields{"proc": procFields(proc)})
-		}
-
-		procID := proc.ID
-		if watch, ok := proc.Watch.Unpack(); ok {
-			r.Watcher.Add(
-				proc.ID,
-				proc.Cwd,
-				watch,
-				func(ctx context.Context) error {
-					slog.Info(
-						"triggered process restart by watch",
-						slog.Uint64("procID", procID),
-					)
-
-					if _, errStop := r.stop(ctx, procID); errStop != nil {
-						return errStop
-					}
-
-					return r.start(procID)
-				},
-			)
 		}
 	}
 

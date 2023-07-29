@@ -21,6 +21,7 @@ import (
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/core/daemon/runner"
 	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/core/pm"
@@ -282,6 +283,9 @@ func DaemonMain(ctx context.Context) error {
 		return xerr.NewWM(errDBNew, "create db")
 	}
 
+	ebus := eventbus.New()
+	defer ebus.Close()
+
 	watcherr, err := fsnotify.NewWatcher()
 	if err != nil {
 		return xerr.NewWM(err, "create watcher")
@@ -289,7 +293,7 @@ func DaemonMain(ctx context.Context) error {
 	defer deferErr(watcherr.Close)
 
 	// TODO: rewrite in EDA style, remove from daemonServer
-	watcher := watcher.New(watcherr)
+	watcher := watcher.New(watcherr, ebus)
 	go watcher.Start(ctx)
 
 	srv := grpc.NewServer(
@@ -301,11 +305,12 @@ func DaemonMain(ctx context.Context) error {
 		db:                        dbHandle,
 		homeDir:                   core.DirHome,
 		logsDir:                   _dirProcsLogs,
-		watcher:                   watcher,
+		ebus:                      ebus,
 		runner: runner.Runner{
 			DB:      dbHandle,
 			Watcher: watcher,
 			LogsDir: _dirProcsLogs,
+			Ebus:    ebus,
 		},
 	})
 
@@ -337,18 +342,46 @@ func DaemonMain(ctx context.Context) error {
 					continue
 				}
 
-				dbStatus := core.NewStatusStopped(status.ExitStatus())
-				if err := dbHandle.SetStatus(procID, dbStatus); err != nil {
-					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
-						slog.Error("proc not found while trying to set status",
-							"procID", procID,
-							"new status", dbStatus,
+				ebus.PublishProcStopped(procID, status.ExitStatus())
+			}
+		}
+	}()
+
+	// status updater
+	statusUpdaterCh := ebus.Subscribe(eventbus.KindProcStarted, eventbus.KindProcStopped)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-statusUpdaterCh:
+				switch e := event.Data.(type) {
+				case eventbus.DataProcStarted:
+					// TODO: fill/remove cpu, memory
+					runningStatus := core.NewStatusRunning(time.Now(), e.Pid, 0, 0)
+					if err := dbHandle.SetStatus(e.Proc.ID, runningStatus); err != nil {
+						slog.Error(
+							"set proc status to running",
+							slog.Uint64("proc_id", e.Proc.ID),
+							slog.Any("new_status", runningStatus),
 						)
-					} else {
-						slog.Error("set proc status",
-							"procID", procID,
-							"new status", dbStatus,
-						)
+					}
+				case eventbus.DataProcStopped:
+					dbStatus := core.NewStatusStopped(e.ExitCode)
+					if err := dbHandle.SetStatus(e.ProcID, dbStatus); err != nil {
+						if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
+							slog.Error(
+								"proc not found while trying to set stopped status",
+								slog.Uint64("proc_id", e.ProcID),
+								slog.Int("exit_code", e.ExitCode),
+							)
+						} else {
+							slog.Error(
+								"set proc status to stopped",
+								slog.Uint64("proc_id", e.ProcID),
+								slog.Any("new_status", dbStatus),
+							)
+						}
 					}
 				}
 			}

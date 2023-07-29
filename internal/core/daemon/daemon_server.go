@@ -20,15 +20,15 @@ import (
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/core/daemon/runner"
-	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
 	db               db.Handle
-	watcher          watcher.Watcher
+	ebus             *eventbus.EventBus
 	runner           runner.Runner
 	homeDir, logsDir string
 }

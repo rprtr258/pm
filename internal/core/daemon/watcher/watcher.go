@@ -10,29 +10,34 @@ import (
 	"golang.org/x/exp/slog"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 )
 
 type watcherEntry struct {
 	rootDir string
 	pattern *regexp.Regexp
-	fn      func(context.Context) error
 }
 
 type Watcher struct {
 	watcher     *fsnotify.Watcher
 	watchplaces map[core.ProcID]watcherEntry
 	dirs        map[string][]core.ProcID // dir -> proc ids using that dir
+	ebus        *eventbus.EventBus
+	statusCh    <-chan eventbus.Event
 }
 
-func New(watcher *fsnotify.Watcher) Watcher {
+func New(watcher *fsnotify.Watcher, ebus *eventbus.EventBus) Watcher {
+	statusCh := ebus.Subscribe(eventbus.KindProcStarted, eventbus.KindProcStopped)
 	return Watcher{
 		watcher:     watcher,
 		watchplaces: make(map[core.ProcID]watcherEntry),
 		dirs:        make(map[string][]core.ProcID),
+		statusCh:    statusCh,
+		ebus:        ebus,
 	}
 }
 
-func (w Watcher) Add(procID core.ProcID, dir string, pattern string, fn func(context.Context) error) {
+func (w Watcher) Add(procID core.ProcID, dir string, pattern string) {
 	slog.Info(
 		"adding watch dir",
 		slog.Uint64("proc_id", procID),
@@ -58,7 +63,6 @@ func (w Watcher) Add(procID core.ProcID, dir string, pattern string, fn func(con
 	w.watchplaces[procID] = watcherEntry{
 		rootDir: dir,
 		pattern: re,
-		fn:      fn,
 	}
 
 	if errWalk := filepath.Walk(dir, w.walker(procID)); errWalk != nil {
@@ -112,6 +116,23 @@ func (w Watcher) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case event := <-w.statusCh:
+			switch e := event.Data.(type) {
+			case eventbus.DataProcStarted:
+				if _, ok := w.watchplaces[e.Proc.ID]; ok {
+					continue
+				}
+
+				if watch, ok := e.Proc.Watch.Unpack(); ok {
+					w.Add(e.Proc.ID, e.Proc.Cwd, watch)
+				}
+			case eventbus.DataProcStopped:
+				if _, ok := w.watchplaces[e.ProcID]; ok {
+					continue
+				}
+
+				w.Remove(e.ProcID)
+			}
 		// TODO: unburst, also for logs
 		case e := <-w.watcher.Events:
 			stat, err := os.Stat(e.Name)
@@ -124,14 +145,7 @@ func (w Watcher) Start(ctx context.Context) {
 					continue
 				}
 
-				if err := wp.fn(ctx); err != nil {
-					slog.Error(
-						"call watcher function failed",
-						slog.Uint64("procID", procID),
-						slog.String("event", e.String()),
-						slog.Any("err", err),
-					)
-				}
+				w.ebus.PublishProcRestartRequest(procID)
 			}
 
 			if e.Op&fsnotify.Create != 0 && stat.IsDir() {
