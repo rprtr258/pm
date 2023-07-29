@@ -142,8 +142,8 @@ func mapStatus(status core.Status) *pb.ProcessStatus {
 				Pid:       int64(status.Pid),
 				StartTime: timestamppb.New(status.StartTime),
 				// TODO: get from /proc/PID/stat
-				// Cpu:       status.CPU,
-				// Memory:    status.Memory,
+				Cpu:    status.CPU,
+				Memory: status.Memory,
 			},
 		}}
 	default:
