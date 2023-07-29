@@ -8,12 +8,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/go-faster/tail"
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slog"
@@ -91,8 +91,8 @@ func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error)
 	}, err
 }
 
-func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {
-	if proc.Status.Status != db.StatusRunning {
+func (srv *daemonServer) signal(proc core.ProcData, signal syscall.Signal) error {
+	if proc.Status.Status != core.StatusRunning {
 		slog.Info("tried to send signal to non-running process",
 			"proc", proc,
 			"signal", signal,
@@ -131,15 +131,15 @@ func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {
 func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.IDs, error) {
 	procIDs, err := srv.runner.Create(ctx, lo.Map(req.GetOptions(), func(opts *pb.ProcessOptions, _ int) runner.CreateQuery {
 		return runner.CreateQuery{
-			Name:       opts.Name,
+			Name:       fun.FromPtr(opts.Name),
 			Cwd:        opts.GetCwd(),
 			Tags:       opts.GetTags(),
 			Command:    opts.GetCommand(),
 			Args:       opts.GetArgs(),
-			Watch:      opts.Watch,
+			Watch:      fun.FromPtr(opts.Watch),
 			Env:        opts.GetEnv(),
-			StdoutFile: opts.StdoutFile,
-			StderrFile: opts.StderrFile,
+			StdoutFile: fun.FromPtr(opts.StdoutFile),
+			StderrFile: fun.FromPtr(opts.StderrFile),
 		}
 	})...)
 	if err != nil {
@@ -161,7 +161,7 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 	list := srv.db.List()
 
 	return &pb.ProcessesList{
-		Processes: lo.MapToSlice(list, func(id core.ProcID, proc db.ProcData) *pb.Process {
+		Processes: lo.MapToSlice(list, func(id core.ProcID, proc core.ProcData) *pb.Process {
 			return &pb.Process{
 				Id:      uint64(id),
 				Status:  mapStatus(proc.Status),
@@ -170,7 +170,7 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 				Tags:    proc.Tags,
 				Command: proc.Command,
 				Args:    proc.Args,
-				Watch:   proc.Watch,
+				Watch:   proc.Watch.Ptr(),
 				// TODO: fill with dirs if nil
 				// StdoutFile: proc.StdoutFile,
 				// StderrFile: proc.StderrFile,
@@ -180,20 +180,20 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 }
 
 //nolint:exhaustruct // can't return api.isProcessStatus_Status
-func mapStatus(status db.Status) *pb.ProcessStatus {
+func mapStatus(status core.Status) *pb.ProcessStatus {
 	switch status.Status {
-	case db.StatusInvalid:
+	case core.StatusInvalid:
 		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Invalid{}}
-	case db.StatusCreated:
+	case core.StatusCreated:
 		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Created{}}
-	case db.StatusStopped:
+	case core.StatusStopped:
 		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Stopped{
 			Stopped: &pb.StoppedProcessStatus{
 				ExitCode:  int64(status.ExitCode),
 				StoppedAt: timestamppb.New(status.StoppedAt),
 			},
 		}}
-	case db.StatusRunning:
+	case core.StatusRunning:
 		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Running{
 			Running: &pb.RunningProcessStatus{
 				Pid:       int64(status.Pid),
@@ -287,14 +287,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 
 			wgLocal.Add(1)
 
-			procIDStr := strconv.FormatUint(uint64(id), 10) //nolint:gomnd // decimal
-
-			stdoutFile := lo.
-				If(proc.StdoutFile == nil, filepath.Join(srv.logsDir, procIDStr+".stdout")).
-				ElseF(func() string {
-					return *proc.StdoutFile
-				})
-			stdoutTailer := tail.File(stdoutFile, tail.Config{
+			stdoutTailer := tail.File(proc.StdoutFile, tail.Config{
 				Follow:        true,
 				BufferSize:    _procLogsBufferSize,
 				NotifyTimeout: time.Minute,
@@ -317,7 +310,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 					slog.Error(
 						"failed to tail log",
 						slog.Uint64("procID", uint64(id)),
-						slog.String("file", stdoutFile),
+						slog.String("file", proc.StdoutFile),
 						slog.Any("err", err),
 					)
 					// TODO: somehow call wg.Done() once with parent call
@@ -325,12 +318,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 			}()
 
 			wgLocal.Add(1)
-			stderrFile := lo.
-				If(proc.StdoutFile == nil, filepath.Join(srv.logsDir, procIDStr+".stderr")).
-				ElseF(func() string {
-					return *proc.StderrFile
-				})
-			stderrTailer := tail.File(stderrFile, tail.Config{
+			stderrTailer := tail.File(proc.StdoutFile, tail.Config{
 				Follow:        true,
 				BufferSize:    _procLogsBufferSize,
 				NotifyTimeout: time.Minute,
@@ -353,7 +341,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 					slog.Error(
 						"failed to tail log",
 						slog.Uint64("procID", uint64(id)),
-						slog.String("file", stderrFile),
+						slog.String("file", proc.StdoutFile),
 						slog.Any("err", err),
 					)
 					// TODO: somehow call wg.Done() once with parent call

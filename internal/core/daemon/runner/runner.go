@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
-	"strconv"
 	"syscall"
 	"time"
 
@@ -17,12 +15,11 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/watcher"
-	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
-func procFields(proc db.ProcData) map[string]any {
+func procFields(proc core.ProcData) map[string]any {
 	return map[string]any{
 		"id":      proc.ProcID,
 		"command": proc.Command,
@@ -50,30 +47,30 @@ type Runner struct {
 type CreateQuery struct {
 	Command    string
 	Args       []string
-	Name       *string
+	Name       fun2.Option[string]
 	Cwd        string
 	Tags       []string
 	Env        map[string]string
-	Watch      *string
-	StdoutFile *string
-	StderrFile *string
+	Watch      fun2.Option[string]
+	StdoutFile fun2.Option[string]
+	StderrFile fun2.Option[string]
 }
 
 func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, error) {
 	// try to find by name and update
-	if query.Name != nil {
+	if name, ok := query.Name.Unpack(); ok {
 		procs := r.DB.List()
 
 		if procID, ok := lo.FindKeyBy(
 			procs,
-			func(_ core.ProcID, procData db.ProcData) bool {
-				return procData.Name == *query.Name
+			func(_ core.ProcID, procData core.ProcData) bool {
+				return procData.Name == name
 			},
 		); ok { // TODO: early exit from outer if block
-			procData := db.ProcData{
+			procData := core.ProcData{
 				ProcID:  procID,
-				Status:  db.NewStatusCreated(),
-				Name:    *query.Name,
+				Status:  core.NewStatusCreated(),
+				Name:    name,
 				Cwd:     query.Cwd,
 				Tags:    lo.Uniq(append(query.Tags, "all")),
 				Command: query.Command,
@@ -83,12 +80,12 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 			}
 
 			proc := procs[procID]
-			if proc.Status.Status != db.StatusRunning ||
+			if proc.Status.Status != core.StatusRunning ||
 				proc.Cwd == procData.Cwd &&
 					len(proc.Tags) == len(procData.Tags) && // TODO: compare lists, not lengths
 					proc.Command == procData.Command &&
 					len(proc.Args) == len(procData.Args) && // TODO: compare lists, not lengths
-					(proc.Watch == nil) == (procData.Watch == nil) && (proc.Watch == nil || *proc.Watch == *procData.Watch) { // TODO: compare pointers
+					proc.Watch == procData.Watch {
 				// not updated, do nothing
 				return procID, nil
 			}
@@ -97,35 +94,31 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 				return 0, xerr.NewWM(errStop, "stop process to update", xerr.Fields{
 					"procID":  procID,
 					"oldProc": procFields(proc),
-					"newProc": procFields(procData),
+					// "newProc": procFields(procData),
 				})
 			}
 
 			if errUpdate := r.DB.UpdateProc(procData); errUpdate != nil {
-				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{"procData": procFields(procData)})
+				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{
+					// "procData": procFields(procData),
+				})
 			}
 
 			return procID, nil
 		}
 	}
 
-	name := fun.
-		IfF(query.Name == nil, namegen.New).
-		ElseF(func() string {
-			return *query.Name
-		})
-
 	procID, err := r.DB.AddProc(db.CreateQuery{
-		Name:       name,
+		Name:       query.Name.OrDefault(namegen.New()),
 		Cwd:        query.Cwd,
 		Tags:       lo.Uniq(append(query.Tags, "all")),
 		Command:    query.Command,
 		Args:       query.Args,
-		Watch:      fun2.FromPtr(query.Watch),
+		Watch:      query.Watch,
 		Env:        query.Env,
-		StdoutFile: fun2.FromPtr(query.StdoutFile),
-		StderrFile: fun2.FromPtr(query.StderrFile),
-	})
+		StdoutFile: query.StdoutFile,
+		StderrFile: query.StderrFile,
+	}, r.LogsDir)
 	if err != nil {
 		return 0, xerr.NewWM(err, "save proc")
 	}
@@ -151,29 +144,17 @@ func (r Runner) start(procID core.ProcID) error {
 	if !ok {
 		return xerr.NewM("invalid procs count got by id")
 	}
-	if proc.Status.Status == db.StatusRunning {
+	if proc.Status.Status == core.StatusRunning {
 		return xerr.NewM("process is already running")
 	}
 
-	procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
-
-	stdoutLogFilename := lo.
-		If(proc.StdoutFile == nil, path.Join(r.LogsDir, procIDStr+".stdout")).
-		ElseF(func() string {
-			return *proc.StdoutFile
-		})
-	stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
+	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
 		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": proc.StdoutFile})
 	}
 	defer stdoutLogFile.Close()
 
-	stderrLogFilename := lo.
-		If(proc.StdoutFile == nil, path.Join(r.LogsDir, procIDStr+".stderr")).
-		ElseF(func() string {
-			return *proc.StderrFile
-		})
-	stderrLogFile, err := os.OpenFile(stderrLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
+	stderrLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
 		return xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": proc.StderrFile})
 	}
@@ -210,14 +191,15 @@ func (r Runner) start(procID core.ProcID) error {
 	args := append([]string{proc.Command}, proc.Args...)
 	process, err := os.StartProcess(proc.Command, args, &procAttr)
 	if err != nil {
-		if errSetStatus := r.DB.SetStatus(proc.ProcID, db.NewStatusInvalid()); errSetStatus != nil {
+		if errSetStatus := r.DB.SetStatus(proc.ProcID, core.NewStatusInvalid()); errSetStatus != nil {
 			return xerr.NewM("running failed, setting errored status failed", xerr.Errors{err, errSetStatus})
 		}
 
 		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
 	}
 
-	runningStatus := db.NewStatusRunning(time.Now(), process.Pid)
+	// TODO: fill/remove cpu, memory
+	runningStatus := core.NewStatusRunning(time.Now(), process.Pid, 0, 0)
 	if err := r.DB.SetStatus(proc.ProcID, runningStatus); err != nil {
 		return xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ProcID})
 	}
@@ -240,11 +222,11 @@ func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
 		}
 
 		procID := proc.ProcID
-		if proc.Watch != nil {
+		if watch, ok := proc.Watch.Unpack(); ok {
 			r.Watcher.Add(
 				proc.ProcID,
 				proc.Cwd,
-				*proc.Watch,
+				watch,
 				func(ctx context.Context) error {
 					slog.Info(
 						"triggered process restart by watch",
@@ -270,7 +252,7 @@ func (r Runner) stop(ctx context.Context, procID core.ProcID) (bool, error) {
 		return false, xerr.NewM("not found proc to stop")
 	}
 
-	if proc.Status.Status != db.StatusRunning {
+	if proc.Status.Status != core.StatusRunning {
 		slog.Info("tried to stop non-running process", "proc", proc)
 		return false, nil
 	}
@@ -338,7 +320,7 @@ func (r Runner) stop(ctx context.Context, procID core.ProcID) (bool, error) {
 	exitCode := lo.If(state == nil, -1).ElseF(func() int {
 		return state.ExitCode()
 	})
-	if errSetStatus := r.DB.SetStatus(proc.ProcID, db.NewStatusStopped(exitCode)); errSetStatus != nil {
+	if errSetStatus := r.DB.SetStatus(proc.ProcID, core.NewStatusStopped(exitCode)); errSetStatus != nil {
 		return false, xerr.NewWM(errSetStatus, "set status stopped", xerr.Fields{"procID": proc.ProcID})
 	}
 

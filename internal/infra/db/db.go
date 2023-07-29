@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/rprtr258/fun"
@@ -13,67 +14,17 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 )
 
-type StatusType int
-
-const (
-	StatusInvalid StatusType = iota
-	StatusCreated
-	StatusRunning
-	StatusStopped
-)
-
-func (ps StatusType) String() string {
-	switch ps {
-	case StatusInvalid:
-		return "invalid"
-	case StatusCreated:
-		return "created"
-	case StatusRunning:
-		return "running"
-	case StatusStopped:
-		return "stopped"
-	default:
-		return fmt.Sprintf("UNKNOWN(%d)", ps)
-	}
+// status - db representation of core.Status
+type status struct {
+	StartTime time.Time `json:"start_time"` // StartTime, valid if running
+	StoppedAt time.Time `json:"stopped_at"` // StoppedAt - time when the process stopped, valid if stopped
+	Status    int       `json:"type"`
+	Pid       int       `json:"pid"`       // PID, valid if running
+	ExitCode  int       `json:"exit_code"` // ExitCode of the process, valid if stopped
 }
 
-type Status struct {
-	StartTime time.Time  `json:"start_time"` // StartTime, valid if running
-	StoppedAt time.Time  `json:"stopped_at"` // StoppedAt - time when the process stopped, valid if stopped
-	Status    StatusType `json:"type"`
-	Pid       int        `json:"pid"`       // PID, valid if running
-	ExitCode  int        `json:"exit_code"` // ExitCode of the process, valid if stopped
-}
-
-func NewStatusInvalid() Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusInvalid,
-	}
-}
-
-func NewStatusCreated() Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusCreated,
-	}
-}
-
-func NewStatusRunning(startTime time.Time, pid int) Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status:    StatusRunning,
-		StartTime: startTime,
-		Pid:       pid,
-	}
-}
-
-func NewStatusStopped(exitCode int) Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status:    StatusStopped,
-		ExitCode:  exitCode,
-		StoppedAt: time.Now(),
-	}
-}
-
-type ProcData struct {
+// procData - db representation of core.ProcData
+type procData struct {
 	// Command - executable to run
 	Command string `json:"command"`
 	// Cwd - working directory, should be absolute
@@ -84,30 +35,30 @@ type ProcData struct {
 	Args       []string          `json:"args"`
 	Tags       []string          `json:"tags"`
 	Watch      *string           `json:"watch"`
-	Status     Status            `json:"status"`
+	Status     status            `json:"status"`
 	ProcID     core.ProcID       `json:"id"`
 	Env        map[string]string `json:"env"`
-	StdoutFile *string
-	StderrFile *string
+	StdoutFile string            `json:"stdout_file"`
+	StderrFile string            `json:"stderr_file"`
 
 	// RestartTries int
 	// RestartDelay    time.Duration
 	// Respawns int
 }
 
-func (p ProcData) ID() string {
+func (p procData) ID() string {
 	return p.ProcID.String()
 }
 
 type Handle struct {
 	db    *simpdb.DB
-	procs *simpdb.Table[ProcData]
+	procs *simpdb.Table[procData]
 }
 
 func New(dir string) (Handle, error) {
 	db := simpdb.New(dir)
 
-	procs, errTableProcs := simpdb.GetTable(db, "procs", storages.NewJSONStorage[ProcData]())
+	procs, errTableProcs := simpdb.GetTable(db, "procs", storages.NewJSONStorage[procData]())
 	if errTableProcs != nil {
 		return Handle{}, xerr.NewWM(errTableProcs, "get table", xerr.Fields{"table": "procs"})
 	}
@@ -141,9 +92,9 @@ type CreateQuery struct {
 	// Respawns int
 }
 
-func (handle Handle) AddProc(query CreateQuery) (core.ProcID, error) {
+func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.ProcID, error) {
 	maxProcID := core.ProcID(0)
-	handle.procs.Iter(func(_ string, proc ProcData) bool {
+	handle.procs.Iter(func(_ string, proc procData) bool {
 		if proc.ProcID > maxProcID {
 			maxProcID = proc.ProcID
 		}
@@ -153,18 +104,22 @@ func (handle Handle) AddProc(query CreateQuery) (core.ProcID, error) {
 
 	newProcID := maxProcID + 1
 
-	if !handle.procs.Insert(ProcData{
-		ProcID:     newProcID,
-		Command:    query.Command,
-		Cwd:        query.Cwd,
-		Name:       query.Name,
-		Args:       query.Args,
-		Tags:       query.Tags,
-		Watch:      query.Watch.Ptr(),
-		Status:     NewStatusCreated(),
-		Env:        query.Env,
-		StdoutFile: query.StdoutFile.Ptr(),
-		StderrFile: query.StderrFile.Ptr(),
+	if !handle.procs.Insert(procData{
+		ProcID:  newProcID,
+		Command: query.Command,
+		Cwd:     query.Cwd,
+		Name:    query.Name,
+		Args:    query.Args,
+		Tags:    query.Tags,
+		Watch:   query.Watch.Ptr(),
+		Status: status{ //nolint:exhaustruct // not needed
+			Status: int(core.StatusCreated),
+		},
+		Env: query.Env,
+		StdoutFile: query.StdoutFile.
+			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stdout", newProcID))),
+		StderrFile: query.StderrFile.
+			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stderr", newProcID))),
 	}) {
 		return 0, xerr.NewM("insert: already present")
 	}
@@ -176,8 +131,26 @@ func (handle Handle) AddProc(query CreateQuery) (core.ProcID, error) {
 	return newProcID, nil
 }
 
-func (handle Handle) UpdateProc(metadata ProcData) error {
-	handle.procs.Upsert(metadata)
+func (handle Handle) UpdateProc(proc core.ProcData) error {
+	handle.procs.Upsert(procData{
+		ProcID: proc.ProcID,
+		Status: status{
+			StartTime: proc.Status.StartTime,
+			StoppedAt: proc.Status.StoppedAt,
+			Status:    int(proc.Status.Status),
+			Pid:       proc.Status.Pid,
+			ExitCode:  proc.Status.ExitCode,
+		},
+		Command:    proc.Command,
+		Cwd:        proc.Cwd,
+		Name:       proc.Name,
+		Args:       proc.Args,
+		Tags:       proc.Tags,
+		Watch:      proc.Watch.Ptr(),
+		Env:        proc.Env,
+		StdoutFile: proc.StdoutFile,
+		StderrFile: proc.StderrFile,
+	})
 
 	if err := handle.procs.Flush(); err != nil {
 		return xerr.NewWM(err, "update: db flush")
@@ -186,33 +159,81 @@ func (handle Handle) UpdateProc(metadata ProcData) error {
 	return nil
 }
 
-func (handle Handle) GetProc(id core.ProcID) (ProcData, bool) {
+func (handle Handle) GetProc(id core.ProcID) (core.ProcData, bool) {
 	procs := handle.GetProcs([]core.ProcID{id})
 	if len(procs) != 1 {
-		return fun.Zero[ProcData](), false
+		return fun.Zero[core.ProcData](), false
 	}
 
 	return procs[0], true
 }
 
-func (handle Handle) GetProcs(ids []core.ProcID) []ProcData {
+func (handle Handle) GetProcs(ids []core.ProcID) map[core.ProcID]core.ProcData {
 	lookupTable := lo.SliceToMap(ids, func(id core.ProcID) (string, struct{}) {
 		return id.String(), struct{}{}
 	})
 
-	return handle.procs.
-		Where(func(id string, _ ProcData) bool {
+	res := make(map[core.ProcID]core.ProcData, len(lookupTable))
+
+	handle.procs.
+		Where(func(id string, _ procData) bool {
 			_, ok := lookupTable[id]
 			return ok
 		}).
-		List().
-		All()
+		Iter(func(id string, proc procData) bool {
+			res[proc.ProcID] = core.ProcData{
+				ProcID:  proc.ProcID,
+				Command: proc.Command,
+				Cwd:     proc.Cwd,
+				Name:    proc.Name,
+				Args:    proc.Args,
+				Tags:    proc.Tags,
+				Watch:   fun.FromPtr(proc.Watch),
+				Status: core.Status{
+					StartTime: proc.Status.StartTime,
+					StoppedAt: proc.Status.StoppedAt,
+					Status:    core.StatusType(proc.Status.Status),
+					Pid:       proc.Status.Pid,
+					ExitCode:  proc.Status.ExitCode,
+					CPU:       0,
+					Memory:    0,
+				},
+				Env:        proc.Env,
+				StdoutFile: proc.StdoutFile,
+				StderrFile: proc.StderrFile,
+			}
+
+			return true
+		})
+
+	return res
 }
 
-func (handle Handle) List() map[core.ProcID]ProcData {
-	res := map[core.ProcID]ProcData{}
-	handle.procs.Iter(func(id string, pd ProcData) bool {
-		res[pd.ProcID] = pd
+// TODO: merge with GetProcs, use filters
+func (handle Handle) List() map[core.ProcID]core.ProcData {
+	res := map[core.ProcID]core.ProcData{}
+	handle.procs.Iter(func(id string, proc procData) bool {
+		res[proc.ProcID] = core.ProcData{
+			ProcID:  proc.ProcID,
+			Command: proc.Command,
+			Cwd:     proc.Cwd,
+			Name:    proc.Name,
+			Args:    proc.Args,
+			Tags:    proc.Tags,
+			Watch:   fun.FromPtr(proc.Watch),
+			Status: core.Status{
+				StartTime: proc.Status.StartTime,
+				StoppedAt: proc.Status.StoppedAt,
+				Status:    core.StatusType(proc.Status.Status),
+				Pid:       proc.Status.Pid,
+				ExitCode:  proc.Status.ExitCode,
+				CPU:       0,
+				Memory:    0,
+			},
+			Env:        proc.Env,
+			StdoutFile: proc.StdoutFile,
+			StderrFile: proc.StderrFile,
+		}
 		return true
 	})
 	return res
@@ -224,17 +245,24 @@ func (err ProcNotFoundError) Error() string {
 	return fmt.Sprintf("proc #%d not found", err)
 }
 
-func (handle Handle) SetStatus(procID core.ProcID, newStatus Status) error {
+func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) error {
 	proc, ok := handle.procs.Get(procID.String())
 	if !ok {
 		return ProcNotFoundError(procID)
 	}
 
-	if newStatus.Status == StatusStopped {
+	// TODO: ???
+	if newStatus.Status == core.StatusStopped {
 		newStatus.StartTime = proc.Status.StartTime
 	}
 
-	proc.Status = newStatus
+	proc.Status = status{
+		StartTime: newStatus.StartTime,
+		StoppedAt: proc.Status.StoppedAt,
+		Status:    int(newStatus.Status),
+		Pid:       proc.Status.Pid,
+		ExitCode:  proc.Status.ExitCode,
+	}
 	handle.procs.Upsert(proc)
 
 	if err := handle.procs.Flush(); err != nil {
@@ -249,8 +277,8 @@ func (handle Handle) Delete(procIDs []uint64) error {
 		return core.ProcID(id), struct{}{}
 	})
 
-	handle.procs.Where(func(_ string, pd ProcData) bool {
-		_, ok := lookupTable[pd.ProcID]
+	handle.procs.Where(func(_ string, proc procData) bool {
+		_, ok := lookupTable[proc.ProcID]
 		return ok
 	}).Delete()
 

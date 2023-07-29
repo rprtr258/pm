@@ -323,21 +323,21 @@ func DaemonMain(ctx context.Context) error {
 					break
 				}
 				if errWait != nil {
-					slog.Error("Wait4 failed", "err", errWait.Error())
+					slog.Error("Wait4 failed", slog.Any("err", errWait.Error()))
 					continue
 				}
 
 				allProcs := dbHandle.List()
 
-				procID, procFound := lo.FindKeyBy(allProcs, func(_ core.ProcID, procData db.ProcData) bool {
-					return procData.Status.Status == db.StatusRunning &&
+				procID, procFound := lo.FindKeyBy(allProcs, func(_ core.ProcID, procData core.ProcData) bool {
+					return procData.Status.Status == core.StatusRunning &&
 						procData.Status.Pid == pid
 				})
 				if !procFound {
 					continue
 				}
 
-				dbStatus := db.NewStatusStopped(status.ExitStatus())
+				dbStatus := core.NewStatusStopped(status.ExitStatus())
 				if err := dbHandle.SetStatus(procID, dbStatus); err != nil {
 					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
 						slog.Error("proc not found while trying to set status",

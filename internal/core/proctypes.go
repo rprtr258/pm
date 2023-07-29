@@ -79,18 +79,22 @@ func (id ProcID) String() string {
 }
 
 type ProcData struct {
+	ProcID ProcID
+	Name   string
+	Tags   []string
+
 	// Command - executable to run
 	Command string
-	Cwd     string
-	Name    string
-	// Args - arguments for executable, not including executable itself as first argument
+	// Args - arguments for executable,
+	// not including executable itself as first argument
 	Args       []string
-	Tags       []string
-	Watch      fun.Option[string]
-	Status     Status
-	ProcID     ProcID
+	Cwd        string
+	Env        map[string]string
 	StdoutFile string
 	StderrFile string
+
+	Watch  fun.Option[string]
+	Status Status
 
 	// RestartTries int
 	// RestartDelay    time.Duration
