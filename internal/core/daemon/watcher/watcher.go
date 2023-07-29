@@ -33,6 +33,13 @@ func New(watcher *fsnotify.Watcher) Watcher {
 }
 
 func (w Watcher) Add(procID core.ProcID, dir string, pattern string, fn func(context.Context) error) {
+	slog.Info(
+		"adding watch dir",
+		slog.Uint64("proc_id", uint64(procID)),
+		slog.String("dir", dir),
+		slog.String("pattern", pattern),
+	)
+
 	if _, ok := w.watchplaces[procID]; ok {
 		return
 	}
@@ -64,6 +71,11 @@ func (w Watcher) Add(procID core.ProcID, dir string, pattern string, fn func(con
 }
 
 func (w Watcher) Remove(procIDs ...core.ProcID) {
+	slog.Info(
+		"removing watch dirs",
+		slog.Any("proc_ids", procIDs),
+	)
+
 	for dir, procs := range w.dirs {
 		leftProcIDs := []core.ProcID{}
 		for _, procID := range procs {

@@ -78,9 +78,9 @@ var _logsCmd = &cli.Command{
 			return xerr.NewWM(errDaemon, "ensure daemon is running")
 		}
 
-		client, errList := client.NewGrpcClient()
-		if errList != nil {
-			return xerr.NewWM(errList, "new grpc client")
+		client, errClient := client.NewGrpcClient()
+		if errClient != nil {
+			return xerr.NewWM(errClient, "new grpc client")
 		}
 		defer deferErr(client.Close)()
 
@@ -94,6 +94,7 @@ var _logsCmd = &cli.Command{
 		ids := ctx.Uint64Slice("id")
 		args := ctx.Args().Slice()
 
+		// TODO: filter on server
 		list, errList := client.List(ctx.Context)
 		if errList != nil {
 			return xerr.NewWM(errList, "server.list")

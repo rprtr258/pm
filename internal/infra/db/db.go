@@ -86,8 +86,8 @@ type ProcData struct {
 	Status     Status            `json:"status"`
 	ProcID     core.ProcID       `json:"id"`
 	Env        map[string]string `json:"env"`
-	StdoutFile string
-	StderrFile string
+	StdoutFile *string
+	StderrFile *string
 
 	// RestartTries int
 	// RestartDelay    time.Duration
@@ -131,13 +131,12 @@ type CreateQuery struct {
 	// Tags - process tags
 	Tags []string
 	// Watch - regex pattern for file watching
-	Watch fun.Option[string]
+	Watch      fun.Option[string]
+	StdoutFile fun.Option[string]
+	StderrFile fun.Option[string]
 
-	// StdoutFile  string
-	// StderrFile  string
 	// RestartTries int
 	// RestartDelay    time.Duration
-	// Pid      int
 	// Respawns int
 }
 
@@ -154,15 +153,17 @@ func (handle Handle) AddProc(query CreateQuery) (core.ProcID, error) {
 	newProcID := maxProcID + 1
 
 	if !handle.procs.Insert(ProcData{
-		ProcID:  newProcID,
-		Command: query.Command,
-		Cwd:     query.Cwd,
-		Name:    query.Name,
-		Args:    query.Args,
-		Tags:    query.Tags,
-		Watch:   query.Watch.Ptr(),
-		Status:  NewStatusCreated(),
-		Env:     query.Env,
+		ProcID:     newProcID,
+		Command:    query.Command,
+		Cwd:        query.Cwd,
+		Name:       query.Name,
+		Args:       query.Args,
+		Tags:       query.Tags,
+		Watch:      query.Watch.Ptr(),
+		Status:     NewStatusCreated(),
+		Env:        query.Env,
+		StdoutFile: query.StdoutFile.Ptr(),
+		StderrFile: query.StderrFile.Ptr(),
 	}) {
 		return 0, xerr.NewM("insert: already present")
 	}

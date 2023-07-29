@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -265,7 +266,8 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 
 	var wgGlobal sync.WaitGroup
 	for _, id := range req.GetIds() {
-		if _, ok := procs[core.ProcID(id)]; !ok {
+		proc, ok := procs[core.ProcID(id)]
+		if !ok {
 			slog.Info("tried to log unknown process", "procID", id)
 			continue
 		}
@@ -279,9 +281,15 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 
 			logLinesCh := make(chan *pb.LogLine)
 
-			// TODO: proc.StdoutFile, proc.StderrFile
 			wgLocal.Add(1)
-			stdoutFile := filepath.Join(srv.logsDir, fmt.Sprintf("%d.stdout", id))
+
+			procIDStr := strconv.FormatUint(uint64(id), 10) //nolint:gomnd // decimal
+
+			stdoutFile := lo.
+				If(proc.StdoutFile == nil, filepath.Join(srv.logsDir, procIDStr+".stdout")).
+				ElseF(func() string {
+					return *proc.StdoutFile
+				})
 			stdoutTailer := tail.File(stdoutFile, tail.Config{
 				Follow:        true,
 				BufferSize:    _procLogsBufferSize,
@@ -313,7 +321,11 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 			}()
 
 			wgLocal.Add(1)
-			stderrFile := filepath.Join(srv.logsDir, fmt.Sprintf("%d.stderr", id))
+			stderrFile := lo.
+				If(proc.StdoutFile == nil, filepath.Join(srv.logsDir, procIDStr+".stderr")).
+				ElseF(func() string {
+					return *proc.StderrFile
+				})
 			stderrTailer := tail.File(stderrFile, tail.Config{
 				Follow:        true,
 				BufferSize:    _procLogsBufferSize,

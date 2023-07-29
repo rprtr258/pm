@@ -305,6 +305,7 @@ func DaemonMain(ctx context.Context) error {
 		runner: runner.Runner{
 			DB:      dbHandle,
 			Watcher: watcher,
+			LogsDir: _dirProcsLogs,
 		},
 	})
 

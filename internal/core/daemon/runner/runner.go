@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -42,6 +44,7 @@ func procFields(proc db.ProcData) map[string]any {
 type Runner struct {
 	DB      db.Handle
 	Watcher watcher.Watcher
+	LogsDir string
 }
 
 type CreateQuery struct {
@@ -107,19 +110,21 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 	}
 
 	name := fun.
-		IfF(query.Name != nil, namegen.New).
+		IfF(query.Name == nil, namegen.New).
 		ElseF(func() string {
 			return *query.Name
 		})
 
 	procID, err := r.DB.AddProc(db.CreateQuery{
-		Name:    name,
-		Cwd:     query.Cwd,
-		Tags:    lo.Uniq(append(query.Tags, "all")),
-		Command: query.Command,
-		Args:    query.Args,
-		Watch:   fun2.FromPtr(query.Watch),
-		Env:     query.Env,
+		Name:       name,
+		Cwd:        query.Cwd,
+		Tags:       lo.Uniq(append(query.Tags, "all")),
+		Command:    query.Command,
+		Args:       query.Args,
+		Watch:      fun2.FromPtr(query.Watch),
+		Env:        query.Env,
+		StdoutFile: fun2.FromPtr(query.StdoutFile),
+		StderrFile: fun2.FromPtr(query.StderrFile),
 	})
 	if err != nil {
 		return 0, xerr.NewWM(err, "save proc")
@@ -150,18 +155,25 @@ func (r Runner) start(procID core.ProcID) error {
 		return xerr.NewM("process is already running")
 	}
 
-	// procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
-	// TODO: fill on start
-	// stdoutLogFilename := path.Join(srv.logsDir, procIDStr+".stdout")
-	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
+	procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
+
+	stdoutLogFilename := lo.
+		If(proc.StdoutFile == nil, path.Join(r.LogsDir, procIDStr+".stdout")).
+		ElseF(func() string {
+			return *proc.StdoutFile
+		})
+	stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
 		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": proc.StdoutFile})
 	}
 	defer stdoutLogFile.Close()
 
-	// TODO: fill on start
-	// stderrLogFilename := path.Join(srv.logsDir, procIDStr+".stderr")
-	stderrLogFile, err := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
+	stderrLogFilename := lo.
+		If(proc.StdoutFile == nil, path.Join(r.LogsDir, procIDStr+".stderr")).
+		ElseF(func() string {
+			return *proc.StderrFile
+		})
+	stderrLogFile, err := os.OpenFile(stderrLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
 		return xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": proc.StderrFile})
 	}
@@ -227,18 +239,23 @@ func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
 			return xerr.NewW(errStart, xerr.Fields{"proc": procFields(proc)})
 		}
 
+		procID := proc.ProcID
 		if proc.Watch != nil {
 			r.Watcher.Add(
 				proc.ProcID,
 				proc.Cwd,
 				*proc.Watch,
 				func(ctx context.Context) error {
-					proc.Status.Status = db.StatusRunning // TODO: to deceive stop, remove
-					if _, errStop := r.stop(ctx, proc.ProcID); errStop != nil {
+					slog.Info(
+						"triggered process restart by watch",
+						slog.Uint64("procID", uint64(procID)),
+					)
+
+					if _, errStop := r.stop(ctx, procID); errStop != nil {
 						return errStop
 					}
 
-					return r.start(proc.ProcID)
+					return r.start(procID)
 				},
 			)
 		}
