@@ -8,12 +8,15 @@ import (
 	"syscall"
 	"time"
 
+	fun2 "github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slog"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/watcher"
+	"github.com/rprtr258/pm/internal/core/fun"
+	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
@@ -51,6 +54,78 @@ type CreateQuery struct {
 	Watch      *string
 	StdoutFile *string
 	StderrFile *string
+}
+
+func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, error) {
+	// try to find by name and update
+	if query.Name != nil {
+		procs := r.DB.List()
+
+		if procID, ok := lo.FindKeyBy(
+			procs,
+			func(_ core.ProcID, procData db.ProcData) bool {
+				return procData.Name == *query.Name
+			},
+		); ok { // TODO: early exit from outer if block
+			procData := db.ProcData{
+				ProcID:  procID,
+				Status:  db.NewStatusCreated(),
+				Name:    *query.Name,
+				Cwd:     query.Cwd,
+				Tags:    lo.Uniq(append(query.Tags, "all")),
+				Command: query.Command,
+				Args:    query.Args,
+				Watch:   query.Watch,
+				Env:     query.Env,
+			}
+
+			proc := procs[procID]
+			if proc.Status.Status != db.StatusRunning ||
+				proc.Cwd == procData.Cwd &&
+					len(proc.Tags) == len(procData.Tags) && // TODO: compare lists, not lengths
+					proc.Command == procData.Command &&
+					len(proc.Args) == len(procData.Args) && // TODO: compare lists, not lengths
+					(proc.Watch == nil) == (procData.Watch == nil) && (proc.Watch == nil || *proc.Watch == *procData.Watch) { // TODO: compare pointers
+				// not updated, do nothing
+				return procID, nil
+			}
+
+			if _, errStop := r.stop(ctx, procID); errStop != nil {
+				return 0, xerr.NewWM(errStop, "stop process to update", xerr.Fields{
+					"procID":  procID,
+					"oldProc": procFields(proc),
+					"newProc": procFields(procData),
+				})
+			}
+
+			if errUpdate := r.DB.UpdateProc(procData); errUpdate != nil {
+				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{"procData": procFields(procData)})
+			}
+
+			return procID, nil
+		}
+	}
+
+	name := fun.
+		IfF(query.Name != nil, namegen.New).
+		ElseF(func() string {
+			return *query.Name
+		})
+
+	procID, err := r.DB.AddProc(db.CreateQuery{
+		Name:    name,
+		Cwd:     query.Cwd,
+		Tags:    lo.Uniq(append(query.Tags, "all")),
+		Command: query.Command,
+		Args:    query.Args,
+		Watch:   fun2.FromPtr(query.Watch),
+		Env:     query.Env,
+	})
+	if err != nil {
+		return 0, xerr.NewWM(err, "save proc")
+	}
+
+	return procID, nil
 }
 
 func (r Runner) Create(ctx context.Context, queries ...CreateQuery) ([]core.ProcID, error) {

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-faster/tail"
-	fun2 "github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slog"
@@ -24,8 +23,6 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/runner"
 	"github.com/rprtr258/pm/internal/core/daemon/watcher"
-	"github.com/rprtr258/pm/internal/core/fun"
-	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
@@ -33,8 +30,8 @@ type daemonServer struct {
 	pb.UnimplementedDaemonServer
 	db               db.Handle
 	watcher          watcher.Watcher
-	homeDir, logsDir string
 	runner           runner.Runner
+	homeDir, logsDir string
 }
 
 // Start - run processes by their ids in database
@@ -156,73 +153,6 @@ func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb
 			},
 		),
 	}, nil
-}
-
-func (srv *daemonServer) create(ctx context.Context, procOpts *pb.ProcessOptions) (core.ProcID, error) {
-	if procOpts.Name != nil {
-		procs := srv.db.List()
-
-		if procID, ok := lo.FindKeyBy(
-			procs,
-			func(_ core.ProcID, procData db.ProcData) bool {
-				return procData.Name == procOpts.GetName()
-			},
-		); ok {
-			procData := db.ProcData{
-				ProcID:  procID,
-				Status:  db.NewStatusCreated(),
-				Name:    procOpts.GetName(),
-				Cwd:     procOpts.GetCwd(),
-				Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
-				Command: procOpts.GetCommand(),
-				Args:    procOpts.GetArgs(),
-				Watch:   procOpts.Watch,
-				Env:     procOpts.GetEnv(),
-			}
-
-			proc := procs[procID]
-			if proc.Status.Status != db.StatusRunning ||
-				proc.Cwd == procData.Cwd &&
-					len(proc.Tags) == len(procData.Tags) && // TODO: compare lists, not lengths
-					proc.Command == procData.Command &&
-					len(proc.Args) == len(procData.Args) && // TODO: compare lists, not lengths
-					(proc.Watch == nil) == (procData.Watch == nil) && (proc.Watch == nil || *proc.Watch == *procData.Watch) { // TODO: compare pointers
-				// not updated, do nothing
-				return procID, nil
-			}
-
-			if _, errStop := srv.stop(ctx, proc); errStop != nil {
-				return 0, xerr.NewWM(errStop, "stop process to update", xerr.Fields{
-					"procID":  procID,
-					"oldProc": procFields(proc),
-					"newProc": procFields(procData),
-				})
-			}
-
-			if errUpdate := srv.db.UpdateProc(procData); errUpdate != nil {
-				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{"procData": procFields(procData)})
-			}
-
-			return procID, nil
-		}
-	}
-
-	name := fun.IfF(procOpts.Name != nil, procOpts.GetName).ElseF(namegen.New)
-
-	procID, err := srv.db.AddProc(db.CreateQuery{
-		Name:    name,
-		Cwd:     procOpts.GetCwd(),
-		Tags:    lo.Uniq(append(procOpts.GetTags(), "all")),
-		Command: procOpts.GetCommand(),
-		Args:    procOpts.GetArgs(),
-		Watch:   fun2.FromPtr(procOpts.Watch),
-		Env:     procOpts.Env,
-	})
-	if err != nil {
-		return 0, xerr.NewWM(err, "save proc")
-	}
-
-	return procID, nil
 }
 
 func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
