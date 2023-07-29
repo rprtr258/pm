@@ -27,7 +27,11 @@ type Watcher struct {
 }
 
 func New(watcher *fsnotify.Watcher, ebus *eventbus.EventBus) Watcher {
-	statusCh := ebus.Subscribe(eventbus.KindProcStarted, eventbus.KindProcStopped)
+	statusCh := ebus.Subscribe(
+		"watcher",
+		eventbus.KindProcStarted,
+		eventbus.KindProcStopped,
+	)
 	return Watcher{
 		watcher:     watcher,
 		watchplaces: make(map[core.ProcID]watcherEntry),

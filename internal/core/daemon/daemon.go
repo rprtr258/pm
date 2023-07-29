@@ -284,6 +284,7 @@ func DaemonMain(ctx context.Context) error {
 	}
 
 	ebus := eventbus.New()
+	go ebus.Start()
 	defer ebus.Close()
 
 	watcherr, err := fsnotify.NewWatcher()
@@ -349,7 +350,11 @@ func DaemonMain(ctx context.Context) error {
 	}()
 
 	// status updater
-	statusUpdaterCh := ebus.Subscribe(eventbus.KindProcStarted, eventbus.KindProcStopped)
+	statusUpdaterCh := ebus.Subscribe(
+		"status_updater",
+		eventbus.KindProcStarted,
+		eventbus.KindProcStopped,
+	)
 	go func() {
 		for {
 			select {
@@ -391,6 +396,7 @@ func DaemonMain(ctx context.Context) error {
 
 	// scheduler loop, starts/restarts/stops procs
 	procRequestsCh := ebus.Subscribe(
+		"scheduler",
 		eventbus.KindProcStartRequest,
 		eventbus.KindProcStopRequest,
 		eventbus.KindProcSignalRequest,

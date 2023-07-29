@@ -284,31 +284,31 @@ func (r Runner) Stop1(ctx context.Context, procID core.ProcID) (bool, error) {
 	return true, nil
 }
 
-func (r Runner) Stop(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcID, error) {
-	stoppedIDs := []core.ProcID{}
+// func (r Runner) Stop(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcID, error) {
+// 	stoppedIDs := []core.ProcID{}
 
-	var merr error
-	for _, procID := range procIDs {
-		select {
-		case <-ctx.Done():
-			return nil, xerr.NewWM(ctx.Err(), "context canceled")
-		default:
-		}
+// 	var merr error
+// 	for _, procID := range procIDs {
+// 		select {
+// 		case <-ctx.Done():
+// 			return nil, xerr.NewWM(ctx.Err(), "context canceled")
+// 		default:
+// 		}
 
-		stopped, errStop := r.Stop1(ctx, procID)
-		if errStop != nil {
-			xerr.AppendInto(&merr, errStop)
-			continue
-		}
+// 		stopped, errStop := r.Stop1(ctx, procID)
+// 		if errStop != nil {
+// 			xerr.AppendInto(&merr, errStop)
+// 			continue
+// 		}
 
-		if stopped {
-			r.Ebus.PublishProcStopped(procID, -1, eventbus.EmitReasonByUser)
-			stoppedIDs = append(stoppedIDs, procID)
-		}
-	}
+// 		if stopped {
+// 			r.Ebus.PublishProcStopped(procID, -1, eventbus.EmitReasonByUser)
+// 			stoppedIDs = append(stoppedIDs, procID)
+// 		}
+// 	}
 
-	return stoppedIDs, merr
-}
+// 	return stoppedIDs, merr
+// }
 
 func (r Runner) signal(
 	ctx context.Context,

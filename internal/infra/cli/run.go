@@ -135,13 +135,15 @@ var _runCmd = &cli.Command{
 			}
 
 			runConfig := core.RunConfig{
-				Command: command,
-				Args:    commandArgs,
-				Name:    fun.Optional(name, name != ""),
-				Tags:    tags,
-				Cwd:     workDir,
-				Env:     nil,
-				Watch:   watch,
+				Command:    command,
+				Args:       commandArgs,
+				Name:       fun.Optional(name, name != ""),
+				Tags:       tags,
+				Cwd:        workDir,
+				Env:        nil,
+				Watch:      watch,
+				StdoutFile: fun.Invalid[string](),
+				StderrFile: fun.Invalid[string](),
 			}
 
 			procIDs, errRun := app.Run(ctx.Context, runConfig)

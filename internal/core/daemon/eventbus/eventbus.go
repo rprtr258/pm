@@ -1,6 +1,7 @@
 package eventbus
 
 import (
+	"fmt"
 	"sync"
 	"syscall"
 	"time"
@@ -9,26 +10,51 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-type EventKind int
+type EventKind string
 
 const (
-	KindProcStarted EventKind = iota
-	KindProcStopped
-	KindProcStartRequest
-	KindProcStopRequest
-	KindProcSignalRequest
+	KindProcStarted       EventKind = "ProcStarted"
+	KindProcStopped       EventKind = "ProcStopped"
+	KindProcStartRequest  EventKind = "ProcStartRequest"
+	KindProcStopRequest   EventKind = "ProcStopRequest"
+	KindProcSignalRequest EventKind = "ProcSignalRequest"
 )
+
+func (e EventKind) String() string {
+	switch e {
+	case KindProcStarted, KindProcStopped,
+		KindProcStartRequest, KindProcStopRequest, KindProcSignalRequest:
+		return string(e)
+	default:
+		return fmt.Sprintf("Unknown:%s", string(e))
+	}
+}
 
 type Event struct {
 	Kind EventKind
 	Data any
 }
 
+type EmitReason int
+
 const (
-	EmitReasonDied = 1 << iota
+	EmitReasonDied EmitReason = 1 << iota
 	EmitReasonByUser
 	EmitReasonByWatcher
 )
+
+func (e EmitReason) String() string {
+	switch e {
+	case EmitReasonDied:
+		return "Died"
+	case EmitReasonByUser:
+		return "ByUser"
+	case EmitReasonByWatcher:
+		return "ByWatcher"
+	default:
+		return fmt.Sprintf("Unknown:%d", e)
+	}
+}
 
 type DataProcStarted struct {
 	Proc core.Proc
@@ -36,7 +62,7 @@ type DataProcStarted struct {
 	Pid  int
 
 	// EmitReason = ByUser | ByWatcher
-	EmitReason int
+	EmitReason EmitReason
 }
 
 type DataProcStopped struct {
@@ -45,17 +71,17 @@ type DataProcStopped struct {
 	At       time.Time
 
 	// EmitReason = Died | ByUser | ByWatcher
-	EmitReason int
+	EmitReason EmitReason
 }
 
 type DataProcStartRequest struct {
 	ProcID     core.ProcID
-	EmitReason int
+	EmitReason EmitReason
 }
 
 type DataProcStopRequest struct {
 	ProcID     core.ProcID
-	EmitReason int
+	EmitReason EmitReason
 }
 
 type DataProcSignalRequest struct {
@@ -73,7 +99,7 @@ type EventBus struct {
 	doneCh   chan struct{}
 
 	mu          sync.Mutex
-	subscribers []Subscriber
+	subscribers map[string]Subscriber
 }
 
 func New() *EventBus {
@@ -81,7 +107,7 @@ func New() *EventBus {
 		doneCh:      make(chan struct{}),
 		eventsCh:    make(chan Event),
 		mu:          sync.Mutex{},
-		subscribers: nil,
+		subscribers: map[string]Subscriber{},
 	}
 }
 
@@ -92,8 +118,18 @@ func (e *EventBus) Start() {
 			case <-e.doneCh:
 				return
 			case event := <-e.eventsCh:
+				slog.Debug(
+					"got event, routing",
+					slog.Any("event", event),
+				)
+
 				e.mu.Lock()
-				for _, sub := range e.subscribers {
+				for name, sub := range e.subscribers {
+					slog.Debug(
+						"publishing event",
+						slog.Any("event", event),
+						slog.String("subscriber", name),
+					)
 					// NOTE: blocks on every subscriber
 					select {
 					case sub.Chan <- event:
@@ -115,11 +151,11 @@ func (e *EventBus) Close() {
 	}
 }
 
-func (e *EventBus) PublishProcStarted(proc core.Proc, pid int, emitReason int) {
-	if emitReason&(emitReason-1) == 0 {
+func (e *EventBus) PublishProcStarted(proc core.Proc, pid int, emitReason EmitReason) {
+	if emitReason&(emitReason-1) != 0 {
 		slog.Warn(
 			"invalid emit reason for proc started event",
-			slog.Int("reason", emitReason),
+			slog.String("reason", emitReason.String()),
 		)
 		return
 	}
@@ -135,11 +171,11 @@ func (e *EventBus) PublishProcStarted(proc core.Proc, pid int, emitReason int) {
 	}
 }
 
-func (e *EventBus) PublishProcStopped(procID core.ProcID, exitCode int, emitReason int) {
-	if emitReason&(emitReason-1) == 0 {
+func (e *EventBus) PublishProcStopped(procID core.ProcID, exitCode int, emitReason EmitReason) {
+	if emitReason&(emitReason-1) != 0 {
 		slog.Warn(
 			"invalid emit reason for proc stopped event",
-			slog.Int("reason", emitReason),
+			slog.String("reason", emitReason.String()),
 		)
 		return
 	}
@@ -155,7 +191,12 @@ func (e *EventBus) PublishProcStopped(procID core.ProcID, exitCode int, emitReas
 	}
 }
 
-func (e *EventBus) PublishProcStartRequest(procID core.ProcID, emitReason int) {
+func (e *EventBus) PublishProcStartRequest(procID core.ProcID, emitReason EmitReason) {
+	slog.Debug(
+		"publishing proc start request",
+		slog.Uint64("proc_id", procID),
+		slog.String("emit_reason", emitReason.String()),
+	)
 	e.eventsCh <- Event{
 		Kind: KindProcStartRequest,
 		Data: DataProcStartRequest{
@@ -165,7 +206,7 @@ func (e *EventBus) PublishProcStartRequest(procID core.ProcID, emitReason int) {
 	}
 }
 
-func (e *EventBus) PublishProcStopRequest(procID core.ProcID, emitReason int) {
+func (e *EventBus) PublishProcStopRequest(procID core.ProcID, emitReason EmitReason) {
 	e.eventsCh <- Event{
 		Kind: KindProcStopRequest,
 		Data: DataProcStopRequest{
@@ -185,19 +226,22 @@ func (e *EventBus) PublishProcSignalRequest(signal syscall.Signal, procIDs ...co
 	}
 }
 
-func (e *EventBus) Subscribe(kinds ...EventKind) <-chan Event {
+func (e *EventBus) Subscribe(name string, kinds ...EventKind) <-chan Event {
 	kindsSet := make(map[EventKind]struct{}, len(kinds))
 	for _, kind := range kinds {
 		kindsSet[kind] = struct{}{}
 	}
 
-	ch := make(chan Event)
-
 	e.mu.Lock()
-	e.subscribers = append(e.subscribers, Subscriber{
+	if _, ok := e.subscribers[name]; ok {
+		panic(fmt.Sprintf("duplicate subscriber: %s", name))
+	}
+
+	ch := make(chan Event)
+	e.subscribers[name] = Subscriber{
 		Kinds: kindsSet,
 		Chan:  ch,
-	})
+	}
 	e.mu.Unlock()
 
 	return ch
