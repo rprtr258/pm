@@ -62,7 +62,7 @@ func (c Client) Create(ctx context.Context, opts []*pb.ProcessOptions) ([]uint64
 	return resp.GetIds(), nil
 }
 
-func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error) {
+func (c Client) List(ctx context.Context) (map[core.ProcID]core.Proc, error) {
 	resp, err := c.client.List(ctx, &emptypb.Empty{})
 	if err != nil {
 		return nil, xerr.NewWM(err, "server.list")
@@ -70,10 +70,10 @@ func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error)
 
 	return lo.SliceToMap(
 		resp.GetProcesses(),
-		func(proc *pb.Process) (core.ProcID, core.ProcData) {
+		func(proc *pb.Process) (core.ProcID, core.Proc) {
 			procID := core.ProcID(proc.GetId())
-			return procID, core.ProcData{
-				ProcID:     procID,
+			return procID, core.Proc{
+				ID:         procID,
 				Name:       proc.GetName(),
 				Command:    proc.GetCommand(),
 				Args:       proc.GetArgs(),

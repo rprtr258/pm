@@ -91,7 +91,7 @@ func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error)
 	}, err
 }
 
-func (srv *daemonServer) signal(proc core.ProcData, signal syscall.Signal) error {
+func (srv *daemonServer) signal(proc core.Proc, signal syscall.Signal) error {
 	if proc.Status.Status != core.StatusRunning {
 		slog.Info("tried to send signal to non-running process",
 			"proc", proc,
@@ -161,7 +161,7 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 	list := srv.db.List()
 
 	return &pb.ProcessesList{
-		Processes: lo.MapToSlice(list, func(id core.ProcID, proc core.ProcData) *pb.Process {
+		Processes: lo.MapToSlice(list, func(id core.ProcID, proc core.Proc) *pb.Process {
 			return &pb.Process{
 				Id:      uint64(id),
 				Status:  mapStatus(proc.Status),

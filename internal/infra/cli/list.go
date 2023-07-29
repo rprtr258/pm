@@ -87,18 +87,18 @@ var _listCmd = &cli.Command{
 			sortField, sortOrder = sortField[:i], sortField[i+1:]
 		}
 
-		var sortFunc func(a, b core.ProcData) bool
+		var sortFunc func(a, b core.Proc) bool
 		switch sortField {
 		case "id":
-			sortFunc = func(a, b core.ProcData) bool {
-				return a.ProcID < b.ProcID
+			sortFunc = func(a, b core.Proc) bool {
+				return a.ID < b.ID
 			}
 		case "name":
-			sortFunc = func(a, b core.ProcData) bool {
+			sortFunc = func(a, b core.Proc) bool {
 				return a.Name < b.Name
 			}
 		case "status":
-			getOrder := func(p core.ProcData) int {
+			getOrder := func(p core.Proc) int {
 				//nolint:gomnd // priority weights
 				switch p.Status.Status {
 				case core.StatusCreated:
@@ -113,11 +113,11 @@ var _listCmd = &cli.Command{
 					return 400
 				}
 			}
-			sortFunc = func(a, b core.ProcData) bool {
+			sortFunc = func(a, b core.Proc) bool {
 				return getOrder(a) < getOrder(b)
 			}
 		case "pid":
-			sortFunc = func(a, b core.ProcData) bool {
+			sortFunc = func(a, b core.Proc) bool {
 				if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
 					if a.Status.Status == core.StatusRunning {
 						return true
@@ -127,14 +127,14 @@ var _listCmd = &cli.Command{
 						return false
 					}
 
-					return a.ProcID < b.ProcID
+					return a.ID < b.ID
 				}
 
 				return a.Status.Pid < b.Status.Pid
 			}
 		case "uptime":
 			now := time.Now()
-			sortFunc = func(a, b core.ProcData) bool {
+			sortFunc = func(a, b core.Proc) bool {
 				if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
 					if a.Status.Status == core.StatusRunning {
 						return true
@@ -144,7 +144,7 @@ var _listCmd = &cli.Command{
 						return false
 					}
 
-					return a.ProcID < b.ProcID
+					return a.ID < b.ID
 				}
 
 				return a.Status.StartTime.Sub(now) < b.Status.StartTime.Sub(now)
@@ -157,7 +157,7 @@ var _listCmd = &cli.Command{
 		case "asc":
 		case "desc":
 			oldSortFunc := sortFunc
-			sortFunc = func(a, b core.ProcData) bool {
+			sortFunc = func(a, b core.Proc) bool {
 				return !oldSortFunc(a, b)
 			}
 		default:
@@ -198,7 +198,7 @@ func mapStatus(status core.Status) (string, *int, time.Duration) {
 	}
 }
 
-func renderTable(procs []core.ProcData, setRowLines bool) {
+func renderTable(procs []core.Proc, setRowLines bool) {
 	procsTable := table.New(os.Stdout)
 	procsTable.SetDividers(table.UnicodeRoundedDividers)
 	procsTable.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
@@ -210,7 +210,7 @@ func renderTable(procs []core.ProcData, setRowLines bool) {
 		status, pid, uptime := mapStatus(proc.Status)
 
 		procsTable.AddRow(
-			color.New(color.FgCyan, color.Bold).Sprint(proc.ProcID),
+			color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
 			proc.Name,
 			status,
 			strconv.Itoa(fun.Deref(pid)),
@@ -230,7 +230,7 @@ func list(
 	genericFilters, nameFilters, tagFilters []string,
 	idFilters []uint64,
 	format string,
-	sortFunc func(a, b core.ProcData) bool,
+	sortFunc func(a, b core.Proc) bool,
 ) error {
 	client, err := client.NewGrpcClient()
 	if err != nil {

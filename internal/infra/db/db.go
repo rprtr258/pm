@@ -131,9 +131,9 @@ func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.ProcID, er
 	return newProcID, nil
 }
 
-func (handle Handle) UpdateProc(proc core.ProcData) error {
+func (handle Handle) UpdateProc(proc core.Proc) error {
 	handle.procs.Upsert(procData{
-		ProcID: proc.ProcID,
+		ProcID: proc.ID,
 		Status: status{
 			StartTime: proc.Status.StartTime,
 			StoppedAt: proc.Status.StoppedAt,
@@ -159,21 +159,21 @@ func (handle Handle) UpdateProc(proc core.ProcData) error {
 	return nil
 }
 
-func (handle Handle) GetProc(id core.ProcID) (core.ProcData, bool) {
+func (handle Handle) GetProc(id core.ProcID) (core.Proc, bool) {
 	procs := handle.GetProcs([]core.ProcID{id})
 	if len(procs) != 1 {
-		return fun.Zero[core.ProcData](), false
+		return fun.Zero[core.Proc](), false
 	}
 
 	return procs[0], true
 }
 
-func (handle Handle) GetProcs(ids []core.ProcID) map[core.ProcID]core.ProcData {
+func (handle Handle) GetProcs(ids []core.ProcID) map[core.ProcID]core.Proc {
 	lookupTable := lo.SliceToMap(ids, func(id core.ProcID) (string, struct{}) {
 		return id.String(), struct{}{}
 	})
 
-	res := make(map[core.ProcID]core.ProcData, len(lookupTable))
+	res := make(map[core.ProcID]core.Proc, len(lookupTable))
 
 	handle.procs.
 		Where(func(id string, _ procData) bool {
@@ -181,8 +181,8 @@ func (handle Handle) GetProcs(ids []core.ProcID) map[core.ProcID]core.ProcData {
 			return ok
 		}).
 		Iter(func(id string, proc procData) bool {
-			res[proc.ProcID] = core.ProcData{
-				ProcID:  proc.ProcID,
+			res[proc.ProcID] = core.Proc{
+				ID:      proc.ProcID,
 				Command: proc.Command,
 				Cwd:     proc.Cwd,
 				Name:    proc.Name,
@@ -210,11 +210,11 @@ func (handle Handle) GetProcs(ids []core.ProcID) map[core.ProcID]core.ProcData {
 }
 
 // TODO: merge with GetProcs, use filters
-func (handle Handle) List() map[core.ProcID]core.ProcData {
-	res := map[core.ProcID]core.ProcData{}
+func (handle Handle) List() map[core.ProcID]core.Proc {
+	res := map[core.ProcID]core.Proc{}
 	handle.procs.Iter(func(id string, proc procData) bool {
-		res[proc.ProcID] = core.ProcData{
-			ProcID:  proc.ProcID,
+		res[proc.ProcID] = core.Proc{
+			ID:      proc.ProcID,
 			Command: proc.Command,
 			Cwd:     proc.Cwd,
 			Name:    proc.Name,

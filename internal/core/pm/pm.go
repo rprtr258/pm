@@ -49,7 +49,7 @@ func (app App) CheckDaemon(ctx context.Context) error {
 
 func (app App) ListByRunConfigs(
 	ctx context.Context, runConfigs []core.RunConfig,
-) (map[core.ProcID]core.ProcData, error) {
+) (map[core.ProcID]core.Proc, error) {
 	list, errList := app.client.List(ctx)
 	if errList != nil {
 		return nil, xerr.NewWM(errList, "ListByRunConfigs: list procs")
@@ -59,7 +59,7 @@ func (app App) ListByRunConfigs(
 		return cfg.Name.Unpack()
 	})
 
-	configList := lo.PickBy(list, func(_ core.ProcID, procData core.ProcData) bool {
+	configList := lo.PickBy(list, func(_ core.ProcID, procData core.Proc) bool {
 		return lo.Contains(procNames, procData.Name)
 	})
 
@@ -69,7 +69,7 @@ func (app App) ListByRunConfigs(
 func (app App) Signal(
 	ctx context.Context,
 	signal syscall.Signal,
-	procs map[core.ProcID]core.ProcData,
+	procs map[core.ProcID]core.Proc,
 	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
 ) ([]core.ProcID, error) {
 	procIDs := core.FilterProcs[core.ProcID](
@@ -125,7 +125,7 @@ func (app App) Delete(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcI
 	return procIDs, nil
 }
 
-func (app App) List(ctx context.Context) (map[core.ProcID]core.ProcData, error) {
+func (app App) List(ctx context.Context) (map[core.ProcID]core.Proc, error) {
 	list, errList := app.client.List(ctx)
 	if errList != nil {
 		return nil, xerr.NewWM(errList, "List: list procs")

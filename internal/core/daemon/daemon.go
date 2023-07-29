@@ -329,7 +329,7 @@ func DaemonMain(ctx context.Context) error {
 
 				allProcs := dbHandle.List()
 
-				procID, procFound := lo.FindKeyBy(allProcs, func(_ core.ProcID, procData core.ProcData) bool {
+				procID, procFound := lo.FindKeyBy(allProcs, func(_ core.ProcID, procData core.Proc) bool {
 					return procData.Status.Status == core.StatusRunning &&
 						procData.Status.Pid == pid
 				})

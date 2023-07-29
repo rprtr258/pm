@@ -78,10 +78,10 @@ func (id ProcID) String() string {
 	return strconv.FormatUint(uint64(id), 10) //nolint:gomnd // decimal id
 }
 
-type ProcData struct {
-	ProcID ProcID
-	Name   string
-	Tags   []string
+type Proc struct {
+	ID   ProcID
+	Name string
+	Tags []string
 
 	// Command - executable to run
 	Command string

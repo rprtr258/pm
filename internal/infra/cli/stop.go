@@ -88,7 +88,7 @@ var _stopCmd = &cli.Command{
 			return cfg.Name.Unpack()
 		})
 
-		configList := lo.PickBy(list, func(_ core.ProcID, procData core.ProcData) bool {
+		configList := lo.PickBy(list, func(_ core.ProcID, procData core.Proc) bool {
 			return lo.Contains(names, procData.Name)
 		})
 
@@ -106,7 +106,7 @@ type stopCmd struct {
 func (cmd *stopCmd) Run(
 	ctx context.Context,
 	client client.Client,
-	configList map[core.ProcID]core.ProcData,
+	configList map[core.ProcID]core.Proc,
 ) error {
 	app, errNewApp := pm.New(client)
 	if errNewApp != nil {

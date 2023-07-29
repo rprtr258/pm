@@ -19,9 +19,9 @@ import (
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
-func procFields(proc core.ProcData) map[string]any {
+func procFields(proc core.Proc) map[string]any {
 	return map[string]any{
-		"id":      proc.ProcID,
+		"id":      proc.ID,
 		"command": proc.Command,
 		"cwd":     proc.Cwd,
 		"name":    proc.Name,
@@ -63,12 +63,12 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 
 		if procID, ok := lo.FindKeyBy(
 			procs,
-			func(_ core.ProcID, procData core.ProcData) bool {
+			func(_ core.ProcID, procData core.Proc) bool {
 				return procData.Name == name
 			},
 		); ok { // TODO: early exit from outer if block
-			procData := core.ProcData{
-				ProcID:  procID,
+			procData := core.Proc{
+				ID:      procID,
 				Status:  core.NewStatusCreated(),
 				Name:    name,
 				Cwd:     query.Cwd,
@@ -191,7 +191,7 @@ func (r Runner) start(procID core.ProcID) error {
 	args := append([]string{proc.Command}, proc.Args...)
 	process, err := os.StartProcess(proc.Command, args, &procAttr)
 	if err != nil {
-		if errSetStatus := r.DB.SetStatus(proc.ProcID, core.NewStatusInvalid()); errSetStatus != nil {
+		if errSetStatus := r.DB.SetStatus(proc.ID, core.NewStatusInvalid()); errSetStatus != nil {
 			return xerr.NewM("running failed, setting errored status failed", xerr.Errors{err, errSetStatus})
 		}
 
@@ -200,8 +200,8 @@ func (r Runner) start(procID core.ProcID) error {
 
 	// TODO: fill/remove cpu, memory
 	runningStatus := core.NewStatusRunning(time.Now(), process.Pid, 0, 0)
-	if err := r.DB.SetStatus(proc.ProcID, runningStatus); err != nil {
-		return xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ProcID})
+	if err := r.DB.SetStatus(proc.ID, runningStatus); err != nil {
+		return xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ID})
 	}
 
 	return nil
@@ -217,14 +217,14 @@ func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
 		default:
 		}
 
-		if errStart := r.start(proc.ProcID); errStart != nil {
+		if errStart := r.start(proc.ID); errStart != nil {
 			return xerr.NewW(errStart, xerr.Fields{"proc": procFields(proc)})
 		}
 
-		procID := proc.ProcID
+		procID := proc.ID
 		if watch, ok := proc.Watch.Unpack(); ok {
 			r.Watcher.Add(
-				proc.ProcID,
+				proc.ID,
 				proc.Cwd,
 				watch,
 				func(ctx context.Context) error {
@@ -320,8 +320,8 @@ func (r Runner) stop(ctx context.Context, procID core.ProcID) (bool, error) {
 	exitCode := lo.If(state == nil, -1).ElseF(func() int {
 		return state.ExitCode()
 	})
-	if errSetStatus := r.DB.SetStatus(proc.ProcID, core.NewStatusStopped(exitCode)); errSetStatus != nil {
-		return false, xerr.NewWM(errSetStatus, "set status stopped", xerr.Fields{"procID": proc.ProcID})
+	if errSetStatus := r.DB.SetStatus(proc.ID, core.NewStatusStopped(exitCode)); errSetStatus != nil {
+		return false, xerr.NewWM(errSetStatus, "set status stopped", xerr.Fields{"procID": proc.ID})
 	}
 
 	return true, nil

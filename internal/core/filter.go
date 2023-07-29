@@ -62,7 +62,7 @@ func WithAllIfNoFilters(cfg *filterConfig) {
 	cfg.allIfNoFilters = true
 }
 
-func FilterProcs[T ~uint64](procs map[ProcID]ProcData, opts ...FilterProcsOption) []T {
+func FilterProcs[T ~uint64](procs map[ProcID]Proc, opts ...FilterProcsOption) []T {
 	var cfg filterConfig
 	for _, opt := range opts {
 		opt(&cfg)
@@ -81,9 +81,9 @@ func FilterProcs[T ~uint64](procs map[ProcID]ProcData, opts ...FilterProcsOption
 		})
 	}
 
-	return fun.FilterMapToSlice(procs, func(procID ProcID, proc ProcData) (T, bool) {
+	return fun.FilterMapToSlice(procs, func(procID ProcID, proc Proc) (T, bool) {
 		return T(procID), lo.Contains(cfg.filter.Names, proc.Name) ||
 			lo.Some(cfg.filter.Tags, proc.Tags) ||
-			lo.Contains(cfg.filter.IDs, proc.ProcID)
+			lo.Contains(cfg.filter.IDs, proc.ID)
 	})
 }
