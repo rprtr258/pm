@@ -200,9 +200,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		return xerr.NewWM(errList, "list processes")
 	}
 
-	oldIDs := fun.Map(fun.Keys(list), func(id core.ProcID) uint64 {
-		return uint64(id)
-	})
+	oldIDs := fun.Keys(list)
 
 	if _, errStop := client.Stop(ctx, oldIDs); errStop != nil {
 		return xerr.NewWM(errStop, "stop all old processes")

@@ -26,7 +26,7 @@ type FilterOption func(*Filter)
 func WithGeneric(args []string) FilterOption {
 	ids := lo.FilterMap(args, func(id string, _ int) (ProcID, bool) {
 		procID, err := strconv.ParseUint(id, 10, 64)
-		return ProcID(procID), err == nil
+		return procID, err == nil
 	})
 
 	return func(cfg *Filter) {

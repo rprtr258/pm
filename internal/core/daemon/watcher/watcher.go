@@ -35,7 +35,7 @@ func New(watcher *fsnotify.Watcher) Watcher {
 func (w Watcher) Add(procID core.ProcID, dir string, pattern string, fn func(context.Context) error) {
 	slog.Info(
 		"adding watch dir",
-		slog.Uint64("proc_id", uint64(procID)),
+		slog.Uint64("proc_id", procID),
 		slog.String("dir", dir),
 		slog.String("pattern", pattern),
 	)
@@ -48,7 +48,7 @@ func (w Watcher) Add(procID core.ProcID, dir string, pattern string, fn func(con
 	if errCompilePattern != nil {
 		slog.Error(
 			"pattern compilation failed",
-			slog.Uint64("proc_id", uint64(procID)),
+			slog.Uint64("proc_id", procID),
 			slog.String("pattern", pattern),
 			slog.Any("err", errCompilePattern),
 		)
@@ -127,7 +127,7 @@ func (w Watcher) Start(ctx context.Context) {
 				if err := wp.fn(ctx); err != nil {
 					slog.Error(
 						"call watcher function failed",
-						slog.Uint64("procID", uint64(procID)),
+						slog.Uint64("procID", procID),
 						slog.String("event", e.String()),
 						slog.Any("err", err),
 					)

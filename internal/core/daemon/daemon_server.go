@@ -73,9 +73,7 @@ func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error)
 	stoppedIDs, err := srv.runner.Stop(ctx, req.GetIds()...)
 
 	return &pb.IDs{
-		Ids: lo.Map(stoppedIDs, func(id core.ProcID, _ int) uint64 {
-			return uint64(id)
-		}),
+		Ids: stoppedIDs,
 	}, err
 }
 
@@ -135,12 +133,7 @@ func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb
 	}
 
 	return &pb.IDs{
-		Ids: lo.Map(
-			procIDs,
-			func(procID core.ProcID, _ int) uint64 {
-				return uint64(procID)
-			},
-		),
+		Ids: procIDs,
 	}, nil
 }
 
@@ -150,7 +143,7 @@ func (srv *daemonServer) List(_ context.Context, _ *emptypb.Empty) (*pb.Processe
 			srv.db.GetProcs(core.WithAllIfNoFilters),
 			func(id core.ProcID, proc core.Proc) *pb.Process {
 				return &pb.Process{
-					Id:         uint64(id),
+					Id:         id,
 					Name:       proc.Name,
 					Tags:       proc.Tags,
 					Command:    proc.Command,
@@ -259,9 +252,9 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 
 	var wgGlobal sync.WaitGroup
 	for _, id := range req.GetIds() {
-		proc, ok := procs[core.ProcID(id)]
+		proc, ok := procs[id]
 		if !ok {
-			slog.Info("tried to log unknown process", "procID", id)
+			slog.Info("tried to log unknown process", slog.Uint64("procID", id))
 			continue
 		}
 
@@ -298,7 +291,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 				}); err != nil {
 					slog.Error(
 						"failed to tail log",
-						slog.Uint64("procID", uint64(id)),
+						slog.Uint64("procID", id),
 						slog.String("file", proc.StdoutFile),
 						slog.Any("err", err),
 					)
@@ -329,7 +322,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 				}); err != nil {
 					slog.Error(
 						"failed to tail log",
-						slog.Uint64("procID", uint64(id)),
+						slog.Uint64("procID", id),
 						slog.String("file", proc.StdoutFile),
 						slog.Any("err", err),
 					)
@@ -352,19 +345,19 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 					}
 
 					if errSend := stream.Send(&pb.ProcsLogs{
-						Id:    uint64(id),
+						Id:    id,
 						Lines: []*pb.LogLine{line}, // TODO: collect lines for some time and send all at once
 					}); errSend != nil {
 						slog.Error(
 							"failed to send log lines",
-							slog.Uint64("procID", uint64(id)),
+							slog.Uint64("procID", id),
 							slog.Any("err", errSend),
 						)
 						return
 					}
 				}
 			}
-		}(core.ProcID(id))
+		}(id)
 	}
 
 	allStopped := make(chan struct{})

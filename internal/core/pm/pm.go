@@ -88,7 +88,7 @@ func (app App) Signal(
 	}
 
 	if err := app.client.Signal(ctx, signal, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
-		return uint64(procID)
+		return procID
 	})); err != nil {
 		return nil, xerr.NewWM(err, "client.stop")
 	}
@@ -105,7 +105,7 @@ func (app App) Stop(
 	}
 
 	stoppedProcIDs, err := app.client.Stop(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
-		return uint64(procID)
+		return procID
 	}))
 	if err != nil {
 		return stoppedProcIDs, xerr.NewWM(err, "client.stop")
@@ -116,7 +116,7 @@ func (app App) Stop(
 
 func (app App) Delete(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcID, error) {
 	if errDelete := app.client.Delete(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
-		return uint64(procID)
+		return procID
 	})); errDelete != nil {
 		return nil, xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
 	}
@@ -195,7 +195,7 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcI
 // Start already created processes
 func (app App) Start(ctx context.Context, ids ...core.ProcID) error {
 	if errStart := app.client.Start(ctx, lo.Map(ids, func(procID core.ProcID, _ int) uint64 {
-		return uint64(procID)
+		return procID
 	})); errStart != nil {
 		return xerr.NewWM(errStart, "start processes")
 	}
@@ -206,7 +206,7 @@ func (app App) Start(ctx context.Context, ids ...core.ProcID) error {
 // Logs - watch for processes logs
 func (app App) Logs(ctx context.Context, ids ...core.ProcID) (<-chan core.ProcLogs, error) {
 	iter, errLogs := app.client.Logs(ctx, lo.Map(ids, func(procID core.ProcID, _ int) uint64 {
-		return uint64(procID)
+		return procID
 	})...)
 	if errLogs != nil {
 		return nil, xerr.NewWM(errLogs, "start processes")
@@ -225,7 +225,7 @@ func (app App) Logs(ctx context.Context, ids ...core.ProcID) (<-chan core.ProcLo
 				return
 			case procLogs := <-iter.Logs:
 				res <- core.ProcLogs{
-					ID: core.ProcID(procLogs.GetId()),
+					ID: procLogs.GetId(),
 					Lines: fun.Map(procLogs.GetLines(), func(line *pb.LogLine) core.LogLine {
 						return core.LogLine{
 							At:   line.GetTime().AsTime(),

@@ -230,7 +230,7 @@ func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
 				func(ctx context.Context) error {
 					slog.Info(
 						"triggered process restart by watch",
-						slog.Uint64("procID", uint64(procID)),
+						slog.Uint64("procID", procID),
 					)
 
 					if _, errStop := r.stop(ctx, procID); errStop != nil {

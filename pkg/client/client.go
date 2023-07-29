@@ -71,7 +71,7 @@ func (c Client) List(ctx context.Context) (map[core.ProcID]core.Proc, error) {
 	return lo.SliceToMap(
 		resp.GetProcesses(),
 		func(proc *pb.Process) (core.ProcID, core.Proc) {
-			procID := core.ProcID(proc.GetId())
+			procID := proc.GetId()
 			return procID, core.Proc{
 				ID:         procID,
 				Name:       proc.GetName(),
