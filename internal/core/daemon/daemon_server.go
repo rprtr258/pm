@@ -229,70 +229,96 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 
 			wgLocal.Add(1)
 
-			stdoutTailer := tail.File(proc.StdoutFile, tail.Config{
-				Follow:        true,
-				BufferSize:    _procLogsBufferSize,
-				NotifyTimeout: time.Minute,
-				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -1000}, // TODO: limit offset by file size as with daemon logs
-				Logger:        nil,
-				Tracker:       nil,
-			})
-			go func() {
-				if err := stdoutTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
-					select {
-					case <-ctx.Done():
-						wgGlobal.Done()
-						return ctx.Err()
-					case logLinesCh <- &pb.LogLine{
-						Line: string(l.Data),
-						Time: timestamppb.Now(),
-						Type: pb.LogLine_TYPE_STDOUT,
-					}:
-						return nil
+			const _defaultOffset = 1000
+
+			statStdout, errStatStdout := os.Stat(proc.StdoutFile)
+			if errStatStdout != nil {
+				slog.Error(
+					"failed to stat stdout log file",
+					slog.Uint64("procID", id),
+					slog.String("file", proc.StdoutFile),
+				)
+			} else {
+				stdoutTailer := tail.File(proc.StdoutFile, tail.Config{
+					Follow:        true,
+					BufferSize:    _procLogsBufferSize,
+					NotifyTimeout: time.Minute,
+					Location: &tail.Location{
+						Whence: io.SeekEnd,
+						Offset: -fun.Min(statStdout.Size(), _defaultOffset),
+					},
+					Logger:  nil,
+					Tracker: nil,
+				})
+				go func() {
+					if err := stdoutTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
+						select {
+						case <-ctx.Done():
+							wgGlobal.Done()
+							return ctx.Err()
+						case logLinesCh <- &pb.LogLine{
+							Line: string(l.Data),
+							Time: timestamppb.Now(),
+							Type: pb.LogLine_TYPE_STDOUT,
+						}:
+							return nil
+						}
+					}); err != nil {
+						slog.Error(
+							"failed to tail log",
+							slog.Uint64("procID", id),
+							slog.String("file", proc.StdoutFile),
+							slog.Any("err", err),
+						)
+						// TODO: somehow call wg.Done() once with parent call
 					}
-				}); err != nil {
-					slog.Error(
-						"failed to tail log",
-						slog.Uint64("procID", id),
-						slog.String("file", proc.StdoutFile),
-						slog.Any("err", err),
-					)
-					// TODO: somehow call wg.Done() once with parent call
-				}
-			}()
+				}()
+			}
 
 			wgLocal.Add(1)
-			stderrTailer := tail.File(proc.StderrFile, tail.Config{
-				Follow:        true,
-				BufferSize:    _procLogsBufferSize,
-				NotifyTimeout: time.Minute,
-				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -1000}, // TODO: limit offset by file size as with daemon logs
-				Logger:        nil,
-				Tracker:       nil,
-			})
-			go func() {
-				if err := stderrTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
-					select {
-					case <-ctx.Done():
-						wgGlobal.Done()
-						return ctx.Err()
-					case logLinesCh <- &pb.LogLine{
-						Line: string(l.Data),
-						Time: timestamppb.Now(),
-						Type: pb.LogLine_TYPE_STDERR,
-					}:
+			statStderr, errStatStderr := os.Stat(proc.StderrFile)
+			if errStatStderr != nil {
+				slog.Error(
+					"failed to stat stderr log file",
+					slog.Uint64("procID", id),
+					slog.String("file", proc.StderrFile),
+				)
+			} else {
+				stderrTailer := tail.File(proc.StderrFile, tail.Config{
+					Follow:        true,
+					BufferSize:    _procLogsBufferSize,
+					NotifyTimeout: time.Minute,
+					Location: &tail.Location{
+						Whence: io.SeekEnd,
+						Offset: -fun.Min(statStderr.Size(), _defaultOffset),
+					},
+					Logger:  nil,
+					Tracker: nil,
+				})
+				go func() {
+					if err := stderrTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
+						select {
+						case <-ctx.Done():
+							wgGlobal.Done()
+							return ctx.Err()
+						case logLinesCh <- &pb.LogLine{
+							Line: string(l.Data),
+							Time: timestamppb.Now(),
+							Type: pb.LogLine_TYPE_STDERR,
+						}:
+						}
+						return nil
+					}); err != nil {
+						slog.Error(
+							"failed to tail log",
+							slog.Uint64("procID", id),
+							slog.String("file", proc.StdoutFile),
+							slog.Any("err", err),
+						)
+						// TODO: somehow call wg.Done() once with parent call
 					}
-					return nil
-				}); err != nil {
-					slog.Error(
-						"failed to tail log",
-						slog.Uint64("procID", id),
-						slog.String("file", proc.StdoutFile),
-						slog.Any("err", err),
-					)
-					// TODO: somehow call wg.Done() once with parent call
-				}
-			}()
+				}()
+			}
 
 			go func() {
 				wgLocal.Wait()
