@@ -124,27 +124,6 @@ func (srv *daemonServer) start(proc db.ProcData) error {
 		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
 	}
 
-	if proc.Watch != nil {
-		srv.watcher.Add(
-			proc.ProcID,
-			proc.Cwd,
-			*proc.Watch,
-			func(ctx context.Context) error {
-				ids := &pb.IDs{
-					Ids: []*pb.ProcessID{{Id: uint64(proc.ProcID)}},
-				}
-
-				// TODO: do not touch watcher during stopping, starting
-				if _, errStop := srv.Stop(ctx, ids); errStop != nil {
-					return errStop
-				}
-
-				_, errStart := srv.Start(ctx, ids)
-				return errStart
-			},
-		)
-	}
-
 	runningStatus := db.NewStatusRunning(time.Now(), process.Pid)
 	if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
 		return xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ProcID})
@@ -169,6 +148,22 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 
 		if errStart := srv.start(proc); errStart != nil {
 			return nil, xerr.NewW(errStart, xerr.Fields{"proc": procFields(proc)})
+		}
+
+		if proc.Watch != nil {
+			srv.watcher.Add(
+				proc.ProcID,
+				proc.Cwd,
+				*proc.Watch,
+				func(ctx context.Context) error {
+					proc.Status.Status = db.StatusRunning // TODO: to deceive stop, remove
+					if _, errStop := srv.stop(ctx, proc); errStop != nil {
+						return errStop
+					}
+
+					return srv.start(proc)
+				},
+			)
 		}
 	}
 

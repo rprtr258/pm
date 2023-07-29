@@ -228,7 +228,7 @@ linters:
     - wrapcheck # checks that errors returned from external packages are wrapped
     - containedctx # detects struct contained context.Context field
     - contextcheck # [too many false positives] checks the function whether use a non-inherited context
-    - depguard # [replaced by gomodguard] checks if package imports are in a list of acceptable packages
+    # - depguard # [replaced by gomodguard] checks if package imports are in a list of acceptable packages
     - dogsled # checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
     - errchkjson # [don't see profit + I'm against of omitting errors like in the first example https://github.com/breml/errchkjson] checks types passed to the json encoding functions. Reports unsupported types and optionally reports occasions, where the check for the returned error can be omitted
     - forcetypeassert # [replaced by errcheck] finds forced type assertions
