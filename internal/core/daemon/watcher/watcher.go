@@ -123,11 +123,19 @@ func (w Watcher) Start(ctx context.Context) {
 					continue
 				}
 
+				if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
+					continue
+				}
+
 				if watch, ok := e.Proc.Watch.Unpack(); ok {
 					w.Add(e.Proc.ID, e.Proc.Cwd, watch)
 				}
 			case eventbus.DataProcStopped:
 				if _, ok := w.watchplaces[e.ProcID]; ok {
+					continue
+				}
+
+				if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
 					continue
 				}
 

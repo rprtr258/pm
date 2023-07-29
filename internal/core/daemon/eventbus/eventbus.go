@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/pm/internal/core"
+	"golang.org/x/exp/slog"
 )
 
 type EventKind int
@@ -20,16 +21,28 @@ type Event struct {
 	Data any
 }
 
+const (
+	EmitReasonDied = 1 << iota
+	EmitReasonByUser
+	EmitReasonByWatcher
+)
+
 type DataProcStarted struct {
 	Proc core.Proc
 	At   time.Time
 	Pid  int
+
+	// EmitReason = ByUser | ByWatcher
+	EmitReason int
 }
 
 type DataProcStopped struct {
 	ProcID   core.ProcID
 	ExitCode int
 	At       time.Time
+
+	// EmitReason = Died | ByUser | ByWatcher
+	EmitReason int
 }
 
 type DataProcRestartRequest struct {
@@ -88,24 +101,42 @@ func (e *EventBus) Close() {
 	}
 }
 
-func (e *EventBus) PublishProcStarted(proc core.Proc, pid int) {
+func (e *EventBus) PublishProcStarted(proc core.Proc, pid int, emitReason int) {
+	if emitReason&(emitReason-1) == 0 {
+		slog.Warn(
+			"invalid emit reason for proc started event",
+			slog.Int("reason", emitReason),
+		)
+		return
+	}
+
 	e.eventsCh <- Event{
 		Kind: KindProcStarted,
 		Data: DataProcStarted{
-			Proc: proc,
-			Pid:  pid,
-			At:   time.Now(),
+			Proc:       proc,
+			Pid:        pid,
+			At:         time.Now(),
+			EmitReason: emitReason,
 		},
 	}
 }
 
-func (e *EventBus) PublishProcStopped(procID core.ProcID, exitCode int) {
+func (e *EventBus) PublishProcStopped(procID core.ProcID, exitCode int, emitReason int) {
+	if emitReason&(emitReason-1) == 0 {
+		slog.Warn(
+			"invalid emit reason for proc stopped event",
+			slog.Int("reason", emitReason),
+		)
+		return
+	}
+
 	e.eventsCh <- Event{
 		Kind: KindProcStopped,
 		Data: DataProcStopped{
-			ProcID:   procID,
-			ExitCode: exitCode,
-			At:       time.Now(),
+			ProcID:     procID,
+			ExitCode:   exitCode,
+			At:         time.Now(),
+			EmitReason: emitReason,
 		},
 	}
 }

@@ -16,24 +16,23 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
-	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 func procFields(proc core.Proc) map[string]any {
 	return map[string]any{
-		"id":      proc.ID,
-		"command": proc.Command,
-		"cwd":     proc.Cwd,
-		"name":    proc.Name,
-		"args":    proc.Args,
-		"tags":    proc.Tags,
-		"watch":   proc.Watch,
-		"status":  proc.Status,
+		"id":          proc.ID,
+		"command":     proc.Command,
+		"cwd":         proc.Cwd,
+		"name":        proc.Name,
+		"args":        proc.Args,
+		"tags":        proc.Tags,
+		"watch":       proc.Watch,
+		"status":      proc.Status,
+		"stdout_file": proc.StdoutFile,
+		"stderr_file": proc.StderrFile,
 		// TODO: uncomment
-		// "stdout_file": proc.StdoutFile,
-		// "stderr_file": proc.StderrFile,
 		// "restart_tries": proc.RestartTries,
 		// "restart_delay": proc.RestartDelay,
 		// "respawns":     proc.Respawns,
@@ -42,7 +41,6 @@ func procFields(proc core.Proc) map[string]any {
 
 type Runner struct {
 	DB      db.Handle
-	Watcher watcher.Watcher
 	LogsDir string
 	Ebus    *eventbus.EventBus
 }
@@ -144,24 +142,24 @@ func (r Runner) Create(ctx context.Context, queries ...CreateQuery) ([]core.Proc
 	return procIDs, nil
 }
 
-func (r Runner) start(procID core.ProcID) error {
+func (r Runner) start(procID core.ProcID) (int, error) {
 	proc, ok := r.DB.GetProc(procID)
 	if !ok {
-		return xerr.NewM("invalid procs count got by id")
+		return 0, xerr.NewM("invalid procs count got by id")
 	}
 	if proc.Status.Status == core.StatusRunning {
-		return xerr.NewM("process is already running")
+		return 0, xerr.NewM("process is already running")
 	}
 
 	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": proc.StdoutFile})
+		return 0, xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": proc.StdoutFile})
 	}
 	defer stdoutLogFile.Close()
 
 	stderrLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": proc.StderrFile})
+		return 0, xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": proc.StderrFile})
 	}
 	defer func() {
 		if errClose := stderrLogFile.Close(); errClose != nil {
@@ -197,15 +195,13 @@ func (r Runner) start(procID core.ProcID) error {
 	process, err := os.StartProcess(proc.Command, args, &procAttr)
 	if err != nil {
 		if errSetStatus := r.DB.SetStatus(proc.ID, core.NewStatusInvalid()); errSetStatus != nil {
-			return xerr.NewM("running failed, setting errored status failed", xerr.Errors{err, errSetStatus})
+			return 0, xerr.NewM("running failed, setting errored status failed", xerr.Errors{err, errSetStatus})
 		}
 
-		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
+		return 0, xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
 	}
 
-	r.Ebus.PublishProcStarted(proc, process.Pid)
-
-	return nil
+	return process.Pid, nil
 }
 
 func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
@@ -218,9 +214,12 @@ func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
 		default:
 		}
 
-		if errStart := r.start(proc.ID); errStart != nil {
+		pid, errStart := r.start(proc.ID)
+		if errStart != nil {
 			return xerr.NewW(errStart, xerr.Fields{"proc": procFields(proc)})
 		}
+
+		r.Ebus.PublishProcStarted(proc, pid, eventbus.EmitReasonByUser)
 	}
 
 	return nil
@@ -253,7 +252,7 @@ func (r Runner) stop(ctx context.Context, procID core.ProcID) (bool, error) {
 		}
 	}
 
-	doneCh := make(chan *os.ProcessState, 1)
+	doneCh := make(chan struct{}, 1)
 	go func() {
 		state, errFindProc := process.Wait()
 		if errFindProc != nil {
@@ -262,7 +261,7 @@ func (r Runner) stop(ctx context.Context, procID core.ProcID) (bool, error) {
 					"pid", process.Pid,
 					"err", errFindProc.Error(),
 				)
-				doneCh <- nil
+				doneCh <- struct{}{}
 				return
 			}
 
@@ -278,13 +277,12 @@ func (r Runner) stop(ctx context.Context, procID core.ProcID) (bool, error) {
 				slog.Int("exit_code", state.ExitCode()),
 			)
 		}
-		doneCh <- state
+		doneCh <- struct{}{}
 	}()
 
 	timer := time.NewTimer(time.Second * 5) //nolint:gomnd // arbitrary timeout
 	defer timer.Stop()
 
-	var state *os.ProcessState
 	select {
 	case <-timer.C:
 		slog.Warn("timed out waiting for process to stop from SIGTERM, killing it", "proc", proc)
@@ -294,14 +292,7 @@ func (r Runner) stop(ctx context.Context, procID core.ProcID) (bool, error) {
 		}
 	case <-ctx.Done():
 		return false, xerr.NewWM(ctx.Err(), "context canceled")
-	case state = <-doneCh:
-	}
-
-	exitCode := lo.If(state == nil, -1).ElseF(func() int {
-		return state.ExitCode()
-	})
-	if errSetStatus := r.DB.SetStatus(proc.ID, core.NewStatusStopped(exitCode)); errSetStatus != nil {
-		return false, xerr.NewWM(errSetStatus, "set status stopped", xerr.Fields{"procID": proc.ID})
+	case <-doneCh:
 	}
 
 	return true, nil
@@ -325,11 +316,11 @@ func (r Runner) Stop(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcID
 		}
 
 		if stopped {
+			r.Ebus.PublishProcStopped(procID, -1, eventbus.EmitReasonByUser)
 			stoppedIDs = append(stoppedIDs, procID)
 		}
 	}
 
-	r.Watcher.Remove(stoppedIDs...)
 	return stoppedIDs, merr
 }
 

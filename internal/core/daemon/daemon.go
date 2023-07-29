@@ -308,7 +308,6 @@ func DaemonMain(ctx context.Context) error {
 		ebus:                      ebus,
 		runner: runner.Runner{
 			DB:      dbHandle,
-			Watcher: watcher,
 			LogsDir: _dirProcsLogs,
 			Ebus:    ebus,
 		},
@@ -342,7 +341,7 @@ func DaemonMain(ctx context.Context) error {
 					continue
 				}
 
-				ebus.PublishProcStopped(procID, status.ExitStatus())
+				ebus.PublishProcStopped(procID, status.ExitStatus(), eventbus.EmitReasonDied)
 			}
 		}
 	}()
