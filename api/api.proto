@@ -23,10 +23,6 @@ service Daemon {
   rpc Logs(IDs) returns (stream ProcsLogs);
 }
 
-message ProcessID {
-  uint64 id = 1;
-}
-
 message CreateRequest {
   repeated ProcessOptions options = 1;
 }
@@ -48,7 +44,7 @@ message ProcessesList {
 }
 
 message Process {
-  ProcessID id = 1;
+  uint64 id = 1;
   ProcessStatus status = 2;
   string name = 3;
   string cwd = 4;
@@ -79,7 +75,7 @@ message StoppedProcessStatus {
 }
 
 message IDs {
-  repeated ProcessID ids = 1;
+  repeated uint64 ids = 1;
 }
 
 enum Signal {
@@ -89,7 +85,7 @@ enum Signal {
 }
 
 message SignalRequest {
-  repeated ProcessID ids = 1;
+  repeated uint64 ids = 1;
   Signal signal = 2;
 }
 

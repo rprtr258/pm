@@ -7,9 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -24,147 +22,30 @@ import (
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon/runner"
+	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
-func procFields(proc db.ProcData) map[string]any {
-	return map[string]any{
-		"id":      proc.ProcID,
-		"command": proc.Command,
-		"cwd":     proc.Cwd,
-		"name":    proc.Name,
-		"args":    proc.Args,
-		"tags":    proc.Tags,
-		"watch":   proc.Watch,
-		"status":  proc.Status,
-		// TODO: uncomment
-		// "stdout_file": proc.StdoutFile,
-		// "stderr_file": proc.StderrFile,
-		// "restart_tries": proc.RestartTries,
-		// "restart_delay": proc.RestartDelay,
-		// "respawns":     proc.Respawns,
-	}
-}
-
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
 	db               db.Handle
-	watcher          watcher
+	watcher          watcher.Watcher
 	homeDir, logsDir string
-}
-
-func (srv *daemonServer) start(proc db.ProcData) error {
-	if procs := srv.db.GetProcs([]core.ProcID{proc.ProcID}); len(procs) > 0 {
-		if len(procs) > 1 {
-			return xerr.NewF("invalid procs count got by id", xerr.Fields{
-				"id": proc.ProcID,
-				"procs": lo.Map(procs, func(proc db.ProcData, _ int) map[string]any {
-					return procFields(proc)
-				}),
-			})
-		}
-
-		if procs[0].Status.Status == db.StatusRunning {
-			return xerr.NewF("process is already running", xerr.Fields{"id": proc.ProcID})
-		}
-	}
-
-	procIDStr := strconv.FormatUint(uint64(proc.ProcID), 10) //nolint:gomnd // decimal
-	stdoutLogFilename := path.Join(srv.logsDir, procIDStr+".stdout")
-	stdoutLogFile, err := os.OpenFile(stdoutLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
-	if err != nil {
-		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": stdoutLogFilename})
-	}
-	defer stdoutLogFile.Close()
-
-	stderrLogFilename := path.Join(srv.logsDir, procIDStr+".stderr")
-	stderrLogFile, err := os.OpenFile(stderrLogFilename, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
-	if err != nil {
-		return xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": stderrLogFilename})
-	}
-	defer func() {
-		if errClose := stderrLogFile.Close(); errClose != nil {
-			slog.Error(errClose.Error())
-		}
-	}()
-	// TODO: syscall.CloseOnExec(pidFile.Fd()) or just close pid file
-
-	env := os.Environ()
-	for k, v := range proc.Env {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
-
-	procAttr := os.ProcAttr{
-		Dir: proc.Cwd,
-		Env: env,
-		Files: []*os.File{ // TODO: pid file is somehow passes to child
-			0: os.Stdin,
-			1: stdoutLogFile,
-			2: stderrLogFile,
-			// TODO: very fucking dirty hack not to inherit pid (and possibly other fds from daemon)
-			// because I tried different variants, none of them worked out, including setting O_CLOEXEC on
-			// pid file open and fcntl FD_CLOEXEC on already opened pid file fd
-			// TODO: try if syscall.Getuid() == 0 {syscall.Setgid(GID) == nil && syscall.Setuid(UID) == nil}
-			/* 3,4,5,6,7... */ nil, nil, nil, nil, nil, nil, nil, nil,
-		},
-		Sys: &syscall.SysProcAttr{
-			Setpgid: true,
-		},
-	}
-
-	args := append([]string{proc.Command}, proc.Args...)
-	process, err := os.StartProcess(proc.Command, args, &procAttr)
-	if err != nil {
-		if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusInvalid()); errSetStatus != nil {
-			return xerr.NewM("running failed, setting errored status failed", xerr.Errors{err, errSetStatus})
-		}
-
-		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
-	}
-
-	runningStatus := db.NewStatusRunning(time.Now(), process.Pid)
-	if err := srv.db.SetStatus(proc.ProcID, runningStatus); err != nil {
-		return xerr.NewWM(err, "set status running", xerr.Fields{"procID": proc.ProcID})
-	}
-
-	return nil
+	runner           runner.Runner
 }
 
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	procs := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) core.ProcID {
-		return core.ProcID(id.GetId())
-	}))
+	ids := lo.Map(req.GetIds(), func(id uint64, _ int) core.ProcID {
+		return core.ProcID(id)
+	})
 
-	for _, proc := range procs {
-		select {
-		case <-ctx.Done():
-			return nil, xerr.NewWM(ctx.Err(), "context canceled")
-		default:
-		}
-
-		if errStart := srv.start(proc); errStart != nil {
-			return nil, xerr.NewW(errStart, xerr.Fields{"proc": procFields(proc)})
-		}
-
-		if proc.Watch != nil {
-			srv.watcher.Add(
-				proc.ProcID,
-				proc.Cwd,
-				*proc.Watch,
-				func(ctx context.Context) error {
-					proc.Status.Status = db.StatusRunning // TODO: to deceive stop, remove
-					if _, errStop := srv.stop(ctx, proc); errStop != nil {
-						return errStop
-					}
-
-					return srv.start(proc)
-				},
-			)
-		}
+	if errStart := srv.runner.Start(ctx, ids...); errStart != nil {
+		return nil, errStart
 	}
 
 	return &emptypb.Empty{}, nil
@@ -172,8 +53,8 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 
 // Signal - send signal processes to processes
 func (srv *daemonServer) Signal(_ context.Context, req *pb.SignalRequest) (*emptypb.Empty, error) {
-	procsToStop := lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) core.ProcID {
-		return core.ProcID(id.GetId())
+	procsToStop := lo.Map(req.GetIds(), func(id uint64, _ int) core.ProcID {
+		return core.ProcID(id)
 	})
 
 	procsWeHaveAmongRequested := srv.db.GetProcs(procsToStop)
@@ -198,125 +79,18 @@ func (srv *daemonServer) Signal(_ context.Context, req *pb.SignalRequest) (*empt
 	return &emptypb.Empty{}, merr
 }
 
-func (srv *daemonServer) stop(ctx context.Context, proc db.ProcData) (bool, error) {
-	if proc.Status.Status != db.StatusRunning {
-		slog.Info("tried to stop non-running process", "proc", proc)
-		return false, nil
-	}
-
-	process, errFindProc := os.FindProcess(proc.Status.Pid)
-	if errFindProc != nil {
-		return false, xerr.NewWM(errFindProc, "find process", xerr.Fields{"pid": proc.Status.Pid})
-	}
-
-	if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
-		switch {
-		case errors.Is(errKill, os.ErrProcessDone):
-			slog.Warn("tried stop process which is done", "proc", proc)
-		case errors.Is(errKill, syscall.ESRCH): // no such process
-			slog.Warn("tried stop process which doesn't exist", "proc", proc)
-		default:
-			return false, xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
-		}
-	}
-
-	doneCh := make(chan *os.ProcessState, 1)
-	go func() {
-		state, errFindProc := process.Wait()
-		if errFindProc != nil {
-			if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
-				slog.Error("releasing process",
-					"pid", process.Pid,
-					"err", errFindProc.Error(),
-				)
-				doneCh <- nil
-				return
-			}
-
-			slog.Info(
-				"process is not a child",
-				slog.Any("proc", procFields(proc)),
-			)
-		} else {
-			slog.Info(
-				"process is stopped",
-				slog.Any("proc", procFields(proc)),
-				slog.Bool("is_state_nil", state == nil),
-				slog.Int("exit_code", state.ExitCode()),
-			)
-		}
-		doneCh <- state
-	}()
-
-	timer := time.NewTimer(time.Second * 5) //nolint:gomnd // arbitrary timeout
-	defer timer.Stop()
-
-	var state *os.ProcessState
-	select {
-	case <-timer.C:
-		slog.Warn("timed out waiting for process to stop from SIGTERM, killing it", "proc", proc)
-
-		if errKill := syscall.Kill(-process.Pid, syscall.SIGKILL); errKill != nil {
-			return false, xerr.NewWM(errKill, "kill process", xerr.Fields{"pid": process.Pid})
-		}
-	case <-ctx.Done():
-		return false, xerr.NewWM(ctx.Err(), "context canceled")
-	case state = <-doneCh:
-	}
-
-	exitCode := lo.If(state == nil, -1).ElseF(func() int {
-		return state.ExitCode()
-	})
-	if errSetStatus := srv.db.SetStatus(proc.ProcID, db.NewStatusStopped(exitCode)); errSetStatus != nil {
-		return false, xerr.NewWM(errSetStatus, "set status stopped", xerr.Fields{"procID": proc.ProcID})
-	}
-
-	return true, nil
-}
-
 func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error) {
-	procsList := srv.db.GetProcs(lo.Map(req.GetIds(), func(id *pb.ProcessID, _ int) core.ProcID {
-		return core.ProcID(id.GetId())
-	}))
-
-	procs := lo.SliceToMap(procsList, func(proc db.ProcData) (core.ProcID, db.ProcData) {
-		return proc.ProcID, proc
+	ids := lo.Map(req.GetIds(), func(id uint64, _ int) core.ProcID {
+		return core.ProcID(id)
 	})
 
-	stoppedIDs := []core.ProcID{}
-
-	var merr error
-	for _, procID := range req.GetIds() {
-		select {
-		case <-ctx.Done():
-			return nil, xerr.NewWM(ctx.Err(), "context canceled")
-		default:
-		}
-
-		proc, ok := procs[core.ProcID(procID.GetId())]
-		if !ok {
-			slog.Info("tried to stop non-existing process", "proc", procID.GetId())
-			continue
-		}
-
-		stopped, errStop := srv.stop(ctx, proc)
-		if errStop != nil {
-			xerr.AppendInto(&merr, errStop)
-			continue
-		}
-
-		if stopped {
-			stoppedIDs = append(stoppedIDs, proc.ProcID)
-		}
-	}
-
-	srv.watcher.Remove(stoppedIDs...)
+	stoppedIDs, err := srv.runner.Stop(ctx, ids...)
 
 	return &pb.IDs{
-		Ids: lo.Map(stoppedIDs, func(id core.ProcID, _ int) *pb.ProcessID {
-			return &pb.ProcessID{Id: uint64(id)}
+		Ids: lo.Map(stoppedIDs, func(id core.ProcID, _ int) uint64 {
+			return uint64(id)
 		}),
-	}, nil
+	}, err
 }
 
 func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {
@@ -357,21 +131,30 @@ func (srv *daemonServer) signal(proc db.ProcData, signal syscall.Signal) error {
 }
 
 func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.IDs, error) {
-	procIDs := make([]core.ProcID, len(req.GetOptions()))
-	for i, opts := range req.GetOptions() {
-		var errCreate error
-		procIDs[i], errCreate = srv.create(ctx, opts)
-		if errCreate != nil {
-			return nil, errCreate
+	procIDs, err := srv.runner.Create(ctx, lo.Map(req.GetOptions(), func(opts *pb.ProcessOptions, _ int) runner.CreateQuery {
+		return runner.CreateQuery{
+			Name:       opts.Name,
+			Cwd:        opts.GetCwd(),
+			Tags:       opts.GetTags(),
+			Command:    opts.GetCommand(),
+			Args:       opts.GetArgs(),
+			Watch:      opts.Watch,
+			Env:        opts.GetEnv(),
+			StdoutFile: opts.StdoutFile,
+			StderrFile: opts.StderrFile,
 		}
+	})...)
+	if err != nil {
+		return nil, err
 	}
 
 	return &pb.IDs{
-		Ids: lo.Map(procIDs, func(procID core.ProcID, _ int) *pb.ProcessID {
-			return &pb.ProcessID{
-				Id: uint64(procID),
-			}
-		}),
+		Ids: lo.Map(
+			procIDs,
+			func(procID core.ProcID, _ int) uint64 {
+				return uint64(procID)
+			},
+		),
 	}, nil
 }
 
@@ -449,7 +232,7 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 	return &pb.ProcessesList{
 		Processes: lo.MapToSlice(list, func(id core.ProcID, proc db.ProcData) *pb.Process {
 			return &pb.Process{
-				Id:      &pb.ProcessID{Id: uint64(id)},
+				Id:      uint64(id),
 				Status:  mapStatus(proc.Status),
 				Name:    proc.Name,
 				Cwd:     proc.Cwd,
@@ -491,12 +274,7 @@ func mapStatus(status db.Status) *pb.ProcessStatus {
 }
 
 func (srv *daemonServer) Delete(ctx context.Context, r *pb.IDs) (*emptypb.Empty, error) {
-	ids := lo.Map(
-		r.GetIds(),
-		func(procID *pb.ProcessID, _ int) uint64 {
-			return procID.GetId()
-		},
-	)
+	ids := r.GetIds()
 	if errDelete := srv.db.Delete(ids); errDelete != nil {
 		return nil, xerr.NewWM(errDelete, "delete proc", xerr.Fields{"procIDs": ids})
 	}
@@ -557,8 +335,8 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 
 	var wgGlobal sync.WaitGroup
 	for _, id := range req.GetIds() {
-		if _, ok := procs[core.ProcID(id.GetId())]; !ok {
-			slog.Info("tried to log unknown process", "procID", id.GetId())
+		if _, ok := procs[core.ProcID(id)]; !ok {
+			slog.Info("tried to log unknown process", "procID", id)
 			continue
 		}
 
@@ -663,7 +441,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 					}
 				}
 			}
-		}(core.ProcID(id.GetId()))
+		}(core.ProcID(id))
 	}
 
 	allStopped := make(chan struct{})

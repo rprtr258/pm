@@ -80,15 +80,15 @@ type ProcData struct {
 	Cwd  string `json:"cwd"`
 	Name string `json:"name"`
 	// Args - arguments for executable, not including executable itself as first argument
-	Args   []string          `json:"args"`
-	Tags   []string          `json:"tags"`
-	Watch  *string           `json:"watch"`
-	Status Status            `json:"status"`
-	ProcID core.ProcID       `json:"id"`
-	Env    map[string]string `json:"env"`
+	Args       []string          `json:"args"`
+	Tags       []string          `json:"tags"`
+	Watch      *string           `json:"watch"`
+	Status     Status            `json:"status"`
+	ProcID     core.ProcID       `json:"id"`
+	Env        map[string]string `json:"env"`
+	StdoutFile string
+	StderrFile string
 
-	// StdoutFile  string
-	// StderrFile  string
 	// RestartTries int
 	// RestartDelay    time.Duration
 	// Respawns int
@@ -182,6 +182,15 @@ func (handle Handle) UpdateProc(metadata ProcData) error {
 	}
 
 	return nil
+}
+
+func (handle Handle) GetProc(id core.ProcID) (ProcData, bool) {
+	procs := handle.GetProcs([]core.ProcID{id})
+	if len(procs) != 1 {
+		return fun.Zero[ProcData](), false
+	}
+
+	return procs[0], true
 }
 
 func (handle Handle) GetProcs(ids []core.ProcID) []ProcData {

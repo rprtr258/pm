@@ -21,6 +21,8 @@ import (
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon/runner"
+	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/go-daemon"
@@ -287,12 +289,8 @@ func DaemonMain(ctx context.Context) error {
 	defer deferErr(watcherr.Close)
 
 	// TODO: rewrite in EDA style, remove from daemonServer
-	watcher := watcher{
-		watcher:     watcherr,
-		watchplaces: map[core.ProcID]watcherEntry{},
-		dirs:        map[string][]core.ProcID{},
-	}
-	go watcher.start(ctx)
+	watcher := watcher.New(watcherr)
+	go watcher.Start(ctx)
 
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
@@ -304,6 +302,10 @@ func DaemonMain(ctx context.Context) error {
 		homeDir:                   core.DirHome,
 		logsDir:                   _dirProcsLogs,
 		watcher:                   watcher,
+		runner: runner.Runner{
+			DB:      dbHandle,
+			Watcher: watcher,
+		},
 	})
 
 	slog.Info("daemon started", "socket", sock.Addr())

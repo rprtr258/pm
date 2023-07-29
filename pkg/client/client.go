@@ -5,7 +5,6 @@ import (
 	"net"
 	"syscall"
 
-	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
@@ -59,9 +58,7 @@ func (c Client) Create(ctx context.Context, opts []*pb.ProcessOptions) ([]uint64
 		return nil, xerr.NewWM(err, "server.create")
 	}
 
-	return fun.Map(resp.GetIds(), func(procID *pb.ProcessID) uint64 {
-		return procID.Id
-	}), nil
+	return resp.GetIds(), nil
 }
 
 func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error) {
@@ -73,7 +70,7 @@ func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error)
 	return lo.SliceToMap(
 		resp.GetProcesses(),
 		func(proc *pb.Process) (core.ProcID, core.ProcData) {
-			procID := core.ProcID(proc.GetId().GetId())
+			procID := core.ProcID(proc.GetId())
 			return procID, core.ProcData{
 				ProcID:  procID,
 				Name:    proc.GetName(),
@@ -110,14 +107,14 @@ func mapPbStatus(status *pb.ProcessStatus) core.Status {
 }
 
 func (c Client) Delete(ctx context.Context, ids []uint64) error {
-	if _, err := c.client.Delete(ctx, mapIDs(ids)); err != nil {
+	if _, err := c.client.Delete(ctx, &pb.IDs{Ids: ids}); err != nil {
 		return xerr.NewWM(err, "server.delete", xerr.Fields{"ids": ids})
 	}
 	return nil
 }
 
 func (c Client) Start(ctx context.Context, ids []uint64) error {
-	if _, err := c.client.Start(ctx, mapIDs(ids)); err != nil {
+	if _, err := c.client.Start(ctx, &pb.IDs{Ids: ids}); err != nil {
 		return xerr.NewWM(err, "server.start", xerr.Fields{"ids": ids})
 	}
 
@@ -125,12 +122,8 @@ func (c Client) Start(ctx context.Context, ids []uint64) error {
 }
 
 func (c Client) Stop(ctx context.Context, ids []uint64) ([]uint64, error) {
-	resIDs, err := c.client.Stop(ctx, &pb.IDs{
-		Ids: fun.Map(ids, mapProcID),
-	})
-	rawIDs := lo.Map(resIDs.GetIds(), func(procID *pb.ProcessID, _ int) uint64 {
-		return procID.GetId()
-	})
+	resIDs, err := c.client.Stop(ctx, &pb.IDs{Ids: ids})
+	rawIDs := resIDs.GetIds()
 	if err != nil {
 		return rawIDs, xerr.NewWM(err, "server.stop", xerr.Fields{"ids": ids})
 	}
@@ -150,25 +143,13 @@ func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64)
 	}
 
 	if _, err := c.client.Signal(ctx, &pb.SignalRequest{
-		Ids:    fun.Map(ids, mapProcID),
+		Ids:    ids,
 		Signal: apiSignal,
 	}); err != nil {
 		return xerr.NewWM(err, "server.signal", xerr.Fields{"ids": ids})
 	}
 
 	return nil
-}
-
-func mapProcID(id uint64) *pb.ProcessID {
-	return &pb.ProcessID{
-		Id: id,
-	}
-}
-
-func mapIDs(ids []uint64) *pb.IDs {
-	return &pb.IDs{
-		Ids: fun.Map(ids, mapProcID),
-	}
 }
 
 func (c Client) HealthCheck(ctx context.Context) error {
@@ -185,7 +166,7 @@ type LogsIterator interface {
 
 func (c Client) Logs(ctx context.Context, ids ...uint64) (LogsIterator, error) {
 	res, err := c.client.Logs(ctx, &pb.IDs{
-		Ids: fun.Map(ids, mapProcID),
+		Ids: ids,
 	})
 	if err != nil {
 		return nil, xerr.NewWM(err, "server.logs")

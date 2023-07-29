@@ -1,4 +1,4 @@
-package daemon
+package watcher
 
 import (
 	"context"
@@ -18,13 +18,21 @@ type watcherEntry struct {
 	fn      func(context.Context) error
 }
 
-type watcher struct {
+type Watcher struct {
 	watcher     *fsnotify.Watcher
 	watchplaces map[core.ProcID]watcherEntry
 	dirs        map[string][]core.ProcID // dir -> proc ids using that dir
 }
 
-func (w watcher) Add(procID core.ProcID, dir string, pattern string, fn func(context.Context) error) {
+func New(watcher *fsnotify.Watcher) Watcher {
+	return Watcher{
+		watcher:     watcher,
+		watchplaces: make(map[core.ProcID]watcherEntry),
+		dirs:        make(map[string][]core.ProcID),
+	}
+}
+
+func (w Watcher) Add(procID core.ProcID, dir string, pattern string, fn func(context.Context) error) {
 	if _, ok := w.watchplaces[procID]; ok {
 		return
 	}
@@ -55,7 +63,7 @@ func (w watcher) Add(procID core.ProcID, dir string, pattern string, fn func(con
 	}
 }
 
-func (w watcher) Remove(procIDs ...core.ProcID) {
+func (w Watcher) Remove(procIDs ...core.ProcID) {
 	for dir, procs := range w.dirs {
 		leftProcIDs := []core.ProcID{}
 		for _, procID := range procs {
@@ -87,7 +95,7 @@ func (w watcher) Remove(procIDs ...core.ProcID) {
 	}
 }
 
-func (w watcher) start(ctx context.Context) {
+func (w Watcher) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -130,7 +138,7 @@ func (w watcher) start(ctx context.Context) {
 	}
 }
 
-func (w watcher) walker(procIDs ...core.ProcID) filepath.WalkFunc {
+func (w Watcher) walker(procIDs ...core.ProcID) filepath.WalkFunc {
 	if len(procIDs) == 0 {
 		return func(path string, f os.FileInfo, err error) error {
 			return filepath.SkipDir
