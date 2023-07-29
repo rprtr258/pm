@@ -170,6 +170,10 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 				Tags:    proc.Tags,
 				Command: proc.Command,
 				Args:    proc.Args,
+				Watch:   proc.Watch,
+				// TODO: fill with dirs if nil
+				// StdoutFile: proc.StdoutFile,
+				// StderrFile: proc.StderrFile,
 			}
 		}),
 	}, nil

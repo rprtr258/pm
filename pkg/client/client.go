@@ -5,6 +5,7 @@ import (
 	"net"
 	"syscall"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
@@ -72,14 +73,16 @@ func (c Client) List(ctx context.Context) (map[core.ProcID]core.ProcData, error)
 		func(proc *pb.Process) (core.ProcID, core.ProcData) {
 			procID := core.ProcID(proc.GetId())
 			return procID, core.ProcData{
-				ProcID:  procID,
-				Name:    proc.GetName(),
-				Command: proc.GetCommand(),
-				Args:    proc.GetArgs(),
-				Status:  mapPbStatus(proc.GetStatus()),
-				Tags:    proc.GetTags(),
-				Cwd:     proc.GetCwd(),
-				Watch:   nil,
+				ProcID:     procID,
+				Name:       proc.GetName(),
+				Command:    proc.GetCommand(),
+				Args:       proc.GetArgs(),
+				Status:     mapPbStatus(proc.GetStatus()),
+				Tags:       proc.GetTags(),
+				Cwd:        proc.GetCwd(),
+				Watch:      fun.FromPtr(proc.Watch),
+				StdoutFile: proc.GetStdoutFile(),
+				StderrFile: proc.GetStderrFile(),
 			}
 		},
 	), nil

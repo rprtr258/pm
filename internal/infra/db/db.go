@@ -79,7 +79,8 @@ type ProcData struct {
 	// Cwd - working directory, should be absolute
 	Cwd  string `json:"cwd"`
 	Name string `json:"name"`
-	// Args - arguments for executable, not including executable itself as first argument
+	// Args - arguments for executable,
+	// not including executable itself as first argument
 	Args       []string          `json:"args"`
 	Tags       []string          `json:"tags"`
 	Watch      *string           `json:"watch"`

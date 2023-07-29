@@ -44,13 +44,16 @@ message ProcessesList {
 }
 
 message Process {
-  uint64 id = 1;
-  ProcessStatus status = 2;
-  string name = 3;
-  string cwd = 4;
-  repeated string tags = 5;
-  string command = 6;
-  repeated string args = 7;
+  uint64          id          = 1;
+  ProcessStatus   status      = 2;
+  string          name        = 3;
+  string          cwd         = 4;
+  repeated string tags        = 5;
+  string          command     = 6;
+  repeated string args        = 7;
+  optional string watch       = 8;
+  string          stdout_file = 9;
+  string          stderr_file = 10;
 }
 
 message ProcessStatus {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/rprtr258/fun"
 )
 
 type StatusType int
@@ -82,16 +84,15 @@ type ProcData struct {
 	Cwd     string
 	Name    string
 	// Args - arguments for executable, not including executable itself as first argument
-	Args   []string
-	Tags   []string
-	Watch  []string
-	Status Status
-	ProcID ProcID
+	Args       []string
+	Tags       []string
+	Watch      fun.Option[string]
+	Status     Status
+	ProcID     ProcID
+	StdoutFile string
+	StderrFile string
 
-	// StdoutFile  string
-	// StderrFile  string
 	// RestartTries int
 	// RestartDelay    time.Duration
-	// Pid      int
 	// Respawns int
 }
