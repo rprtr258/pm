@@ -176,14 +176,9 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) map[core.ProcID]c
 				return filter.AllIfNoFilters
 			}
 
-			procID, err := strconv.ParseInt(id, 10, 64)
-			if err != nil {
-				return false
-			}
-
 			return lo.Contains(filter.Names, proc.Name) ||
 				lo.Some(filter.Tags, proc.Tags) ||
-				lo.Contains(filter.IDs, core.ProcID(procID))
+				lo.Contains(filter.IDs, proc.ProcID)
 		}).
 		Iter(func(id string, proc procData) bool {
 			res[proc.ProcID] = core.Proc{
@@ -224,11 +219,6 @@ func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) error 
 	proc, ok := handle.procs.Get(strconv.FormatUint(procID, 10))
 	if !ok {
 		return ProcNotFoundError(procID)
-	}
-
-	// TODO: ???
-	if newStatus.Status == core.StatusStopped {
-		newStatus.StartTime = proc.Status.StartTime
 	}
 
 	proc.Status = status{

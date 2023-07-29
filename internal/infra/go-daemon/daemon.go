@@ -304,7 +304,9 @@ func (d *Context) child() (err error) {
 			return errWritePid
 		}
 		defer func() {
-			xerr.AppendInto(&err, d.pidFile.Remove())
+			if err != nil {
+				err = xerr.Combine(err, d.pidFile.Remove())
+			}
 		}()
 	}
 

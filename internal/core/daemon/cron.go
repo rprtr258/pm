@@ -30,13 +30,15 @@ func (c cron) updateStatuses() {
 		case linuxprocess.ErrStatFileNotFound:
 			c.l.Info("process seems to be stopped, updating status...", "pid", proc.Status.Pid)
 
-			if errUpdate := c.db.SetStatus(proc.ID, core.NewStatusStopped(-1)); errUpdate != nil {
+			// TODO: unsubscribe from watch
+			if errUpdate := c.db.SetStatus(procID, core.NewStatusStopped(-1)); errUpdate != nil {
 				c.l.Error("set stopped status", "proc_id", procID)
 			}
 		default:
-			c.l.Warn("read proc stat",
-				"pid", proc.Status.Pid,
-				"err", errStat.Error(),
+			c.l.Warn(
+				"read proc stat",
+				slog.Int("pid", proc.Status.Pid),
+				slog.Any("err", errStat),
 			)
 		}
 	}
