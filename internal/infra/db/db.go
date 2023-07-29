@@ -223,10 +223,10 @@ func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) error 
 
 	proc.Status = status{
 		StartTime: newStatus.StartTime,
-		StoppedAt: proc.Status.StoppedAt,
+		StoppedAt: newStatus.StoppedAt,
 		Status:    int(newStatus.Status),
-		Pid:       proc.Status.Pid,
-		ExitCode:  proc.Status.ExitCode,
+		Pid:       newStatus.Pid,
+		ExitCode:  newStatus.ExitCode,
 	}
 	handle.procs.Upsert(proc)
 
