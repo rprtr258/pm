@@ -3,11 +3,9 @@ package daemon
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -195,30 +193,28 @@ func mapStatus(status core.Status) *pb.ProcessStatus {
 
 func (srv *daemonServer) Delete(_ context.Context, r *pb.IDs) (*emptypb.Empty, error) {
 	ids := r.GetIds()
-	if errDelete := srv.db.Delete(ids); errDelete != nil {
+	deletedProcs, errDelete := srv.db.Delete(ids)
+	if errDelete != nil {
 		return nil, xerr.NewWM(errDelete, "delete proc", xerr.Fields{"procIDs": ids})
 	}
 
 	var merr error
-	for _, procID := range ids {
-		if err := removeLogFiles(procID); err != nil {
-			xerr.AppendInto(&merr, xerr.NewWM(err, "delete proc", xerr.Fields{"procID": procID}))
+	for _, proc := range deletedProcs {
+		if err := removeLogFiles(proc); err != nil {
+			xerr.AppendInto(&merr, xerr.NewWM(err, "delete proc", xerr.Fields{"procID": proc.ID}))
 		}
 	}
 
 	return &emptypb.Empty{}, merr
 }
 
-func removeLogFiles(procID uint64) error {
-	// TODO: use core.Proc#Std{out,err}File instead
-	stdoutFilename := filepath.Join(_dirProcsLogs, fmt.Sprintf("%d.stdout", procID))
-	if errRmStdout := removeFile(stdoutFilename); errRmStdout != nil {
-		return errRmStdout
+func removeLogFiles(proc core.Proc) error {
+	if errRmStdout := removeFile(proc.StdoutFile); errRmStdout != nil {
+		return xerr.NewWM(errRmStdout, "remove stdout file", xerr.Fields{"stdout_file": proc.StdoutFile})
 	}
 
-	stderrFilename := filepath.Join(_dirProcsLogs, fmt.Sprintf("%d.stderr", procID))
-	if errRmStderr := removeFile(stderrFilename); errRmStderr != nil {
-		return errRmStderr
+	if errRmStderr := removeFile(proc.StderrFile); errRmStderr != nil {
+		return xerr.NewWM(errRmStderr, "remove stderr file", xerr.Fields{"stderr_file": proc.StderrFile})
 	}
 
 	return nil
