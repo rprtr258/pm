@@ -454,6 +454,7 @@ func DaemonMain(ctx context.Context) error {
 		l:                 slog.Default().WithGroup("cron"),
 		db:                dbHandle,
 		statusUpdateDelay: time.Second * 5, //nolint:gomnd // arbitrary timeout
+		ebus:              ebus,
 	}.start(ctx)
 
 	doneCh := make(chan error, 1)

@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/slog"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
@@ -15,6 +16,7 @@ type cron struct {
 	l                 *slog.Logger
 	db                db.Handle
 	statusUpdateDelay time.Duration
+	ebus              *eventbus.EventBus
 }
 
 func (c cron) updateStatuses() {
@@ -30,10 +32,7 @@ func (c cron) updateStatuses() {
 		case linuxprocess.ErrStatFileNotFound:
 			c.l.Info("process seems to be stopped, updating status...", "pid", proc.Status.Pid)
 
-			// TODO: unsubscribe from watch
-			if errUpdate := c.db.SetStatus(procID, core.NewStatusStopped(-1)); errUpdate != nil {
-				c.l.Error("set stopped status", "proc_id", procID)
-			}
+			c.ebus.PublishProcStopped(procID, -1, eventbus.EmitReasonDied)
 		default:
 			c.l.Warn(
 				"read proc stat",
