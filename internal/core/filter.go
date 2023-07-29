@@ -3,58 +3,52 @@ package core
 import (
 	"strconv"
 
+	fun2 "github.com/rprtr258/fun"
 	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core/fun"
 )
 
-type filter struct {
-	Names []string
-	Tags  []string
-	IDs   []ProcID
-}
-
 type filterConfig struct {
-	filter         filter
+	Names          []string
+	Tags           []string
+	IDs            []ProcID
 	allIfNoFilters bool
 }
 
-type FilterProcsOption func(*filterConfig)
+type FilterOption func(*filterConfig)
 
-func WithGeneric(args []string) FilterProcsOption {
+func WithGeneric(args []string) FilterOption {
 	ids := lo.FilterMap(args, func(id string, _ int) (ProcID, bool) {
-		procID, err := strconv.ParseUint(id, 10, 64) //nolint:gomnd // parse id as decimal uint64
-		if err != nil {
-			return 0, false
-		}
-
-		return ProcID(procID), true
+		procID, err := strconv.ParseUint(id, 10, 64)
+		return ProcID(procID), err == nil
 	})
 
 	return func(cfg *filterConfig) {
-		cfg.filter.IDs = append(cfg.filter.IDs, ids...)
-		cfg.filter.Names = append(cfg.filter.Names, args...)
-		cfg.filter.Tags = append(cfg.filter.Tags, args...)
+		cfg.IDs = append(cfg.IDs, ids...)
+		cfg.Names = append(cfg.Names, args...)
+		cfg.Tags = append(cfg.Tags, args...)
 	}
 }
 
-func WithNames(args []string) FilterProcsOption {
+func WithNames(names []string) FilterOption {
 	return func(cfg *filterConfig) {
-		cfg.filter.Names = append(cfg.filter.Names, args...)
+		cfg.Names = append(cfg.Names, names...)
 	}
 }
 
-func WithTags(args []string) FilterProcsOption {
+func WithTags(tags []string) FilterOption {
 	return func(cfg *filterConfig) {
-		cfg.filter.Tags = append(cfg.filter.Tags, args...)
+		cfg.Tags = append(cfg.Tags, tags...)
 	}
 }
 
-func WithIDs[T uint64](args []T) FilterProcsOption {
+func WithIDs(ids []uint64) FilterOption {
 	return func(cfg *filterConfig) {
-		cfg.filter.IDs = append(cfg.filter.IDs, lo.Map(args, func(id T, _ int) ProcID {
+		procIDs := fun2.Map(ids, func(id uint64) ProcID {
 			return ProcID(id)
-		})...)
+		})
+		cfg.IDs = append(cfg.IDs, procIDs...)
 	}
 }
 
@@ -62,16 +56,16 @@ func WithAllIfNoFilters(cfg *filterConfig) {
 	cfg.allIfNoFilters = true
 }
 
-func FilterProcs[T ~uint64](procs map[ProcID]Proc, opts ...FilterProcsOption) []T {
+func FilterProcs[T ~uint64](procs map[ProcID]Proc, opts ...FilterOption) []T {
 	var cfg filterConfig
 	for _, opt := range opts {
 		opt(&cfg)
 	}
 
 	// if no filters, return all if allIfNoFilter, nothing otherwise
-	if len(cfg.filter.Names) == 0 &&
-		len(cfg.filter.Tags) == 0 &&
-		len(cfg.filter.IDs) == 0 {
+	if len(cfg.Names) == 0 &&
+		len(cfg.Tags) == 0 &&
+		len(cfg.IDs) == 0 {
 		if !cfg.allIfNoFilters {
 			return nil
 		}
@@ -82,8 +76,8 @@ func FilterProcs[T ~uint64](procs map[ProcID]Proc, opts ...FilterProcsOption) []
 	}
 
 	return fun.FilterMapToSlice(procs, func(procID ProcID, proc Proc) (T, bool) {
-		return T(procID), lo.Contains(cfg.filter.Names, proc.Name) ||
-			lo.Some(cfg.filter.Tags, proc.Tags) ||
-			lo.Contains(cfg.filter.IDs, proc.ID)
+		return T(procID), lo.Contains(cfg.Names, proc.Name) ||
+			lo.Some(cfg.Tags, proc.Tags) ||
+			lo.Contains(cfg.IDs, proc.ID)
 	})
 }
