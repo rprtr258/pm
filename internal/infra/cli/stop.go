@@ -60,10 +60,8 @@ var _stopCmd = &cli.Command{
 		stopCmd := stopCmd{
 			names: ctx.StringSlice("name"),
 			tags:  ctx.StringSlice("tag"),
-			ids: lo.Map(ctx.Uint64Slice("id"), func(id uint64, _ int) core.ProcID {
-				return core.ProcID(id)
-			}),
-			args: ctx.Args().Slice(),
+			ids:   ctx.Uint64Slice("id"),
+			args:  ctx.Args().Slice(),
 		}
 
 		client, errList := client.NewGrpcClient()

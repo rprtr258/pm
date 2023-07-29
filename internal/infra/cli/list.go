@@ -15,7 +15,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/kballard/go-shellquote"
 	"github.com/rprtr258/xerr"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -170,9 +169,7 @@ var _listCmd = &cli.Command{
 			ctx.Args().Slice(),
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
-			lo.Map(ctx.Uint64Slice("id"), func(id uint64, _ int) core.ProcID {
-				return core.ProcID(id)
-			}),
+			ctx.Uint64Slice("id"),
 			ctx.String("format"),
 			sortFunc,
 		)

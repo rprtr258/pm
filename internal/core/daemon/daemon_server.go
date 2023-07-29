@@ -38,11 +38,7 @@ type daemonServer struct {
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	ids := lo.Map(req.GetIds(), func(id uint64, _ int) core.ProcID {
-		return core.ProcID(id)
-	})
-
-	if errStart := srv.runner.Start(ctx, ids...); errStart != nil {
+	if errStart := srv.runner.Start(ctx, req.GetIds()...); errStart != nil {
 		return nil, errStart
 	}
 
@@ -51,11 +47,7 @@ func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty
 
 // Signal - send signal processes to processes
 func (srv *daemonServer) Signal(_ context.Context, req *pb.SignalRequest) (*emptypb.Empty, error) {
-	procsToStop := lo.Map(req.GetIds(), func(id uint64, _ int) core.ProcID {
-		return core.ProcID(id)
-	})
-
-	procsWeHaveAmongRequested := srv.db.GetProcs(core.WithIDs(procsToStop...))
+	procsWeHaveAmongRequested := srv.db.GetProcs(core.WithIDs(req.GetIds()...))
 
 	var signal syscall.Signal
 	switch req.GetSignal() {
@@ -78,11 +70,7 @@ func (srv *daemonServer) Signal(_ context.Context, req *pb.SignalRequest) (*empt
 }
 
 func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error) {
-	ids := lo.Map(req.GetIds(), func(id uint64, _ int) core.ProcID {
-		return core.ProcID(id)
-	})
-
-	stoppedIDs, err := srv.runner.Stop(ctx, ids...)
+	stoppedIDs, err := srv.runner.Stop(ctx, req.GetIds()...)
 
 	return &pb.IDs{
 		Ids: lo.Map(stoppedIDs, func(id core.ProcID, _ int) uint64 {
@@ -266,9 +254,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 		slog.Any("ids", req.GetIds()),
 	)
 
-	procs := srv.db.GetProcs(core.WithIDs(lo.Map(req.GetIds(), func(id uint64, _ int) core.ProcID {
-		return core.ProcID(id)
-	})...))
+	procs := srv.db.GetProcs(core.WithIDs(req.GetIds()...))
 	done := make(chan struct{})
 
 	var wgGlobal sync.WaitGroup

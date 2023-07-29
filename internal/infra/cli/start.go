@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/xerr"
@@ -41,9 +40,7 @@ var _startCmd = &cli.Command{
 
 		names := ctx.StringSlice("name")
 		tags := ctx.StringSlice("tag")
-		ids := lo.Map(ctx.Uint64Slice("id"), func(id uint64, _ int) core.ProcID {
-			return core.ProcID(id)
-		})
+		ids := ctx.Uint64Slice("id")
 		args := ctx.Args().Slice()
 
 		client, errList := client.NewGrpcClient()

@@ -7,7 +7,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/rprtr258/xerr"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	fmt2 "github.com/wissance/stringFormatter"
 
@@ -92,9 +91,7 @@ var _logsCmd = &cli.Command{
 
 		names := ctx.StringSlice("name")
 		tags := ctx.StringSlice("tag")
-		ids := lo.Map(ctx.Uint64Slice("id"), func(id uint64, _ int) core.ProcID {
-			return core.ProcID(id)
-		})
+		ids := ctx.Uint64Slice("id")
 		args := ctx.Args().Slice()
 
 		// TODO: filter on server

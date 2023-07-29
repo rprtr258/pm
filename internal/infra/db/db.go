@@ -50,7 +50,7 @@ type procData struct {
 }
 
 func (p procData) ID() string {
-	return p.ProcID.String()
+	return strconv.FormatUint(p.ProcID, 10)
 }
 
 type Handle struct {
@@ -221,7 +221,7 @@ func (err ProcNotFoundError) Error() string {
 }
 
 func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) error {
-	proc, ok := handle.procs.Get(procID.String())
+	proc, ok := handle.procs.Get(strconv.FormatUint(procID, 10))
 	if !ok {
 		return ProcNotFoundError(procID)
 	}
@@ -247,15 +247,12 @@ func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) error 
 	return nil
 }
 
-func (handle Handle) Delete(procIDs []uint64) error {
-	lookupTable := lo.SliceToMap(procIDs, func(id uint64) (core.ProcID, struct{}) {
-		return core.ProcID(id), struct{}{}
-	})
-
-	handle.procs.Where(func(_ string, proc procData) bool {
-		_, ok := lookupTable[proc.ProcID]
-		return ok
-	}).Delete()
+func (handle Handle) Delete(procIDs []core.ProcID) error {
+	handle.procs.
+		Where(func(_ string, proc procData) bool {
+			return lo.Contains(procIDs, proc.ProcID)
+		}).
+		Delete()
 
 	if err := handle.procs.Flush(); err != nil {
 		return xerr.NewWM(err, "delete: db flush")

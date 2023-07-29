@@ -76,9 +76,7 @@ func (app App) Signal(
 		procs,
 		core.NewFilter(
 			core.WithGeneric(args),
-			core.WithIDs(lo.Map(ids, func(id uint64, _ int) core.ProcID {
-				return core.ProcID(id)
-			})...),
+			core.WithIDs(ids...),
 			core.WithNames(names),
 			core.WithTags(tags),
 			core.WithAllIfNoFilters,
@@ -106,12 +104,9 @@ func (app App) Stop(
 		return []core.ProcID{}, nil
 	}
 
-	stoppedRawIDs, err := app.client.Stop(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
+	stoppedProcIDs, err := app.client.Stop(ctx, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
 		return uint64(procID)
 	}))
-	stoppedProcIDs := lo.Map(stoppedRawIDs, func(procID uint64, _ int) core.ProcID {
-		return core.ProcID(procID)
-	})
 	if err != nil {
 		return stoppedProcIDs, xerr.NewWM(err, "client.stop")
 	}
@@ -181,7 +176,7 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcI
 		})
 	}
 
-	procIDs, errCreate := app.client.Create(ctx, requests)
+	createdProcIDs, errCreate := app.client.Create(ctx, requests)
 	if errCreate != nil {
 		xerr.AppendInto(&merr, xerr.NewWM(
 			errCreate,
@@ -190,11 +185,7 @@ func (app App) Run(ctx context.Context, configs ...core.RunConfig) ([]core.ProcI
 		))
 	}
 
-	createdProcIDs := lo.Map(procIDs, func(procID uint64, _ int) core.ProcID {
-		return core.ProcID(procID)
-	})
-
-	if errStart := app.client.Start(ctx, procIDs); errStart != nil {
+	if errStart := app.client.Start(ctx, createdProcIDs); errStart != nil {
 		return createdProcIDs, xerr.NewWM(errStart, "start processes", xerr.Errors{merr})
 	}
 

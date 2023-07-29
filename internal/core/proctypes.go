@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/rprtr258/fun"
@@ -72,11 +71,7 @@ func NewStatusStopped(exitCode int) Status {
 	}
 }
 
-type ProcID uint64
-
-func (id ProcID) String() string {
-	return strconv.FormatUint(uint64(id), 10)
-}
+type ProcID = uint64
 
 type Proc struct {
 	ID   ProcID
