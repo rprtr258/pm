@@ -76,7 +76,9 @@ func (app App) Signal(
 		procs,
 		core.NewFilter(
 			core.WithGeneric(args),
-			core.WithIDs(ids),
+			core.WithIDs(lo.Map(ids, func(id uint64, _ int) core.ProcID {
+				return core.ProcID(id)
+			})...),
 			core.WithNames(names),
 			core.WithTags(tags),
 			core.WithAllIfNoFilters,

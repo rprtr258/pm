@@ -60,8 +60,10 @@ var _stopCmd = &cli.Command{
 		stopCmd := stopCmd{
 			names: ctx.StringSlice("name"),
 			tags:  ctx.StringSlice("tag"),
-			ids:   ctx.Uint64Slice("id"),
-			args:  ctx.Args().Slice(),
+			ids: lo.Map(ctx.Uint64Slice("id"), func(id uint64, _ int) core.ProcID {
+				return core.ProcID(id)
+			}),
+			args: ctx.Args().Slice(),
 		}
 
 		client, errList := client.NewGrpcClient()
@@ -99,7 +101,7 @@ var _stopCmd = &cli.Command{
 type stopCmd struct {
 	names []string
 	tags  []string
-	ids   []uint64
+	ids   []core.ProcID
 	args  []string
 }
 
@@ -117,7 +119,7 @@ func (cmd *stopCmd) Run(
 		configList,
 		core.NewFilter(
 			core.WithGeneric(cmd.args),
-			core.WithIDs(cmd.ids),
+			core.WithIDs(cmd.ids...),
 			core.WithNames(cmd.names),
 			core.WithTags(cmd.tags),
 			core.WithAllIfNoFilters,

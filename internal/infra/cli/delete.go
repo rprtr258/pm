@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/slog"
 
@@ -42,7 +43,10 @@ var _deleteCmd = &cli.Command{
 
 		names := ctx.StringSlice("name")
 		tags := ctx.StringSlice("tag")
-		ids := ctx.Uint64Slice("id")
+		ids := lo.Map(ctx.Uint64Slice("id"), func(id uint64, _ int) core.ProcID {
+			return core.ProcID(id)
+		})
+
 		args := ctx.Args().Slice()
 
 		client, errList := client.NewGrpcClient()
@@ -67,7 +71,7 @@ var _deleteCmd = &cli.Command{
 				list,
 				core.NewFilter(
 					core.WithGeneric(args),
-					core.WithIDs(ids),
+					core.WithIDs(ids...),
 					core.WithNames(names),
 					core.WithTags(tags),
 				),
@@ -107,7 +111,7 @@ var _deleteCmd = &cli.Command{
 			list,
 			core.NewFilter(
 				core.WithGeneric(args),
-				core.WithIDs(ids),
+				core.WithIDs(ids...),
 				core.WithNames(names),
 				core.WithTags(tags),
 				core.WithAllIfNoFilters,

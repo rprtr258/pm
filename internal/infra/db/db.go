@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/rprtr258/fun"
@@ -157,25 +158,32 @@ func (handle Handle) UpdateProc(proc core.Proc) error {
 }
 
 func (handle Handle) GetProc(id core.ProcID) (core.Proc, bool) {
-	procs := handle.GetProcs([]core.ProcID{id})
+	procs := handle.GetProcs(core.WithIDs(id))
 	if len(procs) != 1 {
 		return fun.Zero[core.Proc](), false
 	}
 
-	return procs[0], true
+	return procs[id], true
 }
 
-func (handle Handle) GetProcs(ids []core.ProcID) map[core.ProcID]core.Proc {
-	lookupTable := lo.SliceToMap(ids, func(id core.ProcID) (string, struct{}) {
-		return id.String(), struct{}{}
-	})
+func (handle Handle) GetProcs(filterOpts ...core.FilterOption) map[core.ProcID]core.Proc {
+	filter := core.NewFilter(filterOpts...)
 
-	res := make(map[core.ProcID]core.Proc, len(lookupTable))
-
+	res := map[core.ProcID]core.Proc{}
 	handle.procs.
-		Where(func(id string, _ procData) bool {
-			_, ok := lookupTable[id]
-			return ok
+		Where(func(id string, proc procData) bool {
+			if filter.NoFilters() {
+				return filter.AllIfNoFilters
+			}
+
+			procID, err := strconv.ParseInt(id, 10, 64)
+			if err != nil {
+				return false
+			}
+
+			return lo.Contains(filter.Names, proc.Name) ||
+				lo.Some(filter.Tags, proc.Tags) ||
+				lo.Contains(filter.IDs, core.ProcID(procID))
 		}).
 		Iter(func(id string, proc procData) bool {
 			res[proc.ProcID] = core.Proc{
@@ -203,36 +211,6 @@ func (handle Handle) GetProcs(ids []core.ProcID) map[core.ProcID]core.Proc {
 			return true
 		})
 
-	return res
-}
-
-// TODO: merge with GetProcs, use filters
-func (handle Handle) List() map[core.ProcID]core.Proc {
-	res := map[core.ProcID]core.Proc{}
-	handle.procs.Iter(func(id string, proc procData) bool {
-		res[proc.ProcID] = core.Proc{
-			ID:      proc.ProcID,
-			Command: proc.Command,
-			Cwd:     proc.Cwd,
-			Name:    proc.Name,
-			Args:    proc.Args,
-			Tags:    proc.Tags,
-			Watch:   fun.FromPtr(proc.Watch),
-			Status: core.Status{
-				StartTime: proc.Status.StartTime,
-				StoppedAt: proc.Status.StoppedAt,
-				Status:    core.StatusType(proc.Status.Status),
-				Pid:       proc.Status.Pid,
-				ExitCode:  proc.Status.ExitCode,
-				CPU:       0,
-				Memory:    0,
-			},
-			Env:        proc.Env,
-			StdoutFile: proc.StdoutFile,
-			StderrFile: proc.StderrFile,
-		}
-		return true
-	})
 	return res
 }
 

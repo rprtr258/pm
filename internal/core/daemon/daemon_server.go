@@ -55,7 +55,7 @@ func (srv *daemonServer) Signal(_ context.Context, req *pb.SignalRequest) (*empt
 		return core.ProcID(id)
 	})
 
-	procsWeHaveAmongRequested := srv.db.GetProcs(procsToStop)
+	procsWeHaveAmongRequested := srv.db.GetProcs(core.WithIDs(procsToStop...))
 
 	var signal syscall.Signal
 	switch req.GetSignal() {
@@ -159,7 +159,7 @@ func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb
 func (srv *daemonServer) List(_ context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
 	return &pb.ProcessesList{
 		Processes: lo.MapToSlice(
-			srv.db.List(),
+			srv.db.GetProcs(core.WithAllIfNoFilters),
 			func(id core.ProcID, proc core.Proc) *pb.Process {
 				return &pb.Process{
 					Id:         uint64(id),
@@ -266,7 +266,9 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 		slog.Any("ids", req.GetIds()),
 	)
 
-	procs := srv.db.List() // TODO: filter by ids
+	procs := srv.db.GetProcs(core.WithIDs(lo.Map(req.GetIds(), func(id uint64, _ int) core.ProcID {
+		return core.ProcID(id)
+	})...))
 	done := make(chan struct{})
 
 	var wgGlobal sync.WaitGroup

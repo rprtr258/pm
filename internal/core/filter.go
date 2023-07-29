@@ -3,7 +3,6 @@ package core
 import (
 	"strconv"
 
-	fun2 "github.com/rprtr258/fun"
 	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core/fun"
@@ -13,7 +12,13 @@ type Filter struct {
 	Names          []string
 	Tags           []string
 	IDs            []ProcID
-	allIfNoFilters bool
+	AllIfNoFilters bool
+}
+
+func (f Filter) NoFilters() bool {
+	return len(f.Names) == 0 &&
+		len(f.Tags) == 0 &&
+		len(f.IDs) == 0
 }
 
 type FilterOption func(*Filter)
@@ -43,17 +48,14 @@ func WithTags(tags []string) FilterOption {
 	}
 }
 
-func WithIDs(ids []uint64) FilterOption {
+func WithIDs(ids ...ProcID) FilterOption {
 	return func(cfg *Filter) {
-		procIDs := fun2.Map(ids, func(id uint64) ProcID {
-			return ProcID(id)
-		})
-		cfg.IDs = append(cfg.IDs, procIDs...)
+		cfg.IDs = append(cfg.IDs, ids...)
 	}
 }
 
 func WithAllIfNoFilters(cfg *Filter) {
-	cfg.allIfNoFilters = true
+	cfg.AllIfNoFilters = true
 }
 
 func NewFilter(opts ...FilterOption) Filter {
@@ -64,22 +66,21 @@ func NewFilter(opts ...FilterOption) Filter {
 	return filter
 }
 
-func FilterProcMap[T ~uint64](procs map[ProcID]Proc, filter Filter) []T {
-	noFilters := len(filter.Names) == 0 &&
-		len(filter.Tags) == 0 &&
-		len(filter.IDs) == 0
-	switch {
-	case !noFilters:
-		return fun.FilterMapToSlice(procs, func(procID ProcID, proc Proc) (T, bool) {
-			return T(procID), lo.Contains(filter.Names, proc.Name) ||
-				lo.Some(filter.Tags, proc.Tags) ||
-				lo.Contains(filter.IDs, proc.ID)
-		})
-	case filter.allIfNoFilters:
-		return lo.Map(lo.Keys(procs), func(id ProcID, _ int) T {
-			return T(id)
-		})
-	default:
-		return nil
+func filterProc(proc Proc, filter Filter) bool {
+	if filter.NoFilters() {
+		return filter.AllIfNoFilters
 	}
+
+	return lo.Contains(filter.Names, proc.Name) ||
+		lo.Some(filter.Tags, proc.Tags) ||
+		lo.Contains(filter.IDs, proc.ID)
+}
+
+func FilterProcMap[T ~uint64](procs map[ProcID]Proc, filter Filter) []T {
+	return fun.FilterMapToSlice(
+		procs,
+		func(procID ProcID, proc Proc) (T, bool) {
+			return T(procID), filterProc(proc, filter)
+		},
+	)
 }

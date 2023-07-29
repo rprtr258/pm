@@ -327,7 +327,7 @@ func DaemonMain(ctx context.Context) error {
 					continue
 				}
 
-				allProcs := dbHandle.List()
+				allProcs := dbHandle.GetProcs(core.WithAllIfNoFilters)
 
 				procID, procFound := lo.FindKeyBy(allProcs, func(_ core.ProcID, procData core.Proc) bool {
 					return procData.Status.Status == core.StatusRunning &&

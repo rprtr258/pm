@@ -59,7 +59,7 @@ type CreateQuery struct {
 func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, error) {
 	// try to find by name and update
 	if name, ok := query.Name.Unpack(); ok {
-		procs := r.DB.List()
+		procs := r.DB.GetProcs(core.WithAllIfNoFilters)
 
 		if procID, ok := lo.FindKeyBy(
 			procs,
@@ -208,7 +208,7 @@ func (r Runner) start(procID core.ProcID) error {
 }
 
 func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
-	procs := r.DB.GetProcs(procIDs)
+	procs := r.DB.GetProcs(core.WithIDs(procIDs...))
 
 	for _, proc := range procs {
 		select {

@@ -18,7 +18,7 @@ type cron struct {
 }
 
 func (c cron) updateStatuses() {
-	for procID, proc := range c.db.List() {
+	for procID, proc := range c.db.GetProcs(core.WithAllIfNoFilters) {
 		if proc.Status.Status != core.StatusRunning {
 			continue
 		}

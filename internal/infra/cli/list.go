@@ -15,6 +15,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/kballard/go-shellquote"
 	"github.com/rprtr258/xerr"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -169,7 +170,9 @@ var _listCmd = &cli.Command{
 			ctx.Args().Slice(),
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
-			ctx.Uint64Slice("id"),
+			lo.Map(ctx.Uint64Slice("id"), func(id uint64, _ int) core.ProcID {
+				return core.ProcID(id)
+			}),
 			ctx.String("format"),
 			sortFunc,
 		)
@@ -228,7 +231,7 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 func list(
 	ctx context.Context,
 	genericFilters, nameFilters, tagFilters []string,
-	idFilters []uint64,
+	idFilters []core.ProcID,
 	format string,
 	sortFunc func(a, b core.Proc) bool,
 ) error {
@@ -253,7 +256,7 @@ func list(
 		core.NewFilter(
 			core.WithAllIfNoFilters,
 			core.WithGeneric(genericFilters),
-			core.WithIDs(idFilters),
+			core.WithIDs(idFilters...),
 			core.WithNames(nameFilters),
 			core.WithTags(tagFilters),
 		),
