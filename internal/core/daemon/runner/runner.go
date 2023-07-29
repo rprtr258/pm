@@ -149,7 +149,7 @@ func (r Runner) Start1(procID core.ProcID) (int, error) {
 	}
 	defer stdoutLogFile.Close()
 
-	stderrLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
+	stderrLogFile, err := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
 		return 0, xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": proc.StderrFile})
 	}

@@ -125,6 +125,10 @@ func (e *EventBus) Start() {
 
 				e.mu.Lock()
 				for name, sub := range e.subscribers {
+					if _, ok := sub.Kinds[event.Kind]; !ok {
+						continue
+					}
+
 					slog.Debug(
 						"publishing event",
 						slog.Any("event", event),
@@ -151,16 +155,25 @@ func (e *EventBus) Close() {
 	}
 }
 
-func (e *EventBus) PublishProcStarted(proc core.Proc, pid int, emitReason EmitReason) {
+func (e *EventBus) Publish(events ...Event) {
+	// NOTE: goroutines will multiply here if events are not processed
+	go func() {
+		for _, event := range events {
+			e.eventsCh <- event
+		}
+	}()
+}
+
+func NewPublishProcStarted(proc core.Proc, pid int, emitReason EmitReason) Event {
 	if emitReason&(emitReason-1) != 0 {
 		slog.Warn(
 			"invalid emit reason for proc started event",
 			slog.String("reason", emitReason.String()),
 		)
-		return
+		// return
 	}
 
-	e.eventsCh <- Event{
+	return Event{
 		Kind: KindProcStarted,
 		Data: DataProcStarted{
 			Proc:       proc,
@@ -171,16 +184,16 @@ func (e *EventBus) PublishProcStarted(proc core.Proc, pid int, emitReason EmitRe
 	}
 }
 
-func (e *EventBus) PublishProcStopped(procID core.ProcID, exitCode int, emitReason EmitReason) {
+func NewPublishProcStopped(procID core.ProcID, exitCode int, emitReason EmitReason) Event {
 	if emitReason&(emitReason-1) != 0 {
 		slog.Warn(
 			"invalid emit reason for proc stopped event",
 			slog.String("reason", emitReason.String()),
 		)
-		return
+		// return
 	}
 
-	e.eventsCh <- Event{
+	return Event{
 		Kind: KindProcStopped,
 		Data: DataProcStopped{
 			ProcID:     procID,
@@ -191,13 +204,13 @@ func (e *EventBus) PublishProcStopped(procID core.ProcID, exitCode int, emitReas
 	}
 }
 
-func (e *EventBus) PublishProcStartRequest(procID core.ProcID, emitReason EmitReason) {
+func NewPublishProcStartRequest(procID core.ProcID, emitReason EmitReason) Event {
 	slog.Debug(
 		"publishing proc start request",
 		slog.Uint64("proc_id", procID),
 		slog.String("emit_reason", emitReason.String()),
 	)
-	e.eventsCh <- Event{
+	return Event{
 		Kind: KindProcStartRequest,
 		Data: DataProcStartRequest{
 			ProcID:     procID,
@@ -206,8 +219,8 @@ func (e *EventBus) PublishProcStartRequest(procID core.ProcID, emitReason EmitRe
 	}
 }
 
-func (e *EventBus) PublishProcStopRequest(procID core.ProcID, emitReason EmitReason) {
-	e.eventsCh <- Event{
+func NewPublishProcStopRequest(procID core.ProcID, emitReason EmitReason) Event {
+	return Event{
 		Kind: KindProcStopRequest,
 		Data: DataProcStopRequest{
 			ProcID:     procID,
@@ -216,8 +229,8 @@ func (e *EventBus) PublishProcStopRequest(procID core.ProcID, emitReason EmitRea
 	}
 }
 
-func (e *EventBus) PublishProcSignalRequest(signal syscall.Signal, procIDs ...core.ProcID) {
-	e.eventsCh <- Event{
+func NewPublishProcSignalRequest(signal syscall.Signal, procIDs ...core.ProcID) Event {
+	return Event{
 		Kind: KindProcSignalRequest,
 		Data: DataProcSignalRequest{
 			ProcIDs: procIDs,

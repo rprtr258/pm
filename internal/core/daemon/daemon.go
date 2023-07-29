@@ -344,7 +344,7 @@ func DaemonMain(ctx context.Context) error {
 					continue
 				}
 
-				ebus.PublishProcStopped(procID, status.ExitStatus(), eventbus.EmitReasonDied)
+				ebus.Publish(eventbus.NewPublishProcStopped(procID, status.ExitStatus(), eventbus.EmitReasonDied))
 			}
 		}
 	}()
@@ -426,7 +426,7 @@ func DaemonMain(ctx context.Context) error {
 						continue
 					}
 
-					ebus.PublishProcStarted(proc, pid, e.EmitReason)
+					ebus.Publish(eventbus.NewPublishProcStarted(proc, pid, e.EmitReason))
 				case eventbus.DataProcStopRequest:
 					stopped, errStart := runner.Stop1(ctx, e.ProcID)
 					if errStart != nil {
@@ -440,7 +440,7 @@ func DaemonMain(ctx context.Context) error {
 					}
 
 					if stopped {
-						ebus.PublishProcStopped(e.ProcID, -1, e.EmitReason)
+						ebus.Publish(eventbus.NewPublishProcStopped(e.ProcID, -1, e.EmitReason))
 					}
 				case eventbus.DataProcSignalRequest:
 					if err := runner.Signal(ctx, e.Signal, e.ProcIDs...); err != nil {

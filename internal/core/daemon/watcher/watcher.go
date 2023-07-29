@@ -158,8 +158,10 @@ func (w Watcher) Start(ctx context.Context) {
 				}
 
 				// TODO: merge into restart request?
-				w.ebus.PublishProcStartRequest(procID, eventbus.EmitReasonByWatcher)
-				w.ebus.PublishProcStopRequest(procID, eventbus.EmitReasonByWatcher)
+				w.ebus.Publish(
+					eventbus.NewPublishProcStopRequest(procID, eventbus.EmitReasonByWatcher),
+					eventbus.NewPublishProcStartRequest(procID, eventbus.EmitReasonByWatcher),
+				)
 			}
 
 			if e.Op&fsnotify.Create != 0 && stat.IsDir() {

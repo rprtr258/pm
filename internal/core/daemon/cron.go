@@ -32,7 +32,7 @@ func (c cron) updateStatuses() {
 		case linuxprocess.ErrStatFileNotFound:
 			c.l.Info("process seems to be stopped, updating status...", "pid", proc.Status.Pid)
 
-			c.ebus.PublishProcStopped(procID, -1, eventbus.EmitReasonDied)
+			c.ebus.Publish(eventbus.NewPublishProcStopped(procID, -1, eventbus.EmitReasonDied))
 		default:
 			c.l.Warn(
 				"read proc stat",

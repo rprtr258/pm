@@ -37,7 +37,7 @@ type daemonServer struct {
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
 	for _, id := range req.GetIds() {
-		srv.ebus.PublishProcStartRequest(id, eventbus.EmitReasonByUser)
+		srv.ebus.Publish(eventbus.NewPublishProcStartRequest(id, eventbus.EmitReasonByUser))
 	}
 
 	return &emptypb.Empty{}, nil
@@ -57,14 +57,14 @@ func (srv *daemonServer) Signal(ctx context.Context, req *pb.SignalRequest) (*em
 		return nil, xerr.NewM("unknown signal", xerr.Fields{"signal": req.GetSignal()})
 	}
 
-	srv.ebus.PublishProcSignalRequest(signal, req.GetIds()...)
+	srv.ebus.Publish(eventbus.NewPublishProcSignalRequest(signal, req.GetIds()...))
 
 	return &emptypb.Empty{}, nil
 }
 
 func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error) {
 	for _, id := range req.GetIds() {
-		srv.ebus.PublishProcStopRequest(id, eventbus.EmitReasonByUser)
+		srv.ebus.Publish(eventbus.NewPublishProcStopRequest(id, eventbus.EmitReasonByUser))
 	}
 
 	return &pb.IDs{
