@@ -2,6 +2,7 @@ package cli
 
 import (
 	"os"
+	"regexp"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
@@ -36,16 +37,11 @@ var _runCmd = &cli.Command{
 			Usage: "set working directory",
 		},
 		configFlag,
+		&cli.StringFlag{
+			Name:  "watch",
+			Usage: "restart on changes to files matching specified regex",
+		},
 		// TODO: not yet implemented run parameters
-		// // watch parameters
-		// &cli.BoolFlag{Name: "watch-cwd", Usage: "Watch current working directory for changes"}, // or
-		// &cli.StringSliceFlag{Name: "watch", Usage: "watch provided paths for changes"},
-		// &cli.DurationFlag{
-		// 	Name:  "watch-delay",
-		// 	Usage: "specify a restart delay after changing files (--watch-delay 4 (in sec) or 4000ms)",
-		// },
-		// &cli.StringSliceFlag{Name: "ignore-watch", Usage: "List of paths to ignore (name or regex)"},
-		// &cli.StringSliceFlag{Name: "ext", Usage: "watch files with these extensions"},
 		// // logs parameters
 		// &cli.BoolFlag{Name: "output", Aliases: []string{"o"}, Usage: "specify log file for stdout"},
 		// &cli.PathFlag{Name: "error", Aliases: []string{"e"}, Usage: "specify log file for stderr"},
@@ -114,6 +110,7 @@ var _runCmd = &cli.Command{
 		name := ctx.String("name")
 		tags := ctx.StringSlice("tag")
 		workDir := ctx.String("pwd")
+
 		if !ctx.IsSet("config") {
 			if ctx.Args().Len() == 0 {
 				return xerr.NewM("command expected")
@@ -127,6 +124,16 @@ var _runCmd = &cli.Command{
 				workDir = cwd
 			}
 
+			var watch fun.Option[*regexp.Regexp]
+			if pattern := ctx.String("watch"); ctx.IsSet("watch") {
+				watchRE, errCompile := regexp.Compile(pattern)
+				if errCompile != nil {
+					return xerr.NewWM(errCompile, "compile watch regex", xerr.Fields{"pattern": pattern})
+				}
+
+				watch = fun.Valid(watchRE)
+			}
+
 			runConfig := core.RunConfig{
 				Command: command,
 				Args:    commandArgs,
@@ -134,6 +141,7 @@ var _runCmd = &cli.Command{
 				Tags:    tags,
 				Cwd:     workDir,
 				Env:     nil,
+				Watch:   watch,
 			}
 
 			procIDs, errRun := app.Run(ctx.Context, runConfig)
