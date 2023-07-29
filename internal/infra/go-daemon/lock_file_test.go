@@ -10,12 +10,20 @@ import (
 )
 
 var (
-	filename                = os.TempDir() + "/test.lock"
 	fileperm    os.FileMode = 0o644
 	invalidname             = "/x/y/unknown"
 )
 
+func FixtureTmpDir(t *testing.T) string {
+	t.Helper()
+
+	dir, err := os.MkdirTemp(os.TempDir(), "")
+	assert.NoError(t, err)
+	return dir
+}
+
 func TestCreatePidFile(t *testing.T) {
+	filename := FixtureTmpDir(t) + "/test.lock"
 	t.Parallel()
 
 	_, err := CreatePidFile(invalidname, fileperm)
@@ -48,6 +56,7 @@ func TestNewLockFile(t *testing.T) {
 }
 
 func TestReadPid(t *testing.T) {
+	filename := FixtureTmpDir(t) + "/test.lock"
 	t.Parallel()
 
 	lock, err := CreatePidFile(filename, fileperm)
@@ -63,6 +72,7 @@ func TestReadPid(t *testing.T) {
 }
 
 func TestLockFileLock(t *testing.T) {
+	filename := FixtureTmpDir(t) + "/test.lock"
 	t.Parallel()
 
 	lock1, err := OpenLockFile(filename, fileperm)
