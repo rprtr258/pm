@@ -70,7 +70,6 @@ var _deleteCmd = &cli.Command{
 					core.WithIDs(ids),
 					core.WithNames(names),
 					core.WithTags(tags),
-					core.WithAllIfNoFilters,
 				),
 			)
 

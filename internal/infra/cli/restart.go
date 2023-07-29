@@ -107,11 +107,11 @@ var _restartCmd = &cli.Command{
 		procIDs := core.FilterProcMap[core.ProcID](
 			filteredList,
 			core.NewFilter(
-				core.WithAllIfNoFilters,
 				core.WithGeneric(args),
 				core.WithIDs(ids),
 				core.WithNames(names),
 				core.WithTags(tags),
+				core.WithAllIfNoFilters,
 			),
 		)
 
