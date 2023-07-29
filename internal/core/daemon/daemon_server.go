@@ -37,16 +37,14 @@ type daemonServer struct {
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
 	if errStart := srv.runner.Start(ctx, req.GetIds()...); errStart != nil {
-		return nil, errStart
+		return nil, xerr.NewWM(errStart, "start")
 	}
 
 	return &emptypb.Empty{}, nil
 }
 
 // Signal - send signal processes to processes
-func (srv *daemonServer) Signal(_ context.Context, req *pb.SignalRequest) (*emptypb.Empty, error) {
-	procsWeHaveAmongRequested := srv.db.GetProcs(core.WithIDs(req.GetIds()...))
-
+func (srv *daemonServer) Signal(ctx context.Context, req *pb.SignalRequest) (*emptypb.Empty, error) {
 	var signal syscall.Signal
 	switch req.GetSignal() {
 	case pb.Signal_SIGNAL_SIGTERM:
@@ -59,12 +57,11 @@ func (srv *daemonServer) Signal(_ context.Context, req *pb.SignalRequest) (*empt
 		return nil, xerr.NewM("unknown signal", xerr.Fields{"signal": req.GetSignal()})
 	}
 
-	var merr error
-	for _, proc := range procsWeHaveAmongRequested {
-		xerr.AppendInto(&merr, srv.signal(proc, signal))
+	if err := srv.runner.Signal(ctx, signal, req.GetIds()...); err != nil {
+		return nil, xerr.NewWM(err, "signal")
 	}
 
-	return &emptypb.Empty{}, merr
+	return &emptypb.Empty{}, nil
 }
 
 func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error) {
@@ -73,43 +70,6 @@ func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error)
 	return &pb.IDs{
 		Ids: stoppedIDs,
 	}, err
-}
-
-func (srv *daemonServer) signal(proc core.Proc, signal syscall.Signal) error {
-	if proc.Status.Status != core.StatusRunning {
-		slog.Info("tried to send signal to non-running process",
-			"proc", proc,
-			"signal", signal,
-		)
-		return nil
-	}
-
-	process, errFindProc := os.FindProcess(proc.Status.Pid)
-	if errFindProc != nil {
-		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Fields{
-			"pid":    proc.Status.Pid,
-			"signal": signal,
-		})
-	}
-
-	if errKill := syscall.Kill(-process.Pid, signal); errKill != nil {
-		switch {
-		case errors.Is(errKill, os.ErrProcessDone):
-			slog.Warn("tried to send signal to process which is done",
-				"proc", proc,
-				"signal", signal,
-			)
-		case errors.Is(errKill, syscall.ESRCH): // no such process
-			slog.Warn("tried to send signal to process which doesn't exist",
-				"proc", proc,
-				"signal", signal,
-			)
-		default:
-			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
-		}
-	}
-
-	return nil
 }
 
 func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.IDs, error) {

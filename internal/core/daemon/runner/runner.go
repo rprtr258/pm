@@ -355,3 +355,63 @@ func (r Runner) Stop(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcID
 	r.Watcher.Remove(stoppedIDs...)
 	return stoppedIDs, merr
 }
+
+func (r Runner) signal(
+	ctx context.Context,
+	signal syscall.Signal,
+	proc core.Proc,
+) error {
+	select {
+	case <-ctx.Done():
+		return xerr.NewWM(ctx.Err(), "context canceled")
+	default:
+	}
+
+	if proc.Status.Status != core.StatusRunning {
+		slog.Info("tried to send signal to non-running process",
+			"proc", proc,
+			"signal", signal,
+		)
+		return nil
+	}
+
+	process, errFindProc := os.FindProcess(proc.Status.Pid)
+	if errFindProc != nil {
+		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Fields{
+			"pid":    proc.Status.Pid,
+			"signal": signal,
+		})
+	}
+
+	if errKill := syscall.Kill(-process.Pid, signal); errKill != nil {
+		switch {
+		case errors.Is(errKill, os.ErrProcessDone):
+			slog.Warn("tried to send signal to process which is done",
+				"proc", proc,
+				"signal", signal,
+			)
+		case errors.Is(errKill, syscall.ESRCH): // no such process
+			slog.Warn("tried to send signal to process which doesn't exist",
+				"proc", proc,
+				"signal", signal,
+			)
+		default:
+			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
+		}
+	}
+
+	return nil
+}
+
+func (r Runner) Signal(
+	ctx context.Context,
+	signal syscall.Signal,
+	procIDs ...core.ProcID,
+) error {
+	var merr error
+	for _, proc := range r.DB.GetProcs(core.WithIDs(procIDs...)) {
+		xerr.AppendInto(&merr, r.signal(ctx, signal, proc))
+	}
+
+	return merr
+}
