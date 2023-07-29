@@ -278,6 +278,8 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 				BufferSize:    _procLogsBufferSize,
 				NotifyTimeout: time.Minute,
 				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -1000}, // TODO: limit offset by file size as with daemon logs
+				Logger:        nil,
+				Tracker:       nil,
 			})
 			go func() {
 				if err := stdoutTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
@@ -309,6 +311,8 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 				BufferSize:    _procLogsBufferSize,
 				NotifyTimeout: time.Minute,
 				Location:      &tail.Location{Whence: io.SeekEnd, Offset: -1000}, // TODO: limit offset by file size as with daemon logs
+				Logger:        nil,
+				Tracker:       nil,
 			})
 			go func() {
 				if err := stderrTailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
