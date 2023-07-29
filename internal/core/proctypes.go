@@ -75,7 +75,7 @@ func NewStatusStopped(exitCode int) Status {
 type ProcID uint64
 
 func (id ProcID) String() string {
-	return strconv.FormatUint(uint64(id), 10) //nolint:gomnd // decimal id
+	return strconv.FormatUint(uint64(id), 10)
 }
 
 type Proc struct {
@@ -83,13 +83,10 @@ type Proc struct {
 	Name string
 	Tags []string
 
-	// Command - executable to run
-	Command string
-	// Args - arguments for executable,
-	// not including executable itself as first argument
-	Args       []string
-	Cwd        string
-	Env        map[string]string
+	Command    string            // Command - executable to run
+	Args       []string          // Args - arguments for executable, not including executable itself as first argument
+	Cwd        string            // Cwd - working directory, must be absolute
+	Env        map[string]string // Env - process environment
 	StdoutFile string
 	StderrFile string
 

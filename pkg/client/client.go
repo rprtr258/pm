@@ -75,14 +75,15 @@ func (c Client) List(ctx context.Context) (map[core.ProcID]core.Proc, error) {
 			return procID, core.Proc{
 				ID:         procID,
 				Name:       proc.GetName(),
+				Tags:       proc.GetTags(),
 				Command:    proc.GetCommand(),
 				Args:       proc.GetArgs(),
-				Status:     mapPbStatus(proc.GetStatus()),
-				Tags:       proc.GetTags(),
+				Env:        proc.GetEnv(),
 				Cwd:        proc.GetCwd(),
-				Watch:      fun.FromPtr(proc.Watch),
 				StdoutFile: proc.GetStdoutFile(),
 				StderrFile: proc.GetStderrFile(),
+				Watch:      fun.FromPtr(proc.Watch),
+				Status:     mapPbStatus(proc.GetStatus()),
 			}
 		},
 	), nil

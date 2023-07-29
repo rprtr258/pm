@@ -25,21 +25,23 @@ type status struct {
 
 // procData - db representation of core.ProcData
 type procData struct {
+	ProcID core.ProcID `json:"id"`
+	Name   string      `json:"name"`
+	Tags   []string    `json:"tags"`
+
 	// Command - executable to run
 	Command string `json:"command"`
-	// Cwd - working directory, should be absolute
-	Cwd  string `json:"cwd"`
-	Name string `json:"name"`
 	// Args - arguments for executable,
 	// not including executable itself as first argument
-	Args       []string          `json:"args"`
-	Tags       []string          `json:"tags"`
-	Watch      *string           `json:"watch"`
-	Status     status            `json:"status"`
-	ProcID     core.ProcID       `json:"id"`
+	Args []string `json:"args"`
+	// Cwd - working directory, should be absolute
+	Cwd        string            `json:"cwd"`
 	Env        map[string]string `json:"env"`
 	StdoutFile string            `json:"stdout_file"`
 	StderrFile string            `json:"stderr_file"`
+
+	Watch  *string `json:"watch"`
+	Status status  `json:"status"`
 
 	// RestartTries int
 	// RestartDelay    time.Duration
@@ -70,22 +72,17 @@ func New(dir string) (Handle, error) {
 }
 
 type CreateQuery struct {
-	// Env - environment variables
-	Env map[string]string
-	// Command - executable to run
-	Command string
-	// Cwd - working directory
-	Cwd string
-	// Name - name of the process
-	Name string
-	// Args - arguments for executable, not including executable itself as first argument
-	Args []string
-	// Tags - process tags
-	Tags []string
-	// Watch - regex pattern for file watching
-	Watch      fun.Option[string]
+	Name string   // Name of the process
+	Tags []string // Tags - process tags
+
+	Command    string            // Command - executable to run
+	Args       []string          // Args - arguments for executable, not including executable itself as first argument
+	Cwd        string            // Cwd - working directory
+	Env        map[string]string // Env - environment variables
 	StdoutFile fun.Option[string]
 	StderrFile fun.Option[string]
+
+	Watch fun.Option[string] // Watch - regex pattern for file watching
 
 	// RestartTries int
 	// RestartDelay    time.Duration

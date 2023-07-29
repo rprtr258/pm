@@ -164,16 +164,17 @@ func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Proces
 		Processes: lo.MapToSlice(list, func(id core.ProcID, proc core.Proc) *pb.Process {
 			return &pb.Process{
 				Id:      uint64(id),
-				Status:  mapStatus(proc.Status),
 				Name:    proc.Name,
-				Cwd:     proc.Cwd,
 				Tags:    proc.Tags,
 				Command: proc.Command,
 				Args:    proc.Args,
-				Watch:   proc.Watch.Ptr(),
+				Cwd:     proc.Cwd,
+				Env:     proc.Env,
 				// TODO: fill with dirs if nil
 				// StdoutFile: proc.StdoutFile,
 				// StderrFile: proc.StderrFile,
+				Watch:  proc.Watch.Ptr(),
+				Status: mapStatus(proc.Status),
 			}
 		}),
 	}, nil
@@ -225,6 +226,7 @@ func (srv *daemonServer) Delete(ctx context.Context, r *pb.IDs) (*emptypb.Empty,
 }
 
 func removeLogFiles(procID uint64) error {
+	// TODO: use core.Proc#Std{out,err}File instead
 	stdoutFilename := filepath.Join(_dirProcsLogs, fmt.Sprintf("%d.stdout", procID))
 	if errRmStdout := removeFile(stdoutFilename); errRmStdout != nil {
 		return errRmStdout
