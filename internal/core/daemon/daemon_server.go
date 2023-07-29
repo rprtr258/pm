@@ -156,27 +156,26 @@ func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb
 	}, nil
 }
 
-func (srv *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
-	// TODO: update statuses here also
-	list := srv.db.List()
-
+func (srv *daemonServer) List(_ context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
 	return &pb.ProcessesList{
-		Processes: lo.MapToSlice(list, func(id core.ProcID, proc core.Proc) *pb.Process {
-			return &pb.Process{
-				Id:      uint64(id),
-				Name:    proc.Name,
-				Tags:    proc.Tags,
-				Command: proc.Command,
-				Args:    proc.Args,
-				Cwd:     proc.Cwd,
-				Env:     proc.Env,
-				// TODO: fill with dirs if nil
-				// StdoutFile: proc.StdoutFile,
-				// StderrFile: proc.StderrFile,
-				Watch:  proc.Watch.Ptr(),
-				Status: mapStatus(proc.Status),
-			}
-		}),
+		Processes: lo.MapToSlice(
+			srv.db.List(),
+			func(id core.ProcID, proc core.Proc) *pb.Process {
+				return &pb.Process{
+					Id:         uint64(id),
+					Name:       proc.Name,
+					Tags:       proc.Tags,
+					Command:    proc.Command,
+					Args:       proc.Args,
+					Cwd:        proc.Cwd,
+					Env:        proc.Env,
+					StdoutFile: proc.StdoutFile,
+					StderrFile: proc.StderrFile,
+					Watch:      proc.Watch.Ptr(),
+					Status:     mapStatus(proc.Status),
+				}
+			},
+		),
 	}, nil
 }
 
