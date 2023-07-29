@@ -2,6 +2,7 @@ package eventbus
 
 import (
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -13,7 +14,9 @@ type EventKind int
 const (
 	KindProcStarted EventKind = iota
 	KindProcStopped
-	KindProcRestartRequest
+	KindProcStartRequest
+	KindProcStopRequest
+	KindProcSignalRequest
 )
 
 type Event struct {
@@ -45,8 +48,19 @@ type DataProcStopped struct {
 	EmitReason int
 }
 
-type DataProcRestartRequest struct {
-	ProcID core.ProcID
+type DataProcStartRequest struct {
+	ProcID     core.ProcID
+	EmitReason int
+}
+
+type DataProcStopRequest struct {
+	ProcID     core.ProcID
+	EmitReason int
+}
+
+type DataProcSignalRequest struct {
+	ProcIDs []core.ProcID
+	Signal  syscall.Signal
 }
 
 type Subscriber struct {
@@ -141,11 +155,32 @@ func (e *EventBus) PublishProcStopped(procID core.ProcID, exitCode int, emitReas
 	}
 }
 
-func (e *EventBus) PublishProcRestartRequest(procID core.ProcID) {
+func (e *EventBus) PublishProcStartRequest(procID core.ProcID, emitReason int) {
 	e.eventsCh <- Event{
-		Kind: KindProcRestartRequest,
-		Data: DataProcRestartRequest{
-			ProcID: procID,
+		Kind: KindProcStartRequest,
+		Data: DataProcStartRequest{
+			ProcID:     procID,
+			EmitReason: emitReason,
+		},
+	}
+}
+
+func (e *EventBus) PublishProcStopRequest(procID core.ProcID, emitReason int) {
+	e.eventsCh <- Event{
+		Kind: KindProcStopRequest,
+		Data: DataProcStopRequest{
+			ProcID:     procID,
+			EmitReason: emitReason,
+		},
+	}
+}
+
+func (e *EventBus) PublishProcSignalRequest(signal syscall.Signal, procIDs ...core.ProcID) {
+	e.eventsCh <- Event{
+		Kind: KindProcSignalRequest,
+		Data: DataProcSignalRequest{
+			ProcIDs: procIDs,
+			Signal:  signal,
 		},
 	}
 }

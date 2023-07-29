@@ -93,14 +93,6 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 				return procID, nil
 			}
 
-			if _, errStop := r.stop(ctx, procID); errStop != nil {
-				return 0, xerr.NewWM(errStop, "stop process to update", xerr.Fields{
-					"procID":  procID,
-					"oldProc": procFields(proc),
-					// "newProc": procFields(procData),
-				})
-			}
-
 			if errUpdate := r.DB.UpdateProc(procData); errUpdate != nil {
 				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{
 					// "procData": procFields(procData),
@@ -142,7 +134,7 @@ func (r Runner) Create(ctx context.Context, queries ...CreateQuery) ([]core.Proc
 	return procIDs, nil
 }
 
-func (r Runner) start(procID core.ProcID) (int, error) {
+func (r Runner) Start1(procID core.ProcID) (int, error) {
 	proc, ok := r.DB.GetProc(procID)
 	if !ok {
 		return 0, xerr.NewM("invalid procs count got by id")
@@ -204,28 +196,22 @@ func (r Runner) start(procID core.ProcID) (int, error) {
 	return process.Pid, nil
 }
 
-func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
-	procs := r.DB.GetProcs(core.WithIDs(procIDs...))
+// func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
+// 	procs := r.DB.GetProcs(core.WithIDs(procIDs...))
 
-	for _, proc := range procs {
-		select {
-		case <-ctx.Done():
-			return xerr.NewWM(ctx.Err(), "context canceled")
-		default:
-		}
+// 	for _, proc := range procs {
+// 		select {
+// 		case <-ctx.Done():
+// 			return xerr.NewWM(ctx.Err(), "context canceled")
+// 		default:
+// 		}
 
-		pid, errStart := r.start(proc.ID)
-		if errStart != nil {
-			return xerr.NewW(errStart, xerr.Fields{"proc": procFields(proc)})
-		}
+// 	}
 
-		r.Ebus.PublishProcStarted(proc, pid, eventbus.EmitReasonByUser)
-	}
+// 	return nil
+// }
 
-	return nil
-}
-
-func (r Runner) stop(ctx context.Context, procID core.ProcID) (bool, error) {
+func (r Runner) Stop1(ctx context.Context, procID core.ProcID) (bool, error) {
 	proc, ok := r.DB.GetProc(procID)
 	if !ok {
 		return false, xerr.NewM("not found proc to stop")
@@ -309,7 +295,7 @@ func (r Runner) Stop(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcID
 		default:
 		}
 
-		stopped, errStop := r.stop(ctx, procID)
+		stopped, errStop := r.Stop1(ctx, procID)
 		if errStop != nil {
 			xerr.AppendInto(&merr, errStop)
 			continue

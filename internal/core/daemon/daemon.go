@@ -296,6 +296,12 @@ func DaemonMain(ctx context.Context) error {
 	watcher := watcher.New(watcherr, ebus)
 	go watcher.Start(ctx)
 
+	runner := runner.Runner{
+		DB:      dbHandle,
+		LogsDir: _dirProcsLogs,
+		Ebus:    ebus,
+	}
+
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
 		grpc.ChainStreamInterceptor(streamLoggerInterceptor),
@@ -306,11 +312,7 @@ func DaemonMain(ctx context.Context) error {
 		homeDir:                   core.DirHome,
 		logsDir:                   _dirProcsLogs,
 		ebus:                      ebus,
-		runner: runner.Runner{
-			DB:      dbHandle,
-			LogsDir: _dirProcsLogs,
-			Ebus:    ebus,
-		},
+		runner:                    runner,
 	})
 
 	slog.Info("daemon started", "socket", sock.Addr())
@@ -381,6 +383,67 @@ func DaemonMain(ctx context.Context) error {
 								slog.Any("new_status", dbStatus),
 							)
 						}
+					}
+				}
+			}
+		}
+	}()
+
+	// scheduler loop, starts/restarts/stops procs
+	procRequestsCh := ebus.Subscribe(
+		eventbus.KindProcStartRequest,
+		eventbus.KindProcStopRequest,
+		eventbus.KindProcSignalRequest,
+	)
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case event := <-procRequestsCh:
+				switch e := event.Data.(type) {
+				case eventbus.DataProcStartRequest:
+					proc, ok := dbHandle.GetProc(e.ProcID)
+					if !ok {
+						slog.Error("not found proc to start", slog.Uint64("proc_id", e.ProcID))
+						continue
+					}
+
+					pid, errStart := runner.Start1(proc.ID)
+					if errStart != nil {
+						slog.Error(
+							"failed to start proc",
+							slog.Uint64("proc_id", e.ProcID),
+							// slog.Any("proc", procFields(proc)),
+							slog.Any("err", errStart),
+						)
+						continue
+					}
+
+					ebus.PublishProcStarted(proc, pid, e.EmitReason)
+				case eventbus.DataProcStopRequest:
+					stopped, errStart := runner.Stop1(ctx, e.ProcID)
+					if errStart != nil {
+						slog.Error(
+							"failed to stop proc",
+							slog.Uint64("proc_id", e.ProcID),
+							// slog.Any("proc", procFields(proc)),
+							slog.Any("err", errStart),
+						)
+						continue
+					}
+
+					if stopped {
+						ebus.PublishProcStopped(e.ProcID, -1, e.EmitReason)
+					}
+				case eventbus.DataProcSignalRequest:
+					if err := runner.Signal(ctx, e.Signal, e.ProcIDs...); err != nil {
+						slog.Error(
+							"failed to signal procs",
+							slog.Any("proc_id", e.ProcIDs),
+							slog.Any("signal", e.Signal),
+							slog.Any("err", err),
+						)
 					}
 				}
 			}

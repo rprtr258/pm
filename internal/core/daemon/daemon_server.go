@@ -29,15 +29,15 @@ type daemonServer struct {
 	pb.UnimplementedDaemonServer
 	db               db.Handle
 	ebus             *eventbus.EventBus
-	runner           runner.Runner
 	homeDir, logsDir string
+	runner           runner.Runner // TODO: remove, used only for create
 }
 
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	if errStart := srv.runner.Start(ctx, req.GetIds()...); errStart != nil {
-		return nil, xerr.NewWM(errStart, "start")
+	for _, id := range req.GetIds() {
+		srv.ebus.PublishProcStartRequest(id, eventbus.EmitReasonByUser)
 	}
 
 	return &emptypb.Empty{}, nil
@@ -57,19 +57,19 @@ func (srv *daemonServer) Signal(ctx context.Context, req *pb.SignalRequest) (*em
 		return nil, xerr.NewM("unknown signal", xerr.Fields{"signal": req.GetSignal()})
 	}
 
-	if err := srv.runner.Signal(ctx, signal, req.GetIds()...); err != nil {
-		return nil, xerr.NewWM(err, "signal")
-	}
+	srv.ebus.PublishProcSignalRequest(signal, req.GetIds()...)
 
 	return &emptypb.Empty{}, nil
 }
 
 func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error) {
-	stoppedIDs, err := srv.runner.Stop(ctx, req.GetIds()...)
+	for _, id := range req.GetIds() {
+		srv.ebus.PublishProcStopRequest(id, eventbus.EmitReasonByUser)
+	}
 
 	return &pb.IDs{
-		Ids: stoppedIDs,
-	}, err
+		// Ids: stoppedIDs, // TODO: implement somehow?
+	}, nil
 }
 
 func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.IDs, error) {
