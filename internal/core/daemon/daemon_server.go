@@ -306,7 +306,7 @@ func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
 			}()
 
 			wgLocal.Add(1)
-			stderrTailer := tail.File(proc.StdoutFile, tail.Config{
+			stderrTailer := tail.File(proc.StderrFile, tail.Config{
 				Follow:        true,
 				BufferSize:    _procLogsBufferSize,
 				NotifyTimeout: time.Minute,
