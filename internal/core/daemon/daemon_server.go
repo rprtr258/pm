@@ -115,19 +115,23 @@ func (srv *daemonServer) signal(proc core.Proc, signal syscall.Signal) error {
 }
 
 func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.IDs, error) {
-	procIDs, err := srv.runner.Create(ctx, lo.Map(req.GetOptions(), func(opts *pb.ProcessOptions, _ int) runner.CreateQuery {
-		return runner.CreateQuery{
-			Name:       fun.FromPtr(opts.Name),
-			Cwd:        opts.GetCwd(),
-			Tags:       opts.GetTags(),
-			Command:    opts.GetCommand(),
-			Args:       opts.GetArgs(),
-			Watch:      fun.FromPtr(opts.Watch),
-			Env:        opts.GetEnv(),
-			StdoutFile: fun.FromPtr(opts.StdoutFile),
-			StderrFile: fun.FromPtr(opts.StderrFile),
-		}
-	})...)
+	queries := lo.Map(
+		req.GetOptions(),
+		func(opts *pb.ProcessOptions, _ int) runner.CreateQuery {
+			return runner.CreateQuery{
+				Name:       fun.FromPtr(opts.Name),
+				Cwd:        opts.GetCwd(),
+				Tags:       opts.GetTags(),
+				Command:    opts.GetCommand(),
+				Args:       opts.GetArgs(),
+				Watch:      fun.FromPtr(opts.Watch),
+				Env:        opts.GetEnv(),
+				StdoutFile: fun.FromPtr(opts.StdoutFile),
+				StderrFile: fun.FromPtr(opts.StderrFile),
+			}
+		},
+	)
+	procIDs, err := srv.runner.Create(ctx, queries...)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +193,7 @@ func mapStatus(status core.Status) *pb.ProcessStatus {
 	}
 }
 
-func (srv *daemonServer) Delete(ctx context.Context, r *pb.IDs) (*emptypb.Empty, error) {
+func (srv *daemonServer) Delete(_ context.Context, r *pb.IDs) (*emptypb.Empty, error) {
 	ids := r.GetIds()
 	if errDelete := srv.db.Delete(ids); errDelete != nil {
 		return nil, xerr.NewWM(errDelete, "delete proc", xerr.Fields{"procIDs": ids})
@@ -235,7 +239,7 @@ func removeFile(name string) error {
 	return nil
 }
 
-func (srv *daemonServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+func (srv *daemonServer) HealthCheck(_ context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
 	return &emptypb.Empty{}, nil
 }
 

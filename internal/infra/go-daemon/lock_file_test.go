@@ -16,6 +16,8 @@ var (
 )
 
 func TestCreatePidFile(t *testing.T) {
+	t.Parallel()
+
 	_, err := CreatePidFile(invalidname, fileperm)
 	assert.Error(t, err, "CreatePidFile(): Error was not detected on invalid name")
 
@@ -37,19 +39,17 @@ func TestCreatePidFile(t *testing.T) {
 	assert.Error(t, err, "WritePid(): Error was not detected on invalid permissions")
 }
 
-func TestNewLockFile(test *testing.T) {
+func TestNewLockFile(t *testing.T) {
+	t.Parallel()
+
 	lock := NewLockFile(os.NewFile(1001, ""))
-	err := lock.Remove()
-	if err == nil {
-		test.Fatal("Remove(): Error was not detected on invalid fd")
-	}
-	err = lock.WritePid()
-	if err == nil {
-		test.Fatal("WritePid(): Error was not detected on invalid fd")
-	}
+	assert.Error(t, lock.Remove(), "Remove(): Error was not detected on invalid fd")
+	assert.Error(t, lock.WritePid(), "WritePid(): Error was not detected on invalid fd")
 }
 
 func TestReadPid(t *testing.T) {
+	t.Parallel()
+
 	lock, err := CreatePidFile(filename, fileperm)
 	assert.NoError(t, err)
 	defer func() {
@@ -63,10 +63,10 @@ func TestReadPid(t *testing.T) {
 }
 
 func TestLockFileLock(t *testing.T) {
+	t.Parallel()
+
 	lock1, err := OpenLockFile(filename, fileperm)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
 	assert.NoError(t, lock1.Lock())
 	defer func() {
 		assert.NoError(t, lock1.Remove())

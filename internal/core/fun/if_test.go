@@ -13,6 +13,8 @@ func _const[T any](value T) func() T {
 }
 
 func TestAll(t *testing.T) {
+	t.Parallel()
+
 	for name, test := range map[string]struct {
 		got  string
 		want string
@@ -66,7 +68,10 @@ func TestAll(t *testing.T) {
 			want: "4",
 		},
 	} {
+		test := test
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			assert.Equal(t, test.want, test.got)
 		})
 	}

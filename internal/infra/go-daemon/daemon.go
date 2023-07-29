@@ -304,9 +304,7 @@ func (d *Context) child() (err error) {
 			return errWritePid
 		}
 		defer func() {
-			if err != nil {
-				err = xerr.Combine(err, d.pidFile.Remove())
-			}
+			xerr.AppendInto(&err, d.pidFile.Remove())
 		}()
 	}
 
@@ -319,7 +317,7 @@ func (d *Context) child() (err error) {
 	}
 	if len(d.Chroot) > 0 {
 		if errChroot := syscall.Chroot(d.Chroot); errChroot != nil {
-			return
+			return errChroot
 		}
 	}
 

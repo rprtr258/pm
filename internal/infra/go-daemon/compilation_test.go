@@ -44,7 +44,10 @@ func TestCompilation(t *testing.T) {
 		{"windows", "386"},
 		{"windows", "amd64"},
 	} {
+		platform := platform
 		t.Run(platform.goos+"/"+platform.goarch, func(t *testing.T) {
+			t.Parallel()
+
 			if platform.goos == "solaris" && !requireMinor(7) {
 				t.Log("skip, solaris requires at least go1.7")
 				return

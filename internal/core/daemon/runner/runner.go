@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -68,15 +69,17 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 			},
 		); ok { // TODO: early exit from outer if block
 			procData := core.Proc{
-				ID:      procID,
-				Status:  core.NewStatusCreated(),
-				Name:    name,
-				Cwd:     query.Cwd,
-				Tags:    lo.Uniq(append(query.Tags, "all")),
-				Command: query.Command,
-				Args:    query.Args,
-				Watch:   query.Watch,
-				Env:     query.Env,
+				ID:         procID,
+				Status:     core.NewStatusCreated(),
+				Name:       name,
+				Cwd:        query.Cwd,
+				Tags:       lo.Uniq(append(query.Tags, "all")),
+				Command:    query.Command,
+				Args:       query.Args,
+				Watch:      query.Watch,
+				Env:        query.Env,
+				StdoutFile: query.StdoutFile.OrDefault(filepath.Join(r.LogsDir, fmt.Sprintf("%d.stdout", procID))),
+				StderrFile: query.StderrFile.OrDefault(filepath.Join(r.LogsDir, fmt.Sprintf("%d.stderr", procID))),
 			}
 
 			proc := procs[procID]
