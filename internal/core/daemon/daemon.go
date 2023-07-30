@@ -128,7 +128,7 @@ func startDaemon(ctx context.Context) (int, error) {
 	if errReborn != nil {
 		return 0, xerr.NewWM(errReborn, "reborn daemon")
 	}
-	defer deferErr(_daemonCtx.Release)()
+	defer deferErr("release daemon ctx", _daemonCtx.Release)()
 
 	if proc != nil { // i am client, daemon created, proc is handle to it
 		return proc.Pid, nil
@@ -284,7 +284,7 @@ func DaemonMain(ctx context.Context) error {
 	if err != nil {
 		return xerr.NewWM(err, "create watcher")
 	}
-	defer deferErr(watcherr.Close)
+	defer deferErr("close fsnotify watcher", watcherr.Close)
 
 	// TODO: rewrite in EDA style, remove from daemonServer
 	watcher := watcher.New(watcherr, ebus)
@@ -458,7 +458,7 @@ func DaemonMain(ctx context.Context) error {
 	if errListen != nil {
 		return xerr.NewWM(errListen, "net.Listen on rpc socket", xerr.Fields{"socket": core.SocketRPC})
 	}
-	defer deferErr(sock.Close)
+	defer deferErr("close listening socket", sock.Close)
 
 	doneCh := make(chan error, 1)
 	go func() {
@@ -493,10 +493,14 @@ func DaemonMain(ctx context.Context) error {
 	}
 }
 
-func deferErr(closer func() error) func() {
+func deferErr(name string, closer func() error) func() {
 	return func() {
 		if err := closer(); err != nil {
-			slog.Error("some defer action failed", "error", err.Error())
+			slog.Error(
+				"defer action failed",
+				slog.String("name", name),
+				slog.Any("error", err),
+			)
 		}
 	}
 }
