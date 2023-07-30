@@ -157,17 +157,14 @@ func (e *EventBus) Start(ctx context.Context) {
 }
 
 func (e *EventBus) Publish(ctx context.Context, events ...Event) {
-	// NOTE: goroutines will multiply here if events are not processed
-	go func() {
-		for _, event := range events {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				e.q.Push(event)
-			}
+	for _, event := range events {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			e.q.Push(event)
 		}
-	}()
+	}
 }
 
 func NewPublishProcStarted(proc core.Proc, pid int, emitReason EmitReason) Event {
