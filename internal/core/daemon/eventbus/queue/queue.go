@@ -39,6 +39,7 @@ func (q *Queue[T]) Pop() (T, bool) {
 			if atomic.CompareAndSwapPointer(&q.head, headPtr, head.next) {
 				return next.val, true
 			}
+
 			continue
 		}
 
