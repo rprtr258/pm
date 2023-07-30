@@ -9,7 +9,7 @@ import (
 	"github.com/rprtr258/fun"
 )
 
-type lfqNode[T any] struct {
+type node[T any] struct {
 	val  T
 	next unsafe.Pointer
 }
@@ -19,7 +19,7 @@ type lfqNode[T any] struct {
 type Queue[T any] struct {
 	head  unsafe.Pointer
 	tail  unsafe.Pointer
-	dummy lfqNode[T]
+	dummy node[T]
 }
 
 // New is the only way to get a new, ready-to-use LockfreeQueue.
@@ -36,8 +36,8 @@ func New[T any]() *Queue[T] {
 func (q *Queue[T]) Pop() (T, bool) {
 	for {
 		headPtr := atomic.LoadPointer(&q.head)
-		head := (*lfqNode[T])(headPtr)
-		if next := (*lfqNode[T])(atomic.LoadPointer(&head.next)); next != nil {
+		head := (*node[T])(headPtr)
+		if next := (*node[T])(atomic.LoadPointer(&head.next)); next != nil {
 			if atomic.CompareAndSwapPointer(&q.head, headPtr, head.next) {
 				return next.val, true
 			}
@@ -51,11 +51,11 @@ func (q *Queue[T]) Pop() (T, bool) {
 // Push inserts an element to the back of the queue.
 // It performs exactly the same as list.List.PushBack() with sync.Mutex.
 func (q *Queue[T]) Push(val T) {
-	node := unsafe.Pointer(&lfqNode[T]{val: val})
+	newNode := unsafe.Pointer(&node[T]{val: val})
 	for {
-		rt := (*lfqNode[T])(atomic.LoadPointer(&q.tail))
-		if atomic.CompareAndSwapPointer(&rt.next, nil, node) {
-			atomic.StorePointer(&q.tail, node)
+		tail := (*node[T])(atomic.LoadPointer(&q.tail))
+		if atomic.CompareAndSwapPointer(&tail.next, nil, newNode) {
+			atomic.StorePointer(&q.tail, newNode)
 			return
 		}
 	}
