@@ -277,8 +277,7 @@ func DaemonMain(ctx context.Context) error {
 	}
 
 	ebus := eventbus.New()
-	go ebus.Start()
-	defer ebus.Close()
+	go ebus.Start(ctx)
 
 	watcherr, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -286,7 +285,6 @@ func DaemonMain(ctx context.Context) error {
 	}
 	defer deferErr("close fsnotify watcher", watcherr.Close)
 
-	// TODO: rewrite in EDA style, remove from daemonServer
 	watcher := watcher.New(watcherr, ebus)
 	go watcher.Start(ctx)
 

@@ -97,7 +97,6 @@ type Subscriber struct {
 
 type EventBus struct {
 	eventsCh chan Event
-	doneCh   chan struct{}
 
 	mu          sync.Mutex
 	subscribers map[string]Subscriber
@@ -105,54 +104,50 @@ type EventBus struct {
 
 func New() *EventBus {
 	return &EventBus{
-		doneCh:      make(chan struct{}),
 		eventsCh:    make(chan Event),
 		mu:          sync.Mutex{},
 		subscribers: map[string]Subscriber{},
 	}
 }
 
-func (e *EventBus) Start() {
-	go func() {
-		for {
-			select {
-			case <-e.doneCh:
-				return
-			case event := <-e.eventsCh:
-				slog.Debug(
-					"got event, routing",
-					slog.Any("event", event),
-				)
-
-				e.mu.Lock()
-				for name, sub := range e.subscribers {
-					if _, ok := sub.Kinds[event.Kind]; !ok {
-						continue
-					}
-
-					slog.Debug(
-						"publishing event",
-						slog.Any("event", event),
-						slog.String("subscriber", name),
-					)
-					// NOTE: blocks on every subscriber
-					select {
-					case sub.Chan <- event:
-					case <-e.doneCh:
-						return
-					}
-				}
-				e.mu.Unlock()
-			}
+func (e *EventBus) Start(ctx context.Context) {
+	defer func() {
+		close(e.eventsCh)
+		for _, sub := range e.subscribers {
+			close(sub.Chan)
 		}
 	}()
-}
 
-func (e *EventBus) Close() {
-	close(e.doneCh)
-	close(e.eventsCh)
-	for _, sub := range e.subscribers {
-		close(sub.Chan)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event := <-e.eventsCh:
+			slog.Debug(
+				"got event, routing",
+				slog.Any("event", event),
+			)
+
+			e.mu.Lock()
+			for name, sub := range e.subscribers {
+				if _, ok := sub.Kinds[event.Kind]; !ok {
+					continue
+				}
+
+				slog.Debug(
+					"publishing event",
+					slog.Any("event", event),
+					slog.String("subscriber", name),
+				)
+				// NOTE: blocks on every subscriber
+				select {
+				case sub.Chan <- event:
+				case <-ctx.Done():
+					return
+				}
+			}
+			e.mu.Unlock()
+		}
 	}
 }
 
