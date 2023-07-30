@@ -3,7 +3,6 @@ package daemon
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -245,38 +244,32 @@ func streamLoggerInterceptor(
 	return err
 }
 
+func getSlogHandler(debug bool) slog.Handler {
+	if debug {
+		return log.NewDestructorHandler(log.NewPrettyHandler(os.Stderr))
+	}
+
+	return slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource:   true,
+		Level:       slog.LevelInfo,
+		ReplaceAttr: nil,
+	})
+}
+
 func DaemonMain(ctx context.Context) error {
 	config, errConfig := readPmConfig()
 	if errConfig != nil {
 		return xerr.NewWM(errConfig, "read pm config")
 	}
 
-	slog.SetDefault(slog.New(lo.IfF(
-		config.Debug,
-		func() slog.Handler {
-			return log.NewDestructorHandler(log.NewPrettyHandler(os.Stderr))
-		}).ElseF(
-		func() slog.Handler {
-			return slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-				AddSource:   true,
-				Level:       slog.LevelInfo,
-				ReplaceAttr: nil,
-			})
-		})))
+	slog.SetDefault(slog.New(getSlogHandler(config.Debug)))
 
 	if errMigrate := migrate(config); errMigrate != nil {
 		return xerr.NewWM(errMigrate, "migrate to latest version", xerr.Fields{"version": core.Version})
 	}
 
-	var cancel func()
-	ctx, cancel = context.WithCancel(ctx)
+	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
-
-	sock, errListen := net.Listen("unix", core.SocketRPC)
-	if errListen != nil {
-		return xerr.NewWM(errListen, "net.Listen on rpc socket", xerr.Fields{"socket": core.SocketRPC})
-	}
-	defer deferErr(sock.Close)
 
 	dbHandle, errDBNew := db.New(_dirDB)
 	if errDBNew != nil {
@@ -315,8 +308,6 @@ func DaemonMain(ctx context.Context) error {
 		ebus:                      ebus,
 		runner:                    runner,
 	})
-
-	slog.Info("daemon started", "socket", sock.Addr())
 
 	go func() {
 		c := make(chan os.Signal, 10) //nolint:gomnd // arbitrary buffer size
@@ -463,8 +454,15 @@ func DaemonMain(ctx context.Context) error {
 		ebus:              ebus,
 	}.start(ctx)
 
+	sock, errListen := net.Listen("unix", core.SocketRPC)
+	if errListen != nil {
+		return xerr.NewWM(errListen, "net.Listen on rpc socket", xerr.Fields{"socket": core.SocketRPC})
+	}
+	defer deferErr(sock.Close)
+
 	doneCh := make(chan error, 1)
 	go func() {
+		slog.Info("daemon started", slog.Any("socket", sock.Addr()))
 		if errServe := srv.Serve(sock); errServe != nil {
 			doneCh <- xerr.NewWM(errServe, "serve")
 		} else {
@@ -473,19 +471,17 @@ func DaemonMain(ctx context.Context) error {
 	}()
 	defer func() {
 		if errRm := os.Remove(core.SocketRPC); errRm != nil && !errors.Is(errRm, os.ErrNotExist) {
-			slog.Error("remove pid file",
-				"file", _filePid,
-				"error", errRm.Error(),
+			slog.Error(
+				"failed removing pid file",
+				slog.String("file", _filePid),
+				slog.Any("err", errRm),
 			)
 		}
 	}()
 
-	sigsCh := make(chan os.Signal, 1)
-	signal.Notify(sigsCh, syscall.SIGINT, syscall.SIGTERM)
-
 	select {
-	case sig := <-sigsCh:
-		slog.Info("received signal, exiting", "signal", fmt.Sprintf("%[1]T(%#[1]v)-%[1]s", sig))
+	case <-ctx.Done():
+		slog.Info("received signal, exiting")
 		srv.GracefulStop()
 		return nil
 	case err := <-doneCh:
