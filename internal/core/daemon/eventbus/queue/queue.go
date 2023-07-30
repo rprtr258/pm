@@ -11,18 +11,17 @@ import (
 
 type node[T any] struct {
 	val  T
-	next unsafe.Pointer
+	next unsafe.Pointer // *node[T]
 }
 
 // Queue is a goroutine-safe Queue implementation.
-// The overall performance of Queue is much better than List+Mutex(standard package).
 type Queue[T any] struct {
-	head  unsafe.Pointer
-	tail  unsafe.Pointer
+	head  unsafe.Pointer // *node[T]
+	tail  unsafe.Pointer // *node[T]
 	dummy node[T]
 }
 
-// New is the only way to get a new, ready-to-use LockfreeQueue.
+// New is the only way to get a new, ready-to-use Queue.
 func New[T any]() *Queue[T] {
 	var q Queue[T]
 	q.head = unsafe.Pointer(&q.dummy)
@@ -32,7 +31,6 @@ func New[T any]() *Queue[T] {
 
 // Pop returns (and removes) an element from the front of the queue and true if the queue is not empty,
 // otherwise it returns a default value and false if the queue is empty.
-// It performs about 100% better than list.List.Front() and list.List.Remove() with sync.Mutex.
 func (q *Queue[T]) Pop() (T, bool) {
 	for {
 		headPtr := atomic.LoadPointer(&q.head)
@@ -49,7 +47,6 @@ func (q *Queue[T]) Pop() (T, bool) {
 }
 
 // Push inserts an element to the back of the queue.
-// It performs exactly the same as list.List.PushBack() with sync.Mutex.
 func (q *Queue[T]) Push(val T) {
 	newNode := unsafe.Pointer(&node[T]{val: val})
 	for {
