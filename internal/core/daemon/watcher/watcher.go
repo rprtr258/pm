@@ -158,7 +158,7 @@ func (w Watcher) Start(ctx context.Context) {
 				}
 
 				// TODO: merge into restart request?
-				w.ebus.Publish(
+				w.ebus.Publish(ctx,
 					eventbus.NewPublishProcStopRequest(procID, eventbus.EmitReasonByWatcher),
 					eventbus.NewPublishProcStartRequest(procID, eventbus.EmitReasonByWatcher),
 				)

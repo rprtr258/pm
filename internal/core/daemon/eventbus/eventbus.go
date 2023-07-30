@@ -1,6 +1,7 @@
 package eventbus
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"syscall"
@@ -155,11 +156,15 @@ func (e *EventBus) Close() {
 	}
 }
 
-func (e *EventBus) Publish(events ...Event) {
+func (e *EventBus) Publish(ctx context.Context, events ...Event) {
 	// NOTE: goroutines will multiply here if events are not processed
 	go func() {
 		for _, event := range events {
-			e.eventsCh <- event
+			select {
+			case <-ctx.Done():
+				return
+			case e.eventsCh <- event:
+			}
 		}
 	}()
 }

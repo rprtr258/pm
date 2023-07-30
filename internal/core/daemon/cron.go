@@ -19,7 +19,7 @@ type cron struct {
 	ebus              *eventbus.EventBus
 }
 
-func (c cron) updateStatuses() {
+func (c cron) updateStatuses(ctx context.Context) {
 	for procID, proc := range c.db.GetProcs(core.WithAllIfNoFilters) {
 		if proc.Status.Status != core.StatusRunning {
 			continue
@@ -32,7 +32,7 @@ func (c cron) updateStatuses() {
 		case linuxprocess.ErrStatFileNotFound:
 			c.l.Info("process seems to be stopped, updating status...", "pid", proc.Status.Pid)
 
-			c.ebus.Publish(eventbus.NewPublishProcStopped(procID, -1, eventbus.EmitReasonDied))
+			c.ebus.Publish(ctx, eventbus.NewPublishProcStopped(procID, -1, eventbus.EmitReasonDied))
 		default:
 			c.l.Warn(
 				"read proc stat",
@@ -50,7 +50,7 @@ func (c cron) start(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			c.updateStatuses()
+			c.updateStatuses(ctx)
 		case <-ctx.Done():
 			c.l.Info("context canceled, stopping...")
 			return
