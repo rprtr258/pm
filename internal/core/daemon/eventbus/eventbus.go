@@ -118,11 +118,14 @@ func (e *EventBus) Start(ctx context.Context) {
 		}
 	}()
 
+	tick := time.NewTicker(500 * time.Millisecond)
+	defer tick.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
+		case <-tick.C:
 			event, ok := e.q.Pop()
 			if !ok {
 				continue

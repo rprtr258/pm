@@ -1,9 +1,10 @@
 package queue
 
 import (
-	"sort"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -12,40 +13,15 @@ const (
 	_bufferSize = _goroutines * _pushingNum
 )
 
-func TestQueue(t *testing.T) {
-	var popBuf [_goroutines][]int
+func TestManyPushPop(t *testing.T) {
+	t.Parallel()
+
 	// init popBuf
-	for i := 0; i != _goroutines; i++ {
-		popBuf[i] = make([]int, 0, _bufferSize)
-	}
+	cnt := [_pushingNum]int{}
 
 	q := New[int]()
 
 	var wg sync.WaitGroup
-	// Push() simultaneously
-	wg.Add(_goroutines)
-	for i := 0; i != _goroutines; i++ {
-		go func() {
-			push(q)
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-	// Pop() simultaneously
-	wg.Add(_goroutines)
-	for i := 0; i != _goroutines; i++ {
-		go func() {
-			for i := 0; i != _pushingNum; i++ {
-				_, ok := q.Pop()
-				if !ok {
-					t.Error("Should never be nil!")
-				}
-			}
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-
 	// Push() and Pop() simultaneously
 	wg.Add(_goroutines * 2)
 	for i := 0; i < _goroutines; i++ {
@@ -53,35 +29,55 @@ func TestQueue(t *testing.T) {
 			push(q)
 			wg.Done()
 		}()
-		go func(n int) { // pop while pushing
+		go func() {
 			for j := 0; j < _pushingNum*2; j++ {
-				v, ok := q.Pop()
-				if ok {
-					popBuf[n] = append(popBuf[n], v)
+				if v, ok := q.Pop(); ok {
+					cnt[v]++
 				}
 			}
 			wg.Done()
-		}(i)
+		}()
 	}
 	wg.Wait()
 
-	// Verification
-	resultBuf := popBuf[0]
-	for i := 1; i != _goroutines; i++ {
-		resultBuf = append(resultBuf, popBuf[i]...)
-	}
 	// in case there are some elements left in the queue
 	for v, ok := q.Pop(); ok; v, ok = q.Pop() {
-		resultBuf = append(resultBuf, v)
+		cnt[v]++
 	}
-	sort.Ints(resultBuf)
-	for i := 0; i != _pushingNum; i++ {
-		for j := 0; j != _goroutines; j++ {
-			if resultBuf[(i*_goroutines)+j] != i {
-				t.Error("Invalid result:", i, j, resultBuf[(i*_goroutines)+j])
+
+	for _, x := range cnt {
+		assert.Equal(t, _goroutines, x)
+	}
+}
+
+func TestManyPushManyPop(t *testing.T) {
+	t.Parallel()
+
+	q := New[int]()
+
+	var wg sync.WaitGroup
+	// Push() simultaneously
+	wg.Add(_goroutines)
+	for i := 0; i < _goroutines; i++ {
+		go func() {
+			push(q)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	// Pop() simultaneously
+	wg.Add(_goroutines)
+	for i := 0; i < _goroutines; i++ {
+		go func() {
+			for i := 0; i < _pushingNum; i++ {
+				_, ok := q.Pop()
+				assert.True(t, ok)
 			}
-		}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
 }
 
 func push(q *Queue[int]) {
