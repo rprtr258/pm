@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon/eventbus/queue"
 	"golang.org/x/exp/slog"
 )
 
@@ -96,7 +97,7 @@ type Subscriber struct {
 }
 
 type EventBus struct {
-	eventsCh chan Event
+	q *queue.Queue[Event]
 
 	mu          sync.Mutex
 	subscribers map[string]Subscriber
@@ -104,7 +105,7 @@ type EventBus struct {
 
 func New() *EventBus {
 	return &EventBus{
-		eventsCh:    make(chan Event),
+		q:           queue.New[Event](),
 		mu:          sync.Mutex{},
 		subscribers: map[string]Subscriber{},
 	}
@@ -112,7 +113,6 @@ func New() *EventBus {
 
 func (e *EventBus) Start(ctx context.Context) {
 	defer func() {
-		close(e.eventsCh)
 		for _, sub := range e.subscribers {
 			close(sub.Chan)
 		}
@@ -122,7 +122,12 @@ func (e *EventBus) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case event := <-e.eventsCh:
+		default:
+			event, ok := e.q.Pop()
+			if !ok {
+				continue
+			}
+
 			slog.Debug(
 				"got event, routing",
 				slog.Any("event", event),
@@ -158,7 +163,8 @@ func (e *EventBus) Publish(ctx context.Context, events ...Event) {
 			select {
 			case <-ctx.Done():
 				return
-			case e.eventsCh <- event:
+			default:
+				e.q.Push(event)
 			}
 		}
 	}()

@@ -128,7 +128,7 @@ lint: lint-proto lint-go # run all linters
 ## Test
 
 test: # run tests
-	@go run gotest.tools/gotestsum@latest ./...
+	@go run gotest.tools/gotestsum@latest --format dots-v2 ./...
 
 test-e2e: # run integration tests
 	go build -o tests/hello-http tests/hello-http/main.go
