@@ -16,9 +16,7 @@ const (
 func TestManyPushPop(t *testing.T) {
 	t.Parallel()
 
-	// init popBuf
 	cnt := [_pushingNum]int{}
-
 	q := New[int]()
 
 	var wg sync.WaitGroup
