@@ -12,8 +12,6 @@ const (
 	_bufferSize = _goroutines * _pushingNum
 )
 
-var q = New[int]()
-
 func TestQueue(t *testing.T) {
 	var popBuf [_goroutines][]int
 	// init popBuf
@@ -21,12 +19,14 @@ func TestQueue(t *testing.T) {
 		popBuf[i] = make([]int, 0, _bufferSize)
 	}
 
+	q := New[int]()
+
 	var wg sync.WaitGroup
 	// Push() simultaneously
 	wg.Add(_goroutines)
 	for i := 0; i != _goroutines; i++ {
 		go func() {
-			push()
+			push(q)
 			wg.Done()
 		}()
 	}
@@ -50,7 +50,7 @@ func TestQueue(t *testing.T) {
 	wg.Add(_goroutines * 2)
 	for i := 0; i < _goroutines; i++ {
 		go func() {
-			push()
+			push(q)
 			wg.Done()
 		}()
 		go func(n int) { // pop while pushing
@@ -84,7 +84,7 @@ func TestQueue(t *testing.T) {
 	}
 }
 
-func push() {
+func push(q *Queue[int]) {
 	for i := 0; i < _pushingNum; i++ {
 		q.Push(i)
 	}
