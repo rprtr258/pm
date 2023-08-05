@@ -121,17 +121,13 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 	return procID, nil
 }
 
-func (r Runner) Create(ctx context.Context, queries ...CreateQuery) ([]core.ProcID, error) {
-	procIDs := make([]core.ProcID, len(queries))
-	for i, query := range queries {
-		var errCreate error
-		procIDs[i], errCreate = r.create(ctx, query)
-		if errCreate != nil {
-			return nil, errCreate
-		}
+func (r Runner) Create(ctx context.Context, query CreateQuery) (core.ProcID, error) {
+	procID, errCreate := r.create(ctx, query)
+	if errCreate != nil {
+		return 0, errCreate
 	}
 
-	return procIDs, nil
+	return procID, nil
 }
 
 func (r Runner) Start1(procID core.ProcID) (int, error) {

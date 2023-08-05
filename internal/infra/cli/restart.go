@@ -75,15 +75,12 @@ var _restartCmd = &cli.Command{
 				return nil
 			}
 
-			stoppedProcIDs, err := app.Stop(ctx.Context, procIDs...)
-			printIDs("stopped", stoppedProcIDs...)
-			if err != nil {
+			if err := app.Stop(ctx.Context, procIDs...); err != nil {
 				return xerr.NewWM(err, "client.stop")
 			}
 
-			printIDs("starting", procIDs...)
-			if errRun := app.Start(ctx.Context, procIDs...); errRun != nil {
-				return xerr.NewWM(err, "client.start")
+			if errStart := app.Start(ctx.Context, procIDs...); errStart != nil {
+				return xerr.NewWM(errStart, "client.start")
 			}
 
 			return nil
@@ -120,14 +117,11 @@ var _restartCmd = &cli.Command{
 			return nil
 		}
 
-		stoppedProcIDs, err := app.Stop(ctx.Context, procIDs...)
-		printIDs("stopped", stoppedProcIDs...)
-		if err != nil {
-			return xerr.NewWM(err, "client.stop")
+		if errStop := app.Stop(ctx.Context, procIDs...); errStop != nil {
+			return xerr.NewWM(errStop, "client.stop")
 		}
 
-		printIDs("starting", procIDs...)
-		if errRun := app.Start(ctx.Context, procIDs...); errRun != nil {
+		if errStart := app.Start(ctx.Context, procIDs...); errStart != nil {
 			return xerr.NewWM(err, "client.start")
 		}
 

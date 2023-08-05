@@ -9,34 +9,30 @@ option go_package = "github.com/rprtr258/pm/api";
 
 service Daemon {
   // process management
-  rpc Start(IDs) returns (google.protobuf.Empty);
+  rpc Start (ProcID)        returns (google.protobuf.Empty);
   rpc Signal(SignalRequest) returns (google.protobuf.Empty);
-  rpc Stop(IDs) returns (IDs);
+  rpc Stop  (ProcID)        returns (google.protobuf.Empty);
 
   // CRUD operations
-  rpc Create(CreateRequest) returns (IDs);
-  rpc List(google.protobuf.Empty) returns (ProcessesList);
-  rpc Delete(IDs) returns (google.protobuf.Empty);
+  rpc Create(CreateRequest)         returns (ProcID);
+  rpc List  (google.protobuf.Empty) returns (ProcessesList);
+  rpc Delete(ProcID)                returns (google.protobuf.Empty);
 
   rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
 
-  rpc Logs(IDs) returns (stream ProcsLogs);
+  rpc Logs(ProcID) returns (stream ProcsLogs);
 }
 
 message CreateRequest {
-  repeated ProcessOptions options = 1;
-}
-
-message ProcessOptions {
-  string command = 1;
-  repeated string args = 2;
-  optional string name = 3;
-  string cwd = 4;
-  repeated string tags = 5;
-  map<string, string> env = 6;
-  optional string watch = 7;
-  optional string stdout_file = 8;
-  optional string stderr_file = 9;
+  string              command     = 1;
+  repeated string     args        = 2;
+  optional string     name        = 3;
+  string              cwd         = 4;
+  repeated string     tags        = 5;
+  map<string, string> env         = 6;
+  optional string     watch       = 7;
+  optional string     stdout_file = 8;
+  optional string     stderr_file = 9;
 }
 
 message ProcessesList {
@@ -61,51 +57,51 @@ message ProcessStatus {
   oneof status {
     google.protobuf.Empty invalid = 1;
     google.protobuf.Empty created = 2;
-    RunningProcessStatus running = 3;
-    StoppedProcessStatus stopped = 4;
+    RunningProcessStatus  running = 3;
+    StoppedProcessStatus  stopped = 4;
   };
 }
 
 message RunningProcessStatus {
-  int64 pid = 1;
+  int64                     pid        = 1;
   google.protobuf.Timestamp start_time = 2;
-  uint64 cpu = 3;
-  uint64 memory = 4;
+  uint64                    cpu        = 3;
+  uint64                    memory     = 4;
 }
 
 message StoppedProcessStatus {
-  int64 exit_code = 1;
+  int64                     exit_code  = 1;
   google.protobuf.Timestamp stopped_at = 2;
 }
 
-message IDs {
-  repeated uint64 ids = 1;
+message ProcID {
+  uint64 id = 1;
 }
 
 enum Signal {
   SIGNAL_UNSPECIFIED = 0;
-  SIGNAL_SIGTERM = 1;
-  SIGNAL_SIGKILL = 2;
+  SIGNAL_SIGTERM     = 1;
+  SIGNAL_SIGKILL     = 2;
 }
 
 message SignalRequest {
   repeated uint64 ids = 1;
-  Signal signal = 2;
+  Signal          signal = 2;
 }
 
 message LogLine {
   enum Type {
     TYPE_UNSPECIFIED = 0;
-    TYPE_STDOUT = 1;
-    TYPE_STDERR = 2;
+    TYPE_STDOUT      = 1;
+    TYPE_STDERR      = 2;
   };
 
-  string line = 1;
+  string                    line = 1;
   google.protobuf.Timestamp time = 2;
-  Type type = 3;
+  Type                      type = 3;
 }
 
 message ProcsLogs {
-  uint64 id = 1;
+  uint64           id    = 1;
   repeated LogLine lines = 2;
 }

@@ -200,14 +200,14 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		return xerr.NewWM(errList, "list processes")
 	}
 
-	oldIDs := fun.Keys(list)
+	for id := range list {
+		if errStop := client.Stop(ctx, id); errStop != nil {
+			return xerr.NewWM(errStop, "stop all old processes")
+		}
 
-	if _, errStop := client.Stop(ctx, oldIDs); errStop != nil {
-		return xerr.NewWM(errStop, "stop all old processes")
-	}
-
-	if errDelete := client.Delete(ctx, oldIDs); errDelete != nil {
-		return xerr.NewWM(errDelete, "delete all old processes")
+		if errDelete := client.Delete(ctx, id); errDelete != nil {
+			return xerr.NewWM(errDelete, "delete all old processes")
+		}
 	}
 
 	// RUN TEST
@@ -231,28 +231,29 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		}
 
 		// START TEST PROCESSES
-		processesOptions := fun.Map(test.runConfigs, func(c core.RunConfig) *api.ProcessOptions {
-			return &api.ProcessOptions{
+		ids := []core.ProcID{}
+		for _, c := range test.runConfigs {
+			id, errCreate := client.Create(ctx, &api.CreateRequest{
 				Name:    c.Name.Ptr(),
 				Command: c.Command,
 				Args:    c.Args,
 				Cwd:     c.Cwd,
 				Tags:    c.Tags,
 				Env:     c.Env,
+			})
+			if errCreate != nil {
+				return xerr.NewWM(errCreate, "create process")
 			}
-		})
 
-		ids, errCreate := client.Create(ctx, processesOptions)
-		if errCreate != nil {
-			return xerr.NewWM(errCreate, "create process")
-		}
+			if len(ids) != len(test.runConfigs) {
+				return xerr.NewM("unexpected number of processes", xerr.Fields{"proc_id": id})
+			}
 
-		if len(ids) != len(test.runConfigs) {
-			return xerr.NewM("unexpected number of processes", xerr.Fields{"ids": ids})
-		}
+			if errStart := client.Start(ctx, id); errStart != nil {
+				return xerr.NewWM(errStart, "start process", xerr.Fields{"proc_id": id})
+			}
 
-		if errStart := client.Start(ctx, ids); errStart != nil {
-			return xerr.NewWM(errStart, "start process", xerr.Fields{"ids": ids})
+			ids = append(ids, id)
 		}
 
 		// RUN TEST
@@ -263,12 +264,14 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		}
 
 		// STOP AND REMOVE TEST PROCESSES
-		if _, errStop := client.Stop(ctx, ids); errStop != nil {
-			return xerr.NewWM(errStop, "stop process", xerr.Fields{"ids": ids})
-		}
+		for _, id := range ids {
+			if errStop := client.Stop(ctx, id); errStop != nil {
+				return xerr.NewWM(errStop, "stop process", xerr.Fields{"proc_id": id})
+			}
 
-		if errDelete := client.Delete(ctx, ids); errDelete != nil {
-			return xerr.NewWM(errDelete, "delete process", xerr.Fields{"ids": ids})
+			if errDelete := client.Delete(ctx, id); errDelete != nil {
+				return xerr.NewWM(errDelete, "delete process", xerr.Fields{"proc_id": id})
+			}
 		}
 
 		// RUN TEST AFTER HOOK

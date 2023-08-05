@@ -146,10 +146,10 @@ var _runCmd = &cli.Command{
 				StderrFile: fun.Invalid[string](),
 			}
 
-			procIDs, errRun := app.Run(ctx.Context, runConfig)
-			printIDs("", procIDs...)
+			procID, errRun := app.Run(ctx.Context, runConfig)
+			printIDs("", procID)
 			if errRun != nil {
-				return xerr.NewWM(errRun, "run command", xerr.Fields{"runConfig": runConfig, "procIDs": procIDs})
+				return xerr.NewWM(errRun, "run command", xerr.Fields{"run_config": runConfig, "proc_id": procID})
 			}
 
 			return nil
@@ -163,10 +163,12 @@ var _runCmd = &cli.Command{
 		names := ctx.Args().Slice()
 		if len(names) == 0 {
 			// no filtering by names, run all processes
-			procIDs, err := app.Run(ctx.Context, configs...)
-			printIDs("", procIDs...)
-			if err != nil {
-				return xerr.NewWM(err, "create all procs from config", xerr.Fields{"created procIDs": procIDs})
+			for _, config := range configs {
+				procID, err := app.Run(ctx.Context, config)
+				printIDs("", procID)
+				if err != nil {
+					return xerr.NewWM(err, "create all procs from config", xerr.Fields{"proc_id": procID})
+				}
 			}
 
 			return nil
@@ -192,13 +194,15 @@ var _runCmd = &cli.Command{
 			return merr
 		}
 
-		procIDs, errCreate := app.Run(ctx.Context, lo.Values(configsByName)...)
-		printIDs("", procIDs...)
-		if errCreate != nil {
-			return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{
-				"names":           names,
-				"created procIDs": procIDs,
-			})
+		for _, config := range configsByName {
+			procID, errCreate := app.Run(ctx.Context, config)
+			printIDs("", procID)
+			if errCreate != nil {
+				return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{
+					"names":   names,
+					"proc_id": procID,
+				})
+			}
 		}
 
 		return nil

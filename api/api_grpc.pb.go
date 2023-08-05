@@ -35,15 +35,15 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DaemonClient interface {
 	// process management
-	Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Start(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Signal(ctx context.Context, in *SignalRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*IDs, error)
+	Stop(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// CRUD operations
-	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*IDs, error)
+	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*ProcID, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
-	Delete(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Delete(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Logs(ctx context.Context, in *IDs, opts ...grpc.CallOption) (Daemon_LogsClient, error)
+	Logs(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_LogsClient, error)
 }
 
 type daemonClient struct {
@@ -54,7 +54,7 @@ func NewDaemonClient(cc grpc.ClientConnInterface) DaemonClient {
 	return &daemonClient{cc}
 }
 
-func (c *daemonClient) Start(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *daemonClient) Start(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Daemon_Start_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -72,8 +72,8 @@ func (c *daemonClient) Signal(ctx context.Context, in *SignalRequest, opts ...gr
 	return out, nil
 }
 
-func (c *daemonClient) Stop(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*IDs, error) {
-	out := new(IDs)
+func (c *daemonClient) Stop(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Daemon_Stop_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -81,8 +81,8 @@ func (c *daemonClient) Stop(ctx context.Context, in *IDs, opts ...grpc.CallOptio
 	return out, nil
 }
 
-func (c *daemonClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*IDs, error) {
-	out := new(IDs)
+func (c *daemonClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*ProcID, error) {
+	out := new(ProcID)
 	err := c.cc.Invoke(ctx, Daemon_Create_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (c *daemonClient) List(ctx context.Context, in *emptypb.Empty, opts ...grpc
 	return out, nil
 }
 
-func (c *daemonClient) Delete(ctx context.Context, in *IDs, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *daemonClient) Delete(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, Daemon_Delete_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -117,7 +117,7 @@ func (c *daemonClient) HealthCheck(ctx context.Context, in *emptypb.Empty, opts 
 	return out, nil
 }
 
-func (c *daemonClient) Logs(ctx context.Context, in *IDs, opts ...grpc.CallOption) (Daemon_LogsClient, error) {
+func (c *daemonClient) Logs(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_LogsClient, error) {
 	stream, err := c.cc.NewStream(ctx, &Daemon_ServiceDesc.Streams[0], Daemon_Logs_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
@@ -154,15 +154,15 @@ func (x *daemonLogsClient) Recv() (*ProcsLogs, error) {
 // for forward compatibility
 type DaemonServer interface {
 	// process management
-	Start(context.Context, *IDs) (*emptypb.Empty, error)
+	Start(context.Context, *ProcID) (*emptypb.Empty, error)
 	Signal(context.Context, *SignalRequest) (*emptypb.Empty, error)
-	Stop(context.Context, *IDs) (*IDs, error)
+	Stop(context.Context, *ProcID) (*emptypb.Empty, error)
 	// CRUD operations
-	Create(context.Context, *CreateRequest) (*IDs, error)
+	Create(context.Context, *CreateRequest) (*ProcID, error)
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
-	Delete(context.Context, *IDs) (*emptypb.Empty, error)
+	Delete(context.Context, *ProcID) (*emptypb.Empty, error)
 	HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
-	Logs(*IDs, Daemon_LogsServer) error
+	Logs(*ProcID, Daemon_LogsServer) error
 	mustEmbedUnimplementedDaemonServer()
 }
 
@@ -170,28 +170,28 @@ type DaemonServer interface {
 type UnimplementedDaemonServer struct {
 }
 
-func (UnimplementedDaemonServer) Start(context.Context, *IDs) (*emptypb.Empty, error) {
+func (UnimplementedDaemonServer) Start(context.Context, *ProcID) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
 }
 func (UnimplementedDaemonServer) Signal(context.Context, *SignalRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Signal not implemented")
 }
-func (UnimplementedDaemonServer) Stop(context.Context, *IDs) (*IDs, error) {
+func (UnimplementedDaemonServer) Stop(context.Context, *ProcID) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
-func (UnimplementedDaemonServer) Create(context.Context, *CreateRequest) (*IDs, error) {
+func (UnimplementedDaemonServer) Create(context.Context, *CreateRequest) (*ProcID, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
 func (UnimplementedDaemonServer) List(context.Context, *emptypb.Empty) (*ProcessesList, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-func (UnimplementedDaemonServer) Delete(context.Context, *IDs) (*emptypb.Empty, error) {
+func (UnimplementedDaemonServer) Delete(context.Context, *ProcID) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
 func (UnimplementedDaemonServer) HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
 }
-func (UnimplementedDaemonServer) Logs(*IDs, Daemon_LogsServer) error {
+func (UnimplementedDaemonServer) Logs(*ProcID, Daemon_LogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method Logs not implemented")
 }
 func (UnimplementedDaemonServer) mustEmbedUnimplementedDaemonServer() {}
@@ -208,7 +208,7 @@ func RegisterDaemonServer(s grpc.ServiceRegistrar, srv DaemonServer) {
 }
 
 func _Daemon_Start_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IDs)
+	in := new(ProcID)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func _Daemon_Start_Handler(srv interface{}, ctx context.Context, dec func(interf
 		FullMethod: Daemon_Start_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).Start(ctx, req.(*IDs))
+		return srv.(DaemonServer).Start(ctx, req.(*ProcID))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -244,7 +244,7 @@ func _Daemon_Signal_Handler(srv interface{}, ctx context.Context, dec func(inter
 }
 
 func _Daemon_Stop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IDs)
+	in := new(ProcID)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -256,7 +256,7 @@ func _Daemon_Stop_Handler(srv interface{}, ctx context.Context, dec func(interfa
 		FullMethod: Daemon_Stop_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).Stop(ctx, req.(*IDs))
+		return srv.(DaemonServer).Stop(ctx, req.(*ProcID))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -298,7 +298,7 @@ func _Daemon_List_Handler(srv interface{}, ctx context.Context, dec func(interfa
 }
 
 func _Daemon_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IDs)
+	in := new(ProcID)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -310,7 +310,7 @@ func _Daemon_Delete_Handler(srv interface{}, ctx context.Context, dec func(inter
 		FullMethod: Daemon_Delete_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DaemonServer).Delete(ctx, req.(*IDs))
+		return srv.(DaemonServer).Delete(ctx, req.(*ProcID))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -334,7 +334,7 @@ func _Daemon_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(
 }
 
 func _Daemon_Logs_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(IDs)
+	m := new(ProcID)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}

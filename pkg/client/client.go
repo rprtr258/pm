@@ -53,13 +53,13 @@ func (c Client) Close() error {
 	return nil
 }
 
-func (c Client) Create(ctx context.Context, opts []*pb.ProcessOptions) ([]uint64, error) {
-	resp, err := c.client.Create(ctx, &pb.CreateRequest{Options: opts})
+func (c Client) Create(ctx context.Context, opts *pb.CreateRequest) (uint64, error) {
+	resp, err := c.client.Create(ctx, opts)
 	if err != nil {
-		return nil, xerr.NewWM(err, "server.create")
+		return 0, xerr.NewWM(err, "server.create")
 	}
 
-	return resp.GetIds(), nil
+	return resp.GetId(), nil
 }
 
 func (c Client) List(ctx context.Context) (map[core.ProcID]core.Proc, error) {
@@ -110,29 +110,27 @@ func mapPbStatus(status *pb.ProcessStatus) core.Status {
 	}
 }
 
-func (c Client) Delete(ctx context.Context, ids []uint64) error {
-	if _, err := c.client.Delete(ctx, &pb.IDs{Ids: ids}); err != nil {
-		return xerr.NewWM(err, "server.delete", xerr.Fields{"ids": ids})
+func (c Client) Delete(ctx context.Context, id uint64) error {
+	if _, err := c.client.Delete(ctx, &pb.ProcID{Id: id}); err != nil {
+		return xerr.NewWM(err, "server.delete", xerr.Fields{"proc_id": id})
 	}
 	return nil
 }
 
-func (c Client) Start(ctx context.Context, ids []uint64) error {
-	if _, err := c.client.Start(ctx, &pb.IDs{Ids: ids}); err != nil {
-		return xerr.NewWM(err, "server.start", xerr.Fields{"ids": ids})
+func (c Client) Start(ctx context.Context, id uint64) error {
+	if _, err := c.client.Start(ctx, &pb.ProcID{Id: id}); err != nil {
+		return xerr.NewWM(err, "server.start", xerr.Fields{"proc_id": id})
 	}
 
 	return nil
 }
 
-func (c Client) Stop(ctx context.Context, ids []uint64) ([]uint64, error) {
-	resIDs, err := c.client.Stop(ctx, &pb.IDs{Ids: ids})
-	rawIDs := resIDs.GetIds()
-	if err != nil {
-		return rawIDs, xerr.NewWM(err, "server.stop", xerr.Fields{"ids": ids})
+func (c Client) Stop(ctx context.Context, id uint64) error {
+	if _, err := c.client.Stop(ctx, &pb.ProcID{Id: id}); err != nil {
+		return xerr.NewWM(err, "server.stop", xerr.Fields{"proc_id": id})
 	}
 
-	return rawIDs, nil
+	return nil
 }
 
 func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64) error {
@@ -169,9 +167,9 @@ type LogsIterator struct {
 	Err  chan error
 }
 
-func (c Client) Logs(ctx context.Context, ids ...uint64) (LogsIterator, error) {
-	res, err := c.client.Logs(ctx, &pb.IDs{
-		Ids: ids,
+func (c Client) Logs(ctx context.Context, id core.ProcID) (LogsIterator, error) {
+	res, err := c.client.Logs(ctx, &pb.ProcID{
+		Id: id,
 	})
 	if err != nil {
 		return fun.Zero[LogsIterator](), xerr.NewWM(err, "server.logs")

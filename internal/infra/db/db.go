@@ -237,38 +237,45 @@ func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) error 
 	return nil
 }
 
-func (handle Handle) Delete(procIDs []core.ProcID) ([]core.Proc, error) {
+func (handle Handle) Delete(procID core.ProcID) (core.Proc, error) {
 	deletedProcs := handle.procs.
 		Where(func(_ string, proc procData) bool {
-			return lo.Contains(procIDs, proc.ProcID)
+			return proc.ProcID == procID
 		}).
 		Delete()
 
 	if err := handle.procs.Flush(); err != nil {
-		return nil, xerr.NewWM(err, "delete: db flush")
+		return fun.Zero[core.Proc](), xerr.NewWM(err, "delete: db flush")
 	}
 
-	return fun.Map(deletedProcs, func(proc procData) core.Proc {
-		return core.Proc{
-			ID:      proc.ProcID,
-			Command: proc.Command,
-			Cwd:     proc.Cwd,
-			Name:    proc.Name,
-			Args:    proc.Args,
-			Tags:    proc.Tags,
-			Watch:   fun.FromPtr(proc.Watch),
-			Status: core.Status{
-				StartTime: proc.Status.StartTime,
-				StoppedAt: proc.Status.StoppedAt,
-				Status:    core.StatusType(proc.Status.Status),
-				Pid:       proc.Status.Pid,
-				ExitCode:  proc.Status.ExitCode,
-				CPU:       0,
-				Memory:    0,
-			},
-			Env:        proc.Env,
-			StdoutFile: proc.StdoutFile,
-			StderrFile: proc.StderrFile,
-		}
-	}), nil
+	if len(deletedProcs) == 0 {
+		return fun.Zero[core.Proc](), xerr.NewM("delete: not found")
+	}
+
+	if len(deletedProcs) > 1 {
+		return fun.Zero[core.Proc](), xerr.NewM("delete: more than one proc found")
+	}
+
+	proc := deletedProcs[0]
+	return core.Proc{
+		ID:      proc.ProcID,
+		Command: proc.Command,
+		Cwd:     proc.Cwd,
+		Name:    proc.Name,
+		Args:    proc.Args,
+		Tags:    proc.Tags,
+		Watch:   fun.FromPtr(proc.Watch),
+		Status: core.Status{
+			StartTime: proc.Status.StartTime,
+			StoppedAt: proc.Status.StoppedAt,
+			Status:    core.StatusType(proc.Status.Status),
+			Pid:       proc.Status.Pid,
+			ExitCode:  proc.Status.ExitCode,
+			CPU:       0,
+			Memory:    0,
+		},
+		Env:        proc.Env,
+		StdoutFile: proc.StdoutFile,
+		StderrFile: proc.StderrFile,
+	}, nil
 }

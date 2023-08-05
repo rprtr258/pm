@@ -35,10 +35,8 @@ type daemonServer struct {
 
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
-func (srv *daemonServer) Start(ctx context.Context, req *pb.IDs) (*emptypb.Empty, error) {
-	for _, id := range req.GetIds() {
-		srv.ebus.Publish(ctx, eventbus.NewPublishProcStartRequest(id, eventbus.EmitReasonByUser))
-	}
+func (srv *daemonServer) Start(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
+	srv.ebus.Publish(ctx, eventbus.NewPublishProcStartRequest(req.GetId(), eventbus.EmitReasonByUser))
 
 	return &emptypb.Empty{}, nil
 }
@@ -62,40 +60,30 @@ func (srv *daemonServer) Signal(ctx context.Context, req *pb.SignalRequest) (*em
 	return &emptypb.Empty{}, nil
 }
 
-func (srv *daemonServer) Stop(ctx context.Context, req *pb.IDs) (*pb.IDs, error) {
-	for _, id := range req.GetIds() {
-		srv.ebus.Publish(ctx, eventbus.NewPublishProcStopRequest(id, eventbus.EmitReasonByUser))
-	}
+func (srv *daemonServer) Stop(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
+	srv.ebus.Publish(ctx, eventbus.NewPublishProcStopRequest(req.GetId(), eventbus.EmitReasonByUser))
 
-	return &pb.IDs{
-		// Ids: stoppedIDs, // TODO: implement somehow?
-	}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.IDs, error) {
-	queries := lo.Map(
-		req.GetOptions(),
-		func(opts *pb.ProcessOptions, _ int) runner.CreateQuery {
-			return runner.CreateQuery{
-				Name:       fun.FromPtr(opts.Name),
-				Cwd:        opts.GetCwd(),
-				Tags:       opts.GetTags(),
-				Command:    opts.GetCommand(),
-				Args:       opts.GetArgs(),
-				Watch:      fun.FromPtr(opts.Watch),
-				Env:        opts.GetEnv(),
-				StdoutFile: fun.FromPtr(opts.StdoutFile),
-				StderrFile: fun.FromPtr(opts.StderrFile),
-			}
-		},
-	)
-	procIDs, err := srv.runner.Create(ctx, queries...)
+func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.ProcID, error) {
+	procID, err := srv.runner.Create(ctx, runner.CreateQuery{
+		Name:       fun.FromPtr(req.Name),
+		Cwd:        req.GetCwd(),
+		Tags:       req.GetTags(),
+		Command:    req.GetCommand(),
+		Args:       req.GetArgs(),
+		Watch:      fun.FromPtr(req.Watch),
+		Env:        req.GetEnv(),
+		StdoutFile: fun.FromPtr(req.StdoutFile),
+		StderrFile: fun.FromPtr(req.StderrFile),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &pb.IDs{
-		Ids: procIDs,
+	return &pb.ProcID{
+		Id: procID,
 	}, nil
 }
 
@@ -151,21 +139,18 @@ func mapStatus(status core.Status) *pb.ProcessStatus {
 	}
 }
 
-func (srv *daemonServer) Delete(_ context.Context, r *pb.IDs) (*emptypb.Empty, error) {
-	ids := r.GetIds()
-	deletedProcs, errDelete := srv.db.Delete(ids)
+func (srv *daemonServer) Delete(_ context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
+	id := req.GetId()
+	deletedProc, errDelete := srv.db.Delete(id)
 	if errDelete != nil {
-		return nil, xerr.NewWM(errDelete, "delete proc", xerr.Fields{"procIDs": ids})
+		return nil, xerr.NewWM(errDelete, "delete proc", xerr.Fields{"proc_id": id})
 	}
 
-	var merr error
-	for _, proc := range deletedProcs {
-		if err := removeLogFiles(proc); err != nil {
-			xerr.AppendInto(&merr, xerr.NewWM(err, "delete proc", xerr.Fields{"procID": proc.ID}))
-		}
+	if err := removeLogFiles(deletedProc); err != nil {
+		return nil, xerr.NewWM(err, "delete proc", xerr.Fields{"proc_id": id})
 	}
 
-	return &emptypb.Empty{}, merr
+	return &emptypb.Empty{}, nil
 }
 
 func removeLogFiles(proc core.Proc) error {
@@ -255,95 +240,92 @@ func streamFile(
 	return nil
 }
 
-func (srv *daemonServer) Logs(req *pb.IDs, stream pb.Daemon_LogsServer) error {
-	// can't get incoming query in interceptor, so logging here also
-	slog.Info("Logs method called",
-		slog.Any("ids", req.GetIds()),
-	)
+func (srv *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error {
+	id := req.GetId()
 
-	procs := srv.db.GetProcs(core.WithIDs(req.GetIds()...))
+	// can't get incoming query in interceptor, so logging here also
+	slog.Info("Logs method called", slog.Uint64("proc_id", id))
+
+	procs := srv.db.GetProcs(core.WithIDs(id))
 	done := make(chan struct{})
 
+	proc, ok := procs[id]
+	if !ok {
+		return xerr.NewM("proc not found", xerr.Fields{"proc_id": id})
+	}
+
 	var wgGlobal sync.WaitGroup
-	for _, id := range req.GetIds() {
-		proc, ok := procs[id]
-		if !ok {
-			slog.Info("tried to log unknown process", slog.Uint64("procID", id))
-			continue
+	wgGlobal.Add(2)
+	go func(id core.ProcID) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		var wgLocal sync.WaitGroup
+
+		logLinesCh := make(chan *pb.LogLine)
+
+		wgLocal.Add(1)
+		if err := streamFile(
+			ctx,
+			logLinesCh,
+			proc.ID,
+			proc.StdoutFile,
+			pb.LogLine_TYPE_STDOUT,
+			&wgGlobal,
+		); err != nil {
+			slog.Error(
+				"failed to stream stdout log file",
+				slog.Uint64("procID", id),
+				slog.String("file", proc.StdoutFile),
+				slog.Any("err", err),
+			)
 		}
 
-		wgGlobal.Add(2)
-		go func(id core.ProcID) {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+		wgLocal.Add(1)
+		if err := streamFile(
+			ctx,
+			logLinesCh,
+			proc.ID,
+			proc.StderrFile,
+			pb.LogLine_TYPE_STDERR,
+			&wgGlobal,
+		); err != nil {
+			slog.Error(
+				"failed to stream stderr log file",
+				slog.Uint64("procID", id),
+				slog.String("file", proc.StderrFile),
+				slog.Any("err", err),
+			)
+		}
 
-			var wgLocal sync.WaitGroup
+		go func() {
+			wgLocal.Wait()
+			close(logLinesCh)
+		}()
 
-			logLinesCh := make(chan *pb.LogLine)
-
-			wgLocal.Add(1)
-			if err := streamFile(
-				ctx,
-				logLinesCh,
-				proc.ID,
-				proc.StdoutFile,
-				pb.LogLine_TYPE_STDOUT,
-				&wgGlobal,
-			); err != nil {
-				slog.Error(
-					"failed to stream stdout log file",
-					slog.Uint64("procID", id),
-					slog.String("file", proc.StdoutFile),
-					slog.Any("err", err),
-				)
-			}
-
-			wgLocal.Add(1)
-			if err := streamFile(
-				ctx,
-				logLinesCh,
-				proc.ID,
-				proc.StderrFile,
-				pb.LogLine_TYPE_STDERR,
-				&wgGlobal,
-			); err != nil {
-				slog.Error(
-					"failed to stream stderr log file",
-					slog.Uint64("procID", id),
-					slog.String("file", proc.StderrFile),
-					slog.Any("err", err),
-				)
-			}
-
-			go func() {
-				wgLocal.Wait()
-				close(logLinesCh)
-			}()
-
-			for {
-				select {
-				case <-done:
+		for {
+			select {
+			case <-done:
+				return
+			case line, ok := <-logLinesCh:
+				if !ok {
 					return
-				case line, ok := <-logLinesCh:
-					if !ok {
-						return
-					}
+				}
 
-					if errSend := stream.Send(&pb.ProcsLogs{
-						Id:    id,
-						Lines: []*pb.LogLine{line}, // TODO: collect lines for some time and send all at once
-					}); errSend != nil {
-						slog.Error(
-							"failed to send log lines",
-							slog.Uint64("procID", id),
-							slog.Any("err", errSend),
-						)
-						return
-					}
+				if errSend := stream.Send(&pb.ProcsLogs{
+					Id:    id,
+					Lines: []*pb.LogLine{line}, // TODO: collect lines for some time and send all at once
+				}); errSend != nil {
+					slog.Error(
+						"failed to send log lines",
+						slog.Uint64("procID", id),
+						slog.Any("err", errSend),
+					)
+					return
 				}
 			}
-		}(id)
-	}
+		}
+	}(id)
 
 	allStopped := make(chan struct{})
 	go func() {
