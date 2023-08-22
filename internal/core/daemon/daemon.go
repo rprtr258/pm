@@ -37,12 +37,12 @@ var (
 )
 
 func Status(ctx context.Context) error {
-	client, errNewClient := client.NewGrpcClient()
+	pmDaemon, errNewClient := client.New()
 	if errNewClient != nil {
 		return xerr.NewWM(errNewClient, "create grpc client")
 	}
 
-	app, errNewApp := pm.New(client)
+	app, errNewApp := pm.New(pmDaemon)
 	if errNewApp != nil {
 		return xerr.NewWM(errNewApp, "create app")
 	}
@@ -153,8 +153,8 @@ func EnsureRunning(ctx context.Context) error {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
-		if client, errClient := client.NewGrpcClient(); errClient == nil {
-			if errPing := client.HealthCheck(ctx); errPing == nil {
+		if pmDaemon, errClient := client.New(); errClient == nil {
+			if errPing := pmDaemon.HealthCheck(ctx); errPing == nil {
 				return nil
 			}
 		}
@@ -279,16 +279,16 @@ func DaemonMain(ctx context.Context) error {
 	ebus := eventbus.New()
 	go ebus.Start(ctx)
 
-	watcherr, err := fsnotify.NewWatcher()
+	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return xerr.NewWM(err, "create watcher")
 	}
-	defer deferErr("close fsnotify watcher", watcherr.Close)
+	defer deferErr("close fsnotify watcher", fsWatcher.Close)
 
-	watcher := watcher.New(watcherr, ebus)
-	go watcher.Start(ctx)
+	pmWatcher := watcher.New(fsWatcher, ebus)
+	go pmWatcher.Start(ctx)
 
-	runner := runner.Runner{
+	pmRunner := runner.Runner{
 		DB:      dbHandle,
 		LogsDir: _dirProcsLogs,
 		Ebus:    ebus,
@@ -304,7 +304,7 @@ func DaemonMain(ctx context.Context) error {
 		homeDir:                   core.DirHome,
 		logsDir:                   _dirProcsLogs,
 		ebus:                      ebus,
-		runner:                    runner,
+		runner:                    pmRunner,
 	})
 
 	go func() {
@@ -404,7 +404,7 @@ func DaemonMain(ctx context.Context) error {
 						continue
 					}
 
-					pid, errStart := runner.Start1(proc.ID)
+					pid, errStart := pmRunner.Start1(proc.ID)
 					if errStart != nil {
 						slog.Error(
 							"failed to start proc",
@@ -417,7 +417,7 @@ func DaemonMain(ctx context.Context) error {
 
 					ebus.Publish(ctx, eventbus.NewPublishProcStarted(proc, pid, e.EmitReason))
 				case eventbus.DataProcStopRequest:
-					stopped, errStart := runner.Stop1(ctx, e.ProcID)
+					stopped, errStart := pmRunner.Stop1(ctx, e.ProcID)
 					if errStart != nil {
 						slog.Error(
 							"failed to stop proc",
@@ -432,7 +432,7 @@ func DaemonMain(ctx context.Context) error {
 						ebus.Publish(ctx, eventbus.NewPublishProcStopped(e.ProcID, -1, e.EmitReason))
 					}
 				case eventbus.DataProcSignalRequest:
-					if err := runner.Signal(ctx, e.Signal, e.ProcIDs...); err != nil {
+					if err := pmRunner.Signal(ctx, e.Signal, e.ProcIDs...); err != nil {
 						slog.Error(
 							"failed to signal procs",
 							slog.Any("proc_id", e.ProcIDs),

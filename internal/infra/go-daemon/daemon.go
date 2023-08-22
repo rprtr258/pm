@@ -89,7 +89,7 @@ var ErrDaemonNotFound = errors.New("daemon not found")
 // If success returns pointer on daemons os.Process structure,
 // else returns error.
 func (d *Context) Search() (*os.Process, error) {
-	if len(d.PidFileName) == 0 {
+	if d.PidFileName == "" {
 		return nil, xerr.NewM("pidFileName is empty")
 	}
 
@@ -209,7 +209,7 @@ func (d *Context) openFiles() error {
 		}
 	}
 
-	if len(d.LogFileName) == 0 {
+	if d.LogFileName == "" {
 		return nil
 	}
 

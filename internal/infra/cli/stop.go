@@ -64,7 +64,7 @@ var _stopCmd = &cli.Command{
 			args:  ctx.Args().Slice(),
 		}
 
-		client, errList := client.NewGrpcClient()
+		client, errList := client.New()
 		if errList != nil {
 			return xerr.NewWM(errList, "new grpc client")
 		}
@@ -105,10 +105,10 @@ type stopCmd struct {
 
 func (cmd *stopCmd) Run(
 	ctx context.Context,
-	client client.Client,
+	pmClient client.Client,
 	configList map[core.ProcID]core.Proc,
 ) error {
-	app, errNewApp := pm.New(client)
+	app, errNewApp := pm.New(pmClient)
 	if errNewApp != nil {
 		return xerr.NewWM(errNewApp, "new app")
 	}

@@ -94,7 +94,7 @@ var _runCmd = &cli.Command{
 			return xerr.NewWM(errDaemon, "ensure daemon is running")
 		}
 
-		client, errList := client.NewGrpcClient()
+		client, errList := client.New()
 		if errList != nil {
 			return xerr.NewWM(errList, "new grpc client")
 		}

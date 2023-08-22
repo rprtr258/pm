@@ -216,7 +216,7 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 			strconv.Itoa(fun.Deref(pid)),
 			// TODO: check status instead for following parameters
 			fun.If(pid == nil, "").Else(uptime.Truncate(time.Second).String()),
-			fmt.Sprint(strings.Join(proc.Tags, "\n")),
+			strings.Join(proc.Tags, "\n"),
 			fmt.Sprint(proc.Status.CPU),
 			fmt.Sprint(proc.Status.Memory),
 			shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
@@ -232,13 +232,13 @@ func list(
 	format string,
 	sortFunc func(a, b core.Proc) bool,
 ) error {
-	client, err := client.NewGrpcClient()
+	pmClient, err := client.New()
 	if err != nil {
 		return xerr.NewWM(err, "new grpc client")
 	}
-	defer deferErr(client.Close)()
+	defer deferErr(pmClient.Close)()
 
-	app, errNewApp := pm.New(client)
+	app, errNewApp := pm.New(pmClient)
 	if errNewApp != nil {
 		return xerr.NewWM(errNewApp, "new app")
 	}

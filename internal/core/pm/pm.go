@@ -23,7 +23,7 @@ type App struct {
 	config core.Config
 }
 
-func New(client client.Client) (App, error) {
+func New(pmClient client.Client) (App, error) {
 	config, errConfig := core.ReadConfig()
 	if errConfig != nil {
 		if !errors.Is(errConfig, core.ErrConfigNotExists) {
@@ -34,7 +34,7 @@ func New(client client.Client) (App, error) {
 	}
 
 	return App{
-		client: client,
+		client: pmClient,
 		config: config,
 	}, nil
 }

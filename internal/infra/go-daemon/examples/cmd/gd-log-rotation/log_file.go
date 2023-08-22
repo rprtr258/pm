@@ -38,7 +38,7 @@ func (l *LogFile) Rotate() error {
 	// rename dest file if it already exists.
 	if _, err := os.Stat(l.name); err == nil {
 		name := l.name + "." + time.Now().Format(time.RFC3339)
-		if err = os.Rename(l.name, name); err != nil {
+		if err := os.Rename(l.name, name); err != nil {
 			return err
 		}
 	}

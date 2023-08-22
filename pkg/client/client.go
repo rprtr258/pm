@@ -21,7 +21,7 @@ type Client struct {
 	conn   *grpc.ClientConn
 }
 
-func NewGrpcClient() (Client, error) {
+func New() (Client, error) {
 	conn, err := grpc.Dial(
 		core.SocketRPC,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),

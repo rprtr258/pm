@@ -43,7 +43,7 @@ var _startCmd = &cli.Command{
 		ids := ctx.Uint64Slice("id")
 		args := ctx.Args().Slice()
 
-		client, errList := client.NewGrpcClient()
+		client, errList := client.New()
 		if errList != nil {
 			return xerr.NewWM(errList, "new grpc client")
 		}

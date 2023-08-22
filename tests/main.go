@@ -32,8 +32,7 @@ func tcpPortAvailable(port int) bool { //nolint:unparam // someday will receive 
 	if err != nil {
 		return true
 	}
-	defer conn.Close()
-
+	conn.Close()
 	return false
 }
 
@@ -41,7 +40,7 @@ func httpResponse(
 	ctx context.Context,
 	endpoint, expectedResponse string,
 ) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return xerr.NewWM(err, "create request")
 	}
@@ -144,7 +143,7 @@ var tests = map[string]testcase{
 
 			time.Sleep(time.Second)
 
-			d, err := os.ReadFile(filepath.Join(homeDir, ".pm/logs/1.stdout"))
+			d, err := os.ReadFile(filepath.Join(homeDir, ".pm", "logs", "1.stdout"))
 			if err != nil {
 				return xerr.NewWM(err, "read server stdout")
 			}
@@ -168,7 +167,7 @@ var tests = map[string]testcase{
 //nolint:nonamedreturns // required to check test result
 func runTest(ctx context.Context, name string, test testcase) (ererer error) { //nolint:funlen,gocognit,lll // no idea how to refactor right now
 	var errClient error
-	client, errClient = pmclient.NewGrpcClient()
+	client, errClient = pmclient.New()
 	if errClient != nil {
 		return xerr.NewWM(errClient, "create client")
 	}

@@ -46,7 +46,7 @@ var _deleteCmd = &cli.Command{
 
 		args := ctx.Args().Slice()
 
-		client, errList := client.NewGrpcClient()
+		client, errList := client.New()
 		if errList != nil {
 			return xerr.NewWM(errList, "new grpc client")
 		}

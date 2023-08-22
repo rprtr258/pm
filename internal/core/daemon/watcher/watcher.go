@@ -41,7 +41,7 @@ func New(watcher *fsnotify.Watcher, ebus *eventbus.EventBus) Watcher {
 	}
 }
 
-func (w Watcher) Add(procID core.ProcID, dir string, pattern string) {
+func (w Watcher) Add(procID core.ProcID, dir, pattern string) {
 	slog.Info(
 		"adding watch dir",
 		slog.Uint64("proc_id", procID),
