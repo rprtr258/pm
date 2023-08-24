@@ -2,6 +2,8 @@ module github.com/rprtr258/pm
 
 go 1.21
 
+replace github.com/rprtr258/fun => ../fun
+
 require (
 	github.com/aquasecurity/table v1.8.0
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
@@ -24,8 +26,6 @@ require (
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
 )
-
-replace github.com/rprtr258/fun => ../fun
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
