@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"golang.org/x/exp/slog"
+	"github.com/rs/zerolog/log"
 )
 
 // ErrStop should be returned signal handler function
@@ -49,7 +49,7 @@ func ServeSignals() error {
 
 var handlers = map[os.Signal]SignalHandlerFunc{
 	syscall.SIGTERM: func(sig os.Signal) error {
-		slog.Info("SIGTERM received")
+		log.Info().Msg("SIGTERM received")
 		return ErrStop
 	},
 }

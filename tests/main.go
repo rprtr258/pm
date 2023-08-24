@@ -14,10 +14,9 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slog"
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
@@ -174,7 +173,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	}
 
 	// START DAEMON
-	slog.Debug("starting daemon...")
+	log.Debug().Msg("starting daemon...")
 	_, errRestart := daemon.Restart(ctx)
 	if errRestart != nil {
 		return xerr.NewWM(errRestart, "restart daemon")
@@ -212,14 +211,14 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 
 	// RUN TEST
 	if errTest := func() error {
-		l := slog.With("test", name)
+		l := log.With().Str("test", name).Logger()
 
-		l.Info("running test")
+		l.Info().Msg("running test")
 		defer func() {
 			if ererer == nil {
-				l.Info("test succeeded")
+				l.Info().Msg("test succeeded")
 			} else {
-				l.Error("test failed", "err", ererer.Error())
+				l.Error().Err(ererer).Msg("test failed")
 			}
 		}()
 
@@ -287,7 +286,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	}
 
 	// KILL DAEMON
-	slog.Debug("killing daemon...")
+	log.Debug().Msg("killing daemon...")
 	if errKill := daemon.Kill(); errKill != nil {
 		return xerr.NewWM(errKill, "kill daemon")
 	}
@@ -326,8 +325,6 @@ var (
 )
 
 func main() {
-	slog.SetDefault(slog.New(log.NewPrettyHandler(os.Stderr)))
-
 	pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
 		Name:        "test",
 		Usage:       "run e2e tests",
@@ -335,7 +332,6 @@ func main() {
 	})
 
 	if err := pmcli.App.Run(os.Args); err != nil {
-		slog.Error(err.Error())
-		os.Exit(1)
+		log.Fatal().Err(err).Send()
 	}
 }

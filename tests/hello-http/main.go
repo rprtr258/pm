@@ -3,10 +3,8 @@ package main
 import (
 	"net/http"
 	"net/http/httputil"
-	"os"
 
-	"github.com/rprtr258/log"
-	"golang.org/x/exp/slog"
+	"github.com/rs/zerolog/log"
 )
 
 const _addr = ":8080"
@@ -14,23 +12,19 @@ const _addr = ":8080"
 func handler(w http.ResponseWriter, r *http.Request) {
 	dump, errDump := httputil.DumpRequest(r, true)
 	if errDump != nil {
-		slog.Error("dump request error", "err", errDump)
-		os.Exit(1)
+		log.Fatal().Err(errDump).Msg("dump request error")
 	}
 
-	slog.Info("request", "dump", string(dump))
+	log.Info().Bytes("dump", dump).Msg("request")
 
 	if _, err := w.Write([]byte("hello world")); err != nil {
-		slog.Error("write response", "err", err.Error())
+		log.Error().Err(err).Msg("write response")
 	}
 }
 
 func main() {
-	slog.SetDefault(slog.New(log.NewPrettyHandler(os.Stderr)))
-
-	slog.Info("listening", "addr", _addr)
+	log.Info().Str("addr", _addr).Msg("listening")
 
 	errListen := http.ListenAndServe(_addr, http.HandlerFunc(handler)) //nolint:gosec // acceptable for example
-	slog.Error(errListen.Error())
-	os.Exit(1)
+	log.Fatal().Err(errListen).Send()
 }

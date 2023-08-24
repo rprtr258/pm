@@ -8,8 +8,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slog"
 
 	"github.com/rprtr258/pm/internal/core"
 )
@@ -23,7 +23,7 @@ func ensureDir(dirname string) error {
 		return xerr.NewWM(errStat, "stat dir")
 	}
 
-	slog.Info("creating home dir...", "dir", dirname)
+	log.Info().Str("dir", dirname).Msg("creating home dir...")
 	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
 		return xerr.NewWM(errMkdir, "create dir")
 	}

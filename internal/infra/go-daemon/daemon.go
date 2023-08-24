@@ -8,8 +8,8 @@ import (
 	"syscall"
 
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slog"
 	"golang.org/x/sys/unix"
 )
 
@@ -139,7 +139,7 @@ func (d *Context) parent() (*os.Process, error) {
 	}
 	defer func() {
 		if errClose := d.closeFiles(); errClose != nil {
-			slog.Error(errClose.Error())
+			log.Error().Err(errClose).Send()
 		}
 	}()
 

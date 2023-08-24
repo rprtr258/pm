@@ -12,10 +12,9 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slog"
 	"google.golang.org/grpc"
 
 	"github.com/rprtr258/pm/api"
@@ -78,7 +77,7 @@ func Kill() error {
 	proc, err := _daemonCtx.Search()
 	if err != nil {
 		if err == daemon.ErrDaemonNotFound {
-			slog.Info("daemon already killed or did not exist")
+			log.Info().Msg("daemon already killed or did not exist")
 			return nil
 		}
 
@@ -87,7 +86,7 @@ func Kill() error {
 
 	if err := proc.Signal(syscall.SIGTERM); err != nil {
 		if err == os.ErrProcessDone {
-			slog.Info("daemon is done while killing")
+			log.Info().Msg("daemon is done while killing")
 			return nil
 		}
 
@@ -112,7 +111,7 @@ func Kill() error {
 	case <-time.After(5 * time.Second): //nolint:gomnd // arbitrary timeout
 		if err := proc.Kill(); err != nil {
 			if err == os.ErrProcessDone {
-				slog.Info("daemon is done while killing")
+				log.Info().Msg("daemon is done while killing")
 				return nil
 			}
 
@@ -186,7 +185,7 @@ func readPmConfig() (core.Config, error) {
 			return core.Config{}, xerr.NewWM(errRead, "read config for migrate")
 		}
 
-		slog.Info("writing initial config...")
+		log.Info().Msg("writing initial config...")
 
 		if errWrite := core.WriteConfig(core.DefaultConfig); errWrite != nil {
 			return core.Config{}, xerr.NewWM(errWrite, "write initial config")
@@ -219,13 +218,13 @@ func unaryLoggerInterceptor(
 ) (any, error) {
 	response, err := handler(ctx, req)
 
-	slog.Info(info.FullMethod,
-		"@request.type", reflect.TypeOf(req).Elem().Name(),
-		"request", req,
-		"@response.type", reflect.TypeOf(response).Elem().Name(),
-		"response", response,
-		"err", err,
-	)
+	log.Info().
+		Str("@request.type", reflect.TypeOf(req).Elem().Name()).
+		Any("request", req).
+		Str("@response.type", reflect.TypeOf(response).Elem().Name()).
+		Any("response", response).
+		Err(err).
+		Msg(info.FullMethod)
 
 	return response, err
 }
@@ -239,21 +238,9 @@ func streamLoggerInterceptor(
 	err := handler(srv, ss)
 
 	// log method and resulting error if any
-	slog.Info(info.FullMethod, slog.Any("err", err))
+	log.Info().Err(err).Msg(info.FullMethod)
 
 	return err
-}
-
-func getSlogHandler(debug bool) slog.Handler {
-	if debug {
-		return log.NewDestructorHandler(log.NewPrettyHandler(os.Stderr))
-	}
-
-	return slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		AddSource:   true,
-		Level:       slog.LevelInfo,
-		ReplaceAttr: nil,
-	})
 }
 
 func DaemonMain(ctx context.Context) error {
@@ -261,8 +248,6 @@ func DaemonMain(ctx context.Context) error {
 	if errConfig != nil {
 		return xerr.NewWM(errConfig, "read pm config")
 	}
-
-	slog.SetDefault(slog.New(getSlogHandler(config.Debug)))
 
 	if errMigrate := migrate(config); errMigrate != nil {
 		return xerr.NewWM(errMigrate, "migrate to latest version", xerr.Fields{"version": core.Version})
@@ -319,7 +304,7 @@ func DaemonMain(ctx context.Context) error {
 					break
 				}
 				if errWait != nil {
-					slog.Error("Wait4 failed", slog.Any("err", errWait.Error()))
+					log.Error().Err(errWait).Msg("Wait4 failed")
 					continue
 				}
 
@@ -355,27 +340,24 @@ func DaemonMain(ctx context.Context) error {
 					// TODO: fill/remove cpu, memory
 					runningStatus := core.NewStatusRunning(time.Now(), e.Pid, 0, 0)
 					if err := dbHandle.SetStatus(e.Proc.ID, runningStatus); err != nil {
-						slog.Error(
-							"set proc status to running",
-							slog.Uint64("proc_id", e.Proc.ID),
-							slog.Any("new_status", runningStatus),
-						)
+						log.Error().
+							Uint64("proc_id", e.Proc.ID).
+							Any("new_status", runningStatus).
+							Msg("set proc status to running")
 					}
 				case eventbus.DataProcStopped:
 					dbStatus := core.NewStatusStopped(e.ExitCode)
 					if err := dbHandle.SetStatus(e.ProcID, dbStatus); err != nil {
 						if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
-							slog.Error(
-								"proc not found while trying to set stopped status",
-								slog.Uint64("proc_id", e.ProcID),
-								slog.Int("exit_code", e.ExitCode),
-							)
+							log.Error().
+								Uint64("proc_id", e.ProcID).
+								Int("exit_code", e.ExitCode).
+								Msg("proc not found while trying to set stopped status")
 						} else {
-							slog.Error(
-								"set proc status to stopped",
-								slog.Uint64("proc_id", e.ProcID),
-								slog.Any("new_status", dbStatus),
-							)
+							log.Error().
+								Uint64("proc_id", e.ProcID).
+								Any("new_status", dbStatus).
+								Msg("set proc status to stopped")
 						}
 					}
 				}
@@ -400,18 +382,17 @@ func DaemonMain(ctx context.Context) error {
 				case eventbus.DataProcStartRequest:
 					proc, ok := dbHandle.GetProc(e.ProcID)
 					if !ok {
-						slog.Error("not found proc to start", slog.Uint64("proc_id", e.ProcID))
+						log.Error().Uint64("proc_id", e.ProcID).Msg("not found proc to start")
 						continue
 					}
 
 					pid, errStart := pmRunner.Start1(proc.ID)
 					if errStart != nil {
-						slog.Error(
-							"failed to start proc",
-							slog.Uint64("proc_id", e.ProcID),
-							// slog.Any("proc", procFields(proc)),
-							slog.Any("err", errStart),
-						)
+						log.Error().
+							Uint64("proc_id", e.ProcID).
+							// Any("proc", procFields(proc)).
+							Err(errStart).
+							Msg("failed to start proc")
 						continue
 					}
 
@@ -419,12 +400,11 @@ func DaemonMain(ctx context.Context) error {
 				case eventbus.DataProcStopRequest:
 					stopped, errStart := pmRunner.Stop1(ctx, e.ProcID)
 					if errStart != nil {
-						slog.Error(
-							"failed to stop proc",
-							slog.Uint64("proc_id", e.ProcID),
-							// slog.Any("proc", procFields(proc)),
-							slog.Any("err", errStart),
-						)
+						log.Error().
+							Err(errStart).
+							Uint64("proc_id", e.ProcID).
+							// Any("proc", procFields(proc)).
+							Msg("failed to stop proc")
 						continue
 					}
 
@@ -433,12 +413,11 @@ func DaemonMain(ctx context.Context) error {
 					}
 				case eventbus.DataProcSignalRequest:
 					if err := pmRunner.Signal(ctx, e.Signal, e.ProcIDs...); err != nil {
-						slog.Error(
-							"failed to signal procs",
-							slog.Any("proc_id", e.ProcIDs),
-							slog.Any("signal", e.Signal),
-							slog.Any("err", err),
-						)
+						log.Error().
+							Err(err).
+							Uints64("proc_id", e.ProcIDs).
+							Any("signal", e.Signal).
+							Msg("failed to signal procs")
 					}
 				}
 			}
@@ -446,7 +425,7 @@ func DaemonMain(ctx context.Context) error {
 	}()
 
 	go cron{
-		l:                 slog.Default().WithGroup("cron"),
+		l:                 log.Logger.With().Str("system", "cron").Logger(),
 		db:                dbHandle,
 		statusUpdateDelay: time.Second * 5, //nolint:gomnd // arbitrary timeout
 		ebus:              ebus,
@@ -460,7 +439,7 @@ func DaemonMain(ctx context.Context) error {
 
 	doneCh := make(chan error, 1)
 	go func() {
-		slog.Info("daemon started", slog.Any("socket", sock.Addr()))
+		log.Info().Stringer("socket", sock.Addr()).Msg("daemon started")
 		if errServe := srv.Serve(sock); errServe != nil {
 			doneCh <- xerr.NewWM(errServe, "serve")
 		} else {
@@ -469,17 +448,16 @@ func DaemonMain(ctx context.Context) error {
 	}()
 	defer func() {
 		if errRm := os.Remove(core.SocketRPC); errRm != nil && !errors.Is(errRm, os.ErrNotExist) {
-			slog.Error(
-				"failed removing pid file",
-				slog.String("file", _filePid),
-				slog.Any("err", errRm),
-			)
+			log.Error().
+				Err(errRm).
+				Str("file", _filePid).
+				Msg("failed removing pid file")
 		}
 	}()
 
 	select {
 	case <-ctx.Done():
-		slog.Info("received signal, exiting")
+		log.Info().Msg("received signal, exiting")
 		srv.GracefulStop()
 		return nil
 	case err := <-doneCh:
@@ -494,11 +472,10 @@ func DaemonMain(ctx context.Context) error {
 func deferErr(name string, closer func() error) func() {
 	return func() {
 		if err := closer(); err != nil {
-			slog.Error(
-				"defer action failed",
-				slog.String("name", name),
-				slog.Any("error", err),
-			)
+			log.Error().
+				Err(err).
+				Str("name", name).
+				Msg("defer action failed")
 		}
 	}
 }

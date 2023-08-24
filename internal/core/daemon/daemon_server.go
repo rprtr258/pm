@@ -13,8 +13,8 @@ import (
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slog"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -227,12 +227,11 @@ func streamFile(
 				return nil
 			}
 		}); err != nil {
-			slog.Error(
-				"failed to tail log",
-				slog.Uint64("procID", procID),
-				slog.String("file", logFile),
-				slog.Any("err", err),
-			)
+			log.Error().
+				Uint64("procID", procID).
+				Str("file", logFile).
+				Err(err).
+				Msg("failed to tail log")
 			// TODO: somehow call wg.Done() once with parent call
 		}
 	}()
@@ -244,7 +243,7 @@ func (srv *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error
 	id := req.GetId()
 
 	// can't get incoming query in interceptor, so logging here also
-	slog.Info("Logs method called", slog.Uint64("proc_id", id))
+	log.Info().Uint64("proc_id", id).Msg("Logs method called")
 
 	procs := srv.db.GetProcs(core.WithIDs(id))
 	done := make(chan struct{})
@@ -273,12 +272,11 @@ func (srv *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error
 			pb.LogLine_TYPE_STDOUT,
 			&wgGlobal,
 		); err != nil {
-			slog.Error(
-				"failed to stream stdout log file",
-				slog.Uint64("procID", id),
-				slog.String("file", proc.StdoutFile),
-				slog.Any("err", err),
-			)
+			log.Error().
+				Uint64("procID", id).
+				Str("file", proc.StdoutFile).
+				Err(err).
+				Msg("failed to stream stdout log file")
 		}
 
 		wgLocal.Add(1)
@@ -290,12 +288,11 @@ func (srv *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error
 			pb.LogLine_TYPE_STDERR,
 			&wgGlobal,
 		); err != nil {
-			slog.Error(
-				"failed to stream stderr log file",
-				slog.Uint64("procID", id),
-				slog.String("file", proc.StderrFile),
-				slog.Any("err", err),
-			)
+			log.Error().
+				Uint64("procID", id).
+				Str("file", proc.StderrFile).
+				Err(err).
+				Msg("failed to stream stderr log file")
 		}
 
 		go func() {
@@ -316,11 +313,10 @@ func (srv *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error
 					Id:    id,
 					Lines: []*pb.LogLine{line}, // TODO: collect lines for some time and send all at once
 				}); errSend != nil {
-					slog.Error(
-						"failed to send log lines",
-						slog.Uint64("procID", id),
-						slog.Any("err", errSend),
-					)
+					log.Error().
+						Err(errSend).
+						Uint64("procID", id).
+						Msg("failed to send log lines")
 					return
 				}
 			}

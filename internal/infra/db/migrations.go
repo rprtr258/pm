@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 
 	"github.com/rprtr258/xerr"
-	"golang.org/x/exp/slog"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/mod/semver"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -39,10 +39,10 @@ func Migrate(fromVersion, toVersion string) (string, error) {
 	for _, m := range Migrations {
 		if semver.Compare(fromVersion, m.version) == -1 &&
 			semver.Compare(m.version, toVersion) == -1 {
-			slog.Info("migrating...",
-				"from", lastVersion,
-				"to", m.version,
-			)
+			log.Info().
+				Str("from", lastVersion).
+				Str("to", m.version).
+				Msg("migrating...")
 
 			if err := m.do(); err != nil {
 				return lastVersion, xerr.NewWM(err, "migrate", xerr.Fields{

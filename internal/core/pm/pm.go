@@ -11,8 +11,8 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slog"
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
@@ -210,7 +210,7 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.ProcLogs, 
 			case <-ctx.Done():
 				return
 			case errIter := <-iterr.Err:
-				slog.Error("failed to receive log line", slog.Any("err", errIter))
+				log.Error().Err(errIter).Msg("failed to receive log line")
 				return
 			case procLogs := <-iterr.Logs:
 				res <- core.ProcLogs{

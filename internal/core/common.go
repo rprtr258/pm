@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"golang.org/x/exp/slog"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -17,7 +17,7 @@ var (
 func userHomeDir() string {
 	dir, err := os.UserHomeDir()
 	if err != nil {
-		slog.Error("can't get home dir", "err", err.Error())
+		log.Error().Err(err).Msg("can't get home dir")
 		os.Exit(1)
 	}
 

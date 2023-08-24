@@ -7,9 +7,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus/queue"
-	"golang.org/x/exp/slog"
 )
 
 type EventKind string
@@ -131,10 +132,9 @@ func (e *EventBus) Start(ctx context.Context) {
 				continue
 			}
 
-			slog.Debug(
-				"got event, routing",
-				slog.Any("event", event),
-			)
+			log.Debug().
+				Any("event", event). // TODO: stringer
+				Msg("got event, routing")
 
 			e.mu.Lock()
 			for name, sub := range e.subscribers {
@@ -142,11 +142,10 @@ func (e *EventBus) Start(ctx context.Context) {
 					continue
 				}
 
-				slog.Debug(
-					"publishing event",
-					slog.Any("event", event),
-					slog.String("subscriber", name),
-				)
+				log.Debug().
+					Any("event", event).
+					Str("subscriber", name).
+					Msg("publishing event")
 				// NOTE: blocks on every subscriber
 				select {
 				case sub.Chan <- event:
@@ -172,10 +171,9 @@ func (e *EventBus) Publish(ctx context.Context, events ...Event) {
 
 func NewPublishProcStarted(proc core.Proc, pid int, emitReason EmitReason) Event {
 	if emitReason&(emitReason-1) != 0 {
-		slog.Warn(
-			"invalid emit reason for proc started event",
-			slog.String("reason", emitReason.String()),
-		)
+		log.Warn().
+			Stringer("reason", emitReason).
+			Msg("invalid emit reason for proc started event")
 		// return
 	}
 
@@ -192,10 +190,9 @@ func NewPublishProcStarted(proc core.Proc, pid int, emitReason EmitReason) Event
 
 func NewPublishProcStopped(procID core.ProcID, exitCode int, emitReason EmitReason) Event {
 	if emitReason&(emitReason-1) != 0 {
-		slog.Warn(
-			"invalid emit reason for proc stopped event",
-			slog.String("reason", emitReason.String()),
-		)
+		log.Warn().
+			Stringer("reason", emitReason).
+			Msg("invalid emit reason for proc stopped event")
 		// return
 	}
 
@@ -211,11 +208,10 @@ func NewPublishProcStopped(procID core.ProcID, exitCode int, emitReason EmitReas
 }
 
 func NewPublishProcStartRequest(procID core.ProcID, emitReason EmitReason) Event {
-	slog.Debug(
-		"publishing proc start request",
-		slog.Uint64("proc_id", procID),
-		slog.String("emit_reason", emitReason.String()),
-	)
+	log.Debug().
+		Uint64("proc_id", procID).
+		Stringer("emit_reason", emitReason).
+		Msg("publishing proc start request")
 	return Event{
 		Kind: KindProcStartRequest,
 		Data: DataProcStartRequest{

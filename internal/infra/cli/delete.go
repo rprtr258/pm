@@ -3,10 +3,9 @@ package cli
 import (
 	"fmt"
 
-	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slog"
-
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
+	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
@@ -126,7 +125,7 @@ var _deleteCmd = &cli.Command{
 func deferErr(closer func() error) func() {
 	return func() {
 		if err := closer(); err != nil {
-			slog.Error("some defer action failed:", "error", err.Error())
+			log.Error().Err(err).Msg("some defer action failed:")
 		}
 	}
 }

@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slog"
 	"golang.org/x/mod/semver"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -30,14 +30,14 @@ var _versionCmd = &cli.Command{
 
 		switch cmp := semver.Compare(config.Version, core.Version); cmp {
 		case -1:
-			slog.Info("current version is older, run `pm daemon restart` to update",
-				"curVersion", config.Version,
-			)
+			log.Info().
+				Str("curVersion", config.Version).
+				Msg("current version is older, run `pm daemon restart` to update")
 		case 0:
 		case 1:
-			slog.Warn("current version is newer, please update pm", "curVersion", config.Version)
-		default:
-			return xerr.NewM("invalid version compare result", xerr.Fields{"cmp": cmp})
+			log.Warn().
+				Str("curVersion", config.Version).
+				Msg("current version is newer, please update pm")
 		}
 
 		return nil

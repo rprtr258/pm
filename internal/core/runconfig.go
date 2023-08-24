@@ -13,8 +13,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slog"
 )
 
 type Actions struct {
@@ -154,7 +154,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			re, err := regexp.Compile(*config.Watch)
 			if err != nil {
 				// TODO: fail
-				slog.Error("invalid watch pattern", "pattern", *config.Watch)
+				log.Error().Str("pattern", *config.Watch).Msg("invalid watch pattern")
 			}
 			watch = fun.Valid(re)
 		}
@@ -164,11 +164,11 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			ElseF(func() string { return *config.Cwd })
 		cwd, err := filepath.Abs(relativeCwd) // TODO: add config abs path instead
 		if err != nil {
-			slog.Error( // TODO: fail
-				"can't get absolute cwd",
-				slog.String("cwd", *config.Cwd),
-				slog.Any("err", err),
-			)
+			// TODO: fail
+			log.Error().
+				Err(err).
+				Str("cwd", *config.Cwd).
+				Msg("can't get absolute cwd")
 		}
 
 		return RunConfig{
@@ -184,11 +184,11 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 					return fmt.Sprint(arg)
 				default:
 					argStr := fmt.Sprintf("%v", arg)
-					slog.Error("unknown arg type",
-						"arg", argStr,
-						"i", i,
-						"config", config,
-					)
+					log.Error().
+						Str("arg", argStr).
+						Int("i", i).
+						Any("config", config).
+						Msg("unknown arg type")
 
 					return argStr
 				}
@@ -205,11 +205,11 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 					return fmt.Sprint(v)
 				default:
 					valStr := fmt.Sprintf("%v", v)
-					slog.Error("unknown env value type",
-						"value", valStr,
-						"name", name,
-						"config", config,
-					)
+					log.Error().
+						Str("value", valStr).
+						Str("name", name).
+						Any("config", config).
+						Msg("unknown env value type")
 
 					return valStr
 				}
