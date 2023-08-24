@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slog"
@@ -195,7 +196,7 @@ func (app App) Start(ctx context.Context, ids ...core.ProcID) error {
 
 // Logs - watch for processes logs
 func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.ProcLogs, error) {
-	iter, errLogs := app.client.Logs(ctx, id)
+	iterr, errLogs := app.client.Logs(ctx, id)
 	if errLogs != nil {
 		return nil, xerr.NewWM(errLogs, "start processes")
 	}
@@ -208,23 +209,25 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.ProcLogs, 
 			select {
 			case <-ctx.Done():
 				return
-			case errIter := <-iter.Err:
+			case errIter := <-iterr.Err:
 				slog.Error("failed to receive log line", slog.Any("err", errIter))
 				return
-			case procLogs := <-iter.Logs:
+			case procLogs := <-iterr.Logs:
 				res <- core.ProcLogs{
 					ID: procLogs.GetId(),
-					Lines: fun.Map(procLogs.GetLines(), func(line *pb.LogLine) core.LogLine {
-						return core.LogLine{
-							At:   line.GetTime().AsTime(),
-							Line: line.GetLine(),
-							Type: lo.
-								Switch[pb.LogLine_Type, core.LogType](line.GetType()).
-								Case(pb.LogLine_TYPE_STDOUT, core.LogTypeStdout).
-								Case(pb.LogLine_TYPE_STDERR, core.LogTypeStderr).
-								Default(core.LogTypeUnspecified),
-						}
-					}),
+					Lines: iter.Map(
+						iter.FromMany(procLogs.GetLines()...),
+						func(line *pb.LogLine) core.LogLine {
+							return core.LogLine{
+								At:   line.GetTime().AsTime(),
+								Line: line.GetLine(),
+								Type: lo.
+									Switch[pb.LogLine_Type, core.LogType](line.GetType()).
+									Case(pb.LogLine_TYPE_STDOUT, core.LogTypeStdout).
+									Case(pb.LogLine_TYPE_STDERR, core.LogTypeStderr).
+									Default(core.LogTypeUnspecified),
+							}
+						}).ToSlice(),
 				}
 			}
 		}

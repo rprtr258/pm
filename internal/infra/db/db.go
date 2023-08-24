@@ -93,10 +93,7 @@ type CreateQuery struct {
 func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.ProcID, error) {
 	maxProcID := core.ProcID(0)
 	handle.procs.Iter(func(_ string, proc procData) bool {
-		if proc.ProcID > maxProcID {
-			maxProcID = proc.ProcID
-		}
-
+		maxProcID = max(maxProcID, proc.ProcID)
 		return true
 	})
 

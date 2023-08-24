@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/log"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
@@ -299,14 +300,17 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 }
 
 var (
-	_testsCmds = fun.ToSlice(tests, func(name string, test testcase) *cli.Command {
-		return &cli.Command{
-			Name: name,
-			Action: func(ctx *cli.Context) error {
-				return runTest(ctx.Context, name, test)
-			},
-		}
-	})
+	_testsCmds = iter.Map(
+		iter.FromDict(tests),
+		func(kv fun.Pair[string, testcase]) *cli.Command {
+			name, test := kv.K, kv.V
+			return &cli.Command{
+				Name: name,
+				Action: func(ctx *cli.Context) error {
+					return runTest(ctx.Context, name, test)
+				},
+			}
+		}).ToSlice()
 	_testAllCmd = &cli.Command{
 		Name: "all",
 		Action: func(ctx *cli.Context) error {

@@ -116,7 +116,8 @@ var _logsCmd = &cli.Command{
 				return nil
 			}
 
-			logsCh, errLogs := app.Logs(ctx.Context, procIDs...)
+			// TODO: fix [0]
+			logsCh, errLogs := app.Logs(ctx.Context, procIDs[0])
 			if errLogs != nil {
 				return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
 			}
@@ -155,7 +156,8 @@ var _logsCmd = &cli.Command{
 			return nil
 		}
 
-		logsCh, errLogs := app.Logs(ctx.Context, procIDs...)
+		// TODO: fix [0]
+		logsCh, errLogs := app.Logs(ctx.Context, procIDs[0])
 		if errLogs != nil {
 			return xerr.NewWM(errLogs, "watch procs from config", xerr.Fields{"procIDs": procIDs})
 		}

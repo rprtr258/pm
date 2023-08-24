@@ -176,11 +176,12 @@ var _runCmd = &cli.Command{
 
 		configsByName := make(map[string]core.RunConfig, len(names))
 		for _, cfg := range configs {
-			if name, ok := cfg.Name.Unpack(); !ok || !lo.Contains(names, name) {
+			name, ok := cfg.Name.Unpack()
+			if !ok || !lo.Contains(names, name) {
 				continue
 			}
 
-			configsByName[cfg.Name.Unwrap()] = cfg
+			configsByName[name] = cfg
 		}
 
 		merr := xerr.Combine(lo.FilterMap(names, func(name string, _ int) (error, bool) {
