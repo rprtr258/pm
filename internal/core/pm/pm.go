@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
@@ -215,9 +214,9 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.ProcLogs, 
 			case procLogs := <-iterr.Logs:
 				res <- core.ProcLogs{
 					ID: procLogs.GetId(),
-					Lines: iter.Map(
-						iter.FromMany(procLogs.GetLines()...),
-						func(line *pb.LogLine) core.LogLine {
+					Lines: lo.Map(
+						procLogs.GetLines(),
+						func(line *pb.LogLine, _ int) core.LogLine {
 							return core.LogLine{
 								At:   line.GetTime().AsTime(),
 								Line: line.GetLine(),
@@ -227,7 +226,7 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.ProcLogs, 
 									Case(pb.LogLine_TYPE_STDERR, core.LogTypeStderr).
 									Default(core.LogTypeUnspecified),
 							}
-						}).ToSlice(),
+						}),
 				}
 			}
 		}
