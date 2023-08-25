@@ -9,7 +9,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/simpdb"
 	"github.com/rprtr258/simpdb/storages"
-	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -58,12 +57,12 @@ type Handle struct {
 	procs *simpdb.Table[procData]
 }
 
-func New(dir string) (Handle, error) {
+func New(dir string) (Handle, Error) {
 	db := simpdb.New(dir)
 
 	procs, errTableProcs := simpdb.GetTable(db, "procs", storages.NewJSONStorage[procData]())
 	if errTableProcs != nil {
-		return Handle{}, xerr.NewWM(errTableProcs, "get table", xerr.Fields{"table": "procs"})
+		return fun.Zero[Handle](), GetTableError{"procs"}
 	}
 
 	return Handle{
@@ -90,7 +89,7 @@ type CreateQuery struct {
 	// Respawns int
 }
 
-func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.ProcID, error) {
+func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.ProcID, Error) {
 	maxProcID := core.ProcID(0)
 	handle.procs.Iter(func(_ string, proc procData) bool {
 		maxProcID = max(maxProcID, proc.ProcID)
@@ -99,7 +98,7 @@ func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.ProcID, er
 
 	newProcID := maxProcID + 1
 
-	if !handle.procs.Insert(procData{
+	handle.procs.Insert(procData{
 		ProcID:  newProcID,
 		Command: query.Command,
 		Cwd:     query.Cwd,
@@ -115,18 +114,16 @@ func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.ProcID, er
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stdout", newProcID))),
 		StderrFile: query.StderrFile.
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stderr", newProcID))),
-	}) {
-		return 0, xerr.NewM("insert: already present")
-	}
+	})
 
 	if err := handle.procs.Flush(); err != nil {
-		return 0, xerr.NewWM(err, "insert: db flush")
+		return 0, FlushError{err}
 	}
 
 	return newProcID, nil
 }
 
-func (handle Handle) UpdateProc(proc core.Proc) error {
+func (handle Handle) UpdateProc(proc core.Proc) Error {
 	handle.procs.Upsert(procData{
 		ProcID: proc.ID,
 		Status: status{
@@ -148,7 +145,7 @@ func (handle Handle) UpdateProc(proc core.Proc) error {
 	})
 
 	if err := handle.procs.Flush(); err != nil {
-		return xerr.NewWM(err, "update: db flush")
+		return FlushError{err}
 	}
 
 	return nil
@@ -207,16 +204,10 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) map[core.ProcID]c
 	return res
 }
 
-type ProcNotFoundError core.ProcID
-
-func (err ProcNotFoundError) Error() string {
-	return fmt.Sprintf("proc #%d not found", err)
-}
-
-func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) error {
+func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) Error {
 	proc, ok := handle.procs.Get(strconv.FormatUint(procID, 10))
 	if !ok {
-		return ProcNotFoundError(procID)
+		return ProcNotFoundError{procID}
 	}
 
 	proc.Status = status{
@@ -229,13 +220,13 @@ func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) error 
 	handle.procs.Upsert(proc)
 
 	if err := handle.procs.Flush(); err != nil {
-		return xerr.NewWM(err, "set status: db flush")
+		return FlushError{err}
 	}
 
 	return nil
 }
 
-func (handle Handle) Delete(procID core.ProcID) (core.Proc, error) {
+func (handle Handle) Delete(procID core.ProcID) (core.Proc, Error) {
 	deletedProcs := handle.procs.
 		Where(func(_ string, proc procData) bool {
 			return proc.ProcID == procID
@@ -243,15 +234,11 @@ func (handle Handle) Delete(procID core.ProcID) (core.Proc, error) {
 		Delete()
 
 	if err := handle.procs.Flush(); err != nil {
-		return fun.Zero[core.Proc](), xerr.NewWM(err, "delete: db flush")
+		return fun.Zero[core.Proc](), FlushError{err}
 	}
 
 	if len(deletedProcs) == 0 {
-		return fun.Zero[core.Proc](), xerr.NewM("delete: not found")
-	}
-
-	if len(deletedProcs) > 1 {
-		return fun.Zero[core.Proc](), xerr.NewM("delete: more than one proc found")
+		return fun.Zero[core.Proc](), ProcNotFoundError{procID}
 	}
 
 	proc := deletedProcs[0]
