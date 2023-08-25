@@ -3,9 +3,8 @@ package core
 import (
 	"strconv"
 
+	"github.com/rprtr258/fun"
 	"github.com/samber/lo"
-
-	"github.com/rprtr258/pm/internal/core/fun"
 )
 
 type Filter struct {
@@ -76,11 +75,10 @@ func filterProc(proc Proc, filter Filter) bool {
 		lo.Contains(filter.IDs, proc.ID)
 }
 
-func FilterProcMap[T ~uint64](procs map[ProcID]Proc, filter Filter) []T {
-	return fun.FilterMapToSlice(
+func FilterProcMap(procs map[ProcID]Proc, filter Filter) []ProcID {
+	return fun.MapFilterToSlice(
 		procs,
-		func(procID ProcID, proc Proc) (T, bool) {
-			return T(procID), filterProc(proc, filter)
-		},
-	)
+		func(procID ProcID, proc Proc) (ProcID, bool) {
+			return procID, filterProc(proc, filter)
+		})
 }

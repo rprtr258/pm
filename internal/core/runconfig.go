@@ -134,7 +134,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	// validate configs
-	errValidation := xerr.Combine(lo.Map(scannedConfigs, func(config configScanDTO, _ int) error {
+	errValidation := xerr.Combine(fun.Map[error](scannedConfigs, func(config configScanDTO) error {
 		if config.Command == "" {
 			return xerr.NewM(
 				"missing command",
@@ -148,7 +148,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		return nil, errValidation
 	}
 
-	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
+	return fun.Map[RunConfig](scannedConfigs, func(config configScanDTO) RunConfig {
 		watch := fun.Option[*regexp.Regexp]{}
 		if config.Watch != nil {
 			re, err := regexp.Compile(*config.Watch)
@@ -174,7 +174,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		return RunConfig{
 			Name:    fun.FromPtr(config.Name),
 			Command: config.Command,
-			Args: lo.Map(config.Args, func(arg any, i int) string {
+			Args: fun.Map[string](config.Args, func(arg any, i int) string {
 				switch a := arg.(type) {
 				case fmt.Stringer:
 					return a.String()

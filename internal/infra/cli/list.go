@@ -14,12 +14,12 @@ import (
 	"github.com/aquasecurity/table"
 	"github.com/fatih/color"
 	"github.com/kballard/go-shellquote"
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
-	"github.com/rprtr258/pm/internal/core/fun"
 	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -248,7 +248,7 @@ func list(
 		return xerr.NewWM(err, "list server call")
 	}
 
-	procIDsToShow := core.FilterProcMap[core.ProcID](
+	procIDsToShow := core.FilterProcMap(
 		list,
 		core.NewFilter(
 			core.WithAllIfNoFilters,

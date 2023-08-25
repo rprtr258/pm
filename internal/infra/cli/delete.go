@@ -63,7 +63,7 @@ var _deleteCmd = &cli.Command{
 
 		if !ctx.IsSet("config") {
 			// TODO: extract to filter struct
-			procIDs := core.FilterProcMap[core.ProcID](
+			procIDs := core.FilterProcMap(
 				list,
 				core.NewFilter(
 					core.WithGeneric(args),
@@ -99,7 +99,7 @@ var _deleteCmd = &cli.Command{
 			return xerr.NewWM(errList, "list by run configs", xerr.Fields{"configs": configs})
 		}
 
-		procIDs := core.FilterProcMap[core.ProcID](
+		procIDs := core.FilterProcMap(
 			list,
 			core.NewFilter(
 				core.WithGeneric(args),

@@ -101,7 +101,7 @@ var _logsCmd = &cli.Command{
 		}
 
 		if !ctx.IsSet("config") {
-			procIDs := core.FilterProcMap[core.ProcID](
+			procIDs := core.FilterProcMap(
 				list,
 				core.NewFilter(
 					core.WithGeneric(args),
@@ -140,7 +140,7 @@ var _logsCmd = &cli.Command{
 		}
 
 		// TODO: reuse filter options
-		procIDs := core.FilterProcMap[core.ProcID](
+		procIDs := core.FilterProcMap(
 			filteredList,
 			core.NewFilter(
 				core.WithGeneric(args),
