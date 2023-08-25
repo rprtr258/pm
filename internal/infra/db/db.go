@@ -169,13 +169,14 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) map[core.ProcID]c
 	res := map[core.ProcID]core.Proc{}
 	handle.procs.
 		Where(func(id string, proc procData) bool {
+			// TODO: remove copypasta from this and filter
 			if filter.NoFilters() {
 				return filter.AllIfNoFilters
 			}
 
-			return lo.Contains(filter.Names, proc.Name) ||
+			return fun.Contains(filter.Names, proc.Name) ||
 				lo.Some(filter.Tags, proc.Tags) ||
-				lo.Contains(filter.IDs, proc.ProcID)
+				fun.Contains(filter.IDs, proc.ProcID)
 		}).
 		Iter(func(id string, proc procData) bool {
 			res[proc.ProcID] = core.Proc{

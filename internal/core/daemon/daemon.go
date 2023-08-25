@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 	"google.golang.org/grpc"
 
 	"github.com/rprtr258/pm/api"
@@ -310,7 +310,7 @@ func DaemonMain(ctx context.Context) error {
 
 				allProcs := dbHandle.GetProcs(core.WithAllIfNoFilters)
 
-				procID, procFound := lo.FindKeyBy(allProcs, func(_ core.ProcID, procData core.Proc) bool {
+				procID, procFound := fun.FindKeyBy(allProcs, func(_ core.ProcID, procData core.Proc) bool {
 					return procData.Status.Status == core.StatusRunning &&
 						procData.Status.Pid == pid
 				})

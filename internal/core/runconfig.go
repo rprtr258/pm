@@ -159,9 +159,9 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			watch = fun.Valid(re)
 		}
 
-		relativeCwd := lo.
+		relativeCwd := fun.
 			If(config.Cwd == nil, filepath.Dir(filename)).
-			ElseF(func() string { return *config.Cwd })
+			ElseDeref(config.Cwd)
 		cwd, err := filepath.Abs(relativeCwd) // TODO: add config abs path instead
 		if err != nil {
 			// TODO: fail

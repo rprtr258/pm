@@ -15,7 +15,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/api"
@@ -299,7 +298,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 }
 
 var (
-	_testsCmds = lo.MapToSlice(
+	_testsCmds = fun.MapToSlice(
 		tests,
 		func(name string, test testcase) *cli.Command {
 			return &cli.Command{

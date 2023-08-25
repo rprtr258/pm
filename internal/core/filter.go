@@ -23,7 +23,7 @@ func (f Filter) NoFilters() bool {
 type FilterOption func(*Filter)
 
 func WithGeneric(args []string) FilterOption {
-	ids := lo.FilterMap(args, func(id string, _ int) (ProcID, bool) {
+	ids := fun.FilterMap[ProcID](args, func(id string, _ int) (ProcID, bool) {
 		procID, err := strconv.ParseUint(id, 10, 64)
 		return procID, err == nil
 	})
@@ -65,20 +65,16 @@ func NewFilter(opts ...FilterOption) Filter {
 	return filter
 }
 
-func filterProc(proc Proc, filter Filter) bool {
+func FilterProcMap(procs map[ProcID]Proc, filter Filter) []ProcID {
 	if filter.NoFilters() {
-		return filter.AllIfNoFilters
+		return fun.Keys(procs)
 	}
 
-	return lo.Contains(filter.Names, proc.Name) ||
-		lo.Some(filter.Tags, proc.Tags) ||
-		lo.Contains(filter.IDs, proc.ID)
-}
-
-func FilterProcMap(procs map[ProcID]Proc, filter Filter) []ProcID {
 	return fun.MapFilterToSlice(
 		procs,
 		func(procID ProcID, proc Proc) (ProcID, bool) {
-			return procID, filterProc(proc, filter)
+			return procID, fun.Contains(filter.Names, proc.Name) ||
+				lo.Some(filter.Tags, proc.Tags) ||
+				fun.Contains(filter.IDs, proc.ID)
 		})
 }
