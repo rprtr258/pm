@@ -148,13 +148,13 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		return nil, errValidation
 	}
 
-	return fun.Map[RunConfig](scannedConfigs, func(config configScanDTO) RunConfig {
+	return fun.MapErr[RunConfig, configScanDTO, error](scannedConfigs, func(config configScanDTO) (RunConfig, error) {
 		watch := fun.Zero[fun.Option[*regexp.Regexp]]()
 		if config.Watch != nil {
 			re, err := regexp.Compile(*config.Watch)
 			if err != nil {
-				// TODO: fail
-				log.Error().Str("pattern", *config.Watch).Msg("invalid watch pattern")
+				return fun.Zero[RunConfig](), xerr.NewWM(err, "invalid watch pattern",
+					xerr.Fields{"pattern": *config.Watch})
 			}
 			watch = fun.Valid(re)
 		}
@@ -164,11 +164,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			ElseDeref(config.Cwd)
 		cwd, err := filepath.Abs(relativeCwd) // TODO: add config abs path instead
 		if err != nil {
-			// TODO: fail
-			log.Error().
-				Err(err).
-				Str("cwd", *config.Cwd).
-				Msg("can't get absolute cwd")
+			return fun.Zero[RunConfig](), xerr.NewWM(err, "get absolute cwd", xerr.Fields{"cwd": relativeCwd})
 		}
 
 		return RunConfig{
@@ -215,6 +211,16 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 				}
 			}),
 			Watch: watch,
-		}
-	}), nil
+			Actions: Actions{
+				Healthcheck: nil,
+				Custom:      nil,
+			},
+			StdoutFile:   fun.Zero[fun.Option[string]](),
+			StderrFile:   fun.Zero[fun.Option[string]](),
+			KillTimeout:  0,
+			KillChildren: false,
+			Autorestart:  false,
+			MaxRestarts:  0,
+		}, nil
+	})
 }
