@@ -39,10 +39,14 @@ type Event struct {
 	Data any
 }
 
+func (e Event) String() string {
+	return fmt.Sprintf("%s:%v", e.Kind, e.Data)
+}
+
 type EmitReason int
 
 const (
-	EmitReasonDied EmitReason = 1 << iota
+	EmitReasonDied EmitReason = iota
 	EmitReasonByUser
 	EmitReasonByWatcher
 )
@@ -137,7 +141,7 @@ func (e *EventBus) Start(ctx context.Context) {
 			}
 
 			log.Debug().
-				Any("event", event). // TODO: stringer
+				Stringer("event", event).
 				Msg("got event, routing")
 
 			e.mu.Lock()
