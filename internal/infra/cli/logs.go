@@ -116,10 +116,20 @@ var _logsCmd = &cli.Command{
 				return nil
 			}
 
-			// TODO: fix [0]
-			logsCh, errLogs := app.Logs(ctx.Context, procIDs[0])
-			if errLogs != nil {
-				return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
+			logsChs := make([]<-chan core.ProcLogs, len(procIDs))
+			for i, procID := range procIDs {
+				// TODO: fix [0]
+				logsCh, errLogs := app.Logs(ctx.Context, procID)
+				if errLogs != nil {
+					return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
+				}
+
+				logsChs[i] = logsCh
+			}
+
+			logsCh := make(<-chan core.ProcLogs)
+			for _, logsCh := range logsChs {
+				logsCh := logsCh
 			}
 
 			return watchLogs(ctx.Context, logsCh)
