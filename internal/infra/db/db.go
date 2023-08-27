@@ -9,7 +9,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/simpdb"
 	"github.com/rprtr258/simpdb/storages"
-	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core"
 )
@@ -163,20 +162,10 @@ func (handle Handle) GetProc(id core.ProcID) (core.Proc, bool) {
 func (handle Handle) GetProcs(filterOpts ...core.FilterOption) map[core.ProcID]core.Proc {
 	filter := core.NewFilter(filterOpts...)
 
-	res := map[core.ProcID]core.Proc{}
+	procs := map[core.ProcID]core.Proc{}
 	handle.procs.
-		Where(func(id string, proc procData) bool {
-			// TODO: remove copypasta from this and filter
-			if filter.NoFilters() {
-				return filter.AllIfNoFilters
-			}
-
-			return fun.Contains(filter.Names, proc.Name) ||
-				lo.Some(filter.Tags, proc.Tags) ||
-				fun.Contains(filter.IDs, proc.ProcID)
-		}).
 		Iter(func(id string, proc procData) bool {
-			res[proc.ProcID] = core.Proc{
+			procs[proc.ProcID] = core.Proc{
 				ID:      proc.ProcID,
 				Command: proc.Command,
 				Cwd:     proc.Cwd,
@@ -201,7 +190,11 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) map[core.ProcID]c
 			return true
 		})
 
-	return res
+	return fun.SliceToMap[core.ProcID, core.Proc](
+		core.FilterProcMap(procs, filter),
+		func(id core.ProcID) (core.ProcID, core.Proc) {
+			return id, procs[id]
+		})
 }
 
 func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) Error {

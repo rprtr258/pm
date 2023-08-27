@@ -72,8 +72,8 @@ func FilterProcMap(procs map[ProcID]Proc, filter Filter) []ProcID {
 
 	return fun.MapFilterToSlice(
 		procs,
-		func(procID ProcID, proc Proc) (ProcID, bool) {
-			return procID, fun.Contains(filter.Names, proc.Name) ||
+		func(id ProcID, proc Proc) (ProcID, bool) {
+			return id, fun.Contains(filter.Names, proc.Name) ||
 				lo.Some(filter.Tags, proc.Tags) ||
 				fun.Contains(filter.IDs, proc.ID)
 		})
