@@ -85,10 +85,9 @@ const (
 
 var tests = map[string]testcase{
 	"hello-http-server": {
-		runConfigs: []core.RunConfig{{
+		runConfigs: []core.RunConfig{{ //nolint:exhaustruct // not needed
 			Name:    fun.Valid("http-hello-server"),
 			Command: "./tests/hello-http/main",
-			Args:    []string{},
 		}},
 		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
@@ -100,11 +99,7 @@ var tests = map[string]testcase{
 		testFunc: func(ctx context.Context, client pmclient.Client) error {
 			time.Sleep(time.Second)
 
-			if errHTTP := httpResponse(ctx, "http://localhost:8080/", "hello world"); errHTTP != nil {
-				return errHTTP
-			}
-
-			return nil
+			return httpResponse(ctx, "http://localhost:8080/", "hello world")
 		},
 		afterFunc: func(ctx context.Context, client pmclient.Client) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
@@ -116,12 +111,12 @@ var tests = map[string]testcase{
 	},
 	"client-server-netcat": {
 		runConfigs: []core.RunConfig{
-			{
+			{ //nolint:exhaustruct // not needed
 				Name:    fun.Valid("nc-server"),
 				Command: "/usr/bin/nc",
 				Args:    []string{"-l", "-p", strconv.Itoa(_ncServerPort)},
 			},
-			{
+			{ //nolint:exhaustruct // not needed
 				Name:    fun.Valid("nc-client"),
 				Command: "/bin/sh",
 				Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(_ncServerPort)},
@@ -232,12 +227,15 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		ids := []core.ProcID{}
 		for _, c := range test.runConfigs {
 			id, errCreate := client.Create(ctx, &api.CreateRequest{
-				Name:    c.Name.Ptr(),
-				Command: c.Command,
-				Args:    c.Args,
-				Cwd:     c.Cwd,
-				Tags:    c.Tags,
-				Env:     c.Env,
+				Name:       c.Name.Ptr(),
+				Command:    c.Command,
+				Args:       c.Args,
+				Cwd:        c.Cwd,
+				Tags:       c.Tags,
+				Env:        c.Env,
+				Watch:      nil,
+				StdoutFile: nil,
+				StderrFile: nil,
 			})
 			if errCreate != nil {
 				return xerr.NewWM(errCreate, "create process")

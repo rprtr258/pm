@@ -56,7 +56,7 @@ type CreateQuery struct {
 	StderrFile fun.Option[string]
 }
 
-func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, error) {
+func (r Runner) create(_ context.Context, query CreateQuery) (core.ProcID, error) {
 	// try to find by name and update
 	if name, ok := query.Name.Unpack(); ok {
 		procs := r.DB.GetProcs(core.WithAllIfNoFilters)

@@ -149,7 +149,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	return fun.Map[RunConfig](scannedConfigs, func(config configScanDTO) RunConfig {
-		watch := fun.Option[*regexp.Regexp]{}
+		watch := fun.Zero[fun.Option[*regexp.Regexp]]()
 		if config.Watch != nil {
 			re, err := regexp.Compile(*config.Watch)
 			if err != nil {
