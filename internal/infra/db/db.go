@@ -159,10 +159,10 @@ func (handle Handle) GetProc(id core.ProcID) (core.Proc, bool) {
 	return procs[id], true
 }
 
-func (handle Handle) GetProcs(filterOpts ...core.FilterOption) map[core.ProcID]core.Proc {
+func (handle Handle) GetProcs(filterOpts ...core.FilterOption) core.Procs {
 	filter := core.NewFilter(filterOpts...)
 
-	procs := map[core.ProcID]core.Proc{}
+	procs := core.Procs{}
 	handle.procs.
 		Iter(func(id string, proc procData) bool {
 			procs[proc.ProcID] = core.Proc{

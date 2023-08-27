@@ -79,7 +79,7 @@ var _startCmd = &cli.Command{
 				return xerr.NewWM(err, "client.start")
 			}
 
-			printIDs("", procIDs...)
+			printIDs(procIDs...)
 
 			return nil
 		}
@@ -119,7 +119,7 @@ var _startCmd = &cli.Command{
 			return xerr.NewWM(err, "client.start")
 		}
 
-		printIDs("", procIDs...)
+		printIDs(procIDs...)
 
 		return nil
 	},

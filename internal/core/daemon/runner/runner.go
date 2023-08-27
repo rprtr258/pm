@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
-	fun2 "github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 
@@ -48,13 +47,13 @@ type Runner struct {
 type CreateQuery struct {
 	Command    string
 	Args       []string
-	Name       fun2.Option[string]
+	Name       fun.Option[string]
 	Cwd        string
 	Tags       []string
 	Env        map[string]string
-	Watch      fun2.Option[string]
-	StdoutFile fun2.Option[string]
-	StderrFile fun2.Option[string]
+	Watch      fun.Option[string]
+	StdoutFile fun.Option[string]
+	StderrFile fun.Option[string]
 }
 
 func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, error) {

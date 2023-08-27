@@ -16,11 +16,7 @@ var configFlag = &cli.StringFlag{
 	Required:  false,
 }
 
-func printIDs(prefix string, ids ...core.ProcID) {
-	if prefix != "" {
-		fmt.Print(prefix, " ")
-	}
-
+func printIDs(ids ...core.ProcID) {
 	for i, id := range ids {
 		if i > 0 {
 			fmt.Print(" ")

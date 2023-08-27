@@ -61,7 +61,7 @@ func (c Client) Create(ctx context.Context, opts *pb.CreateRequest) (uint64, err
 	return resp.GetId(), nil
 }
 
-func (c Client) List(ctx context.Context) (map[core.ProcID]core.Proc, error) {
+func (c Client) List(ctx context.Context) (core.Procs, error) {
 	resp, err := c.client.List(ctx, &emptypb.Empty{})
 	if err != nil {
 		return nil, xerr.NewWM(err, "server.list")

@@ -2,7 +2,6 @@ package pm
 
 import (
 	"context"
-	"errors"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -26,11 +25,14 @@ type App struct {
 func New(pmClient client.Client) (App, error) {
 	config, errConfig := core.ReadConfig()
 	if errConfig != nil {
-		if !errors.Is(errConfig, core.ErrConfigNotExists) {
-			return App{}, xerr.NewWM(errConfig, "read app config")
+		if errConfig == core.ErrConfigNotExists {
+			return App{
+				client: pmClient,
+				config: core.DefaultConfig,
+			}, nil
 		}
 
-		config = core.DefaultConfig
+		return App{}, xerr.NewWM(errConfig, "read app config")
 	}
 
 	return App{
@@ -47,9 +49,7 @@ func (app App) CheckDaemon(ctx context.Context) error {
 	return nil
 }
 
-func (app App) ListByRunConfigs(
-	ctx context.Context, runConfigs []core.RunConfig,
-) (map[core.ProcID]core.Proc, error) {
+func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig) (core.Procs, error) {
 	list, errList := app.client.List(ctx)
 	if errList != nil {
 		return nil, xerr.NewWM(errList, "ListByRunConfigs: list procs")
@@ -69,20 +69,8 @@ func (app App) ListByRunConfigs(
 func (app App) Signal(
 	ctx context.Context,
 	signal syscall.Signal,
-	procs map[core.ProcID]core.Proc,
-	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
+	procIDs ...core.ProcID,
 ) ([]core.ProcID, error) {
-	procIDs := core.FilterProcMap(
-		procs,
-		core.NewFilter(
-			core.WithGeneric(args),
-			core.WithIDs(ids...),
-			core.WithNames(names),
-			core.WithTags(tags),
-			core.WithAllIfNoFilters,
-		),
-	)
-
 	if len(procIDs) == 0 {
 		return []core.ProcID{}, nil
 	}
@@ -96,10 +84,7 @@ func (app App) Signal(
 	return procIDs, nil
 }
 
-func (app App) Stop(
-	ctx context.Context,
-	procIDs ...core.ProcID,
-) error {
+func (app App) Stop(ctx context.Context, procIDs ...core.ProcID) error {
 	for _, id := range procIDs {
 		if err := app.client.Stop(ctx, id); err != nil {
 			return xerr.NewWM(err, "client.stop")
@@ -119,7 +104,7 @@ func (app App) Delete(ctx context.Context, procIDs ...core.ProcID) error {
 	return nil
 }
 
-func (app App) List(ctx context.Context) (map[core.ProcID]core.Proc, error) {
+func (app App) List(ctx context.Context) (core.Procs, error) {
 	list, errList := app.client.List(ctx)
 	if errList != nil {
 		return nil, xerr.NewWM(errList, "List: list procs")

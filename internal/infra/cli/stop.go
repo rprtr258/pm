@@ -109,7 +109,7 @@ type stopCmd struct {
 func (cmd *stopCmd) Run(
 	ctx context.Context,
 	pmClient client.Client,
-	configList map[core.ProcID]core.Proc,
+	configList core.Procs,
 ) error {
 	app, errNewApp := pm.New(pmClient)
 	if errNewApp != nil {
