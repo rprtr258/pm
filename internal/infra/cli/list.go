@@ -185,7 +185,7 @@ func mapStatus(status core.Status) (string, *int, time.Duration) {
 	case core.StatusStopped:
 		switch status.ExitCode {
 		case -1:
-			return color.RedString("stopped"), nil, 0
+			return color.RedString("stopped(-1)"), nil, 0
 		case 0:
 			return color.YellowString("exited"), nil, 0
 		default:
@@ -201,7 +201,7 @@ func mapStatus(status core.Status) (string, *int, time.Duration) {
 func renderTable(procs []core.Proc, setRowLines bool) {
 	procsTable := table.New(os.Stdout)
 	procsTable.SetDividers(table.UnicodeRoundedDividers)
-	procsTable.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
+	procsTable.SetHeaders("id", "name", "status", "pid", "uptime", "tags" /*"cpu", "memory",*/, "cmd")
 	procsTable.SetHeaderStyle(table.StyleBold)
 	procsTable.SetLineStyle(table.StyleDim)
 	procsTable.SetRowLines(setRowLines)
@@ -213,12 +213,16 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 			color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
 			proc.Name,
 			status,
-			strconv.Itoa(fun.Deref(pid)),
+			fun.
+				If(pid == nil, "").
+				ElseF(func() string {
+					return strconv.Itoa(fun.Deref(pid))
+				}),
 			// TODO: check status instead for following parameters
 			fun.If(pid == nil, "").Else(uptime.Truncate(time.Second).String()),
 			strings.Join(proc.Tags, "\n"),
-			fmt.Sprint(proc.Status.CPU),
-			fmt.Sprint(proc.Status.Memory),
+			// fmt.Sprint(proc.Status.CPU),
+			// fmt.Sprint(proc.Status.Memory),
 			shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
 		)
 	}

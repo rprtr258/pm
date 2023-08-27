@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/fatih/color"
@@ -15,6 +16,33 @@ import (
 	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/pkg/client"
 )
+
+func mergeChans(ctx context.Context, chans ...<-chan core.ProcLogs) <-chan core.ProcLogs {
+	out := make(chan core.ProcLogs)
+	var wg sync.WaitGroup
+	wg.Add(len(chans))
+	for _, ch := range chans {
+		go func(ch <-chan core.ProcLogs) {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case v, ok := <-ch:
+					if !ok {
+						return
+					}
+					out <- v
+				}
+			}
+		}(ch)
+	}
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return out
+}
 
 func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
 	for {
@@ -118,7 +146,6 @@ var _logsCmd = &cli.Command{
 
 			logsChs := make([]<-chan core.ProcLogs, len(procIDs))
 			for i, procID := range procIDs {
-				// TODO: fix [0]
 				logsCh, errLogs := app.Logs(ctx.Context, procID)
 				if errLogs != nil {
 					return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
@@ -127,12 +154,9 @@ var _logsCmd = &cli.Command{
 				logsChs[i] = logsCh
 			}
 
-			logsCh := make(<-chan core.ProcLogs)
-			for _, logsCh := range logsChs {
-				logsCh := logsCh
-			}
+			mergedLogsCh := mergeChans(ctx.Context, logsChs...)
 
-			return watchLogs(ctx.Context, logsCh)
+			return watchLogs(ctx.Context, mergedLogsCh)
 		}
 
 		configFile := ctx.String("config")
@@ -166,12 +190,18 @@ var _logsCmd = &cli.Command{
 			return nil
 		}
 
-		// TODO: fix [0]
-		logsCh, errLogs := app.Logs(ctx.Context, procIDs[0])
-		if errLogs != nil {
-			return xerr.NewWM(errLogs, "watch procs from config", xerr.Fields{"procIDs": procIDs})
+		logsChs := make([]<-chan core.ProcLogs, len(procIDs))
+		for i, procID := range procIDs {
+			logsCh, errLogs := app.Logs(ctx.Context, procID)
+			if errLogs != nil {
+				return xerr.NewWM(errLogs, "watch procs from config", xerr.Fields{"procIDs": procIDs})
+			}
+
+			logsChs[i] = logsCh
 		}
 
-		return watchLogs(ctx.Context, logsCh)
+		mergedLogsCh := mergeChans(ctx.Context, logsChs...)
+
+		return watchLogs(ctx.Context, mergedLogsCh)
 	},
 }
