@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 	"golang.org/x/sys/unix"
 )
 
@@ -272,7 +272,7 @@ func (d *Context) prepareEnv() error {
 }
 
 func (d *Context) files() []*os.File {
-	log := lo.If(d.logFile != nil, d.logFile).Else(d.nullFile)
+	log := fun.If(d.logFile != nil, d.logFile).Else(d.nullFile)
 
 	files := []*os.File{
 		d.nullFile, // (0) stdin

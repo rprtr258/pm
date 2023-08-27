@@ -7,7 +7,6 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
-	"github.com/samber/lo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -68,7 +67,7 @@ func (c Client) List(ctx context.Context) (map[core.ProcID]core.Proc, error) {
 		return nil, xerr.NewWM(err, "server.list")
 	}
 
-	return lo.SliceToMap(
+	return fun.SliceToMap[core.ProcID, core.Proc](
 		resp.GetProcesses(),
 		func(proc *pb.Process) (core.ProcID, core.Proc) {
 			procID := proc.GetId()

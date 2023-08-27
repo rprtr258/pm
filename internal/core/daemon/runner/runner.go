@@ -9,10 +9,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rprtr258/fun"
 	fun2 "github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
@@ -62,7 +62,7 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 	if name, ok := query.Name.Unpack(); ok {
 		procs := r.DB.GetProcs(core.WithAllIfNoFilters)
 
-		if procID, ok := lo.FindKeyBy(
+		if procID, ok := fun.FindKeyBy(
 			procs,
 			func(_ core.ProcID, procData core.Proc) bool {
 				return procData.Name == name
@@ -73,7 +73,7 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 				Status:     core.NewStatusCreated(),
 				Name:       name,
 				Cwd:        query.Cwd,
-				Tags:       lo.Uniq(append(query.Tags, "all")),
+				Tags:       fun.Uniq(append(query.Tags, "all")),
 				Command:    query.Command,
 				Args:       query.Args,
 				Watch:      query.Watch,
@@ -106,7 +106,7 @@ func (r Runner) create(ctx context.Context, query CreateQuery) (core.ProcID, err
 	procID, err := r.DB.AddProc(db.CreateQuery{
 		Name:       query.Name.OrDefault(namegen.New()),
 		Cwd:        query.Cwd,
-		Tags:       lo.Uniq(append(query.Tags, "all")),
+		Tags:       fun.Uniq(append(query.Tags, "all")),
 		Command:    query.Command,
 		Args:       query.Args,
 		Watch:      query.Watch,

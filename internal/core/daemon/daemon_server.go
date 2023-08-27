@@ -14,7 +14,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -89,7 +88,7 @@ func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb
 
 func (srv *daemonServer) List(_ context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
 	return &pb.ProcessesList{
-		Processes: lo.MapToSlice(
+		Processes: fun.MapToSlice(
 			srv.db.GetProcs(core.WithAllIfNoFilters),
 			func(id core.ProcID, proc core.Proc) *pb.Process {
 				return &pb.Process{

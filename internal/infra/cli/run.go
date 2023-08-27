@@ -6,7 +6,6 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
-	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -177,19 +176,19 @@ var _runCmd = &cli.Command{
 		configsByName := make(map[string]core.RunConfig, len(names))
 		for _, cfg := range configs {
 			name, ok := cfg.Name.Unpack()
-			if !ok || !lo.Contains(names, name) {
+			if !ok || !fun.Contains(names, name) {
 				continue
 			}
 
 			configsByName[name] = cfg
 		}
 
-		merr := xerr.Combine(lo.FilterMap(names, func(name string, _ int) (error, bool) {
+		merr := xerr.Combine(fun.Map[error](names, func(name string) error {
 			if _, ok := configsByName[name]; !ok {
-				return xerr.NewM("unknown proc name", xerr.Fields{"name": name}), true
+				return xerr.NewM("unknown proc name", xerr.Fields{"name": name})
 			}
 
-			return nil, false
+			return nil
 		})...)
 		if merr != nil {
 			return merr

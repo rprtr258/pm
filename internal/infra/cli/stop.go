@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
@@ -84,12 +85,14 @@ var _stopCmd = &cli.Command{
 			return xerr.NewWM(errLoadConfigs, "load configs")
 		}
 
-		names := lo.FilterMap(configs, func(cfg core.RunConfig, _ int) (string, bool) {
-			return cfg.Name.Unpack()
-		})
+		names := fun.FilterMap[string](
+			configs,
+			func(cfg core.RunConfig) fun.Option[string] {
+				return cfg.Name
+			})
 
 		configList := lo.PickBy(list, func(_ core.ProcID, procData core.Proc) bool {
-			return lo.Contains(names, procData.Name)
+			return fun.Contains(names, procData.Name)
 		})
 
 		return stopCmd.Run(ctx.Context, client, configList)
@@ -113,7 +116,7 @@ func (cmd *stopCmd) Run(
 		return xerr.NewWM(errNewApp, "new app")
 	}
 
-	procIDs := core.FilterProcMap[core.ProcID](
+	procIDs := core.FilterProcMap(
 		configList,
 		core.NewFilter(
 			core.WithGeneric(cmd.args),

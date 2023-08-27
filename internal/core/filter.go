@@ -3,9 +3,8 @@ package core
 import (
 	"strconv"
 
+	"github.com/rprtr258/fun"
 	"github.com/samber/lo"
-
-	"github.com/rprtr258/pm/internal/core/fun"
 )
 
 type Filter struct {
@@ -24,7 +23,7 @@ func (f Filter) NoFilters() bool {
 type FilterOption func(*Filter)
 
 func WithGeneric(args []string) FilterOption {
-	ids := lo.FilterMap(args, func(id string, _ int) (ProcID, bool) {
+	ids := fun.FilterMap[ProcID](args, func(id string, _ int) (ProcID, bool) {
 		procID, err := strconv.ParseUint(id, 10, 64)
 		return procID, err == nil
 	})
@@ -66,21 +65,16 @@ func NewFilter(opts ...FilterOption) Filter {
 	return filter
 }
 
-func filterProc(proc Proc, filter Filter) bool {
+func FilterProcMap(procs map[ProcID]Proc, filter Filter) []ProcID {
 	if filter.NoFilters() {
-		return filter.AllIfNoFilters
+		return fun.Keys(procs)
 	}
 
-	return lo.Contains(filter.Names, proc.Name) ||
-		lo.Some(filter.Tags, proc.Tags) ||
-		lo.Contains(filter.IDs, proc.ID)
-}
-
-func FilterProcMap[T ~uint64](procs map[ProcID]Proc, filter Filter) []T {
-	return fun.FilterMapToSlice(
+	return fun.MapFilterToSlice(
 		procs,
-		func(procID ProcID, proc Proc) (T, bool) {
-			return T(procID), filterProc(proc, filter)
-		},
-	)
+		func(procID ProcID, proc Proc) (ProcID, bool) {
+			return procID, fun.Contains(filter.Names, proc.Name) ||
+				lo.Some(filter.Tags, proc.Tags) ||
+				fun.Contains(filter.IDs, proc.ID)
+		})
 }

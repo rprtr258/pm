@@ -55,12 +55,12 @@ func (app App) ListByRunConfigs(
 		return nil, xerr.NewWM(errList, "ListByRunConfigs: list procs")
 	}
 
-	procNames := lo.FilterMap(runConfigs, func(cfg core.RunConfig, _ int) (string, bool) {
-		return cfg.Name.Unpack()
+	procNames := fun.FilterMap[string](runConfigs, func(cfg core.RunConfig) fun.Option[string] {
+		return cfg.Name
 	})
 
 	configList := lo.PickBy(list, func(_ core.ProcID, procData core.Proc) bool {
-		return lo.Contains(procNames, procData.Name)
+		return fun.Contains(procNames, procData.Name)
 	})
 
 	return configList, nil
@@ -72,7 +72,7 @@ func (app App) Signal(
 	procs map[core.ProcID]core.Proc,
 	args, names, tags []string, ids []uint64, // TODO: extract to filter struct
 ) ([]core.ProcID, error) {
-	procIDs := core.FilterProcMap[core.ProcID](
+	procIDs := core.FilterProcMap(
 		procs,
 		core.NewFilter(
 			core.WithGeneric(args),
@@ -87,7 +87,7 @@ func (app App) Signal(
 		return []core.ProcID{}, nil
 	}
 
-	if err := app.client.Signal(ctx, signal, lo.Map(procIDs, func(procID core.ProcID, _ int) uint64 {
+	if err := app.client.Signal(ctx, signal, fun.Map[uint64](procIDs, func(procID core.ProcID) uint64 {
 		return procID
 	})); err != nil {
 		return nil, xerr.NewWM(err, "client.stop")
@@ -214,17 +214,17 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.ProcLogs, 
 			case procLogs := <-iterr.Logs:
 				res <- core.ProcLogs{
 					ID: procLogs.GetId(),
-					Lines: lo.Map(
+					Lines: fun.Map[core.LogLine](
 						procLogs.GetLines(),
 						func(line *pb.LogLine, _ int) core.LogLine {
 							return core.LogLine{
 								At:   line.GetTime().AsTime(),
 								Line: line.GetLine(),
-								Type: lo.
-									Switch[pb.LogLine_Type, core.LogType](line.GetType()).
-									Case(pb.LogLine_TYPE_STDOUT, core.LogTypeStdout).
-									Case(pb.LogLine_TYPE_STDERR, core.LogTypeStderr).
-									Default(core.LogTypeUnspecified),
+								Type: map[pb.LogLine_Type]core.LogType{
+									pb.LogLine_TYPE_STDOUT:      core.LogTypeStdout,
+									pb.LogLine_TYPE_STDERR:      core.LogTypeStderr,
+									pb.LogLine_TYPE_UNSPECIFIED: core.LogTypeUnspecified,
+								}[line.GetType()],
 							}
 						}),
 				}
