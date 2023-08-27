@@ -14,6 +14,8 @@ import (
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
+const _tickInterval = 500 * time.Millisecond
+
 type EventKind string
 
 const (
@@ -127,7 +129,7 @@ func (e *EventBus) Start(ctx context.Context) {
 		}
 	}()
 
-	tick := time.NewTicker(500 * time.Millisecond)
+	tick := time.NewTicker(_tickInterval)
 	defer tick.Stop()
 
 	for {
@@ -256,6 +258,7 @@ func NewPublishProcStopRequest(procID core.ProcID, emitReason EmitReason) Event 
 		Kind: KindProcStopRequest,
 		Data: DataProcStopRequest{
 			ProcID:     procID,
+			PID:        0, // NOTE: filled on Publish
 			EmitReason: emitReason,
 		},
 	}

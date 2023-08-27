@@ -49,7 +49,7 @@ func (q *Queue[T]) Pop() (T, bool) {
 
 // Push inserts an element to the back of the queue.
 func (q *Queue[T]) Push(val T) {
-	newNode := unsafe.Pointer(&node[T]{val: val})
+	newNode := unsafe.Pointer(&node[T]{val: val, next: nil})
 	for {
 		tail := (*node[T])(atomic.LoadPointer(&q.tail))
 		if atomic.CompareAndSwapPointer(&tail.next, nil, newNode) {
