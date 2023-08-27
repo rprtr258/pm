@@ -3,9 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/urfave/cli/v2"
-
 	"github.com/rprtr258/xerr"
+	"github.com/urfave/cli/v2"
 
 	pm_daemon "github.com/rprtr258/pm/internal/core/daemon"
 )

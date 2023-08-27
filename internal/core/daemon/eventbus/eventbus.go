@@ -11,6 +11,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus/queue"
+	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 type EventKind string
@@ -84,6 +85,7 @@ type DataProcStartRequest struct {
 
 type DataProcStopRequest struct {
 	ProcID     core.ProcID
+	PID        int
 	EmitReason EmitReason
 }
 
@@ -98,15 +100,17 @@ type Subscriber struct {
 }
 
 type EventBus struct {
-	q *queue.Queue[Event]
+	q  *queue.Queue[Event]
+	db db.Handle
 
 	mu          sync.Mutex
 	subscribers map[string]Subscriber
 }
 
-func New() *EventBus {
+func New(db db.Handle) *EventBus {
 	return &EventBus{
 		q:           queue.New[Event](),
+		db:          db,
 		mu:          sync.Mutex{},
 		subscribers: map[string]Subscriber{},
 	}
@@ -164,6 +168,28 @@ func (e *EventBus) Publish(ctx context.Context, events ...Event) {
 		case <-ctx.Done():
 			return
 		default:
+			if event.Kind == KindProcStopRequest {
+				data := event.Data.(DataProcStopRequest) //nolint:errcheck,forcetypeassert // not needed
+				procID := data.ProcID
+				proc, ok := e.db.GetProc(procID)
+				if !ok {
+					log.Error().
+						Uint64("proc_id", procID).
+						Msg("proc not found")
+					return
+				}
+
+				if proc.Status.Status != core.StatusRunning {
+					log.Error().
+						Uint64("proc_id", procID).
+						Msg("proc is not running")
+					return
+				}
+
+				data.PID = proc.Status.Pid
+				event.Data = data
+			}
+
 			e.q.Push(event)
 		}
 	}

@@ -261,7 +261,7 @@ func DaemonMain(ctx context.Context) error {
 		return xerr.NewWM(errDBNew, "create db")
 	}
 
-	ebus := eventbus.New()
+	ebus := eventbus.New(dbHandle)
 	go ebus.Start(ctx)
 
 	fsWatcher, err := fsnotify.NewWatcher()

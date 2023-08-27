@@ -7,11 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
-	fmt2 "github.com/wissance/stringFormatter"
 )
 
 func Logs(ctx context.Context, follow bool) error {
@@ -35,14 +33,7 @@ func Logs(ctx context.Context, follow bool) error {
 	})
 
 	if err := t.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
-		fmt.Println(fmt2.FormatComplex(
-			"{at} {sep} {line}",
-			map[string]any{
-				"at":   color.HiBlackString("%s", time.Now().Format("2006-01-02 15:04:05")),
-				"sep":  color.GreenString("%s", "|"),
-				"line": color.HiWhiteString(string(l.Data)),
-			},
-		))
+		fmt.Println(string(l.Data))
 		return nil
 	}); err != nil {
 		return xerr.NewWM(err, "tail daemon logs")
