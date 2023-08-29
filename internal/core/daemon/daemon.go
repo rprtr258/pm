@@ -371,7 +371,7 @@ func DaemonMain(ctx context.Context) error {
 						continue
 					}
 
-					pid, errStart := pmRunner.Start1(proc)
+					pid, errStart := pmRunner.Start(proc)
 					if errStart != nil {
 						log.Error().
 							Uint64("proc_id", e.ProcID).
@@ -383,7 +383,7 @@ func DaemonMain(ctx context.Context) error {
 
 					ebus.Publish(ctx, eventbus.NewPublishProcStarted(proc, pid, e.EmitReason))
 				case eventbus.DataProcStopRequest:
-					stopped, errStart := pmRunner.Stop1(ctx, e.ProcID)
+					stopped, errStart := pmRunner.Stop(ctx, e.ProcID)
 					if errStart != nil {
 						log.Error().
 							Err(errStart).

@@ -41,7 +41,7 @@ type Runner struct {
 	Ebus *eventbus.EventBus
 }
 
-func (r Runner) Start1(proc core.Proc) (int, error) {
+func (r Runner) Start(proc core.Proc) (int, error) {
 	if proc.Status.Status == core.StatusRunning {
 		return 0, xerr.NewM("process is already running")
 	}
@@ -99,7 +99,7 @@ func (r Runner) Start1(proc core.Proc) (int, error) {
 	return process.Pid, nil
 }
 
-func (r Runner) Stop1(ctx context.Context, procID core.ProcID) (bool, error) {
+func (r Runner) Stop(ctx context.Context, procID core.ProcID) (bool, error) {
 	proc, ok := r.DB.GetProc(procID)
 	if !ok {
 		return false, xerr.NewM("not found proc to stop")
