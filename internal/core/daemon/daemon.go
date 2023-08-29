@@ -410,7 +410,7 @@ func DaemonMain(ctx context.Context) error {
 						ebus.Publish(ctx, eventbus.NewPublishProcStopped(e.ProcID, -1, e.EmitReason))
 					}
 				case eventbus.DataProcSignalRequest:
-					if err := pmRunner.Signal(ctx, e.Signal, e.ProcID); err != nil {
+					if err := pmRunner.Signal(e.Signal, e.ProcID); err != nil {
 						log.Error().
 							Err(err).
 							Uint64("proc_id", e.ProcID).

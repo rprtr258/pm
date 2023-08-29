@@ -153,19 +153,12 @@ func (r Runner) Stop(ctx context.Context, pid int) (bool, error) {
 }
 
 func (r Runner) Signal(
-	ctx context.Context,
 	signal syscall.Signal,
 	id core.ProcID,
 ) error {
 	proc, ok := r.DB.GetProc(id)
 	if !ok {
 		return xerr.NewM("proc not found", xerr.Fields{"id": id})
-	}
-
-	select {
-	case <-ctx.Done():
-		return nil
-	default:
 	}
 
 	if proc.Status.Status != core.StatusRunning {
