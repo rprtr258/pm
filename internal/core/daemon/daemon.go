@@ -427,7 +427,7 @@ func DaemonMain(ctx context.Context) error {
 	go cron{
 		l:                 log.Logger.With().Str("system", "cron").Logger(),
 		db:                dbHandle,
-		statusUpdateDelay: time.Second * 5, //nolint:gomnd // arbitrary timeout
+		statusUpdateDelay: 5 * time.Second, //nolint:gomnd // arbitrary timeout
 		ebus:              ebus,
 	}.start(ctx)
 

@@ -66,6 +66,7 @@ func (srv *daemonServer) Stop(ctx context.Context, req *pb.ProcID) (*emptypb.Emp
 }
 
 func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.ProcID, error) {
+	// TODO: ARCH: move create out of runner, remove runner from server struct
 	procID, err := srv.runner.Create(ctx, runner.CreateQuery{
 		Name:       fun.FromPtr(req.Name),
 		Cwd:        req.GetCwd(),

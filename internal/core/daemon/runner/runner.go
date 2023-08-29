@@ -39,6 +39,7 @@ func procFields(proc core.Proc) map[string]any {
 }
 
 type Runner struct {
+	// TODO: ARCH: remove, runner should get action info directly from events
 	DB      db.Handle
 	LogsDir string
 	Ebus    *eventbus.EventBus
