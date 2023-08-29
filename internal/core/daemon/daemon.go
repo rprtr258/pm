@@ -410,7 +410,20 @@ func DaemonMain(ctx context.Context) error {
 						ebus.Publish(ctx, eventbus.NewPublishProcStopped(e.ProcID, -1, e.EmitReason))
 					}
 				case eventbus.DataProcSignalRequest:
-					if err := pmRunner.Signal(e.Signal, e.ProcID); err != nil {
+					proc, ok := dbHandle.GetProc(e.ProcID)
+					if !ok {
+						log.Error().Uint64("proc_id", e.ProcID).Msg("not found proc to stop")
+						continue
+					}
+
+					if proc.Status.Status != core.StatusRunning {
+						log.Error().
+							Uint64("proc_id", e.ProcID).
+							Msg("proc is not running, can't send signal")
+						continue
+					}
+
+					if err := pmRunner.Signal(e.Signal, proc.Status.Pid); err != nil {
 						log.Error().
 							Err(err).
 							Uint64("proc_id", e.ProcID).

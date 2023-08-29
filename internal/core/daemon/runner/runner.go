@@ -152,27 +152,16 @@ func (r Runner) Stop(ctx context.Context, pid int) (bool, error) {
 	return true, nil
 }
 
-func (r Runner) Signal(
-	signal syscall.Signal,
-	id core.ProcID,
-) error {
-	proc, ok := r.DB.GetProc(id)
-	if !ok {
-		return xerr.NewM("proc not found", xerr.Fields{"id": id})
-	}
+func (r Runner) Signal(signal syscall.Signal, pid int) error {
+	l := log.With().
+		Int("pid", pid).
+		Stringer("signal", signal).
+		Logger()
 
-	if proc.Status.Status != core.StatusRunning {
-		log.Info().
-			Any("proc", proc).
-			Stringer("signal", signal).
-			Msg("tried to send signal to non-running process")
-		return nil
-	}
-
-	process, errFindProc := os.FindProcess(proc.Status.Pid)
+	process, errFindProc := os.FindProcess(pid)
 	if errFindProc != nil {
 		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Fields{
-			"pid":    proc.Status.Pid,
+			"pid":    pid,
 			"signal": signal,
 		})
 	}
@@ -180,15 +169,9 @@ func (r Runner) Signal(
 	if errKill := syscall.Kill(-process.Pid, signal); errKill != nil {
 		switch {
 		case errors.Is(errKill, os.ErrProcessDone):
-			log.Warn().
-				Any("proc", proc).
-				Stringer("signal", signal).
-				Msg("tried to send signal to process which is done")
+			l.Warn().Msg("tried to send signal to process which is done")
 		case errors.Is(errKill, syscall.ESRCH): // no such process
-			log.Warn().
-				Any("proc", proc).
-				Stringer("signal", signal).
-				Msg("tried to send signal to process which doesn't exist")
+			l.Warn().Msg("tried to send signal to process which doesn't exist")
 		default:
 			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
 		}
