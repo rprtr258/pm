@@ -9,11 +9,12 @@ import (
 
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
-	pb "github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/core"
 )
 
 type fileSize int64

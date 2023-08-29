@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/rprtr258/fun"
-	pb "github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal/core"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/core"
 )
 
 //nolint:exhaustruct // can't return api.isProcessStatus_Status

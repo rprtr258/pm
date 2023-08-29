@@ -3,9 +3,10 @@ package daemon
 import (
 	"context"
 
+	"google.golang.org/protobuf/types/known/emptypb"
+
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 func (srv *daemonServer) Stop(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {

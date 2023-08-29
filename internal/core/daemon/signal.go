@@ -4,10 +4,11 @@ import (
 	"context"
 	"syscall"
 
-	pb "github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/xerr"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 )
 
 // Signal - send signal processes to processes

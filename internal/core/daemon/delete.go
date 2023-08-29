@@ -6,10 +6,11 @@ import (
 	"io/fs"
 	"os"
 
-	pb "github.com/rprtr258/pm/api"
-	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/xerr"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	pb "github.com/rprtr258/pm/api"
+	"github.com/rprtr258/pm/internal/core"
 )
 
 func removeFile(name string) error {

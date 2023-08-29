@@ -1,13 +1,14 @@
 package daemon
 
 import (
+	"google.golang.org/grpc"
+
 	"github.com/rprtr258/pm/api"
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/core/daemon/runner"
 	"github.com/rprtr258/pm/internal/infra/db"
-	"google.golang.org/grpc"
 )
 
 type daemonServer struct {

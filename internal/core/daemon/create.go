@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/xerr"
+
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/db"
-	"github.com/rprtr258/xerr"
 )
 
 type CreateQuery struct {
