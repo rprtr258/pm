@@ -95,28 +95,20 @@ func (r Runner) Start(proc core.Proc) (int, error) {
 	return process.Pid, nil
 }
 
-func (r Runner) Stop(ctx context.Context, procID core.ProcID) (bool, error) {
-	proc, ok := r.DB.GetProc(procID)
-	if !ok {
-		return false, xerr.NewM("not found proc to stop")
-	}
+func (r Runner) Stop(ctx context.Context, pid int) (bool, error) {
+	l := log.With().Int("pid", pid).Logger()
 
-	if proc.Status.Status != core.StatusRunning {
-		log.Info().Any("proc", proc).Msg("tried to stop non-running process")
-		return false, nil
-	}
-
-	process, errFindProc := os.FindProcess(proc.Status.Pid)
+	process, errFindProc := os.FindProcess(pid)
 	if errFindProc != nil {
-		return false, xerr.NewWM(errFindProc, "find process", xerr.Fields{"pid": proc.Status.Pid})
+		return false, xerr.NewWM(errFindProc, "find process", xerr.Fields{"pid": pid})
 	}
 
 	if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
 		switch {
 		case errors.Is(errKill, os.ErrProcessDone):
-			log.Warn().Any("proc", proc).Msg("tried stop process which is done")
+			l.Warn().Msg("tried stop process which is done")
 		case errors.Is(errKill, syscall.ESRCH): // no such process
-			log.Warn().Any("proc", proc).Msg("tried stop process which doesn't exist")
+			l.Warn().Msg("tried stop process which doesn't exist")
 		default:
 			return false, xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
 		}
@@ -127,20 +119,14 @@ func (r Runner) Stop(ctx context.Context, procID core.ProcID) (bool, error) {
 		state, errFindProc := process.Wait()
 		if errFindProc != nil {
 			if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
-				log.Error().
-					Err(errFindProc).
-					Int("pid", process.Pid).
-					Msg("releasing process")
+				l.Error().Err(errFindProc).Msg("releasing process")
 				doneCh <- struct{}{}
 				return
 			}
 
-			log.Info().
-				Any("proc", procFields(proc)).
-				Msg("process is not a child")
+			l.Info().Msg("process is not a child")
 		} else {
-			log.Info().
-				Any("proc", procFields(proc)).
+			l.Info().
 				Bool("is_state_nil", state == nil).
 				Int("exit_code", state.ExitCode()).
 				Msg("process is stopped")
@@ -153,7 +139,7 @@ func (r Runner) Stop(ctx context.Context, procID core.ProcID) (bool, error) {
 
 	select {
 	case <-timer.C:
-		log.Warn().Any("proc", proc).Msg("timed out waiting for process to stop from SIGTERM, killing it")
+		l.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
 
 		if errKill := syscall.Kill(-process.Pid, syscall.SIGKILL); errKill != nil {
 			return false, xerr.NewWM(errKill, "kill process", xerr.Fields{"pid": process.Pid})
