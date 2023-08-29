@@ -90,7 +90,7 @@ func (srv *daemonServer) create(query CreateQuery) (core.ProcID, error) {
 	return procID, nil
 }
 
-func (srv *daemonServer) Create(ctx context.Context, req *pb.CreateRequest) (*pb.ProcID, error) {
+func (srv *daemonServer) Create(_ context.Context, req *pb.CreateRequest) (*pb.ProcID, error) {
 	procID, err := srv.create(CreateQuery{
 		Name:       fun.FromPtr(req.Name),
 		Cwd:        req.GetCwd(),
