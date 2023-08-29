@@ -152,11 +152,16 @@ func (r Runner) Stop(ctx context.Context, pid int) (bool, error) {
 	return true, nil
 }
 
-func (r Runner) signal(
+func (r Runner) Signal(
 	ctx context.Context,
 	signal syscall.Signal,
-	proc core.Proc,
+	id core.ProcID,
 ) error {
+	proc, ok := r.DB.GetProc(id)
+	if !ok {
+		return xerr.NewM("proc not found", xerr.Fields{"id": id})
+	}
+
 	select {
 	case <-ctx.Done():
 		return nil
@@ -197,17 +202,4 @@ func (r Runner) signal(
 	}
 
 	return nil
-}
-
-func (r Runner) Signal(
-	ctx context.Context,
-	signal syscall.Signal,
-	procIDs ...core.ProcID,
-) error {
-	var merr error
-	for _, proc := range r.DB.GetProcs(core.WithIDs(procIDs...)) {
-		xerr.AppendInto(&merr, r.signal(ctx, signal, proc))
-	}
-
-	return merr
 }
