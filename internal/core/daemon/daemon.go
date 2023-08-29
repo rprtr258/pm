@@ -273,9 +273,8 @@ func DaemonMain(ctx context.Context) error {
 	go pmWatcher.Start(ctx)
 
 	pmRunner := runner.Runner{
-		DB:      dbHandle,
-		LogsDir: _dirProcsLogs,
-		Ebus:    ebus,
+		DB:   dbHandle,
+		Ebus: ebus,
 	}
 
 	go func() {

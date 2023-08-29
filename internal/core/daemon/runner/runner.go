@@ -5,17 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"syscall"
 	"time"
 
-	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
-	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
@@ -40,94 +37,8 @@ func procFields(proc core.Proc) map[string]any {
 
 type Runner struct {
 	// TODO: ARCH: remove, runner should get action info directly from events
-	DB      db.Handle
-	LogsDir string
-	Ebus    *eventbus.EventBus
-}
-
-type CreateQuery struct {
-	Command    string
-	Args       []string
-	Name       fun.Option[string]
-	Cwd        string
-	Tags       []string
-	Env        map[string]string
-	Watch      fun.Option[string]
-	StdoutFile fun.Option[string]
-	StderrFile fun.Option[string]
-}
-
-func (r Runner) create(_ context.Context, query CreateQuery) (core.ProcID, error) {
-	// try to find by name and update
-	if name, ok := query.Name.Unpack(); ok {
-		procs := r.DB.GetProcs(core.WithAllIfNoFilters)
-
-		if procID, ok := fun.FindKeyBy(
-			procs,
-			func(_ core.ProcID, procData core.Proc) bool {
-				return procData.Name == name
-			},
-		); ok { // TODO: early exit from outer if block
-			procData := core.Proc{
-				ID:         procID,
-				Status:     core.NewStatusCreated(),
-				Name:       name,
-				Cwd:        query.Cwd,
-				Tags:       fun.Uniq(append(query.Tags, "all")),
-				Command:    query.Command,
-				Args:       query.Args,
-				Watch:      query.Watch,
-				Env:        query.Env,
-				StdoutFile: query.StdoutFile.OrDefault(filepath.Join(r.LogsDir, fmt.Sprintf("%d.stdout", procID))),
-				StderrFile: query.StderrFile.OrDefault(filepath.Join(r.LogsDir, fmt.Sprintf("%d.stderr", procID))),
-			}
-
-			proc := procs[procID]
-			if proc.Status.Status != core.StatusRunning ||
-				proc.Cwd == procData.Cwd &&
-					len(proc.Tags) == len(procData.Tags) && // TODO: compare lists, not lengths
-					proc.Command == procData.Command &&
-					len(proc.Args) == len(procData.Args) && // TODO: compare lists, not lengths
-					proc.Watch == procData.Watch {
-				// not updated, do nothing
-				return procID, nil
-			}
-
-			if errUpdate := r.DB.UpdateProc(procData); errUpdate != nil {
-				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{
-					// "procData": procFields(procData),
-				})
-			}
-
-			return procID, nil
-		}
-	}
-
-	procID, err := r.DB.AddProc(db.CreateQuery{
-		Name:       query.Name.OrDefault(namegen.New()),
-		Cwd:        query.Cwd,
-		Tags:       fun.Uniq(append(query.Tags, "all")),
-		Command:    query.Command,
-		Args:       query.Args,
-		Watch:      query.Watch,
-		Env:        query.Env,
-		StdoutFile: query.StdoutFile,
-		StderrFile: query.StderrFile,
-	}, r.LogsDir)
-	if err != nil {
-		return 0, xerr.NewWM(err, "save proc")
-	}
-
-	return procID, nil
-}
-
-func (r Runner) Create(ctx context.Context, query CreateQuery) (core.ProcID, error) {
-	procID, errCreate := r.create(ctx, query)
-	if errCreate != nil {
-		return 0, errCreate
-	}
-
-	return procID, nil
+	DB   db.Handle
+	Ebus *eventbus.EventBus
 }
 
 func (r Runner) Start1(procID core.ProcID) (int, error) {

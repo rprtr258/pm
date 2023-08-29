@@ -15,7 +15,6 @@ type daemonServer struct {
 	db               db.Handle
 	ebus             *eventbus.EventBus
 	homeDir, logsDir string
-	runner           runner.Runner // TODO: remove, used only for create
 }
 
 func newServer(
@@ -33,7 +32,6 @@ func newServer(
 		homeDir:                   core.DirHome,
 		logsDir:                   _dirProcsLogs,
 		ebus:                      ebus,
-		runner:                    pmRunner,
 	})
 	return srv
 }
