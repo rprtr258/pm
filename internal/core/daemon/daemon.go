@@ -17,7 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 
-	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/core/daemon/runner"
@@ -279,19 +278,6 @@ func DaemonMain(ctx context.Context) error {
 		Ebus:    ebus,
 	}
 
-	srv := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
-		grpc.ChainStreamInterceptor(streamLoggerInterceptor),
-	)
-	api.RegisterDaemonServer(srv, &daemonServer{
-		UnimplementedDaemonServer: api.UnimplementedDaemonServer{},
-		db:                        dbHandle,
-		homeDir:                   core.DirHome,
-		logsDir:                   _dirProcsLogs,
-		ebus:                      ebus,
-		runner:                    pmRunner,
-	})
-
 	go func() {
 		c := make(chan os.Signal, 10) //nolint:gomnd // arbitrary buffer size
 		signal.Notify(c, syscall.SIGCHLD)
@@ -436,6 +422,8 @@ func DaemonMain(ctx context.Context) error {
 		return xerr.NewWM(errListen, "net.Listen on rpc socket", xerr.Fields{"socket": core.SocketRPC})
 	}
 	defer deferErr("close listening socket", sock.Close)
+
+	srv := newServer(dbHandle, ebus, pmRunner)
 
 	doneCh := make(chan error, 1)
 	go func() {
