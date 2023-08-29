@@ -273,7 +273,6 @@ func DaemonMain(ctx context.Context) error {
 	go pmWatcher.Start(ctx)
 
 	pmRunner := runner.Runner{
-		DB:   dbHandle,
 		Ebus: ebus,
 	}
 

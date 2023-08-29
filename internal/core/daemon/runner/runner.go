@@ -13,7 +13,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
-	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 func procFields(proc core.Proc) map[string]any {
@@ -36,8 +35,6 @@ func procFields(proc core.Proc) map[string]any {
 }
 
 type Runner struct {
-	// TODO: ARCH: remove, runner should get action info directly from events
-	DB   db.Handle
 	Ebus *eventbus.EventBus
 }
 
