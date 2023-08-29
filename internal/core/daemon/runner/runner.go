@@ -41,11 +41,7 @@ type Runner struct {
 	Ebus *eventbus.EventBus
 }
 
-func (r Runner) Start1(procID core.ProcID) (int, error) {
-	proc, ok := r.DB.GetProc(procID)
-	if !ok {
-		return 0, xerr.NewM("invalid procs count got by id")
-	}
+func (r Runner) Start1(proc core.Proc) (int, error) {
 	if proc.Status.Status == core.StatusRunning {
 		return 0, xerr.NewM("process is already running")
 	}

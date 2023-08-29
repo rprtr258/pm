@@ -371,7 +371,7 @@ func DaemonMain(ctx context.Context) error {
 						continue
 					}
 
-					pid, errStart := pmRunner.Start1(proc.ID)
+					pid, errStart := pmRunner.Start1(proc)
 					if errStart != nil {
 						log.Error().
 							Uint64("proc_id", e.ProcID).
