@@ -132,7 +132,7 @@ func (c Client) Stop(ctx context.Context, id uint64) error {
 	return nil
 }
 
-func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64) error {
+func (c Client) Signal(ctx context.Context, signal syscall.Signal, id uint64) error {
 	var apiSignal pb.Signal
 	switch signal { //nolint:exhaustive // other signals are not supported now
 	case syscall.SIGTERM:
@@ -144,10 +144,10 @@ func (c Client) Signal(ctx context.Context, signal syscall.Signal, ids []uint64)
 	}
 
 	if _, err := c.client.Signal(ctx, &pb.SignalRequest{
-		Ids:    ids,
+		Id:     &pb.ProcID{Id: id},
 		Signal: apiSignal,
 	}); err != nil {
-		return xerr.NewWM(err, "server.signal", xerr.Fields{"ids": ids})
+		return xerr.NewWM(err, "server.signal", xerr.Fields{"proc_id": id})
 	}
 
 	return nil

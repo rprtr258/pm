@@ -99,21 +99,6 @@ func (r Runner) Start1(proc core.Proc) (int, error) {
 	return process.Pid, nil
 }
 
-// func (r Runner) Start(ctx context.Context, procIDs ...core.ProcID) error {
-// 	procs := r.DB.GetProcs(core.WithIDs(procIDs...))
-
-// 	for _, proc := range procs {
-// 		select {
-// 		case <-ctx.Done():
-// 			return nil
-// 		default:
-// 		}
-
-// 	}
-
-// 	return nil
-// }
-
 func (r Runner) Stop1(ctx context.Context, procID core.ProcID) (bool, error) {
 	proc, ok := r.DB.GetProc(procID)
 	if !ok {
@@ -184,32 +169,6 @@ func (r Runner) Stop1(ctx context.Context, procID core.ProcID) (bool, error) {
 
 	return true, nil
 }
-
-// func (r Runner) Stop(ctx context.Context, procIDs ...core.ProcID) ([]core.ProcID, error) {
-// 	stoppedIDs := []core.ProcID{}
-
-// 	var merr error
-// 	for _, procID := range procIDs {
-// 		select {
-// 		case <-ctx.Done():
-// 			return nil, nil
-// 		default:
-// 		}
-
-// 		stopped, errStop := r.Stop1(ctx, procID)
-// 		if errStop != nil {
-// 			xerr.AppendInto(&merr, errStop)
-// 			continue
-// 		}
-
-// 		if stopped {
-// 			r.Ebus.PublishProcStopped(procID, -1, eventbus.EmitReasonByUser)
-// 			stoppedIDs = append(stoppedIDs, procID)
-// 		}
-// 	}
-
-// 	return stoppedIDs, merr
-// }
 
 func (r Runner) signal(
 	ctx context.Context,

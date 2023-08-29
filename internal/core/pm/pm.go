@@ -75,10 +75,10 @@ func (app App) Signal(
 		return []core.ProcID{}, nil
 	}
 
-	if err := app.client.Signal(ctx, signal, fun.Map[uint64](procIDs, func(procID core.ProcID) uint64 {
-		return procID
-	})); err != nil {
-		return nil, xerr.NewWM(err, "client.stop")
+	for _, id := range procIDs {
+		if err := app.client.Signal(ctx, signal, id); err != nil {
+			return nil, xerr.NewWM(err, "client.stop", xerr.Fields{"proc_id": id})
+		}
 	}
 
 	return procIDs, nil
@@ -87,7 +87,7 @@ func (app App) Signal(
 func (app App) Stop(ctx context.Context, procIDs ...core.ProcID) error {
 	for _, id := range procIDs {
 		if err := app.client.Stop(ctx, id); err != nil {
-			return xerr.NewWM(err, "client.stop")
+			return xerr.NewWM(err, "client.stop", xerr.Fields{"proc_id": id})
 		}
 	}
 
@@ -97,7 +97,7 @@ func (app App) Stop(ctx context.Context, procIDs ...core.ProcID) error {
 func (app App) Delete(ctx context.Context, procIDs ...core.ProcID) error {
 	for _, id := range procIDs {
 		if errDelete := app.client.Delete(ctx, id); errDelete != nil {
-			return xerr.NewWM(errDelete, "client.delete", xerr.Fields{"procIDs": procIDs})
+			return xerr.NewWM(errDelete, "client.delete", xerr.Fields{"proc_id": id})
 		}
 	}
 

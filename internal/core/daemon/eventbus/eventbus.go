@@ -96,8 +96,8 @@ type DataProcStopRequest struct {
 }
 
 type DataProcSignalRequest struct {
-	ProcIDs []core.ProcID
-	Signal  syscall.Signal
+	ProcID core.ProcID
+	Signal syscall.Signal
 }
 
 type Subscriber struct {
@@ -264,12 +264,12 @@ func NewPublishProcStopRequest(procID core.ProcID, emitReason EmitReason) Event 
 	}
 }
 
-func NewPublishProcSignalRequest(signal syscall.Signal, procIDs ...core.ProcID) Event {
+func NewPublishProcSignalRequest(signal syscall.Signal, procID core.ProcID) Event {
 	return Event{
 		Kind: KindProcSignalRequest,
 		Data: DataProcSignalRequest{
-			ProcIDs: procIDs,
-			Signal:  signal,
+			ProcID: procID,
+			Signal: signal,
 		},
 	}
 }

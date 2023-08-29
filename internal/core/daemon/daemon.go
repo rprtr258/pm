@@ -397,10 +397,10 @@ func DaemonMain(ctx context.Context) error {
 						ebus.Publish(ctx, eventbus.NewPublishProcStopped(e.ProcID, -1, e.EmitReason))
 					}
 				case eventbus.DataProcSignalRequest:
-					if err := pmRunner.Signal(ctx, e.Signal, e.ProcIDs...); err != nil {
+					if err := pmRunner.Signal(ctx, e.Signal, e.ProcID); err != nil {
 						log.Error().
 							Err(err).
-							Uints64("proc_id", e.ProcIDs).
+							Uint64("proc_id", e.ProcID).
 							Any("signal", e.Signal).
 							Msg("failed to signal procs")
 					}

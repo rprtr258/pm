@@ -25,7 +25,7 @@ func (srv *daemonServer) Signal(ctx context.Context, req *pb.SignalRequest) (*em
 		return nil, xerr.NewM("unknown signal", xerr.Fields{"signal": req.GetSignal()})
 	}
 
-	srv.ebus.Publish(ctx, eventbus.NewPublishProcSignalRequest(signal, req.GetIds()...))
+	srv.ebus.Publish(ctx, eventbus.NewPublishProcSignalRequest(signal, req.GetId().GetId()))
 
 	return &emptypb.Empty{}, nil
 }

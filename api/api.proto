@@ -85,8 +85,8 @@ enum Signal {
 }
 
 message SignalRequest {
-  repeated uint64 ids = 1;
-  Signal          signal = 2;
+  ProcID id    = 1;
+  Signal signal = 2;
 }
 
 message LogLine {
