@@ -378,6 +378,13 @@ func DaemonMain(ctx context.Context) error {
 							// Any("proc", procFields(proc)).
 							Err(errStart).
 							Msg("failed to start proc")
+						if errSetStatus := dbHandle.SetStatus(proc.ID, core.NewStatusInvalid()); errSetStatus != nil {
+							log.Error().
+								Err(errSetStatus).
+								Uint64("proc_id", e.ProcID).
+								Msg("failed to set proc status to invalid")
+						}
+
 						continue
 					}
 

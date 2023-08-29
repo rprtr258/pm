@@ -89,10 +89,6 @@ func (r Runner) Start(proc core.Proc) (int, error) {
 	args := append([]string{proc.Command}, proc.Args...)
 	process, err := os.StartProcess(proc.Command, args, &procAttr)
 	if err != nil {
-		if errSetStatus := r.DB.SetStatus(proc.ID, core.NewStatusInvalid()); errSetStatus != nil {
-			return 0, xerr.NewM("running failed, setting errored status failed", xerr.Errors{err, errSetStatus})
-		}
-
 		return 0, xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
 	}
 
