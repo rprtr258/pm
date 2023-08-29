@@ -216,7 +216,7 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 			fun.
 				If(pid == nil, "").
 				ElseF(func() string {
-					return strconv.Itoa(fun.Deref(pid))
+					return strconv.Itoa(*pid)
 				}),
 			// TODO: check status instead for following parameters
 			fun.If(pid == nil, "").Else(uptime.Truncate(time.Second).String()),
