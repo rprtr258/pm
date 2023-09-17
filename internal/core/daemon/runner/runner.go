@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 
@@ -15,23 +16,32 @@ import (
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 )
 
-func procFields(proc core.Proc) map[string]any {
-	return map[string]any{
-		"id":          proc.ID,
-		"command":     proc.Command,
-		"cwd":         proc.Cwd,
-		"name":        proc.Name,
-		"args":        proc.Args,
-		"tags":        proc.Tags,
-		"watch":       proc.Watch,
-		"status":      proc.Status,
-		"stdout_file": proc.StdoutFile,
-		"stderr_file": proc.StderrFile,
+func optionToString[T any](opt fun.Option[T]) string {
+	if !opt.Valid {
+		return "None"
+	}
+
+	return fmt.Sprintf("Some(%v)", opt.Value)
+}
+
+func procFields(proc core.Proc) string {
+	return fmt.Sprintf(
+		`Proc[id=%d, command=%q, cwd=%q, name=%q, args=%q, tags=%q, watch=%q, status=%q, stdout_file=%q, stderr_file=%q]`,
+		proc.ID,
+		proc.Command,
+		proc.Cwd,
+		proc.Name,
+		proc.Args,
+		proc.Tags,
+		optionToString(proc.Watch),
+		proc.Status,
+		proc.StdoutFile,
+		proc.StderrFile,
 		// TODO: uncomment
 		// "restart_tries": proc.RestartTries,
 		// "restart_delay": proc.RestartDelay,
 		// "respawns":     proc.Respawns,
-	}
+	)
 }
 
 type Runner struct {

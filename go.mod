@@ -13,7 +13,7 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/fun v0.0.6
 	github.com/rprtr258/simpdb v0.6.1
-	github.com/rprtr258/xerr v0.1.2
+	github.com/rprtr258/xerr v0.1.3
 	github.com/rs/zerolog v1.30.0
 	github.com/samber/lo v1.38.1
 	github.com/stretchr/testify v1.8.2
