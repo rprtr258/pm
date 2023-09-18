@@ -11,9 +11,11 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/fx"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
+	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 func optionToString[T any](opt fun.Option[T]) string {
@@ -45,7 +47,102 @@ func procFields(proc core.Proc) string {
 }
 
 type Runner struct {
-	Ebus *eventbus.EventBus
+	ebus *eventbus.EventBus
+}
+
+func Start(lc fx.Lifecycle, ebus *eventbus.EventBus, dbHandle db.Handle) {
+	pmRunner := Runner{
+		ebus: ebus,
+	}
+	// scheduler loop, starts/restarts/stops procs
+	procRequestsCh := ebus.Subscribe(
+		"scheduler",
+		eventbus.KindProcStartRequest,
+		eventbus.KindProcStopRequest,
+		eventbus.KindProcSignalRequest,
+	)
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			go func() {
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case event := <-procRequestsCh:
+						switch e := event.Data.(type) {
+						case eventbus.DataProcStartRequest:
+							proc, ok := dbHandle.GetProc(e.ProcID)
+							if !ok {
+								log.Error().Uint64("proc_id", e.ProcID).Msg("not found proc to start")
+								continue
+							}
+
+							pid, errStart := pmRunner.Start(proc)
+							if errStart != nil {
+								log.Error().
+									Uint64("proc_id", e.ProcID).
+									// Any("proc", procFields(proc)).
+									Err(errStart).
+									Msg("failed to start proc")
+								if errSetStatus := dbHandle.SetStatus(proc.ID, core.NewStatusInvalid()); errSetStatus != nil {
+									log.Error().
+										Err(errSetStatus).
+										Uint64("proc_id", e.ProcID).
+										Msg("failed to set proc status to invalid")
+								}
+
+								continue
+							}
+
+							ebus.Publish(ctx, eventbus.NewPublishProcStarted(proc, pid, e.EmitReason))
+						case eventbus.DataProcStopRequest:
+							proc, ok := dbHandle.GetProc(e.ProcID)
+							if !ok {
+								log.Error().Uint64("proc_id", e.ProcID).Msg("not found proc to stop")
+								continue
+							}
+
+							stopped, errStart := pmRunner.Stop(ctx, proc.Status.Pid)
+							if errStart != nil {
+								log.Error().
+									Err(errStart).
+									Uint64("proc_id", e.ProcID).
+									// Any("proc", procFields(proc)).
+									Msg("failed to stop proc")
+								continue
+							}
+
+							if stopped {
+								ebus.Publish(ctx, eventbus.NewPublishProcStopped(e.ProcID, -1, e.EmitReason))
+							}
+						case eventbus.DataProcSignalRequest:
+							proc, ok := dbHandle.GetProc(e.ProcID)
+							if !ok {
+								log.Error().Uint64("proc_id", e.ProcID).Msg("not found proc to stop")
+								continue
+							}
+
+							if proc.Status.Status != core.StatusRunning {
+								log.Error().
+									Uint64("proc_id", e.ProcID).
+									Msg("proc is not running, can't send signal")
+								continue
+							}
+
+							if err := pmRunner.Signal(e.Signal, proc.Status.Pid); err != nil {
+								log.Error().
+									Err(err).
+									Uint64("proc_id", e.ProcID).
+									Any("signal", e.Signal).
+									Msg("failed to signal procs")
+							}
+						}
+					}
+				}
+			}()
+			return nil
+		},
+	})
 }
 
 func (r Runner) Start(proc core.Proc) (int, error) {

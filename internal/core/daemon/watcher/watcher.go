@@ -8,6 +8,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/fx"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
@@ -26,20 +27,41 @@ type Watcher struct {
 	statusCh    <-chan eventbus.Event
 }
 
-func New(watcher *fsnotify.Watcher, ebus *eventbus.EventBus) Watcher {
-	statusCh := ebus.Subscribe(
-		"watcher",
-		eventbus.KindProcStarted,
-		eventbus.KindProcStopped,
-	)
-	return Watcher{
-		watcher:     watcher,
-		watchplaces: make(map[core.ProcID]watcherEntry),
-		dirs:        make(map[string][]core.ProcID),
-		statusCh:    statusCh,
-		ebus:        ebus,
-	}
-}
+var Module = fx.Options(
+	fx.Provide(func(lc fx.Lifecycle) (*fsnotify.Watcher, error) {
+		fsWatcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			return nil, err
+		}
+
+		lc.Append(fx.Hook{
+			OnStop: func(ctx context.Context) error {
+				return fsWatcher.Close()
+			},
+		})
+		return fsWatcher, nil
+	}),
+	fx.Invoke(func(lc fx.Lifecycle, watcher *fsnotify.Watcher, ebus *eventbus.EventBus) Watcher {
+		pmWatcher := Watcher{
+			watcher:     watcher,
+			watchplaces: make(map[core.ProcID]watcherEntry),
+			dirs:        make(map[string][]core.ProcID),
+			statusCh: ebus.Subscribe(
+				"watcher",
+				eventbus.KindProcStarted,
+				eventbus.KindProcStopped,
+			),
+			ebus: ebus,
+		}
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				go pmWatcher.Start(ctx)
+				return nil
+			},
+		})
+		return pmWatcher
+	}),
+)
 
 func (w Watcher) Add(procID core.ProcID, dir, pattern string) {
 	log.Info().
