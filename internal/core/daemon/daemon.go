@@ -15,6 +15,7 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/fx"
 	"google.golang.org/grpc"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -243,6 +244,8 @@ func streamLoggerInterceptor(
 }
 
 func DaemonMain(ctx context.Context) error {
+	fx.New()
+
 	config, errConfig := readPmConfig()
 	if errConfig != nil {
 		return xerr.NewWM(errConfig, "read pm config")
@@ -449,14 +452,12 @@ func DaemonMain(ctx context.Context) error {
 
 	srv := newServer(dbHandle, ebus, pmRunner)
 
-	doneCh := make(chan error, 1)
 	go func() {
 		log.Info().Stringer("socket", sock.Addr()).Msg("daemon started")
 		if errServe := srv.Serve(sock); errServe != nil {
-			doneCh <- xerr.NewWM(errServe, "serve")
-		} else {
-			doneCh <- nil
+			log.Error().Err(errServe).Msg("serve")
 		}
+		cancel()
 	}()
 	defer func() {
 		if errRm := os.Remove(core.SocketRPC); errRm != nil && !errors.Is(errRm, os.ErrNotExist) {
@@ -467,18 +468,10 @@ func DaemonMain(ctx context.Context) error {
 		}
 	}()
 
-	select {
-	case <-ctx.Done():
-		log.Info().Msg("received signal, exiting")
-		srv.GracefulStop()
-		return nil
-	case err := <-doneCh:
-		if err != nil {
-			return xerr.NewWM(err, "server stopped")
-		}
-
-		return nil
-	}
+	<-ctx.Done()
+	log.Info().Msg("received signal, exiting")
+	srv.GracefulStop()
+	return nil
 }
 
 func deferErr(name string, closer func() error) func() {
