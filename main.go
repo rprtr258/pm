@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	// TODO: pretty log if not daemon
 	log.Logger = zerolog.New(os.Stderr).With().
 		Timestamp().
 		Caller().
