@@ -119,12 +119,13 @@ func (l fxLogger) LogEvent(e fxevent.Event) {
 	}
 }
 
+// TODO: not working, fix
 func startChildrenStatuser(lc fx.Lifecycle, ebus *eventbus.EventBus, dbHandle db.Handle) {
+	c := make(chan os.Signal, 10) //nolint:gomnd // arbitrary buffer size
+	signal.Notify(c, syscall.SIGCHLD)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			go func() {
-				c := make(chan os.Signal, 10) //nolint:gomnd // arbitrary buffer size
-				signal.Notify(c, syscall.SIGCHLD)
 				for range c {
 					// wait for any of childs' death
 					for {

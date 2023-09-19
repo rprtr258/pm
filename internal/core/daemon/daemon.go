@@ -236,7 +236,7 @@ func streamLoggerInterceptor(
 	err := handler(srv, ss)
 
 	// log method and resulting error if any
-	log.Info().Err(err).Msg(info.FullMethod)
+	log.Err(err).Msg(info.FullMethod)
 
 	return err
 }
