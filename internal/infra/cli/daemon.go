@@ -10,8 +10,9 @@ import (
 )
 
 var _daemonCmd = &cli.Command{
-	Name:  "daemon",
-	Usage: "manage daemon",
+	Name:    "daemon",
+	Usage:   "manage daemon",
+	Aliases: []string{"d"},
 	Subcommands: []*cli.Command{
 		{
 			Name:    "start",
