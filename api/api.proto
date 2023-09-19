@@ -104,4 +104,5 @@ message LogLine {
 message ProcsLogs {
   uint64           id    = 1;
   repeated LogLine lines = 2;
+  string           name  = 3;
 }

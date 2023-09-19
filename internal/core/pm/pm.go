@@ -198,7 +198,8 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.ProcLogs, 
 				return
 			case procLogs := <-iterr.Logs:
 				res <- core.ProcLogs{
-					ID: procLogs.GetId(),
+					ID:   procLogs.GetId(),
+					Name: procLogs.GetName(),
 					Lines: fun.Map[core.LogLine](
 						procLogs.GetLines(),
 						func(line *pb.LogLine, _ int) core.LogLine {

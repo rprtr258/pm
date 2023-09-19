@@ -72,7 +72,7 @@ func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
 						"at": color.HiBlackString("%s", line.At.In(time.Local).Format("2006-01-02 15:04:05")),
 						// TODO: different colors for different IDs
 						// TODO: pass proc name
-						"proc": color.RedString("%d|%s", procLines.ID, "proc-name"),
+						"proc": color.RedString("%d|%s", procLines.ID, procLines.Name),
 						"sep":  color.GreenString("%s", "|"),
 						"line": lineType(line.Line),
 					},

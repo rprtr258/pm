@@ -41,4 +41,5 @@ type LogLine struct {
 type ProcLogs struct {
 	Lines []LogLine
 	ID    ProcID
+	Name  string
 }
