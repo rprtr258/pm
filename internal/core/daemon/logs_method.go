@@ -147,6 +147,7 @@ func (srv *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error
 					return
 				}
 
+				// TODO: stop on proc death
 				if errSend := stream.Send(&pb.ProcsLogs{
 					Id:    id,
 					Lines: []*pb.LogLine{line}, // TODO: collect lines for some time and send all at once

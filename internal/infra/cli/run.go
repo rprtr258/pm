@@ -146,10 +146,11 @@ var _runCmd = &cli.Command{
 			}
 
 			procID, errRun := app.Run(ctx.Context, runConfig)
-			printIDs(procID)
 			if errRun != nil {
 				return xerr.NewWM(errRun, "run command", xerr.Fields{"run_config": runConfig, "proc_id": procID})
 			}
+
+			printIDs(procID)
 
 			return nil
 		}

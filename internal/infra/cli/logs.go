@@ -66,7 +66,8 @@ func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
 				}
 
 				fmt.Println(fmt2.FormatComplex(
-					"{at} {proc} {sep} {line}",
+					// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
+					"{proc} {sep} {line}",
 					map[string]any{
 						"at": color.HiBlackString("%s", line.At.In(time.Local).Format("2006-01-02 15:04:05")),
 						// TODO: different colors for different IDs
