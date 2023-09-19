@@ -117,7 +117,11 @@ func (app App) List(ctx context.Context) (core.Procs, error) {
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
 func (app App) Run(ctx context.Context, config core.RunConfig) (core.ProcID, error) {
-	var merr error
+	// if command is relative, add workdir first
+	if filepath.IsLocal(config.Command) {
+		config.Command = filepath.Join(config.Cwd, config.Command)
+	}
+
 	command, errLook := exec.LookPath(config.Command)
 	if errLook != nil {
 		return 0, xerr.NewWM(
@@ -126,6 +130,8 @@ func (app App) Run(ctx context.Context, config core.RunConfig) (core.ProcID, err
 			xerr.Fields{"executable": config.Command},
 		)
 	}
+
+	var merr error
 	if command == config.Command { // command contains slash and might be relative
 		var errAbs error
 		command, errAbs = filepath.Abs(command)
