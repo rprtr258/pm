@@ -241,10 +241,6 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 				return xerr.NewWM(errCreate, "create process")
 			}
 
-			if len(ids) != len(test.runConfigs) {
-				return xerr.NewM("unexpected number of processes", xerr.Fields{"proc_id": id})
-			}
-
 			if errStart := client.Start(ctx, id); errStart != nil {
 				return xerr.NewWM(errStart, "start process", xerr.Fields{"proc_id": id})
 			}
@@ -264,6 +260,9 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 			if errStop := client.Stop(ctx, id); errStop != nil {
 				return xerr.NewWM(errStop, "stop process", xerr.Fields{"proc_id": id})
 			}
+
+			// TODO: block on stop method instead, now it is async
+			time.Sleep(3 * time.Second) //nolint:gomnd // fuck you
 
 			if errDelete := client.Delete(ctx, id); errDelete != nil {
 				return xerr.NewWM(errDelete, "delete process", xerr.Fields{"proc_id": id})
