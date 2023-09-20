@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"slices"
+	"sort"
 )
 
 func printErr[T any](name string, f func() (T, error)) {
@@ -19,7 +19,7 @@ func main() {
 
 	fmt.Println("Envs:")
 	environ := os.Environ()
-	slices.Sort(environ)
+	sort.Strings(environ)
 	for _, env := range environ {
 		fmt.Println("\t", env)
 	}
