@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
 	"google.golang.org/grpc"
@@ -242,5 +243,10 @@ func streamLoggerInterceptor(
 }
 
 func DaemonMain(ctx context.Context) error {
+	log.Logger = zerolog.New(os.Stderr).With().
+		Timestamp().
+		Caller().
+		Logger()
+
 	return fx.New(newApp()).Start(ctx)
 }

@@ -143,11 +143,22 @@ var _runCmd = &cli.Command{
 				Watch:      watch,
 				StdoutFile: fun.Invalid[string](),
 				StderrFile: fun.Invalid[string](),
+				Actions: core.Actions{
+					Healthcheck: nil,
+					Custom:      nil,
+				},
+				KillTimeout:  0,
+				KillChildren: false,
+				Autorestart:  false,
+				MaxRestarts:  0,
 			}
 
 			procID, errRun := app.Run(ctx.Context, runConfig)
 			if errRun != nil {
-				return xerr.NewWM(errRun, "run command", xerr.Fields{"run_config": runConfig, "proc_id": procID})
+				return xerr.NewWM(errRun, "run command", xerr.Fields{
+					"run_config": runConfig,
+					"proc_id":    procID,
+				})
 			}
 
 			printIDs(procID)
