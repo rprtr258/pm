@@ -107,7 +107,7 @@ var _listCmd = &cli.Command{
 			}
 		case "status":
 			getOrder := func(p core.Proc) int {
-				//nolint:gomnd // priority weights
+				// priority weights
 				switch p.Status.Status {
 				case core.StatusCreated:
 					return 0

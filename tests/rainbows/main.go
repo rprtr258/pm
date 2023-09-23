@@ -10,7 +10,7 @@ import (
 func colors8() {
 	fmt.Println("8 Colors")
 	for i := 0; i < 8; i++ {
-		fmt.Printf("\u001b[%dmX", 30+i) //nolint:gomnd // color offset
+		fmt.Printf("\u001b[%dmX", 30+i)
 	}
 	fmt.Println("\u001b[0m")
 }
@@ -18,7 +18,7 @@ func colors8() {
 func colors16() {
 	fmt.Println("16 Colors")
 	for i := 0; i < 16; i++ {
-		fmt.Printf("\u001b[%d;1mX", 30+i) //nolint:gomnd // color offset
+		fmt.Printf("\u001b[%d;1mX", 30+i)
 	}
 	fmt.Println("\u001b[0m")
 }
@@ -37,7 +37,7 @@ func colors24bit() {
 	fmt.Println("24-bit Color")
 	i := 0
 	for hue := 0; hue < 256; hue++ {
-		r, g, b := rgbterm.HSLtoRGB(float64(hue)/256.0, 0.7, 0.5) //nolint:gomnd // iterate hue
+		r, g, b := rgbterm.HSLtoRGB(float64(hue)/256.0, 0.7, 0.5)
 		fmt.Print(rgbterm.FgString("X", r, g, b))
 		i++
 		if i%32 == 0 {

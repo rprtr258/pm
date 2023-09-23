@@ -121,7 +121,7 @@ func (l fxLogger) LogEvent(e fxevent.Event) {
 
 // TODO: not working, fix
 func startChildrenStatuser(lc fx.Lifecycle, ebus *eventbus.EventBus, dbHandle db.Handle) {
-	c := make(chan os.Signal, 10) //nolint:gomnd // arbitrary buffer size
+	c := make(chan os.Signal, 10) // arbitrary buffer size
 	signal.Notify(c, syscall.SIGCHLD)
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -215,7 +215,7 @@ func startCron(lc fx.Lifecycle, ebus *eventbus.EventBus, dbHandle db.Handle) {
 			go cron{
 				l:                 log.Logger.With().Str("system", "cron").Logger(),
 				db:                dbHandle,
-				statusUpdateDelay: 5 * time.Second, //nolint:gomnd // arbitrary timeout
+				statusUpdateDelay: 5 * time.Second,
 				ebus:              ebus,
 			}.start(ctx)
 			return nil

@@ -8,5 +8,7 @@ import (
 )
 
 func TestNewApp(t *testing.T) {
+	t.Parallel()
+
 	assert.NoError(t, fx.ValidateApp(newApp()))
 }

@@ -48,7 +48,7 @@ var _daemonCmd = &cli.Command{
 			Name:  "run",
 			Usage: "run daemon server without daemonizing, DON'T USE BY HAND IF YOU DON'T KNOW WHAT YOU ARE DOING",
 			Action: func(ctx *cli.Context) error {
-				if errRun := pm_daemon.DaemonMain(ctx.Context); errRun != nil {
+				if errRun := pm_daemon.Main(ctx.Context); errRun != nil {
 					return xerr.NewWM(errRun, "run daemon process")
 				}
 

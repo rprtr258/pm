@@ -94,11 +94,11 @@ func Status(ctx context.Context) error {
 // TODO: move to daemon infra
 var _daemonCtx = &daemon.Context{
 	PidFileName: _filePid,
-	PidFilePerm: 0o644, //nolint:gomnd // default pid file permissions, rwxr--r--
+	PidFilePerm: 0o644, // default pid file permissions, rwxr--r--
 	LogFileName: _fileLog,
-	LogFilePerm: 0o640, //nolint:gomnd // default log file permissions, rwxr-----
+	LogFilePerm: 0o640, // default log file permissions, rwxr-----
 	WorkDir:     "./",
-	Umask:       0o27, //nolint:gomnd // don't know
+	Umask:       0o27, // don't know
 	Args:        []string{"pm", "daemon", "start"},
 	Chroot:      "",
 	Env:         nil,
@@ -145,7 +145,7 @@ func Kill() error {
 
 	select {
 	case <-doneCh:
-	case <-time.After(5 * time.Second): //nolint:gomnd // arbitrary timeout
+	case <-time.After(5 * time.Second):
 		if err := proc.Kill(); err != nil {
 			if err == os.ErrProcessDone {
 				log.Info().Msg("daemon is done while killing")
@@ -177,7 +177,7 @@ func startDaemon(ctx context.Context) (int, error) {
 	}
 
 	// i am daemon here
-	return 0, DaemonMain(ctx)
+	return 0, Main(ctx)
 }
 
 func EnsureRunning(ctx context.Context) error {
@@ -286,7 +286,7 @@ func streamLoggerInterceptor(
 	return err
 }
 
-func DaemonMain(ctx context.Context) error {
+func Main(ctx context.Context) error {
 	log.Logger = zerolog.New(os.Stderr).With().
 		Timestamp().
 		Caller().

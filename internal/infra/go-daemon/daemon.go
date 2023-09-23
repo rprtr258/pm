@@ -299,7 +299,7 @@ func (d *Context) child() (err error) {
 
 	// create PID file after context decoding to know PID file full path.
 	if len(d.PidFileName) > 0 {
-		d.pidFile = NewLockFile(os.NewFile(4, d.PidFileName)) //nolint:gomnd // ???
+		d.pidFile = NewLockFile(os.NewFile(4, d.PidFileName)) // TODO: ???
 		if errWritePid := d.pidFile.WritePid(); errWritePid != nil {
 			return errWritePid
 		}
@@ -310,7 +310,7 @@ func (d *Context) child() (err error) {
 		}()
 	}
 
-	if errDup := unix.Dup2(3, 0); errDup != nil { //nolint:gomnd // ???
+	if errDup := unix.Dup2(3, 0); errDup != nil { // TODO: ???
 		return xerr.NewWM(errDup, "Dup2")
 	}
 

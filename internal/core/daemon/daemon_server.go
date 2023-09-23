@@ -6,16 +6,15 @@ import (
 	"net"
 	"os"
 
+	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"go.uber.org/fx"
 	"google.golang.org/grpc"
 
-	"github.com/rprtr258/pm/api"
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/infra/db"
-	"github.com/rprtr258/xerr"
-	"github.com/rs/zerolog/log"
 )
 
 type daemonServer struct {
@@ -52,8 +51,8 @@ func newServer(lc fx.Lifecycle, sock net.Listener, ebus *eventbus.EventBus, dbHa
 		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
 		grpc.ChainStreamInterceptor(streamLoggerInterceptor),
 	)
-	api.RegisterDaemonServer(srv, &daemonServer{
-		UnimplementedDaemonServer: api.UnimplementedDaemonServer{},
+	pb.RegisterDaemonServer(srv, &daemonServer{
+		UnimplementedDaemonServer: pb.UnimplementedDaemonServer{},
 		db:                        dbHandle,
 		homeDir:                   core.DirHome,
 		logsDir:                   _dirProcsLogs,

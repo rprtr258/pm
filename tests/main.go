@@ -173,7 +173,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		return xerr.NewWM(errRestart, "restart daemon")
 	}
 
-	ticker := time.NewTicker(100 * time.Millisecond) //nolint:gomnd // arbitrary time
+	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	for {
 		if _, err := client.HealthCheck(ctx); err == nil {
@@ -262,7 +262,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 			}
 
 			// TODO: block on stop method instead, now it is async
-			time.Sleep(3 * time.Second) //nolint:gomnd // fuck you
+			time.Sleep(3 * time.Second)
 
 			if errDelete := client.Delete(ctx, id); errDelete != nil {
 				return xerr.NewWM(errDelete, "delete process", xerr.Fields{"proc_id": id})

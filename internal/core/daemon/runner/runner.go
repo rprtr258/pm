@@ -239,7 +239,7 @@ func (r Runner) Stop(ctx context.Context, pid int) (bool, error) {
 		doneCh <- struct{}{}
 	}()
 
-	timer := time.NewTimer(time.Second * 5) //nolint:gomnd // arbitrary timeout
+	timer := time.NewTimer(time.Second * 5) // arbitrary timeout
 	defer timer.Stop()
 
 	select {

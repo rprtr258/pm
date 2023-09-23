@@ -27,7 +27,7 @@ func Logs(ctx context.Context, follow bool) error {
 		},
 		NotifyTimeout: 1 * time.Minute,
 		Follow:        follow,
-		BufferSize:    64 * 1024, //nolint:gomnd // 64 kb
+		BufferSize:    64 * 1024, // 64 kb
 		Logger:        nil,
 		Tracker:       nil,
 	})
