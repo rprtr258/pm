@@ -161,27 +161,15 @@ func (w Watcher) Start(ctx context.Context) {
 
 			switch e := event.Data.(type) {
 			case eventbus.DataProcStarted:
-				if _, ok := w.watchplaces[e.Proc.ID]; ok {
-					continue
-				}
-
-				if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
-					continue
-				}
-
-				if watch, ok := e.Proc.Watch.Unpack(); ok {
-					w.Add(e.Proc.ID, e.Proc.Cwd, watch)
+				if _, ok := w.watchplaces[e.Proc.ID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
+					if watch, ok := e.Proc.Watch.Unpack(); ok {
+						w.Add(e.Proc.ID, e.Proc.Cwd, watch)
+					}
 				}
 			case eventbus.DataProcStopped:
-				if _, ok := w.watchplaces[e.ProcID]; ok {
-					continue
+				if _, ok := w.watchplaces[e.ProcID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
+					w.Remove(e.ProcID)
 				}
-
-				if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
-					continue
-				}
-
-				w.Remove(e.ProcID)
 			}
 		}
 	}
