@@ -187,36 +187,22 @@ var _listCmd = &cli.Command{
 func mapStatus(status core.Status) (string, *int, time.Duration) {
 	switch status.Status {
 	case core.StatusCreated:
-		return buffer.NewString(func(b *buffer.Buffer) {
-			b.String("created", buffer.FgYellow)
-		}), nil, 0
+		return buffer.String("created", buffer.FgYellow), nil, 0
 	case core.StatusRunning:
-		return buffer.NewString(func(b *buffer.Buffer) {
-			b.String("running", buffer.FgGreen)
-		}), &status.Pid, time.Since(status.StartTime)
+		return buffer.String("running", buffer.FgGreen), &status.Pid, time.Since(status.StartTime)
 	case core.StatusStopped:
 		switch status.ExitCode {
 		case -1:
-			return buffer.NewString(func(b *buffer.Buffer) {
-				b.String("stopped(-1)", buffer.FgRed)
-			}), nil, 0
+			return buffer.String("stopped(-1)", buffer.FgRed), nil, 0
 		case 0:
-			return buffer.NewString(func(b *buffer.Buffer) {
-				b.String("exited", buffer.FgYellow)
-			}), nil, 0
+			return buffer.String("exited", buffer.FgYellow), nil, 0
 		default:
-			return buffer.NewString(func(b *buffer.Buffer) {
-				b.String(fmt.Sprintf("stopped(%d)", status.ExitCode), buffer.FgRed)
-			}), nil, 0
+			return buffer.String(fmt.Sprintf("stopped(%d)", status.ExitCode), buffer.FgRed), nil, 0
 		}
 	case core.StatusInvalid:
-		return buffer.NewString(func(b *buffer.Buffer) {
-			b.String(fmt.Sprintf("invalid(%#v)", status.Status), buffer.FgRed)
-		}), nil, 0
+		return buffer.String(fmt.Sprintf("invalid(%#v)", status.Status), buffer.FgRed), nil, 0
 	default:
-		return buffer.NewString(func(b *buffer.Buffer) {
-			b.String(fmt.Sprintf("BROKEN(%T)", status), buffer.FgRed)
-		}), nil, 0
+		return buffer.String(fmt.Sprintf("BROKEN(%T)", status), buffer.FgRed), nil, 0
 	}
 }
 
@@ -232,9 +218,7 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 		status, pid, uptime := mapStatus(proc.Status)
 
 		procsTable.AddRow(
-			buffer.NewString(func(b *buffer.Buffer) {
-				b.String(fmt.Sprint(proc.ID), buffer.FgCyan, buffer.ColorBold)
-			}),
+			buffer.String(fmt.Sprint(proc.ID), buffer.FgCyan, buffer.ColorBold),
 			proc.Name,
 			status,
 			fun.

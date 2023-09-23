@@ -2,6 +2,7 @@ package buffer
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 
 	"github.com/rprtr258/fun/iter"
@@ -45,35 +46,48 @@ func New(out io.Writer) *Buffer {
 	return &Buffer{out}
 }
 
-func (b *Buffer) Bytes(bs ...byte) *Buffer {
+func (b *Buffer) write(bs ...byte) *Buffer {
 	b.out.Write(bs) //nolint:errcheck // fuck you
 	return b
 }
 
+func (b *Buffer) Bytes(bs ...byte) *Buffer {
+	return b.write(bs...)
+}
+
 func (b *Buffer) RepeatByte(c byte, n int) *Buffer {
-	b.out.Write(bytes.Repeat([]byte{c}, n)) //nolint:errcheck // fuck you
+	return b.write(bytes.Repeat([]byte{c}, n)...)
+}
+
+func (b *Buffer) Printf(format string, args ...any) *Buffer {
+	fmt.Fprintf(b.out, format, args...)
+	return b
+}
+
+func (b *Buffer) Println(format string) *Buffer {
+	fmt.Fprintln(b.out, format)
 	return b
 }
 
 func (b *Buffer) String(s string, mods ...[]byte) *Buffer {
 	if len(mods) > 0 {
 		for _, mod := range mods {
-			b.out.Write(mod)
+			b.write(mod...)
 		}
 	}
 	io.WriteString(b.out, s) //nolint:errcheck // fuck you
 	if len(mods) > 0 {
-		b.out.Write(ColorReset)
+		b.write(ColorReset...)
 	}
 	return b
 }
 
 func (b *Buffer) Styled(f func(*Buffer), mods ...[]byte) *Buffer {
 	for _, mod := range mods {
-		b.out.Write(mod) //nolint:errcheck // fuck you
+		b.write(mod...)
 	}
 	f(b)
-	b.out.Write(ColorReset) //nolint:errcheck // fuck you
+	b.write(ColorReset...)
 	return b
 }
 
@@ -97,4 +111,10 @@ func NewString(f func(*Buffer)) string {
 	var bb bytes.Buffer
 	f(New(&bb))
 	return bb.String()
+}
+
+func String(s string, mods ...[]byte) string {
+	return NewString(func(b *Buffer) {
+		b.String(s, mods...)
+	})
 }

@@ -65,20 +65,12 @@ func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
 					// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
 					"{proc} {sep} {line}",
 					map[string]any{
-						"at": buffer.NewString(func(b *buffer.Buffer) {
-							b.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack)
-						}),
+						"at": buffer.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack),
 						// TODO: different colors for different IDs
 						// TODO: pass proc name
-						"proc": buffer.NewString(func(b *buffer.Buffer) {
-							b.String(fmt.Sprint("%d|%s", procLines.ID, procLines.Name), buffer.FgRed)
-						}),
-						"sep": buffer.NewString(func(b *buffer.Buffer) {
-							b.String("|", buffer.FgGreen)
-						}),
-						"line": buffer.NewString(func(b *buffer.Buffer) {
-							b.String(line.Line, lineColor)
-						}),
+						"proc": buffer.String(fmt.Sprintf("%d|%s", procLines.ID, procLines.Name), buffer.FgRed),
+						"sep":  buffer.String("|", buffer.FgGreen),
+						"line": buffer.String(line.Line, lineColor),
 					},
 				))
 			}
