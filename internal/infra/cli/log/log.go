@@ -341,19 +341,6 @@ func (w *prettyWriter) write(msg string, ev *event) { //nolint:funlen // fuck yo
 			b.string(ev.ts.Format("[15:06:05]"))
 		}, faintColor, fgWhite).
 		bytes(' ').
-		// source info
-		styled(func(b *buffer) {
-			b.string("@@@")
-		}, fgBlue).
-		bytes(' ').
-		styled(func(b *buffer) {
-			b.string(ev.callerFile)
-		}, underlineColor, fgYellow).
-		bytes(':').
-		styled(func(b *buffer) {
-			b.string(strconv.Itoa(ev.callerLine))
-		}, fgRed).
-		bytes('\n').
 		// level
 		styled(func(b *buffer) {
 			b.inside(' ', ' ', func(b *buffer) {
@@ -437,11 +424,9 @@ func (w *prettyWriter) write(msg string, ev *event) { //nolint:funlen // fuck yo
 }
 
 type event struct {
-	ts         time.Time
-	level      zerolog.Level
-	callerFile string
-	callerLine int
-	fields     map[string]any
+	ts     time.Time
+	level  zerolog.Level
+	fields map[string]any
 }
 
 func (e *event) Str(k string, v string) *event {
@@ -482,11 +467,9 @@ var _logger = &logger{}
 
 func (l *logger) log(level zerolog.Level) *event {
 	return &event{
-		ts:         time.Now(),
-		level:      level,
-		callerFile: "<caller>", // TODO: fill
-		callerLine: -1,         // TODO: fill
-		fields:     map[string]any{},
+		ts:     time.Now(),
+		level:  level,
+		fields: map[string]any{},
 	}
 }
 
