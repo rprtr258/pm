@@ -21,6 +21,7 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
 	"github.com/rprtr258/pm/internal/core/pm"
+	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -40,27 +41,39 @@ var _listCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:    "format",
 			Aliases: []string{"f"},
-			Usage: "Listing format: " + strings.Join([]string{
-				color.YellowString(_formatTable),
-				color.YellowString(_formatCompact),
-				color.YellowString(_formatJSON),
-				color.YellowString(_formatShort),
-			}, ", ") + ", any other string is rendred as Go template with " +
-				color.GreenString("core.ProcData") +
-				" struct",
+			Usage: buffer.NewString(func(b *buffer.Buffer) {
+				b.
+					String("Listing format: ").
+					String(_formatTable, buffer.FgYellow).String(", ").
+					String(_formatCompact, buffer.FgYellow).String(", ").
+					String(_formatJSON, buffer.FgYellow).String(", ").
+					String(_formatShort, buffer.FgYellow).
+					String(", any other string is rendred as Go template with ").
+					Styled(func(b *buffer.Buffer) {
+						b.String("core.ProcData")
+					}, buffer.FgGreen).
+					String(" struct")
+			}),
 			Value: "table",
 		},
 		&cli.StringFlag{
 			Name:    "sort",
 			Aliases: []string{"s"},
-			Usage: "Sort order. Available sort fields: " + strings.Join([]string{
-				color.YellowString("id"),
-				color.YellowString("name"),
-				color.YellowString("status"),
-				color.YellowString("pid"),
-				color.YellowString("uptime"),
-			}, ", ") + ". Order can be changed by adding " +
-				color.RedString(":asc") + " or " + color.RedString(":desc"),
+			Usage: buffer.NewString(func(b *buffer.Buffer) {
+				b.
+					String("Sort order. Available sort fields: ").
+					String("id", buffer.FgYellow).String(", ").
+					String("name", buffer.FgYellow).String(", ").
+					String("status", buffer.FgYellow).String(", ").
+					String("pid", buffer.FgYellow).String(", ").
+					String("uptime", buffer.FgYellow).
+					String(". Order can be changed by adding ").
+					Styled(func(b *buffer.Buffer) {
+						b.String(":asc")
+					}, buffer.FgRed).
+					String(" or ").
+					String(":desc", buffer.FgRed)
+			}),
 			Value: "id:asc",
 		},
 		&cli.StringSliceFlag{

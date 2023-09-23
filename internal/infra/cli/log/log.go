@@ -21,14 +21,8 @@ import (
 	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 )
 
-func newString(f func(*buffer.Buffer)) string {
-	var bb bytes.Buffer
-	f(buffer.New(&bb))
-	return bb.String()
-}
-
 func colorStringFg(bb []byte, color []byte) []byte {
-	return []byte(newString(func(b *buffer.Buffer) {
+	return []byte(buffer.NewString(func(b *buffer.Buffer) {
 		b.Styled(func(b *buffer.Buffer) {
 			b.Bytes(bb...)
 		}, color)
@@ -73,9 +67,7 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 	buffer.New(&bb).
 		Bytes(w.buildTypeString(st.String())...).
 		InBytePair('(', ')', func(b *buffer.Buffer) {
-			b.Styled(func(b *buffer.Buffer) {
-				b.String(strconv.Itoa(sv.Len()))
-			}, buffer.FgBlue)
+			b.String(strconv.Itoa(sv.Len()), buffer.FgBlue)
 		}).
 		Iter(iter.Map(iter.FromRange(0, sv.Len(), 1), func(i int) func(*buffer.Buffer) {
 			return func(b *buffer.Buffer) {
@@ -84,9 +76,7 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 						Bytes('\n').
 						RepeatByte(' ', l*2+4).
 						RepeatByte(' ', d+2).
-						Styled(func(b *buffer.Buffer) {
-							b.String("...")
-						}, buffer.FgBlue).
+						String("...", buffer.FgBlue).
 						Styled(func(b *buffer.Buffer) {
 							b.Bytes(']')
 						}, buffer.FgGreen)
@@ -99,9 +89,7 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 					Bytes('\n').
 					RepeatByte(' ', l*2+4).
 					RepeatByte(' ', d-len(tb)).
-					Styled(func(b *buffer.Buffer) {
-						b.String(tb)
-					}, buffer.FgGreen).
+					String(tb, buffer.FgGreen).
 					Bytes(' ').
 					Bytes(w.formatValue(v, l)...)
 			}
@@ -125,9 +113,7 @@ func (w *prettyWriter) formatMap(typ reflect.Type, val reflect.Value, l int) []b
 	buffer.New(&bb).
 		Bytes(w.buildTypeString(typ.String())...).
 		InBytePair('(', ')', func(b *buffer.Buffer) {
-			b.Styled(func(b *buffer.Buffer) {
-				b.String(strconv.Itoa(val.Len()))
-			}, buffer.FgBlue)
+			b.String(strconv.Itoa(val.Len()), buffer.FgBlue)
 		}).
 		Iter(iter.Map(iter.FromMany(sk...), func(k reflect.Value) func(*buffer.Buffer) {
 			return func(b *buffer.Buffer) {
@@ -179,18 +165,17 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 				b.
 					Bytes('\n').
 					RepeatByte(' ', l*2+4).
-					String("// zeros")
+					String("// zeros", buffer.ColorFaint)
 			}
-		}, buffer.ColorFaint)
+		})
 	return bb.Bytes()
 }
 
 func (w *prettyWriter) formatValue(v reflect.Value, l int) []byte {
 	if v.IsZero() {
 		var bb bytes.Buffer
-		buffer.New(&bb).Styled(func(b *buffer.Buffer) {
-			b.String(fmt.Sprint(v.Interface()))
-		}, buffer.ColorFaint)
+		buffer.New(&bb).
+			String(fmt.Sprint(v.Interface()), buffer.ColorFaint)
 		return bb.Bytes()
 	}
 
@@ -218,7 +203,7 @@ func (w *prettyWriter) formatValue(v reflect.Value, l int) []byte {
 	}
 
 	if s := fmt.Sprint(v.Interface()); s == "<nil>" || s == "0" || s == "false" {
-		return []byte(newString(func(b *buffer.Buffer) {
+		return []byte(buffer.NewString(func(b *buffer.Buffer) {
 			b.Styled(func(b *buffer.Buffer) {
 				b.Bytes(res...)
 			}, buffer.FgWhite, buffer.ColorFaint)
@@ -262,9 +247,7 @@ func (w *prettyWriter) write(msg string, ev *Event) {
 	padding += len(buffer.FgMagenta) + len(buffer.ColorReset)
 
 	w.b.
-		Styled(func(b *buffer.Buffer) {
-			b.String(ev.ts.Format("[15:06:05]"))
-		}, buffer.ColorFaint, buffer.FgWhite).
+		String(ev.ts.Format("[15:06:05]"), buffer.ColorFaint, buffer.FgWhite).
 		Bytes(' ').
 		// level
 		Styled(func(b *buffer.Buffer) {
@@ -273,33 +256,23 @@ func (w *prettyWriter) write(msg string, ev *Event) {
 			})
 		}, buffer.FgBlack, colorBg).
 		Bytes(' ').
-		Styled(func(b *buffer.Buffer) {
-			b.String(msg)
-		}, colorFg).
+		String(msg, colorFg).
 		Bytes('\n').
 		// attributes
 		Iter(iter.Map(iterSorted(iter.FromDict(ev.fields)), func(kv fun.Pair[string, any]) func(*buffer.Buffer) {
 			k, value := kv.K, kv.V
 			return func(b *buffer.Buffer) {
 				b.
-					Styled(func(b *buffer.Buffer) {
-						b.String(k)
-					}, buffer.FgMagenta).
+					String(k, buffer.FgMagenta).
 					RepeatByte(' ', padding-len(k)).
 					Bytes(' ')
 				switch vv := value.(type) {
 				case time.Time, time.Duration:
-					b.Styled(func(b *buffer.Buffer) {
-						b.String(fmt.Sprint(vv))
-					}, buffer.FgCyan)
+					b.String(fmt.Sprint(vv), buffer.FgCyan)
 				case *time.Time:
-					b.Styled(func(b *buffer.Buffer) {
-						b.String(vv.String())
-					}, buffer.FgCyan)
+					b.String(vv.String(), buffer.FgCyan)
 				case *time.Duration:
-					b.Styled(func(b *buffer.Buffer) {
-						b.String(vv.String())
-					}, buffer.FgCyan)
+					b.String(vv.String(), buffer.FgCyan)
 				default:
 					at := reflect.TypeOf(value)
 					av := reflect.ValueOf(value)
@@ -307,24 +280,16 @@ func (w *prettyWriter) write(msg string, ev *Event) {
 					case reflect.Float32, reflect.Float64,
 						reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 						reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-						b.Styled(func(b *buffer.Buffer) {
-							b.String(fmt.Sprint(value))
-						}, buffer.FgYellow)
+						b.String(fmt.Sprint(value), buffer.FgYellow)
 					case reflect.Bool:
-						b.Styled(func(b *buffer.Buffer) {
-							b.String(fmt.Sprint(value))
-						}, buffer.FgRed)
+						b.String(fmt.Sprint(value), buffer.FgRed)
 					case reflect.String:
 						v := value.(string) //nolint:forcetypeassert,errcheck // checked kind already
 						switch {
 						case v == "":
-							b.Styled(func(b *buffer.Buffer) {
-								b.String("empty")
-							}, buffer.FgWhite, buffer.ColorFaint)
+							b.String("empty", buffer.FgWhite, buffer.ColorFaint)
 						case isURL(v):
-							b.Styled(func(b *buffer.Buffer) {
-								b.String(v)
-							}, buffer.FgBlue, buffer.ColorUnderline)
+							b.String(v, buffer.FgBlue, buffer.ColorUnderline)
 						default:
 							b.String(v)
 						}

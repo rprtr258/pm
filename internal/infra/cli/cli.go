@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/fatih/color"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 )
 
 func ensureDir(dirname string) error {
@@ -33,7 +33,10 @@ func ensureDir(dirname string) error {
 
 //nolint:lll // setting template strings
 func Init() {
-	cli.AppHelpTemplate = color.BlueString(`{{template "helpNameTemplate" .}}`) + `
+	cli.AppHelpTemplate = buffer.NewString(func(b *buffer.Buffer) {
+		b.
+			String(`{{template "helpNameTemplate" .}}`, buffer.FgBlue).
+			String(`
 
 Usage:
 	{{if .UsageText}}{{wrap .UsageText 3}}{{else}}{{.HelpName}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Description}}
@@ -45,12 +48,25 @@ Description:
 Author{{template "authorsTemplate" .}}{{end}}{{if .VisibleCommands}}
 
 Commands:{{range .VisibleCategories}}{{if .Name}}
-   ` + color.CyanString(`{{.Name}}`) + `:{{range .VisibleCommands}}
-     ` + color.GreenString(`{{join .Names ", "}}`) + `{{"\t"}}` + color.WhiteString(`{{.Usage}}`) + `{{end}}{{else}}{{ $cv := offsetCommands .VisibleCommands 5}}{{range .VisibleCommands}}
-   {{$s := join .Names ", "}}` + color.GreenString(`{{$s}}`) + `{{ $sp := subtract $cv (offset $s 3) }}{{ indent $sp ""}}` + color.WhiteString(`{{wrap .Usage $cv}}`) + `{{end}}{{end}}{{end}}{{end}}
-`
-
-	cli.CommandHelpTemplate = color.BlueString(`{{template "helpNameTemplate" .}}`) + `
+   `).
+			String(`{{.Name}}`, buffer.FgCyan).
+			String(`:{{range .VisibleCommands}}
+     `).
+			String(`{{join .Names ", "}}`, buffer.FgGreen).
+			String(`{{"\t"}}`).
+			String(`{{.Usage}}`, buffer.FgWhite).
+			String(`{{end}}{{else}}{{ $cv := offsetCommands .VisibleCommands 5}}{{range .VisibleCommands}}
+   {{$s := join .Names ", "}}`).
+			String(`{{$s}}`, buffer.FgGreen).
+			String(`{{ $sp := subtract $cv (offset $s 3) }}{{ indent $sp ""}}`).
+			String(`{{wrap .Usage $cv}}`, buffer.FgWhite).
+			String(`{{end}}{{end}}{{end}}{{end}}
+`)
+	})
+	cli.CommandHelpTemplate = buffer.NewString(func(b *buffer.Buffer) {
+		b.
+			String(`{{template "helpNameTemplate" .}}`, buffer.FgBlue).
+			String(`
 
 Usage:
    {{template "usageTemplate" .}}{{if .Description}}
@@ -61,9 +77,13 @@ Description:
 Options:{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
 
 Options:{{range $i, $e := .VisibleFlags}}
-   ` + color.GreenString(`{{wrap $e.String 6}}`) + `{{end}}{{end}}
-` // TODO: color flags similar to coloring commands in app help
-	// TODO: fix coloring for `pm ls --help“
+   `).
+			// TODO: paint flags (before \t), dont paint description (after \t)
+			String(`{{$e.String}}`, buffer.FgGreen).
+			String(`{{end}}{{end}}
+`) // TODO: color flags similar to coloring commands in app help
+		// TODO: fix coloring for `pm ls --help“
+	})
 }
 
 var App = &cli.App{

@@ -47,13 +47,21 @@ func (b *Buffer) Bytes(bs ...byte) *Buffer {
 	return b
 }
 
-func (b *Buffer) RepeatByte(c byte, n int) *Buffer { //nolint:unparam // fuck you
+func (b *Buffer) RepeatByte(c byte, n int) *Buffer {
 	b.out.Write(bytes.Repeat([]byte{c}, n)) //nolint:errcheck // fuck you
 	return b
 }
 
-func (b *Buffer) String(s string) *Buffer { //nolint:unparam // fuck off
+func (b *Buffer) String(s string, mods ...[]byte) *Buffer {
+	if len(mods) > 0 {
+		for _, mod := range mods {
+			b.out.Write(mod)
+		}
+	}
 	io.WriteString(b.out, s) //nolint:errcheck // fuck you
+	if len(mods) > 0 {
+		b.out.Write(ColorReset)
+	}
 	return b
 }
 
@@ -80,4 +88,10 @@ func (b *Buffer) Iter(seq iter.Seq[func(*Buffer)]) *Buffer {
 		return true
 	})
 	return b
+}
+
+func NewString(f func(*Buffer)) string {
+	var bb bytes.Buffer
+	f(New(&bb))
+	return bb.String()
 }
