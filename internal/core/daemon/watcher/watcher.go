@@ -9,10 +9,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog/log"
 
-	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
-	"github.com/rprtr258/pm/internal/core/fx"
 )
 
 type watcherEntry struct {
@@ -28,14 +26,8 @@ type Watcher struct {
 	statusCh    <-chan eventbus.Event
 }
 
-func Module(ebus *eventbus.EventBus) (fx.Lifecycle, error) {
-	fsWatcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return fun.Zero[fx.Lifecycle](), err
-	} // TODO: move out to sync lifecycle before pmWatcher
-	defer fsWatcher.Close()
-
-	pmWatcher := Watcher{
+func Module(ctx context.Context, fsWatcher *fsnotify.Watcher, ebus *eventbus.EventBus) {
+	Watcher{
 		watcher:     fsWatcher,
 		watchplaces: make(map[core.ProcID]watcherEntry),
 		dirs:        make(map[string][]core.ProcID),
@@ -45,13 +37,7 @@ func Module(ebus *eventbus.EventBus) (fx.Lifecycle, error) {
 			eventbus.KindProcStopped,
 		),
 		ebus: ebus,
-	}
-	return fx.Lifecycle{
-		Name: "watcher",
-		StartAsync: func(ctx context.Context) {
-			pmWatcher.Start(ctx)
-		},
-	}, nil
+	}.Start(ctx)
 }
 
 func (w Watcher) Add(procID core.ProcID, dir, pattern string) {
@@ -184,6 +170,8 @@ func (w Watcher) Start(ctx context.Context) {
 		case err := <-w.watcher.Errors:
 			if err != nil {
 				log.Error().Err(err).Msg("fsnotify error")
+			} else {
+				log.Error().Msg("fsnotify sent nil error")
 			}
 		}
 	}

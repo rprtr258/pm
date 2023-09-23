@@ -9,7 +9,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
-	"github.com/rprtr258/pm/internal/core/fx"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
@@ -21,20 +20,13 @@ type cron struct {
 	ebus              *eventbus.EventBus
 }
 
-func startCron(ebus *eventbus.EventBus, dbHandle db.Handle) fx.Lifecycle {
-	return fx.Lifecycle{
-		Name:  "cron",
-		Start: nil,
-		StartAsync: func(ctx context.Context) {
-			cron{
-				l:                 log.Logger.With().Str("system", "cron").Logger(),
-				db:                dbHandle,
-				statusUpdateDelay: 5 * time.Second,
-				ebus:              ebus,
-			}.start(ctx)
-		},
-		Close: nil,
-	}
+func StartCron(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
+	cron{
+		l:                 log.Logger.With().Str("system", "cron").Logger(),
+		db:                dbHandle,
+		statusUpdateDelay: 5 * time.Second,
+		ebus:              ebus,
+	}.start(ctx)
 }
 
 func (c cron) updateStatuses(ctx context.Context) {

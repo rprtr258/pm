@@ -11,7 +11,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus/queue"
-	"github.com/rprtr258/pm/internal/core/fx"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
@@ -114,21 +113,14 @@ type EventBus struct {
 	subscribers map[string]Subscriber
 }
 
-func Module(db db.Handle) (*EventBus, fx.Lifecycle) {
+func Module(db db.Handle) (*EventBus, func(context.Context)) {
 	ebus := &EventBus{
 		q:           queue.New[Event](),
 		db:          db,
 		mu:          sync.Mutex{},
 		subscribers: map[string]Subscriber{},
 	}
-	return ebus, fx.Lifecycle{
-		Name:  "eventbus",
-		Start: nil,
-		StartAsync: func(ctx context.Context) {
-			go ebus.Start(ctx)
-		},
-		Close: nil,
-	}
+	return ebus, ebus.Start
 }
 
 func (e *EventBus) Start(ctx context.Context) {

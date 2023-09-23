@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,18 +13,23 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 
+	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
-	"github.com/rprtr258/pm/internal/core/fx"
+	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
+	"github.com/rprtr258/pm/internal/core/daemon/runner"
+	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/core/pm"
 	log2 "github.com/rprtr258/pm/internal/infra/cli/log"
 	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
+	"github.com/rprtr258/pm/internal/infra/db"
 	godaemon "github.com/rprtr258/pm/internal/infra/go-daemon"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -247,10 +253,9 @@ func Logs(ctx context.Context, follow bool) error {
 }
 
 var (
-	_dirProcsLogs = filepath.Join(core.DirHome, "logs") // TODO: remove
-	_filePid      = filepath.Join(core.DirHome, "pm.pid")
-	_fileLog      = filepath.Join(core.DirHome, "pm.log") // TODO: remove
-	_dirDB        = filepath.Join(core.DirHome, "db")     // TODO: remove
+	_filePid = filepath.Join(core.DirHome, "pm.pid")
+	_fileLog = filepath.Join(core.DirHome, "pm.log")
+	_dirDB   = filepath.Join(core.DirHome, "db") // TODO: remove
 )
 
 func unaryLoggerInterceptor(
@@ -292,19 +297,66 @@ func Main(ctx context.Context) error {
 		Caller().
 		Logger()
 
-	app, appLc, err := daemon.NewApp()
+	cfg, errCfg := daemon.ReadPMConfig()
+	if errCfg != nil {
+		return fmt.Errorf("config: %w", errCfg)
+	}
+
+	if errMigrate := daemon.MigrateConfig(cfg); errMigrate != nil {
+		return fmt.Errorf("migrate: %w", errMigrate)
+	}
+
+	dbHandle, errDB := db.New(_dirDB)
+	if errDB != nil {
+		return fmt.Errorf("db: %w", errDB)
+	}
+
+	ebus, ebusLc := eventbus.Module(dbHandle)
+	go ebusLc(ctx)
+
+	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return err
 	}
+	defer fsWatcher.Close()
 
-	srvLc, err := newServer(app)
+	go watcher.Module(ctx, fsWatcher, ebus)
+
+	go daemon.StartChildrenStatuser(ctx, ebus, dbHandle)
+	go daemon.StartStatuser(ctx, ebus, dbHandle)
+	go runner.Start(ctx, ebus, dbHandle)
+	go daemon.StartCron(ctx, ebus, dbHandle)
+
+	srv := daemon.NewServer(ebus, dbHandle)
+
+	sock, err := net.Listen("unix", core.SocketRPC)
 	if err != nil {
-		// TODO: in this case appLc.Close would not be called, but should
 		return err
 	}
+	defer sock.Close()
 
-	return fx.Combine("grpc daemon",
-		appLc,
-		srvLc,
-	).Start(ctx)
+	s := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
+		grpc.ChainStreamInterceptor(streamLoggerInterceptor),
+	)
+	pb.RegisterDaemonServer(s, &daemonServer{
+		UnimplementedDaemonServer: pb.UnimplementedDaemonServer{},
+		srv:                       srv,
+	})
+	log.Info().Stringer("socket", sock.Addr()).Msg("daemon started")
+	if err := s.Serve(sock); err != nil {
+		return err
+	}
+	defer func() {
+		s.GracefulStop()
+
+		if errRm := os.Remove(core.SocketRPC); errRm != nil && !errors.Is(errRm, os.ErrNotExist) {
+			log.Error().
+				Err(errRm).
+				Str("file", _filePid).
+				Msg("remove pid file")
+		}
+	}()
+
+	return nil
 }

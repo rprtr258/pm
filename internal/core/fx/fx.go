@@ -6,6 +6,7 @@ import (
 	"github.com/rprtr258/xerr"
 )
 
+// TODO: make working
 type Lifecycle struct {
 	Name       string
 	Start      func(context.Context) error
