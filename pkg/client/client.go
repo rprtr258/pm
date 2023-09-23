@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
 type Client struct {
@@ -153,32 +154,13 @@ func (c Client) Signal(ctx context.Context, signal syscall.Signal, id uint64) er
 	return nil
 }
 
-type Status struct {
-	Args          []string
-	Envs          map[string]string
-	Executable    string
-	Cwd           string
-	Groups        []int
-	PageSize      int
-	Hostname      string
-	UserCacheDir  string
-	UserConfigDir string
-	UserHomeDir   string
-	PID           int
-	PPID          int
-	UID           int
-	EUID          int
-	GID           int
-	EGID          int
-}
-
-func (c Client) HealthCheck(ctx context.Context) (Status, error) {
+func (c Client) HealthCheck(ctx context.Context) (linuxprocess.Status, error) {
 	status, err := c.client.HealthCheck(ctx, &emptypb.Empty{})
 	if err != nil {
-		return fun.Zero[Status](), xerr.NewWM(err, "server.healthcheck")
+		return fun.Zero[linuxprocess.Status](), xerr.NewWM(err, "server.healthcheck")
 	}
 
-	return Status{
+	return linuxprocess.Status{
 		Args:       status.GetArgs(),
 		Envs:       status.GetEnvs(),
 		Executable: status.GetExecutable(),
