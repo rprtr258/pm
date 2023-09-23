@@ -113,14 +113,13 @@ type EventBus struct {
 	subscribers map[string]Subscriber
 }
 
-func Module(db db.Handle) (*EventBus, func(context.Context)) {
-	ebus := &EventBus{
+func Module(db db.Handle) *EventBus {
+	return &EventBus{
 		q:           queue.New[Event](),
 		db:          db,
 		mu:          sync.Mutex{},
 		subscribers: map[string]Subscriber{},
 	}
-	return ebus, ebus.Start
 }
 
 func (e *EventBus) Start(ctx context.Context) {

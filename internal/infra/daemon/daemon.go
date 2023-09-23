@@ -311,8 +311,8 @@ func Main(ctx context.Context) error {
 		return fmt.Errorf("db: %w", errDB)
 	}
 
-	ebus, ebusLc := eventbus.Module(dbHandle)
-	go ebusLc(ctx)
+	ebus := eventbus.Module(dbHandle)
+	go ebus.Start(ctx)
 
 	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
