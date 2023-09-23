@@ -42,7 +42,7 @@ type DaemonClient interface {
 	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*ProcID, error)
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
 	Delete(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Status, error)
 	Logs(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_LogsClient, error)
 }
 
@@ -108,8 +108,8 @@ func (c *daemonClient) Delete(ctx context.Context, in *ProcID, opts ...grpc.Call
 	return out, nil
 }
 
-func (c *daemonClient) HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
+func (c *daemonClient) HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Status, error) {
+	out := new(Status)
 	err := c.cc.Invoke(ctx, Daemon_HealthCheck_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -161,7 +161,7 @@ type DaemonServer interface {
 	Create(context.Context, *CreateRequest) (*ProcID, error)
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
 	Delete(context.Context, *ProcID) (*emptypb.Empty, error)
-	HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	HealthCheck(context.Context, *emptypb.Empty) (*Status, error)
 	Logs(*ProcID, Daemon_LogsServer) error
 	mustEmbedUnimplementedDaemonServer()
 }
@@ -188,7 +188,7 @@ func (UnimplementedDaemonServer) List(context.Context, *emptypb.Empty) (*Process
 func (UnimplementedDaemonServer) Delete(context.Context, *ProcID) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedDaemonServer) HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+func (UnimplementedDaemonServer) HealthCheck(context.Context, *emptypb.Empty) (*Status, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
 }
 func (UnimplementedDaemonServer) Logs(*ProcID, Daemon_LogsServer) error {

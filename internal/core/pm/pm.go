@@ -32,7 +32,7 @@ func New(pmClient client.Client) (App, error) {
 			}, nil
 		}
 
-		return App{}, xerr.NewWM(errConfig, "read app config")
+		return fun.Zero[App](), xerr.NewWM(errConfig, "read app config")
 	}
 
 	return App{
@@ -41,12 +41,13 @@ func New(pmClient client.Client) (App, error) {
 	}, nil
 }
 
-func (app App) CheckDaemon(ctx context.Context) error {
-	if errHealth := app.client.HealthCheck(ctx); errHealth != nil {
-		return xerr.NewWM(errHealth, "check daemon health")
+func (app App) CheckDaemon(ctx context.Context) (client.Status, error) {
+	status, errHealth := app.client.HealthCheck(ctx)
+	if errHealth != nil {
+		return fun.Zero[client.Status](), xerr.NewWM(errHealth, "check daemon health")
 	}
 
-	return nil
+	return status, nil
 }
 
 func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig) (core.Procs, error) {

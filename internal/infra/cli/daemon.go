@@ -64,8 +64,6 @@ var _daemonCmd = &cli.Command{
 					return xerr.NewWM(errStatus, "check daemon status")
 				}
 
-				fmt.Println("ok")
-
 				return nil
 			},
 		},

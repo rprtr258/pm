@@ -176,7 +176,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	ticker := time.NewTicker(100 * time.Millisecond) //nolint:gomnd // arbitrary time
 	defer ticker.Stop()
 	for {
-		if client.HealthCheck(ctx) == nil {
+		if _, err := client.HealthCheck(ctx); err == nil {
 			break
 		}
 
@@ -287,7 +287,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		return xerr.NewWM(errKill, "kill daemon")
 	}
 
-	if errHealth := client.HealthCheck(ctx); errHealth == nil {
+	if _, errHealth := client.HealthCheck(ctx); errHealth == nil {
 		return xerr.NewM("daemon is healthy but must not")
 	}
 

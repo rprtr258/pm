@@ -18,7 +18,7 @@ service Daemon {
   rpc List  (google.protobuf.Empty) returns (ProcessesList);
   rpc Delete(ProcID)                returns (google.protobuf.Empty);
 
-  rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc HealthCheck(google.protobuf.Empty) returns (Status);
 
   rpc Logs(ProcID) returns (stream ProcsLogs);
 }
@@ -85,8 +85,27 @@ enum Signal {
 }
 
 message SignalRequest {
-  ProcID id    = 1;
+  ProcID id     = 1;
   Signal signal = 2;
+}
+
+message Status {
+  repeated string     args            =  1;
+  map<string, string> envs            =  2;
+  string              executable      =  3;
+  string              cwd             =  4;
+  repeated int64      groups          =  5;
+  int64               page_size       =  6;
+  string              hostname        =  7;
+  string              user_cache_dir  =  8;
+  string              user_config_dir =  9;
+  string              user_home_dir   = 10;
+  int64               pid             = 11;
+  int64               ppid            = 12;
+  int64               uid             = 13;
+  int64               euid            = 14;
+  int64               gid             = 15;
+  int64               egid            = 16;
 }
 
 message LogLine {

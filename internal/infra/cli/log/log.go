@@ -69,7 +69,7 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 		InBytePair('(', ')', func(b *buffer.Buffer) {
 			b.String(strconv.Itoa(sv.Len()), buffer.FgBlue)
 		}).
-		Iter(iter.Map(iter.FromRange(0, sv.Len(), 1), func(i int) func(*buffer.Buffer) {
+		Iter(iter.Map(iter.FromRange(0, min(sv.Len(), w.maxSlicePrintSize+1), 1), func(i int) func(*buffer.Buffer) {
 			return func(b *buffer.Buffer) {
 				if i == w.maxSlicePrintSize {
 					b.
@@ -77,9 +77,7 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 						RepeatByte(' ', l*2+4).
 						RepeatByte(' ', d+2).
 						String("...", buffer.FgBlue).
-						Styled(func(b *buffer.Buffer) {
-							b.Bytes(']')
-						}, buffer.FgGreen)
+						String("]", buffer.FgGreen)
 					return
 				}
 
@@ -349,6 +347,10 @@ func (e *Event) Msg(msg string) {
 		maxSlicePrintSize: 10,
 		b:                 buffer.New(os.Stderr),
 	}).write(msg, e)
+}
+
+func (e *Event) Send() {
+	e.Msg("")
 }
 
 type logger struct{}

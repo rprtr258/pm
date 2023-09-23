@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +18,8 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/pm"
+	log2 "github.com/rprtr258/pm/internal/infra/cli/log"
+	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 	"github.com/rprtr258/pm/internal/infra/go-daemon"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -39,10 +42,50 @@ func Status(ctx context.Context) error {
 		return xerr.NewWM(errNewApp, "create app")
 	}
 
-	// TODO: print daemon process info
-	if errHealth := app.CheckDaemon(ctx); errHealth != nil {
+	status, errHealth := app.CheckDaemon(ctx)
+	if errHealth != nil {
 		return xerr.NewWM(errHealth, "check daemon")
 	}
+
+	// highlight special chars
+	for k, v := range status.Envs {
+		if !strings.ContainsAny(v, "\n\r\t ") {
+			status.Envs[k] = strings.NewReplacer(
+				"\n", buffer.String(`\n`, buffer.FgGreen),
+				"\r", buffer.String(`\r`, buffer.FgGreen),
+				"\t", buffer.String(`\t`, buffer.FgGreen),
+				" ", buffer.String(`\x20`, buffer.FgGreen),
+			).Replace(v)
+		}
+	}
+
+	// crop long values
+	for k, v := range status.Envs {
+		if len(v) <= 100 {
+			continue
+		}
+
+		status.Envs[k] = v[:50] + buffer.String("...", buffer.FgBlue) + v[len(v)-50:]
+	}
+
+	log2.Info().
+		Any("Args", status.Args).
+		Any("Envs", status.Envs).
+		Str("Executable", status.Executable).
+		Any("CWD", status.Cwd).
+		Any("Groups", status.Groups).
+		Any("Page Size:", status.PageSize).
+		Any("Hostname", status.Hostname).
+		Any("User Cache Dir", status.UserCacheDir).
+		Any("User Config Dir", status.UserConfigDir).
+		Any("User Home Dir", status.UserHomeDir).
+		Any("PID", status.PID).
+		Any("PPID", status.PPID).
+		Any("UID", status.UID).
+		Any("EUID", status.EUID).
+		Any("GID", status.GID).
+		Any("EGID", status.EGID).
+		Msg("Daemon info")
 
 	return nil
 }
@@ -152,7 +195,7 @@ func EnsureRunning(ctx context.Context) error {
 	defer ticker.Stop()
 	for {
 		if pmDaemon, errClient := client.New(); errClient == nil {
-			if errPing := pmDaemon.HealthCheck(ctx); errPing == nil {
+			if _, errPing := pmDaemon.HealthCheck(ctx); errPing == nil {
 				return nil
 			}
 		}
