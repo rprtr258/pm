@@ -91,7 +91,7 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 					RepeatByte(' ', d-len(tb)).
 					String(tb, buffer.FgGreen).
 					Bytes(' ').
-					Bytes(w.formatValue(v, l)...)
+					Bytes(w.formatValue(v, l+1)...)
 			}
 		}))
 	return bb.Bytes()
@@ -117,14 +117,14 @@ func (w *prettyWriter) formatMap(typ reflect.Type, val reflect.Value, l int) []b
 		}).
 		Iter(iter.Map(iter.FromMany(sk...), func(k reflect.Value) func(*buffer.Buffer) {
 			return func(b *buffer.Buffer) {
-				tb := colorStringFg(w.formatValue(k, l), buffer.FgGreen)
+				tb := colorStringFg(w.formatValue(k, l+1), buffer.FgGreen)
 				b.
 					Bytes('\n').
 					RepeatByte(' ', l*2+4).
 					Bytes(tb...).
 					RepeatByte(' ', p-len(tb)).
 					Bytes(' ').
-					Bytes(w.formatValue(val.MapIndex(k), l)...)
+					Bytes(w.formatValue(val.MapIndex(k), l+1)...)
 			}
 		}))
 	return bb.Bytes()
@@ -157,7 +157,7 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 					Bytes(fieldName...).
 					RepeatByte(' ', p-len(fieldName)).
 					Bytes(' ').
-					Bytes(w.formatValue(val, l)...)
+					Bytes(w.formatValue(val, l+1)...)
 			}
 		})).
 		Styled(func(b *buffer.Buffer) {
@@ -182,11 +182,11 @@ func (w *prettyWriter) formatValue(v reflect.Value, l int) []byte {
 	var res []byte
 	switch t := v.Type(); t.Kind() { //nolint:exhaustive // not needed
 	case reflect.Slice:
-		return w.formatSlice(t, v, l+1)
+		return w.formatSlice(t, v, l)
 	case reflect.Map:
-		return w.formatMap(t, v, l+1)
+		return w.formatMap(t, v, l)
 	case reflect.Struct:
-		res = w.formatStruct(t, v, l+1)
+		res = w.formatStruct(t, v, l)
 	case reflect.Interface:
 		if !v.IsZero() {
 			res = w.formatValue(v.Elem(), l)
@@ -297,7 +297,7 @@ func (w *prettyWriter) write(msg string, ev *Event) {
 						for av.Kind() == reflect.Pointer {
 							av = av.Elem()
 						}
-						b.Bytes(w.formatValue(av, -1)...) // TODO: remove kostyl with -1
+						b.Bytes(w.formatValue(av, 0)...)
 					case reflect.Slice, reflect.Array:
 						b.Bytes(w.formatSlice(at, av, 0)...)
 					case reflect.Map:
