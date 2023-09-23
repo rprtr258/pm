@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"time"
 
+	// fsnotify "github.com/rjeczalik/notify"
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog/log"
 
