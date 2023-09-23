@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
@@ -314,13 +313,7 @@ func Main(ctx context.Context) error {
 	ebus := eventbus.Module(dbHandle)
 	go ebus.Start(ctx)
 
-	fsWatcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-	defer fsWatcher.Close()
-
-	go watcher.Module(ctx, fsWatcher, ebus)
+	go watcher.Module(ctx, ebus)
 
 	go daemon.StartDeathCollector(ctx, ebus, dbHandle)
 	go daemon.StartStatuser(ctx, ebus, dbHandle)
