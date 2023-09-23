@@ -99,35 +99,41 @@ func StartStatuser(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Han
 		eventbus.KindProcStarted,
 		eventbus.KindProcStopped,
 	)
-	for {
+	for { // TODO: tick
 		select {
 		case <-ctx.Done():
 			return
-		case event := <-statusUpdaterCh:
-			switch e := event.Data.(type) {
-			case eventbus.DataProcStarted:
-				// TODO: fill/remove cpu, memory
-				runningStatus := core.NewStatusRunning(time.Now(), e.Pid, 0, 0)
-				if err := dbHandle.SetStatus(e.Proc.ID, runningStatus); err != nil {
+		default:
+		}
+
+		event, ok := statusUpdaterCh.Pop()
+		if !ok {
+			continue
+		}
+
+		switch e := event.Data.(type) {
+		case eventbus.DataProcStarted:
+			// TODO: fill/remove cpu, memory
+			runningStatus := core.NewStatusRunning(time.Now(), e.Pid, 0, 0)
+			if err := dbHandle.SetStatus(e.Proc.ID, runningStatus); err != nil {
+				log.Error().
+					Uint64("proc_id", e.Proc.ID).
+					Any("new_status", runningStatus).
+					Msg("set proc status to running")
+			}
+		case eventbus.DataProcStopped:
+			dbStatus := core.NewStatusStopped(e.ExitCode)
+			if err := dbHandle.SetStatus(e.ProcID, dbStatus); err != nil {
+				if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
 					log.Error().
-						Uint64("proc_id", e.Proc.ID).
-						Any("new_status", runningStatus).
-						Msg("set proc status to running")
-				}
-			case eventbus.DataProcStopped:
-				dbStatus := core.NewStatusStopped(e.ExitCode)
-				if err := dbHandle.SetStatus(e.ProcID, dbStatus); err != nil {
-					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
-						log.Error().
-							Uint64("proc_id", e.ProcID).
-							Int("exit_code", e.ExitCode).
-							Msg("proc not found while trying to set stopped status")
-					} else {
-						log.Error().
-							Uint64("proc_id", e.ProcID).
-							Any("new_status", dbStatus).
-							Msg("set proc status to stopped")
-					}
+						Uint64("proc_id", e.ProcID).
+						Int("exit_code", e.ExitCode).
+						Msg("proc not found while trying to set stopped status")
+				} else {
+					log.Error().
+						Uint64("proc_id", e.ProcID).
+						Any("new_status", dbStatus).
+						Msg("set proc status to stopped")
 				}
 			}
 		}

@@ -11,6 +11,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
+	"github.com/rprtr258/pm/internal/core/daemon/eventbus/queue"
 )
 
 type watcherEntry struct {
@@ -23,7 +24,7 @@ type Watcher struct {
 	watchplaces map[core.ProcID]watcherEntry
 	dirs        map[string][]core.ProcID // dir -> proc ids using that dir
 	ebus        *eventbus.EventBus
-	statusCh    <-chan eventbus.Event
+	statusCh    *queue.Queue[eventbus.Event]
 }
 
 func Module(ctx context.Context, fsWatcher *fsnotify.Watcher, ebus *eventbus.EventBus) {
@@ -110,35 +111,10 @@ func (w Watcher) Remove(procIDs ...core.ProcID) {
 }
 
 func (w Watcher) Start(ctx context.Context) {
-	for {
+	for { // TODO: ticker
 		select {
 		case <-ctx.Done():
 			return
-		case event := <-w.statusCh:
-			switch e := event.Data.(type) {
-			case eventbus.DataProcStarted:
-				if _, ok := w.watchplaces[e.Proc.ID]; ok {
-					continue
-				}
-
-				if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
-					continue
-				}
-
-				if watch, ok := e.Proc.Watch.Unpack(); ok {
-					w.Add(e.Proc.ID, e.Proc.Cwd, watch)
-				}
-			case eventbus.DataProcStopped:
-				if _, ok := w.watchplaces[e.ProcID]; ok {
-					continue
-				}
-
-				if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
-					continue
-				}
-
-				w.Remove(e.ProcID)
-			}
 		// TODO: unburst, also for logs
 		case e := <-w.watcher.Events:
 			stat, err := os.Stat(e.Name)
@@ -173,6 +149,36 @@ func (w Watcher) Start(ctx context.Context) {
 			} else {
 				log.Error().Msg("fsnotify sent nil error")
 			}
+		default:
+		}
+
+		event, ok := w.statusCh.Pop()
+		if !ok {
+			continue
+		}
+		switch e := event.Data.(type) {
+		case eventbus.DataProcStarted:
+			if _, ok := w.watchplaces[e.Proc.ID]; ok {
+				continue
+			}
+
+			if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
+				continue
+			}
+
+			if watch, ok := e.Proc.Watch.Unpack(); ok {
+				w.Add(e.Proc.ID, e.Proc.Cwd, watch)
+			}
+		case eventbus.DataProcStopped:
+			if _, ok := w.watchplaces[e.ProcID]; ok {
+				continue
+			}
+
+			if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
+				continue
+			}
+
+			w.Remove(e.ProcID)
 		}
 	}
 }

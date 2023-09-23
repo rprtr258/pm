@@ -102,7 +102,7 @@ type DataProcSignalRequest struct {
 
 type Subscriber struct {
 	Kinds map[EventKind]struct{}
-	Chan  chan Event
+	Queue *queue.Queue[Event]
 }
 
 type EventBus struct {
@@ -123,12 +123,6 @@ func Module(db db.Handle) *EventBus {
 }
 
 func (e *EventBus) Start(ctx context.Context) {
-	defer func() {
-		for _, sub := range e.subscribers {
-			close(sub.Chan)
-		}
-	}()
-
 	tick := time.NewTicker(_tickInterval)
 	defer tick.Stop()
 
@@ -156,11 +150,11 @@ func (e *EventBus) Start(ctx context.Context) {
 					Any("event", event).
 					Str("subscriber", name).
 					Msg("publishing event")
-				// NOTE: blocks on every subscriber
+				sub.Queue.Push(event)
 				select {
-				case sub.Chan <- event:
 				case <-ctx.Done():
 					return
+				default:
 				}
 			}
 			e.mu.Unlock()
@@ -274,7 +268,7 @@ func NewPublishProcSignalRequest(signal syscall.Signal, procID core.ProcID) Even
 	}
 }
 
-func (e *EventBus) Subscribe(name string, kinds ...EventKind) <-chan Event {
+func (e *EventBus) Subscribe(name string, kinds ...EventKind) *queue.Queue[Event] {
 	kindsSet := make(map[EventKind]struct{}, len(kinds))
 	for _, kind := range kinds {
 		kindsSet[kind] = struct{}{}
@@ -285,12 +279,12 @@ func (e *EventBus) Subscribe(name string, kinds ...EventKind) <-chan Event {
 		panic(fmt.Sprintf("duplicate subscriber: %s", name))
 	}
 
-	ch := make(chan Event)
+	q := queue.New[Event]()
 	e.subscribers[name] = Subscriber{
 		Kinds: kindsSet,
-		Chan:  ch,
+		Queue: q,
 	}
 	e.mu.Unlock()
 
-	return ch
+	return q
 }
