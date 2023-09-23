@@ -17,6 +17,8 @@ var (
 	FgMagenta = []byte("\x1b[35m")
 	FgCyan    = []byte("\x1b[36m")
 	FgWhite   = []byte("\x1b[37m")
+	FgHiBlack = []byte("\x1b[90m")
+	FgHiWhite = []byte("\x1b[97m")
 
 	// Background colors
 	BgBlack   = []byte("\x1b[40m")
@@ -30,6 +32,7 @@ var (
 
 	// Common consts
 	ColorReset     = []byte("\x1b[0m")
+	ColorBold      = []byte("\x1b[1m")
 	ColorFaint     = []byte("\x1b[2m")
 	ColorUnderline = []byte("\x1b[4m")
 )

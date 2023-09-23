@@ -5,7 +5,6 @@ go 1.21
 require (
 	github.com/aquasecurity/table v1.8.0
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
-	github.com/fatih/color v1.15.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/go-faster/tail v0.3.0
 	github.com/google/go-jsonnet v0.20.0

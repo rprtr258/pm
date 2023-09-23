@@ -6,14 +6,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fatih/color"
 	"github.com/rprtr258/xerr"
+	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
 	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
 	"github.com/rprtr258/pm/internal/core/pm"
+	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -55,26 +56,29 @@ func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
 			}
 
 			for _, line := range procLines.Lines {
-				// TODO: color package does not allow to use format with color parameter,
-				// so we carry whole formatting function
-				lineType := color.RedString
-				switch line.Type { //nolint:exhaustive // all interesting cases are handled
-				case core.LogTypeStdout:
-					lineType = color.HiWhiteString
-				case core.LogTypeStderr:
-					lineType = color.HiBlackString
-				}
+				lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
+												Case(core.LogTypeStdout, buffer.FgHiWhite).
+												Case(core.LogTypeStderr, buffer.FgHiBlack).
+												Default(buffer.FgRed)
 
 				fmt.Println(fmt2.FormatComplex(
 					// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
 					"{proc} {sep} {line}",
 					map[string]any{
-						"at": color.HiBlackString("%s", line.At.In(time.Local).Format("2006-01-02 15:04:05")),
+						"at": buffer.NewString(func(b *buffer.Buffer) {
+							b.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack)
+						}),
 						// TODO: different colors for different IDs
 						// TODO: pass proc name
-						"proc": color.RedString("%d|%s", procLines.ID, procLines.Name),
-						"sep":  color.GreenString("%s", "|"),
-						"line": lineType(line.Line),
+						"proc": buffer.NewString(func(b *buffer.Buffer) {
+							b.String(fmt.Sprint("%d|%s", procLines.ID, procLines.Name), buffer.FgRed)
+						}),
+						"sep": buffer.NewString(func(b *buffer.Buffer) {
+							b.String("|", buffer.FgGreen)
+						}),
+						"line": buffer.NewString(func(b *buffer.Buffer) {
+							b.String(line.Line, lineColor)
+						}),
 					},
 				))
 			}

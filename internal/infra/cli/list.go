@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/aquasecurity/table"
-	"github.com/fatih/color"
 	"github.com/kballard/go-shellquote"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
@@ -188,22 +187,36 @@ var _listCmd = &cli.Command{
 func mapStatus(status core.Status) (string, *int, time.Duration) {
 	switch status.Status {
 	case core.StatusCreated:
-		return color.YellowString("created"), nil, 0
+		return buffer.NewString(func(b *buffer.Buffer) {
+			b.String("created", buffer.FgYellow)
+		}), nil, 0
 	case core.StatusRunning:
-		return color.GreenString("running"), &status.Pid, time.Since(status.StartTime)
+		return buffer.NewString(func(b *buffer.Buffer) {
+			b.String("running", buffer.FgGreen)
+		}), &status.Pid, time.Since(status.StartTime)
 	case core.StatusStopped:
 		switch status.ExitCode {
 		case -1:
-			return color.RedString("stopped(-1)"), nil, 0
+			return buffer.NewString(func(b *buffer.Buffer) {
+				b.String("stopped(-1)", buffer.FgRed)
+			}), nil, 0
 		case 0:
-			return color.YellowString("exited"), nil, 0
+			return buffer.NewString(func(b *buffer.Buffer) {
+				b.String("exited", buffer.FgYellow)
+			}), nil, 0
 		default:
-			return color.RedString("stopped(%d)", status.ExitCode), nil, 0
+			return buffer.NewString(func(b *buffer.Buffer) {
+				b.String(fmt.Sprintf("stopped(%d)", status.ExitCode), buffer.FgRed)
+			}), nil, 0
 		}
 	case core.StatusInvalid:
-		return color.RedString("invalid(%#v)", status.Status), nil, 0
+		return buffer.NewString(func(b *buffer.Buffer) {
+			b.String(fmt.Sprintf("invalid(%#v)", status.Status), buffer.FgRed)
+		}), nil, 0
 	default:
-		return color.RedString("BROKEN(%T)", status), nil, 0
+		return buffer.NewString(func(b *buffer.Buffer) {
+			b.String(fmt.Sprintf("BROKEN(%T)", status), buffer.FgRed)
+		}), nil, 0
 	}
 }
 
@@ -219,7 +232,9 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 		status, pid, uptime := mapStatus(proc.Status)
 
 		procsTable.AddRow(
-			color.New(color.FgCyan, color.Bold).Sprint(proc.ID),
+			buffer.NewString(func(b *buffer.Buffer) {
+				b.String(fmt.Sprint(proc.ID), buffer.FgCyan, buffer.ColorBold)
+			}),
 			proc.Name,
 			status,
 			fun.
