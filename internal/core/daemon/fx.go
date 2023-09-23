@@ -155,6 +155,7 @@ func startChildrenStatuser(lc fx.Lifecycle, ebus *eventbus.EventBus, dbHandle db
 			}()
 			return nil
 		},
+		OnStop: nil,
 	})
 }
 
@@ -204,6 +205,7 @@ func startStatuser(lc fx.Lifecycle, ebus *eventbus.EventBus, dbHandle db.Handle)
 			}()
 			return nil
 		},
+		OnStop: nil,
 	})
 }
 
@@ -218,6 +220,7 @@ func startCron(lc fx.Lifecycle, ebus *eventbus.EventBus, dbHandle db.Handle) {
 			}.start(ctx)
 			return nil
 		},
+		OnStop: nil,
 	})
 }
 

@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -224,13 +225,13 @@ func readPmConfig() (core.Config, error) {
 	config, errRead := core.ReadConfig()
 	if errRead != nil {
 		if errRead != core.ErrConfigNotExists {
-			return core.Config{}, xerr.NewWM(errRead, "read config for migrate")
+			return fun.Zero[core.Config](), xerr.NewWM(errRead, "read config for migrate")
 		}
 
 		log.Info().Msg("writing initial config...")
 
 		if errWrite := core.WriteConfig(core.DefaultConfig); errWrite != nil {
-			return core.Config{}, xerr.NewWM(errWrite, "write initial config")
+			return fun.Zero[core.Config](), xerr.NewWM(errWrite, "write initial config")
 		}
 
 		return core.DefaultConfig, nil

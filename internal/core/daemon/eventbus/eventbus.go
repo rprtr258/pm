@@ -127,6 +127,7 @@ var Module = fx.Options(
 				go ebus.Start(ctx)
 				return nil
 			},
+			OnStop: nil,
 		})
 		return ebus
 	}),

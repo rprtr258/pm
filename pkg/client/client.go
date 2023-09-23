@@ -35,7 +35,7 @@ func New() (Client, error) {
 		}),
 	)
 	if err != nil {
-		return Client{}, xerr.NewWM(err, "connect to grpc server")
+		return fun.Zero[Client](), xerr.NewWM(err, "connect to grpc server")
 	}
 
 	return Client{

@@ -35,6 +35,7 @@ var Module = fx.Options(
 		}
 
 		lc.Append(fx.Hook{
+			OnStart: nil,
 			OnStop: func(ctx context.Context) error {
 				return fsWatcher.Close()
 			},
@@ -58,6 +59,7 @@ var Module = fx.Options(
 				go pmWatcher.Start(ctx)
 				return nil
 			},
+			OnStop: nil,
 		})
 		return pmWatcher
 	}),

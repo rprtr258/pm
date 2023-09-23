@@ -38,6 +38,7 @@ func newListener(lc fx.Lifecycle) (net.Listener, error) {
 	}
 
 	lc.Append(fx.Hook{
+		OnStart: nil,
 		OnStop: func(ctx context.Context) error {
 			return sock.Close()
 		},

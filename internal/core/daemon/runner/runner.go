@@ -142,6 +142,7 @@ func Start(lc fx.Lifecycle, ebus *eventbus.EventBus, dbHandle db.Handle) {
 			}()
 			return nil
 		},
+		OnStop: nil,
 	})
 }
 
