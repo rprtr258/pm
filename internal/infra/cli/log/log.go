@@ -346,7 +346,7 @@ func (e *Event) Errs(k string, errs []error) *Event {
 
 func (e *Event) Msg(msg string) {
 	(&prettyWriter{
-		maxSlicePrintSize: 0,
+		maxSlicePrintSize: 10,
 		b:                 buffer.New(os.Stderr),
 	}).write(msg, e)
 }
