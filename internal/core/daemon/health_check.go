@@ -12,7 +12,7 @@ import (
 )
 
 func (*daemonServer) HealthCheck(context.Context, *emptypb.Empty) (*pb.Status, error) {
-	status, err := linuxprocess.HealthCheck()
+	status, err := linuxprocess.GetSelfStatus()
 	if err != nil {
 		return nil, xerr.NewWM(err, "get proc status")
 	}

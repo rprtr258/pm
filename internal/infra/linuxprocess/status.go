@@ -3,6 +3,7 @@ package linuxprocess
 import (
 	"os"
 	"strings"
+	"syscall"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
@@ -21,13 +22,16 @@ type Status struct {
 	UserHomeDir   string
 	PID           int
 	PPID          int
+	PGID          int
+	PGRP          int
 	UID           int
 	EUID          int
 	GID           int
 	EGID          int
+	TID           int
 }
 
-func HealthCheck() (Status, error) {
+func GetSelfStatus() (Status, error) {
 	executable, err := os.Executable()
 	if err != nil {
 		return fun.Zero[Status](), xerr.NewWM(err, "get executable")
@@ -63,25 +67,33 @@ func HealthCheck() (Status, error) {
 		return fun.Zero[Status](), xerr.NewWM(err, "get userHomeDir")
 	}
 
+	pgid, err := syscall.Getpgid(syscall.Getpid())
+	if err != nil {
+		return fun.Zero[Status](), xerr.NewWM(err, "get pgid")
+	}
+
 	return Status{
 		Args: os.Args,
-		Envs: fun.SliceToMap[string, string](os.Environ(), func(v string) (string, string) {
+		Envs: fun.SliceToMap[string, string](syscall.Environ(), func(v string) (string, string) {
 			name, val, _ := strings.Cut(v, "=")
 			return name, val
 		}),
 		Executable:    executable,
 		Cwd:           cwd,
 		Groups:        groups,
-		PageSize:      os.Getpagesize(),
+		PageSize:      syscall.Getpagesize(),
 		Hostname:      hostname,
 		UserCacheDir:  userCacheDir,
 		UserConfigDir: userConfigDir,
 		UserHomeDir:   userHomeDir,
-		PID:           os.Getpid(),
-		PPID:          os.Getppid(),
-		UID:           os.Getuid(),
-		EUID:          os.Geteuid(),
-		GID:           os.Getgid(),
-		EGID:          os.Getegid(),
+		PID:           syscall.Getpid(),
+		PGID:          pgid,
+		PPID:          syscall.Getppid(),
+		PGRP:          syscall.Getpgrp(),
+		UID:           syscall.Getuid(),
+		EUID:          syscall.Geteuid(),
+		GID:           syscall.Getgid(),
+		EGID:          syscall.Getegid(),
+		TID:           syscall.Gettid(),
 	}, nil
 }
