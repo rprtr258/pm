@@ -66,7 +66,7 @@ func (b *buffer) repeatByte(c byte, n int) *buffer { //nolint:unparam // fuck yo
 	return b
 }
 
-func (b *buffer) string(s string) *buffer {
+func (b *buffer) string(s string) *buffer { //nolint:unparam // fuck off
 	io.WriteString(b.out, s) //nolint:errcheck // fuck you
 	return b
 }
@@ -327,7 +327,7 @@ func anyToBytes(a reflect.Value) []byte {
 	return []byte(fmt.Sprint(a.Interface()))
 }
 
-func (w *prettyWriter) write(msg string, ev *event) { //nolint:funlen // fuck you
+func (w *prettyWriter) write(msg string, ev *Event) { //nolint:funlen // fuck you
 	colorBg, colorFg := levelColors(ev.level)
 
 	padding := 0
@@ -423,38 +423,38 @@ func (w *prettyWriter) write(msg string, ev *event) { //nolint:funlen // fuck yo
 		}))
 }
 
-type event struct {
+type Event struct {
 	ts     time.Time
 	level  zerolog.Level
 	fields map[string]any
 }
 
-func (e *event) Str(k string, v string) *event {
+func (e *Event) Str(k string, v string) *Event {
 	e.fields[k] = v
 	return e
 }
 
-func (e *event) Time(k string, v time.Time) *event {
+func (e *Event) Time(k string, v time.Time) *Event {
 	e.fields[k] = v
 	return e
 }
 
-func (e *event) Any(k string, v any) *event {
+func (e *Event) Any(k string, v any) *Event {
 	e.fields[k] = v
 	return e
 }
 
-func (e *event) Err(err error) *event {
+func (e *Event) Err(err error) *Event {
 	e.fields[zerolog.ErrorFieldName] = err
 	return e
 }
 
-func (e *event) Errs(k string, errs []error) *event {
+func (e *Event) Errs(k string, errs []error) *Event {
 	e.fields[k] = errs
 	return e
 }
 
-func (e *event) Msg(msg string) {
+func (e *Event) Msg(msg string) {
 	(&prettyWriter{
 		maxSlicePrintSize: 0,
 		b:                 newBuffer(os.Stderr),
@@ -465,23 +465,23 @@ type logger struct{}
 
 var _logger = &logger{}
 
-func (l *logger) log(level zerolog.Level) *event {
-	return &event{
+func (l *logger) log(level zerolog.Level) *Event {
+	return &Event{
 		ts:     time.Now(),
 		level:  level,
 		fields: map[string]any{},
 	}
 }
 
-func (l *logger) Info() *event {
+func (l *logger) Info() *Event {
 	return l.log(zerolog.InfoLevel)
 }
 
-func (l *logger) Warn() *event {
+func (l *logger) Warn() *Event {
 	return l.log(zerolog.WarnLevel)
 }
 
-func (l *logger) Error() *event {
+func (l *logger) Error() *Event {
 	return l.log(zerolog.ErrorLevel)
 }
 
@@ -517,15 +517,15 @@ func (l *logger) Fatal(err error) {
 	os.Exit(1)
 }
 
-func Info() *event {
+func Info() *Event {
 	return _logger.Info()
 }
 
-func Warn() *event {
+func Warn() *Event {
 	return _logger.Warn()
 }
 
-func Error() *event {
+func Error() *Event {
 	return _logger.Error()
 }
 
