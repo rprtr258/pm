@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 )
 
@@ -36,14 +37,14 @@ func ReadConfig() (Config, error) {
 			return Config{}, ErrConfigNotExists
 		}
 
-		return Config{}, xerr.NewWM(errRead, "read config file", xerr.Fields{
+		return fun.Zero[Config](), xerr.NewWM(errRead, "read config file", xerr.Fields{
 			"filename": _configPath,
 		})
 	}
 
 	var config Config
 	if errUnmarshal := json.Unmarshal(configBytes, &config); errUnmarshal != nil {
-		return Config{}, xerr.NewWM(errUnmarshal, "parse config")
+		return fun.Zero[Config](), xerr.NewWM(errUnmarshal, "parse config")
 	}
 
 	return config, nil
