@@ -140,24 +140,28 @@ func (e *EventBus) Start(ctx context.Context) {
 				Stringer("event", event).
 				Msg("got event, routing")
 
-			e.mu.Lock()
-			for name, sub := range e.subscribers {
-				if _, ok := sub.Kinds[event.Kind]; !ok {
-					continue
-				}
+			func() {
+				e.mu.Lock()
+				defer e.mu.Unlock()
 
-				log.Debug().
-					Any("event", event).
-					Str("subscriber", name).
-					Msg("publishing event")
-				sub.Queue.Push(event)
-				select {
-				case <-ctx.Done():
-					return
-				default:
+				for name, sub := range e.subscribers {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+
+					if _, ok := sub.Kinds[event.Kind]; !ok {
+						continue
+					}
+
+					log.Debug().
+						Any("event", event).
+						Str("subscriber", name).
+						Msg("publishing event")
+					sub.Queue.Push(event)
 				}
-			}
-			e.mu.Unlock()
+			}()
 		}
 	}
 }
