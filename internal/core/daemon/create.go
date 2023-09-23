@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
 
 	pb "github.com/rprtr258/pm/api"
@@ -26,14 +27,29 @@ type CreateQuery struct {
 	StderrFile fun.Option[string]
 }
 
+// compareTags and return true if equal
+func compareTags(first, second []string) bool {
+	firstSet := fun.SliceToSet(first)
+	secondSet := fun.SliceToSet(second)
+	return len(fun.Intersect(firstSet, secondSet)) == max(len(firstSet), len(secondSet))
+}
+
+// compareArgs and return true if equal
+func compareArgs(first, second []string) bool {
+	return len(first) == len(second) && iter.FromSlice(first).All(func(iv fun.Pair[int, string]) bool {
+		i, v := iv.K, iv.V
+		return v == second[i]
+	})
+}
+
 func (srv *daemonServer) create(query CreateQuery) (core.ProcID, error) {
 	// try to find by name and update
-	if name, ok := query.Name.Unpack(); ok {
+	if name, ok := query.Name.Unpack(); ok { //nolint:nestif // no idea how to simplify it now
 		procs := srv.db.GetProcs(core.WithAllIfNoFilters)
 
 		if procID, ok := fun.FindKeyBy(procs, func(_ core.ProcID, procData core.Proc) bool {
 			return procData.Name == name
-		}); ok { // TODO: early exit from outer if block
+		}); ok {
 			procData := core.Proc{
 				ID:         procID,
 				Status:     core.NewStatusCreated(),
@@ -51,9 +67,9 @@ func (srv *daemonServer) create(query CreateQuery) (core.ProcID, error) {
 			proc := procs[procID]
 			if proc.Status.Status != core.StatusRunning ||
 				proc.Cwd == procData.Cwd &&
-					len(proc.Tags) == len(procData.Tags) && // TODO: compare lists, not lengths
+					compareTags(proc.Tags, procData.Tags) &&
 					proc.Command == procData.Command &&
-					len(proc.Args) == len(procData.Args) && // TODO: compare lists, not lengths
+					compareArgs(proc.Args, procData.Args) &&
 					proc.Watch == procData.Watch {
 				// not updated, do nothing
 				return procID, nil
