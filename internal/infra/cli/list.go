@@ -49,9 +49,7 @@ var _listCmd = &cli.Command{
 					String(_formatJSON, buffer.FgYellow).String(", ").
 					String(_formatShort, buffer.FgYellow).
 					String(", any other string is rendred as Go template with ").
-					Styled(func(b *buffer.Buffer) {
-						b.String("core.ProcData")
-					}, buffer.FgGreen).
+					String("core.ProcData", buffer.FgGreen).
 					String(" struct")
 			}),
 			Value: "table",
@@ -68,9 +66,7 @@ var _listCmd = &cli.Command{
 					String("pid", buffer.FgYellow).String(", ").
 					String("uptime", buffer.FgYellow).
 					String(". Order can be changed by adding ").
-					Styled(func(b *buffer.Buffer) {
-						b.String(":asc")
-					}, buffer.FgRed).
+					String(":asc", buffer.FgRed).
 					String(" or ").
 					String(":desc", buffer.FgRed)
 			}),
