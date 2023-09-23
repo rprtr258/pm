@@ -322,10 +322,9 @@ func Main(ctx context.Context) error {
 
 	go watcher.Module(ctx, fsWatcher, ebus)
 
-	go daemon.StartChildrenStatuser(ctx, ebus, dbHandle)
+	go daemon.StartDeathCollector(ctx, ebus, dbHandle)
 	go daemon.StartStatuser(ctx, ebus, dbHandle)
 	go runner.Start(ctx, ebus, dbHandle)
-	go daemon.StartCron(ctx, ebus, dbHandle)
 
 	srv := daemon.NewServer(ebus, dbHandle)
 
