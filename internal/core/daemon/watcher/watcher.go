@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog/log"
@@ -24,7 +25,7 @@ type Watcher struct {
 	watchplaces map[core.ProcID]watcherEntry
 	dirs        map[string][]core.ProcID // dir -> proc ids using that dir
 	ebus        *eventbus.EventBus
-	statusCh    *queue.Queue[eventbus.Event]
+	statusQ     *queue.Queue[eventbus.Event]
 }
 
 func Module(ctx context.Context, fsWatcher *fsnotify.Watcher, ebus *eventbus.EventBus) {
@@ -32,7 +33,7 @@ func Module(ctx context.Context, fsWatcher *fsnotify.Watcher, ebus *eventbus.Eve
 		watcher:     fsWatcher,
 		watchplaces: make(map[core.ProcID]watcherEntry),
 		dirs:        make(map[string][]core.ProcID),
-		statusCh: ebus.Subscribe(
+		statusQ: ebus.Subscribe(
 			"watcher",
 			eventbus.KindProcStarted,
 			eventbus.KindProcStopped,
@@ -111,7 +112,10 @@ func (w Watcher) Remove(procIDs ...core.ProcID) {
 }
 
 func (w Watcher) Start(ctx context.Context) {
-	for { // TODO: ticker
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
 		select {
 		case <-ctx.Done():
 			return
@@ -149,36 +153,36 @@ func (w Watcher) Start(ctx context.Context) {
 			} else {
 				log.Error().Msg("fsnotify sent nil error")
 			}
-		default:
-		}
-
-		event, ok := w.statusCh.Pop()
-		if !ok {
-			continue
-		}
-		switch e := event.Data.(type) {
-		case eventbus.DataProcStarted:
-			if _, ok := w.watchplaces[e.Proc.ID]; ok {
+		case <-ticker.C:
+			event, ok := w.statusQ.Pop()
+			if !ok {
 				continue
 			}
 
-			if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
-				continue
-			}
+			switch e := event.Data.(type) {
+			case eventbus.DataProcStarted:
+				if _, ok := w.watchplaces[e.Proc.ID]; ok {
+					continue
+				}
 
-			if watch, ok := e.Proc.Watch.Unpack(); ok {
-				w.Add(e.Proc.ID, e.Proc.Cwd, watch)
-			}
-		case eventbus.DataProcStopped:
-			if _, ok := w.watchplaces[e.ProcID]; ok {
-				continue
-			}
+				if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
+					continue
+				}
 
-			if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
-				continue
-			}
+				if watch, ok := e.Proc.Watch.Unpack(); ok {
+					w.Add(e.Proc.ID, e.Proc.Cwd, watch)
+				}
+			case eventbus.DataProcStopped:
+				if _, ok := w.watchplaces[e.ProcID]; ok {
+					continue
+				}
 
-			w.Remove(e.ProcID)
+				if e.EmitReason&^eventbus.EmitReasonByWatcher == 0 {
+					continue
+				}
+
+				w.Remove(e.ProcID)
+			}
 		}
 	}
 }

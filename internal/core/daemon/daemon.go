@@ -94,46 +94,49 @@ func StartChildrenStatuser(ctx context.Context, ebus *eventbus.EventBus, dbHandl
 
 func StartStatuser(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 	// status updater
-	statusUpdaterCh := ebus.Subscribe(
+	statusUpdaterQ := ebus.Subscribe(
 		"status_updater",
 		eventbus.KindProcStarted,
 		eventbus.KindProcStopped,
 	)
-	for { // TODO: tick
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
-		}
-
-		event, ok := statusUpdaterCh.Pop()
-		if !ok {
-			continue
-		}
-
-		switch e := event.Data.(type) {
-		case eventbus.DataProcStarted:
-			// TODO: fill/remove cpu, memory
-			runningStatus := core.NewStatusRunning(time.Now(), e.Pid, 0, 0)
-			if err := dbHandle.SetStatus(e.Proc.ID, runningStatus); err != nil {
-				log.Error().
-					Uint64("proc_id", e.Proc.ID).
-					Any("new_status", runningStatus).
-					Msg("set proc status to running")
+		case <-ticker.C:
+			event, ok := statusUpdaterQ.Pop()
+			if !ok {
+				continue
 			}
-		case eventbus.DataProcStopped:
-			dbStatus := core.NewStatusStopped(e.ExitCode)
-			if err := dbHandle.SetStatus(e.ProcID, dbStatus); err != nil {
-				if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
+
+			switch e := event.Data.(type) {
+			case eventbus.DataProcStarted:
+				// TODO: fill/remove cpu, memory
+				runningStatus := core.NewStatusRunning(time.Now(), e.Pid, 0, 0)
+				if err := dbHandle.SetStatus(e.Proc.ID, runningStatus); err != nil {
 					log.Error().
-						Uint64("proc_id", e.ProcID).
-						Int("exit_code", e.ExitCode).
-						Msg("proc not found while trying to set stopped status")
-				} else {
-					log.Error().
-						Uint64("proc_id", e.ProcID).
-						Any("new_status", dbStatus).
-						Msg("set proc status to stopped")
+						Uint64("proc_id", e.Proc.ID).
+						Any("new_status", runningStatus).
+						Msg("set proc status to running")
+				}
+			case eventbus.DataProcStopped:
+				dbStatus := core.NewStatusStopped(e.ExitCode)
+				if err := dbHandle.SetStatus(e.ProcID, dbStatus); err != nil {
+					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
+						log.Error().
+							Uint64("proc_id", e.ProcID).
+							Int("exit_code", e.ExitCode).
+							Msg("proc not found while trying to set stopped status")
+					} else {
+						log.Error().
+							Uint64("proc_id", e.ProcID).
+							Any("new_status", dbStatus).
+							Msg("set proc status to stopped")
+					}
 				}
 			}
 		}
