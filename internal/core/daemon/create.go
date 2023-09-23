@@ -31,12 +31,9 @@ func (srv *daemonServer) create(query CreateQuery) (core.ProcID, error) {
 	if name, ok := query.Name.Unpack(); ok {
 		procs := srv.db.GetProcs(core.WithAllIfNoFilters)
 
-		if procID, ok := fun.FindKeyBy(
-			procs,
-			func(_ core.ProcID, procData core.Proc) bool {
-				return procData.Name == name
-			},
-		); ok { // TODO: early exit from outer if block
+		if procID, ok := fun.FindKeyBy(procs, func(_ core.ProcID, procData core.Proc) bool {
+			return procData.Name == name
+		}); ok { // TODO: early exit from outer if block
 			procData := core.Proc{
 				ID:         procID,
 				Status:     core.NewStatusCreated(),
