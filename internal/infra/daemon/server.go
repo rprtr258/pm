@@ -18,35 +18,16 @@ import (
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
-type Server interface {
-	Create(
-		command string,
-		args []string,
-		name fun.Option[string],
-		cwd string,
-		tags []string,
-		env map[string]string,
-		watch fun.Option[string],
-		stdoutFile fun.Option[string],
-		stderrFile fun.Option[string],
-	) (core.ProcID, error)
-	Delete(context.Context, core.ProcID) error
-	Start(context.Context, core.ProcID)
-	Stop(context.Context, core.ProcID)
-	List(context.Context) map[core.ProcID]core.Proc
-	Signal(context.Context, core.ProcID, syscall.Signal)
-	Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine, error)
-}
-
 type daemonServer struct {
 	pb.UnimplementedDaemonServer
-	srv Server
+	srv *daemon.Server
 }
 
-func newServer(lc fx.Lifecycle, sock net.Listener, srv Server) *grpc.Server {
+func newServer(lc fx.Lifecycle, sock net.Listener, srv *daemon.Server) *grpc.Server {
 	s := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
 		grpc.ChainStreamInterceptor(streamLoggerInterceptor),

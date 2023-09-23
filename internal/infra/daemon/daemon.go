@@ -317,9 +317,6 @@ func Main(ctx context.Context) error {
 
 	return fx.New(
 		daemon.NewApp(),
-		fx.Provide(func(s *daemon.Server) Server {
-			return s
-		}),
 		Module,
 	).Start(ctx)
 }
