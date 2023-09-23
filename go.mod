@@ -18,7 +18,6 @@ require (
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.7
 	github.com/wissance/stringFormatter v1.1.1
-	go.uber.org/fx v1.20.0
 	golang.org/x/mod v0.12.0
 	golang.org/x/sys v0.11.0
 	google.golang.org/grpc v1.57.0
@@ -38,7 +37,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.mongodb.org/mongo-driver v1.12.1 // indirect
-	go.uber.org/dig v1.17.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.25.0 // indirect
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect

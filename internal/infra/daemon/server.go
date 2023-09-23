@@ -11,7 +11,6 @@ import (
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"go.uber.org/fx"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -19,6 +18,7 @@ import (
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
+	"github.com/rprtr258/pm/internal/core/fx"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
@@ -27,7 +27,12 @@ type daemonServer struct {
 	srv *daemon.Server
 }
 
-func newServer(lc fx.Lifecycle, sock net.Listener, srv *daemon.Server) *grpc.Server {
+func newServer(srv *daemon.Server) (fx.Lifecycle, error) {
+	sock, err := net.Listen("unix", core.SocketRPC)
+	if err != nil { // TODO: move out to sync lifecycle
+		return fun.Zero[fx.Lifecycle](), err
+	}
+
 	s := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
 		grpc.ChainStreamInterceptor(streamLoggerInterceptor),
@@ -36,22 +41,26 @@ func newServer(lc fx.Lifecycle, sock net.Listener, srv *daemon.Server) *grpc.Ser
 		UnimplementedDaemonServer: pb.UnimplementedDaemonServer{},
 		srv:                       srv,
 	})
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
+	return fx.Lifecycle{
+		Name: "grpc-server",
+		Start: func(ctx context.Context) error {
 			log.Info().Stringer("socket", sock.Addr()).Msg("daemon started")
 			return s.Serve(sock)
 		},
-		OnStop: func(context.Context) error {
+		StartAsync: nil,
+		Close: func() {
+			sock.Close()
+
 			s.GracefulStop()
 
 			if errRm := os.Remove(core.SocketRPC); errRm != nil && !errors.Is(errRm, os.ErrNotExist) {
-				return xerr.NewWM(errRm, "remove pid file", xerr.Fields{"file": _filePid})
+				log.Error().
+					Err(errRm).
+					Str("file", _filePid).
+					Msg("remove pid file")
 			}
-
-			return nil
 		},
-	})
-	return s
+	}, nil
 }
 
 func (*daemonServer) HealthCheck(context.Context, *emptypb.Empty) (*pb.Status, error) {

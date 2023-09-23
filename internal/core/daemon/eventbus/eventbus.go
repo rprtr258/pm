@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"go.uber.org/fx"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus/queue"
+	"github.com/rprtr258/pm/internal/core/fx"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
@@ -114,25 +114,22 @@ type EventBus struct {
 	subscribers map[string]Subscriber
 }
 
-var Module = fx.Options(
-	fx.Provide(func(lc fx.Lifecycle, db db.Handle) *EventBus {
-		ebus := &EventBus{
-			q:           queue.New[Event](),
-			db:          db,
-			mu:          sync.Mutex{},
-			subscribers: map[string]Subscriber{},
-		}
-		lc.Append(fx.Hook{
-			OnStart: func(ctx context.Context) error {
-				go ebus.Start(ctx)
-				return nil
-			},
-			OnStop: nil,
-		})
-		return ebus
-	}),
-	fx.Invoke(func(*EventBus) {}),
-)
+func Module(db db.Handle) (*EventBus, fx.Lifecycle) {
+	ebus := &EventBus{
+		q:           queue.New[Event](),
+		db:          db,
+		mu:          sync.Mutex{},
+		subscribers: map[string]Subscriber{},
+	}
+	return ebus, fx.Lifecycle{
+		Name:  "eventbus",
+		Start: nil,
+		StartAsync: func(ctx context.Context) {
+			go ebus.Start(ctx)
+		},
+		Close: nil,
+	}
+}
 
 func (e *EventBus) Start(ctx context.Context) {
 	defer func() {

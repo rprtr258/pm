@@ -8,10 +8,11 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/fx"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
+	"github.com/rprtr258/pm/internal/core/fx"
 )
 
 type watcherEntry struct {
@@ -27,43 +28,31 @@ type Watcher struct {
 	statusCh    <-chan eventbus.Event
 }
 
-var Module = fx.Options(
-	fx.Provide(func(lc fx.Lifecycle) (*fsnotify.Watcher, error) {
-		fsWatcher, err := fsnotify.NewWatcher()
-		if err != nil {
-			return nil, err
-		}
+func Module(ebus *eventbus.EventBus) (fx.Lifecycle, error) {
+	fsWatcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return fun.Zero[fx.Lifecycle](), err
+	} // TODO: move out to sync lifecycle before pmWatcher
+	defer fsWatcher.Close()
 
-		lc.Append(fx.Hook{
-			OnStart: nil,
-			OnStop: func(ctx context.Context) error {
-				return fsWatcher.Close()
-			},
-		})
-		return fsWatcher, nil
-	}),
-	fx.Invoke(func(lc fx.Lifecycle, watcher *fsnotify.Watcher, ebus *eventbus.EventBus) Watcher {
-		pmWatcher := Watcher{
-			watcher:     watcher,
-			watchplaces: make(map[core.ProcID]watcherEntry),
-			dirs:        make(map[string][]core.ProcID),
-			statusCh: ebus.Subscribe(
-				"watcher",
-				eventbus.KindProcStarted,
-				eventbus.KindProcStopped,
-			),
-			ebus: ebus,
-		}
-		lc.Append(fx.Hook{
-			OnStart: func(ctx context.Context) error {
-				go pmWatcher.Start(ctx)
-				return nil
-			},
-			OnStop: nil,
-		})
-		return pmWatcher
-	}),
-)
+	pmWatcher := Watcher{
+		watcher:     fsWatcher,
+		watchplaces: make(map[core.ProcID]watcherEntry),
+		dirs:        make(map[string][]core.ProcID),
+		statusCh: ebus.Subscribe(
+			"watcher",
+			eventbus.KindProcStarted,
+			eventbus.KindProcStopped,
+		),
+		ebus: ebus,
+	}
+	return fx.Lifecycle{
+		Name: "watcher",
+		StartAsync: func(ctx context.Context) {
+			pmWatcher.Start(ctx)
+		},
+	}, nil
+}
 
 func (w Watcher) Add(procID core.ProcID, dir, pattern string) {
 	log.Info().
@@ -193,7 +182,9 @@ func (w Watcher) Start(ctx context.Context) {
 				}
 			}
 		case err := <-w.watcher.Errors:
-			log.Error().Err(err).Msg("fsnotify error")
+			if err != nil {
+				log.Error().Err(err).Msg("fsnotify error")
+			}
 		}
 	}
 }

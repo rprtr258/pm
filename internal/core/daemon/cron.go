@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
+	"github.com/rprtr258/pm/internal/core/fx"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
@@ -17,6 +19,22 @@ type cron struct {
 	db                db.Handle
 	statusUpdateDelay time.Duration
 	ebus              *eventbus.EventBus
+}
+
+func startCron(ebus *eventbus.EventBus, dbHandle db.Handle) fx.Lifecycle {
+	return fx.Lifecycle{
+		Name:  "cron",
+		Start: nil,
+		StartAsync: func(ctx context.Context) {
+			cron{
+				l:                 log.Logger.With().Str("system", "cron").Logger(),
+				db:                dbHandle,
+				statusUpdateDelay: 5 * time.Second,
+				ebus:              ebus,
+			}.start(ctx)
+		},
+		Close: nil,
+	}
 }
 
 func (c cron) updateStatuses(ctx context.Context) {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -17,11 +16,11 @@ import (
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/fx"
 	"google.golang.org/grpc"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
+	"github.com/rprtr258/pm/internal/core/fx"
 	"github.com/rprtr258/pm/internal/core/pm"
 	log2 "github.com/rprtr258/pm/internal/infra/cli/log"
 	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
@@ -254,28 +253,6 @@ var (
 	_dirDB        = filepath.Join(core.DirHome, "db")     // TODO: remove
 )
 
-var Module = fx.Options(
-	fx.Provide(newListener),
-	fx.Provide(newServer),
-	fx.Invoke(func(*grpc.Server) {}),
-)
-
-func newListener(lc fx.Lifecycle) (net.Listener, error) {
-	sock, err := net.Listen("unix", core.SocketRPC)
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStart: nil,
-		OnStop: func(ctx context.Context) error {
-			return sock.Close()
-		},
-	})
-
-	return sock, nil
-}
-
 func unaryLoggerInterceptor(
 	ctx context.Context,
 	req any,
@@ -315,8 +292,19 @@ func Main(ctx context.Context) error {
 		Caller().
 		Logger()
 
-	return fx.New(
-		daemon.NewApp(),
-		Module,
+	app, appLc, err := daemon.NewApp()
+	if err != nil {
+		return err
+	}
+
+	srvLc, err := newServer(app)
+	if err != nil {
+		// TODO: in this case appLc.Close would not be called, but should
+		return err
+	}
+
+	return fx.Combine("grpc daemon",
+		appLc,
+		srvLc,
 	).Start(ctx)
 }
