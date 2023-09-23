@@ -12,18 +12,18 @@ import (
 	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/daemon"
 	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
+	"github.com/rprtr258/pm/internal/infra/daemon"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
-func mergeChans(ctx context.Context, chans ...<-chan core.ProcLogs) <-chan core.ProcLogs {
-	out := make(chan core.ProcLogs)
+func mergeChans(ctx context.Context, chans ...<-chan core.LogLine) <-chan core.LogLine {
+	out := make(chan core.LogLine)
 	var wg sync.WaitGroup
 	wg.Add(len(chans))
 	for _, ch := range chans {
-		go func(ch <-chan core.ProcLogs) {
+		go func(ch <-chan core.LogLine) {
 			defer wg.Done()
 			for {
 				select {
@@ -45,35 +45,33 @@ func mergeChans(ctx context.Context, chans ...<-chan core.ProcLogs) <-chan core.
 	return out
 }
 
-func watchLogs(ctx context.Context, ch <-chan core.ProcLogs) error {
+func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case procLines, ok := <-ch:
+		case line, ok := <-ch:
 			if !ok {
 				return nil
 			}
 
-			for _, line := range procLines.Lines {
-				lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
-												Case(core.LogTypeStdout, buffer.FgHiWhite).
-												Case(core.LogTypeStderr, buffer.FgHiBlack).
-												Default(buffer.FgRed)
+			lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
+											Case(core.LogTypeStdout, buffer.FgHiWhite).
+											Case(core.LogTypeStderr, buffer.FgHiBlack).
+											Default(buffer.FgRed)
 
-				fmt.Println(fmt2.FormatComplex(
-					// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
-					"{proc} {sep} {line}",
-					map[string]any{
-						"at": buffer.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack),
-						// TODO: different colors for different IDs
-						// TODO: pass proc name
-						"proc": buffer.String(fmt.Sprintf("%d|%s", procLines.ID, procLines.Name), buffer.FgRed),
-						"sep":  buffer.String("|", buffer.FgGreen),
-						"line": buffer.String(line.Line, lineColor),
-					},
-				))
-			}
+			fmt.Println(fmt2.FormatComplex(
+				// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
+				"{proc} {sep} {line}",
+				map[string]any{
+					"at": buffer.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack),
+					// TODO: different colors for different IDs
+					// TODO: pass proc name
+					"proc": buffer.String(fmt.Sprintf("%d|%s", line.ID, line.Name), buffer.FgRed),
+					"sep":  buffer.String("|", buffer.FgGreen),
+					"line": buffer.String(line.Line, lineColor),
+				},
+			))
 		}
 	}
 }
@@ -141,7 +139,7 @@ var _logsCmd = &cli.Command{
 				return nil
 			}
 
-			logsChs := make([]<-chan core.ProcLogs, len(procIDs))
+			logsChs := make([]<-chan core.LogLine, len(procIDs))
 			for i, procID := range procIDs {
 				logsCh, errLogs := app.Logs(ctx.Context, procID)
 				if errLogs != nil {
@@ -187,7 +185,7 @@ var _logsCmd = &cli.Command{
 			return nil
 		}
 
-		logsChs := make([]<-chan core.ProcLogs, len(procIDs))
+		logsChs := make([]<-chan core.LogLine, len(procIDs))
 		for i, procID := range procIDs {
 			logsCh, errLogs := app.Logs(ctx.Context, procID)
 			if errLogs != nil {

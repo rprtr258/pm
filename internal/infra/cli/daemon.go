@@ -6,7 +6,7 @@ import (
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
 
-	pm_daemon "github.com/rprtr258/pm/internal/core/daemon"
+	"github.com/rprtr258/pm/internal/infra/daemon"
 )
 
 var _daemonCmd = &cli.Command{
@@ -19,7 +19,7 @@ var _daemonCmd = &cli.Command{
 			Aliases: []string{"restart"},
 			Usage:   "launch daemon process",
 			Action: func(ctx *cli.Context) error {
-				pid, errRestart := pm_daemon.Restart(ctx.Context)
+				pid, errRestart := daemon.Restart(ctx.Context)
 				if errRestart != nil {
 					return xerr.NewWM(errRestart, "restart daemon process")
 				}
@@ -37,7 +37,7 @@ var _daemonCmd = &cli.Command{
 			Aliases: []string{"kill"},
 			Usage:   "stop daemon process",
 			Action: func(ctx *cli.Context) error {
-				if errStop := pm_daemon.Kill(); errStop != nil {
+				if errStop := daemon.Kill(); errStop != nil {
 					return xerr.NewWM(errStop, "stop daemon process")
 				}
 
@@ -48,7 +48,7 @@ var _daemonCmd = &cli.Command{
 			Name:  "run",
 			Usage: "run daemon server without daemonizing, DON'T USE BY HAND IF YOU DON'T KNOW WHAT YOU ARE DOING",
 			Action: func(ctx *cli.Context) error {
-				if errRun := pm_daemon.Main(ctx.Context); errRun != nil {
+				if errRun := daemon.Main(ctx.Context); errRun != nil {
 					return xerr.NewWM(errRun, "run daemon process")
 				}
 
@@ -60,7 +60,7 @@ var _daemonCmd = &cli.Command{
 			Usage:   "check daemon status",
 			Aliases: []string{"ps"},
 			Action: func(ctx *cli.Context) error {
-				if errStatus := pm_daemon.Status(ctx.Context); errStatus != nil {
+				if errStatus := daemon.Status(ctx.Context); errStatus != nil {
 					return xerr.NewWM(errStatus, "check daemon status")
 				}
 
@@ -81,7 +81,7 @@ var _daemonCmd = &cli.Command{
 			Action: func(ctx *cli.Context) error {
 				follow := ctx.Bool("follow")
 
-				if errLogs := pm_daemon.Logs(ctx.Context, follow); errLogs != nil {
+				if errLogs := daemon.Logs(ctx.Context, follow); errLogs != nil {
 					return xerr.NewWM(errLogs, "check daemon logs")
 				}
 

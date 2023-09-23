@@ -190,13 +190,13 @@ func (app App) Start(ctx context.Context, ids ...core.ProcID) error {
 }
 
 // Logs - watch for processes logs
-func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.ProcLogs, error) {
+func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine, error) {
 	iterr, errLogs := app.client.Logs(ctx, id)
 	if errLogs != nil {
 		return nil, xerr.NewWM(errLogs, "start processes")
 	}
 
-	res := make(chan core.ProcLogs)
+	res := make(chan core.LogLine)
 	go func() {
 		defer close(res)
 
@@ -208,22 +208,15 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.ProcLogs, 
 				log.Error().Err(errIter).Msg("failed to receive log line")
 				return
 			case procLogs := <-iterr.Logs:
-				res <- core.ProcLogs{
+				res <- core.LogLine{
 					ID:   procLogs.GetId(),
 					Name: procLogs.GetName(),
-					Lines: fun.Map[core.LogLine](
-						procLogs.GetLines(),
-						func(line *pb.LogLine, _ int) core.LogLine {
-							return core.LogLine{
-								At:   line.GetTime().AsTime(),
-								Line: line.GetLine(),
-								Type: map[pb.LogLine_Type]core.LogType{
-									pb.LogLine_TYPE_STDOUT:      core.LogTypeStdout,
-									pb.LogLine_TYPE_STDERR:      core.LogTypeStderr,
-									pb.LogLine_TYPE_UNSPECIFIED: core.LogTypeUnspecified,
-								}[line.GetType()],
-							}
-						}),
+					At:   procLogs.GetAt().AsTime(),
+					Line: procLogs.GetLine(),
+					Type: lo.Switch[pb.LogLine_Type, core.LogType](procLogs.GetType()).
+						Case(pb.LogLine_TYPE_STDOUT, core.LogTypeStdout).
+						Case(pb.LogLine_TYPE_STDERR, core.LogTypeStderr).
+						Default(core.LogTypeUnspecified),
 				}
 			}
 		}

@@ -224,7 +224,7 @@ func startCron(lc fx.Lifecycle, ebus *eventbus.EventBus, dbHandle db.Handle) {
 	})
 }
 
-func newApp() fx.Option {
+func NewApp() fx.Option {
 	return fx.Options(
 		fx.WithLogger(func() fxevent.Logger {
 			return fxLogger{Logger: log.Logger.With().Str("component", "fx").Logger()}
@@ -240,6 +240,5 @@ func newApp() fx.Option {
 		fx.Invoke(startStatuser),
 		fx.Invoke(runner.Start),
 		fx.Invoke(startCron),
-		moduleServer,
 	)
 }

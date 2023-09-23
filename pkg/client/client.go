@@ -183,7 +183,7 @@ func (c Client) HealthCheck(ctx context.Context) (linuxprocess.Status, error) {
 }
 
 type LogsIterator struct {
-	Logs chan *pb.ProcsLogs
+	Logs chan *pb.LogLine
 	Err  chan error
 }
 
@@ -196,7 +196,7 @@ func (c Client) Logs(ctx context.Context, id core.ProcID) (LogsIterator, error) 
 	}
 
 	res2 := LogsIterator{
-		Logs: make(chan *pb.ProcsLogs),
+		Logs: make(chan *pb.LogLine),
 		Err:  make(chan error, 1),
 	}
 

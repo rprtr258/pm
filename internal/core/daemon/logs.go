@@ -2,42 +2,172 @@ package daemon
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
+
+	"github.com/rprtr258/pm/internal/core"
 )
 
-func Logs(ctx context.Context, follow bool) error {
-	stat, errStat := os.Stat(_fileLog)
+type fileSize int64
+
+const (
+	_byte     fileSize = 1
+	_kibibyte fileSize = 1024 * _byte
+
+	_procLogsBufferSize = 128 * _kibibyte
+	_defaultLogsOffset  = 1000 * _byte
+)
+
+type ProcLine struct {
+	Line string
+	Type core.LogType
+	At   time.Time
+	Err  error
+}
+
+func streamFile(
+	ctx context.Context,
+	logLinesCh chan ProcLine,
+	procID core.ProcID,
+	logFile string,
+	logLineType core.LogType,
+	wg *sync.WaitGroup,
+) error {
+	stat, errStat := os.Stat(logFile)
 	if errStat != nil {
-		return xerr.NewWM(errStat, "stat log file", xerr.Fields{"file": _fileLog})
+		return xerr.NewWM(errStat, "stat log file")
 	}
 
-	const _defaultOffset = 10000
-
-	t := tail.File(_fileLog, tail.Config{
+	tailer := tail.File(logFile, tail.Config{
+		Follow:        true,
+		BufferSize:    int(_procLogsBufferSize),
+		NotifyTimeout: time.Minute,
 		Location: &tail.Location{
-			Offset: -fun.Min(stat.Size(), _defaultOffset),
 			Whence: io.SeekEnd,
+			Offset: -fun.Min(stat.Size(), int64(_defaultLogsOffset)),
 		},
-		NotifyTimeout: 1 * time.Minute,
-		Follow:        follow,
-		BufferSize:    64 * 1024, // 64 kb
-		Logger:        nil,
-		Tracker:       nil,
+		Logger:  nil,
+		Tracker: nil,
 	})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-	if err := t.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
-		fmt.Println(string(l.Data))
-		return nil
-	}); err != nil {
-		return xerr.NewWM(err, "tail daemon logs")
-	}
+		if err := tailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
+			select {
+			case <-ctx.Done():
+				return nil
+			case logLinesCh <- ProcLine{
+				Line: string(l.Data),
+				At:   time.Now(),
+				Type: logLineType,
+				Err:  nil,
+			}:
+				return nil
+			}
+		}); err != nil {
+			logLinesCh <- ProcLine{
+				Line: "",
+				At:   time.Now(),
+				Type: logLineType,
+				Err: xerr.NewWM(err, "to tail log", xerr.Fields{
+					"procID": procID,
+					"file":   logFile,
+				}),
+			}
+		}
+	}()
 
 	return nil
+}
+
+func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
+	var wg sync.WaitGroup
+	logLinesCh := make(chan ProcLine)
+	if err := streamFile(
+		ctx,
+		logLinesCh,
+		proc.ID,
+		proc.StdoutFile,
+		core.LogTypeStdout,
+		&wg,
+	); err != nil {
+		log.Error().
+			Uint64("procID", proc.ID).
+			Str("file", proc.StdoutFile).
+			Err(err).
+			Msg("failed to stream stdout log file")
+	}
+	if err := streamFile(
+		ctx,
+		logLinesCh,
+		proc.ID,
+		proc.StderrFile,
+		core.LogTypeStderr,
+		&wg,
+	); err != nil {
+		log.Error().
+			Uint64("procID", proc.ID).
+			Str("file", proc.StderrFile).
+			Err(err).
+			Msg("failed to stream stderr log file")
+	}
+	go func() {
+		wg.Wait()
+		close(logLinesCh)
+	}()
+
+	return logLinesCh
+}
+
+func (s *Server) Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine, error) {
+	// can't get incoming query in interceptor, so logging here also
+	log.Info().Uint64("proc_id", id).Msg("Logs method called")
+
+	procs := s.db.GetProcs(core.WithIDs(id))
+
+	proc, ok := procs[id]
+	if !ok {
+		return nil, xerr.NewM("proc not found", xerr.Fields{"proc_id": id})
+	}
+
+	ch := make(chan core.LogLine)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		procCh := streamProcLogs(ctx, proc)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case line, ok := <-procCh:
+				if !ok {
+					return
+				}
+
+				// TODO: stop on proc death
+				ch <- core.LogLine{
+					ID:   id,
+					Name: proc.Name,
+					At:   line.At,
+					Line: line.Line,
+					Type: line.Type,
+					Err:  line.Err,
+				}
+			}
+		}
+	}()
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	return ch, nil
 }

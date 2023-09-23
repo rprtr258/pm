@@ -19,8 +19,8 @@ import (
 
 	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/daemon"
 	pmcli "github.com/rprtr258/pm/internal/infra/cli"
+	"github.com/rprtr258/pm/internal/infra/daemon"
 	pmclient "github.com/rprtr258/pm/pkg/client"
 )
 

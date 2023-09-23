@@ -20,7 +20,7 @@ service Daemon {
 
   rpc HealthCheck(google.protobuf.Empty) returns (Status);
 
-  rpc Logs(ProcID) returns (stream ProcsLogs);
+  rpc Logs(ProcID) returns (stream LogLine);
 }
 
 message CreateRequest {
@@ -115,13 +115,9 @@ message LogLine {
     TYPE_STDERR      = 2;
   };
 
-  string                    line = 1;
-  google.protobuf.Timestamp time = 2;
-  Type                      type = 3;
-}
-
-message ProcsLogs {
-  uint64           id    = 1;
-  repeated LogLine lines = 2;
-  string           name  = 3;
+  uint64                    id   = 1;
+  string                    name = 2;
+  google.protobuf.Timestamp at   = 3;
+  Type                      type = 4;
+  string                    line = 5;
 }

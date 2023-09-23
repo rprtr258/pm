@@ -133,7 +133,7 @@ func (c *daemonClient) Logs(ctx context.Context, in *ProcID, opts ...grpc.CallOp
 }
 
 type Daemon_LogsClient interface {
-	Recv() (*ProcsLogs, error)
+	Recv() (*LogLine, error)
 	grpc.ClientStream
 }
 
@@ -141,8 +141,8 @@ type daemonLogsClient struct {
 	grpc.ClientStream
 }
 
-func (x *daemonLogsClient) Recv() (*ProcsLogs, error) {
-	m := new(ProcsLogs)
+func (x *daemonLogsClient) Recv() (*LogLine, error) {
+	m := new(LogLine)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -342,7 +342,7 @@ func _Daemon_Logs_Handler(srv interface{}, stream grpc.ServerStream) error {
 }
 
 type Daemon_LogsServer interface {
-	Send(*ProcsLogs) error
+	Send(*LogLine) error
 	grpc.ServerStream
 }
 
@@ -350,7 +350,7 @@ type daemonLogsServer struct {
 	grpc.ServerStream
 }
 
-func (x *daemonLogsServer) Send(m *ProcsLogs) error {
+func (x *daemonLogsServer) Send(m *LogLine) error {
 	return x.ServerStream.SendMsg(m)
 }
 

@@ -98,13 +98,13 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 func (w *prettyWriter) formatMap(typ reflect.Type, val reflect.Value, l int) []byte {
 	p := 0
 	for _, k := range val.MapKeys() {
-		p = max(p, len(anyToBytes(k)))
+		p = max(p, len(anyToStr(k)))
 	}
 	p += len(buffer.FgGreen) + len(buffer.ColorReset)
 
 	sk := val.MapKeys()
 	slices.SortFunc(sk, func(i, j reflect.Value) int {
-		return cmp.Compare(fmt.Sprint(i.Interface()), fmt.Sprint(j.Interface()))
+		return cmp.Compare(anyToStr(i), anyToStr(j))
 	})
 
 	var bb bytes.Buffer
@@ -131,7 +131,9 @@ func (w *prettyWriter) formatMap(typ reflect.Type, val reflect.Value, l int) []b
 func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []byte {
 	p := 0
 	for i := 0; i < st.NumField(); i++ {
-		p = max(p, len(st.Field(i).Name))
+		if sv.Type().Field(i).IsExported() {
+			p = max(p, len(st.Field(i).Name))
+		}
 	}
 	p += len(buffer.FgGreen) + len(buffer.ColorReset)
 
@@ -141,6 +143,10 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 		Bytes(w.buildTypeString(st.String())...).
 		Iter(iter.Map(iter.FromRange(0, st.NumField(), 1), func(i int) func(*buffer.Buffer) {
 			return func(b *buffer.Buffer) {
+				if !sv.Type().Field(i).IsExported() {
+					return
+				}
+
 				val := sv.Field(i)
 				if val.IsZero() {
 					zeroes++
@@ -173,7 +179,7 @@ func (w *prettyWriter) formatValue(v reflect.Value, l int) []byte {
 	if v.IsZero() {
 		var bb bytes.Buffer
 		buffer.New(&bb).
-			String(fmt.Sprint(v.Interface()), buffer.ColorFaint)
+			String(anyToStr(v), buffer.ColorFaint)
 		return bb.Bytes()
 	}
 
@@ -197,10 +203,10 @@ func (w *prettyWriter) formatValue(v reflect.Value, l int) []byte {
 		}
 		res = w.formatValue(v, l)
 	default:
-		res = anyToBytes(v)
+		res = []byte(anyToStr(v))
 	}
 
-	if s := fmt.Sprint(v.Interface()); s == "<nil>" || s == "0" || s == "false" {
+	if s := anyToStr(v); s == "<nil>" || s == "0" || s == "false" {
 		return []byte(buffer.NewString(func(b *buffer.Buffer) {
 			b.Styled(func(b *buffer.Buffer) {
 				b.Bytes(res...)
@@ -230,9 +236,9 @@ func (w *prettyWriter) buildTypeString(typeStr string) []byte {
 	return bb.Bytes()
 }
 
-// anyToBytes using fmt.Sprint
-func anyToBytes(a reflect.Value) []byte {
-	return []byte(fmt.Sprint(a.Interface()))
+// anyToStr using fmt.Sprint
+func anyToStr(a reflect.Value) string {
+	return fmt.Sprint(a.Interface())
 }
 
 func (w *prettyWriter) write(msg string, ev *Event) {
