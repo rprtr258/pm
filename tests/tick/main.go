@@ -23,26 +23,20 @@ func main() {
 			ticker := time.NewTicker(ctx.Duration("interval"))
 			defer ticker.Stop()
 
-			i := 0
-			for {
-				i++
-
-				fmt.Println(buffer.NewString(func(b *buffer.Buffer) {
-					b.
-						String(time.Now().Format(time.RFC3339), buffer.ColorFaint).
-						String(": tick").
-						Styled(func(b *buffer.Buffer) {
-							b.Printf("%4d", i)
-						}, buffer.FgBlue)
-				}))
-
+			for i := 0; ; i++ {
 				select {
 				case <-ctx.Context.Done():
 					return nil
-				default:
+				case now := <-ticker.C:
+					fmt.Println(buffer.NewString(func(b *buffer.Buffer) {
+						b.
+							String(now.Format(time.RFC3339), buffer.ColorFaint).
+							String(": tick").
+							Styled(func(b *buffer.Buffer) {
+								b.Printf("%4d", i)
+							}, buffer.FgBlue)
+					}))
 				}
-
-				<-ticker.C
 			}
 		},
 	}).Run(os.Args); err != nil {
