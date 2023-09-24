@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 	"github.com/urfave/cli/v2"
 )
 
@@ -25,7 +26,15 @@ func main() {
 			i := 0
 			for {
 				i++
-				fmt.Printf("%v: tick %4d\n", time.Now().Format(time.RFC3339), i)
+
+				fmt.Println(buffer.NewString(func(b *buffer.Buffer) {
+					b.
+						String(time.Now().Format(time.RFC3339), buffer.ColorFaint).
+						String(": tick").
+						Styled(func(b *buffer.Buffer) {
+							b.Printf("%4d", i)
+						}, buffer.FgBlue)
+				}))
 
 				select {
 				case <-ctx.Context.Done():
