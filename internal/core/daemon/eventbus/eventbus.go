@@ -180,14 +180,14 @@ func (e *EventBus) Publish(ctx context.Context, events ...Event) {
 					log.Error().
 						Uint64("proc_id", procID).
 						Msg("proc not found")
-					return
+					continue
 				}
 
 				if proc.Status.Status != core.StatusRunning {
 					log.Error().
 						Uint64("proc_id", procID).
 						Msg("proc is not running")
-					return
+					continue
 				}
 
 				data.PID = proc.Status.Pid

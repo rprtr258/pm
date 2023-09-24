@@ -154,31 +154,55 @@ func (c Client) Signal(ctx context.Context, signal syscall.Signal, id uint64) er
 	return nil
 }
 
-func (c Client) HealthCheck(ctx context.Context) (linuxprocess.Status, error) {
+type WatcherEntry struct {
+	Root    string
+	Pattern string
+}
+
+type Status struct {
+	Status  linuxprocess.Status
+	Watches map[core.ProcID]WatcherEntry
+}
+
+func (c Client) HealthCheck(ctx context.Context) (Status, error) {
 	status, err := c.client.HealthCheck(ctx, &emptypb.Empty{})
 	if err != nil {
-		return fun.Zero[linuxprocess.Status](), xerr.NewWM(err, "server.healthcheck")
+		return fun.Zero[Status](), xerr.NewWM(err, "server.healthcheck")
 	}
 
-	return linuxprocess.Status{
-		Args:       status.GetArgs(),
-		Envs:       status.GetEnvs(),
-		Executable: status.GetExecutable(),
-		Cwd:        status.GetCwd(),
-		Groups: fun.Map[int](status.GetGroups(), func(g int64) int {
-			return int(g)
-		}),
-		PageSize:      int(status.GetPageSize()),
-		Hostname:      status.GetHostname(),
-		UserCacheDir:  status.GetUserCacheDir(),
-		UserConfigDir: status.GetUserConfigDir(),
-		UserHomeDir:   status.GetUserHomeDir(),
-		PID:           int(status.GetPid()),
-		PPID:          int(status.GetPpid()),
-		UID:           int(status.GetUid()),
-		EUID:          int(status.GetEuid()),
-		GID:           int(status.GetGid()),
-		EGID:          int(status.GetEgid()),
+	watches := map[core.ProcID]WatcherEntry{}
+	for k, v := range status.GetWatches() {
+		watches[k] = WatcherEntry{
+			Root:    v.GetRoot(),
+			Pattern: v.GetPattern(),
+		}
+	}
+
+	return Status{
+		Status: linuxprocess.Status{
+			Args:       status.GetArgs(),
+			Envs:       status.GetEnvs(),
+			Executable: status.GetExecutable(),
+			Cwd:        status.GetCwd(),
+			Groups: fun.Map[int](status.GetGroups(), func(g int64) int {
+				return int(g)
+			}),
+			PageSize:      int(status.GetPageSize()),
+			Hostname:      status.GetHostname(),
+			UserCacheDir:  status.GetUserCacheDir(),
+			UserConfigDir: status.GetUserConfigDir(),
+			UserHomeDir:   status.GetUserHomeDir(),
+			PID:           int(status.GetPid()),
+			PPID:          int(status.GetPpid()),
+			UID:           int(status.GetUid()),
+			EUID:          int(status.GetEuid()),
+			GID:           int(status.GetGid()),
+			EGID:          int(status.GetEgid()),
+			PGID:          0,
+			PGRP:          0,
+			TID:           0,
+		},
+		Watches: watches,
 	}, nil
 }
 

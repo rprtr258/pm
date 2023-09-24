@@ -14,30 +14,28 @@ import (
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus/queue"
 )
 
-type watcherEntry struct {
-	rootDir string
-	pattern *regexp.Regexp
+type WatcherEntry struct {
+	RootDir string
+	Pattern *regexp.Regexp
 	ch      chan notify.EventInfo
 }
 
 type Watcher struct {
-	watchplaces map[core.ProcID]watcherEntry
-	dirs        map[string][]core.ProcID // dir -> proc ids using that dir
+	Watchplaces map[core.ProcID]WatcherEntry
 	ebus        *eventbus.EventBus
 	statusQ     *queue.Queue[eventbus.Event]
 }
 
-func Module(ctx context.Context, ebus *eventbus.EventBus) {
-	Watcher{
-		watchplaces: make(map[core.ProcID]watcherEntry),
-		dirs:        make(map[string][]core.ProcID),
+func New(ebus *eventbus.EventBus) Watcher {
+	return Watcher{
+		Watchplaces: make(map[core.ProcID]WatcherEntry),
 		statusQ: ebus.Subscribe(
 			"watcher",
 			eventbus.KindProcStarted,
 			eventbus.KindProcStopped,
 		),
 		ebus: ebus,
-	}.Start(ctx)
+	}
 }
 
 func (w Watcher) Add(procID core.ProcID, dir, pattern string) error {
@@ -47,7 +45,7 @@ func (w Watcher) Add(procID core.ProcID, dir, pattern string) error {
 		Str("pattern", pattern).
 		Msg("adding watch dir")
 
-	if _, ok := w.watchplaces[procID]; ok {
+	if _, ok := w.Watchplaces[procID]; ok {
 		// already added
 		return nil
 	}
@@ -59,15 +57,14 @@ func (w Watcher) Add(procID core.ProcID, dir, pattern string) error {
 
 	ch := make(chan notify.EventInfo, 1)
 
-	if errWatch := notify.Watch(dir, ch, notify.All, notify.Remove); errWatch != nil {
+	if errWatch := notify.Watch(dir, ch, notify.InCloseWrite); errWatch != nil {
 		return xerr.NewWM(errWatch, "add watch dir")
 	}
-	defer notify.Stop(ch)
 
-	w.watchplaces[procID] = watcherEntry{
+	w.Watchplaces[procID] = WatcherEntry{
 		ch:      ch,
-		rootDir: dir,
-		pattern: re,
+		RootDir: dir,
+		Pattern: re,
 	}
 
 	return nil
@@ -78,7 +75,7 @@ func (w Watcher) Remove(procID core.ProcID) {
 		Uint64("proc_id", procID).
 		Msg("removing watch dir")
 
-	if entry, ok := w.watchplaces[procID]; ok {
+	if entry, ok := w.Watchplaces[procID]; ok {
 		notify.Stop(entry.ch)
 		close(entry.ch) // TODO: reuse channels?
 	}
@@ -100,7 +97,7 @@ func (w Watcher) Start(ctx context.Context) {
 
 			switch e := event.Data.(type) {
 			case eventbus.DataProcStarted:
-				if _, ok := w.watchplaces[e.Proc.ID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
+				if _, ok := w.Watchplaces[e.Proc.ID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
 					if watch, ok := e.Proc.Watch.Unpack(); ok {
 						if err := w.Add(e.Proc.ID, e.Proc.Cwd, watch); err != nil {
 							log.Error().
@@ -113,21 +110,27 @@ func (w Watcher) Start(ctx context.Context) {
 					}
 				}
 			case eventbus.DataProcStopped:
-				if _, ok := w.watchplaces[e.ProcID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
+				if _, ok := w.Watchplaces[e.ProcID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
 					w.Remove(e.ProcID)
 				}
 			}
 		default:
-			// TODO: unburst, also for logs
-			for id, wp := range w.watchplaces {
+			for id, wp := range w.Watchplaces {
 				var e notify.EventInfo
 				select {
 				case e = <-wp.ch:
 				default:
 					continue
 				}
+				log.Debug().
+					Uint64("proc_id", id).
+					Str("path", e.Path()).
+					Str("root", wp.RootDir).
+					Str("pattern", wp.Pattern.String()).
+					Str("event", e.Event().String()).
+					Msg("watcher got event")
 
-				if !wp.pattern.MatchString(e.Path()) {
+				if !wp.Pattern.MatchString(e.Path()) {
 					continue
 				}
 

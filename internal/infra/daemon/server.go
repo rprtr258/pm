@@ -5,6 +5,7 @@ import (
 	"syscall"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -13,6 +14,7 @@ import (
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon"
+	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
@@ -21,11 +23,20 @@ type daemonServer struct {
 	srv *daemon.Server
 }
 
-func (*daemonServer) HealthCheck(context.Context, *emptypb.Empty) (*pb.Status, error) {
+func (s *daemonServer) HealthCheck(context.Context, *emptypb.Empty) (*pb.Status, error) {
 	status, err := linuxprocess.GetSelfStatus()
 	if err != nil {
 		return nil, xerr.NewWM(err, "get proc status")
 	}
+
+	watches := map[core.ProcID]*pb.Watchplace{}
+	iter.FromDict(s.srv.W.Watchplaces)(func(kv fun.Pair[core.ProcID, watcher.WatcherEntry]) bool {
+		watches[kv.K] = &pb.Watchplace{
+			Root:    kv.V.RootDir,
+			Pattern: kv.V.Pattern.String(),
+		}
+		return true
+	})
 
 	return &pb.Status{
 		Args:       status.Args,
@@ -46,6 +57,7 @@ func (*daemonServer) HealthCheck(context.Context, *emptypb.Empty) (*pb.Status, e
 		Euid:          int64(status.EUID),
 		Gid:           int64(status.GID),
 		Egid:          int64(status.EGID),
+		Watches:       watches,
 	}, nil
 }
 

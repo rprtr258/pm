@@ -14,7 +14,6 @@ import (
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -42,10 +41,10 @@ func New(pmClient client.Client) (App, error) {
 	}, nil
 }
 
-func (app App) CheckDaemon(ctx context.Context) (linuxprocess.Status, error) {
+func (app App) CheckDaemon(ctx context.Context) (client.Status, error) {
 	status, errHealth := app.client.HealthCheck(ctx)
 	if errHealth != nil {
-		return fun.Zero[linuxprocess.Status](), xerr.NewWM(errHealth, "check daemon health")
+		return fun.Zero[client.Status](), xerr.NewWM(errHealth, "check daemon health")
 	}
 
 	return status, nil

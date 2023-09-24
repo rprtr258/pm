@@ -12,6 +12,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
+	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
@@ -108,15 +109,17 @@ func StartStatuser(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Han
 type Server struct {
 	db               db.Handle
 	ebus             *eventbus.EventBus
+	W                watcher.Watcher
 	homeDir, logsDir string
 }
 
-func NewServer(ebus *eventbus.EventBus, dbHandle db.Handle) *Server {
+func NewServer(ebus *eventbus.EventBus, dbHandle db.Handle, w watcher.Watcher) *Server {
 	return &Server{
 		db:      dbHandle,
 		ebus:    ebus,
 		homeDir: core.DirHome,
 		logsDir: _dirProcsLogs,
+		W:       w,
 	}
 }
 

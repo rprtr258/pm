@@ -25,7 +25,7 @@ func main() {
 			i := 0
 			for {
 				i++
-				fmt.Printf("tick %d at %v\n", i, time.Now())
+				fmt.Printf("%v: tick %4d\n", time.Now().Format(time.RFC3339), i)
 
 				select {
 				case <-ctx.Context.Done():

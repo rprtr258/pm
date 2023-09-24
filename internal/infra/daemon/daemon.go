@@ -63,9 +63,9 @@ func Status(ctx context.Context) error {
 	}
 
 	// highlight special chars
-	for k, v := range status.Envs {
+	for k, v := range status.Status.Envs {
 		if !strings.ContainsAny(v, "\n\r\t ") {
-			status.Envs[k] = strings.NewReplacer(
+			status.Status.Envs[k] = strings.NewReplacer(
 				"\n", buffer.String(`\n`, buffer.FgGreen),
 				"\r", buffer.String(`\r`, buffer.FgGreen),
 				"\t", buffer.String(`\t`, buffer.FgGreen),
@@ -75,31 +75,32 @@ func Status(ctx context.Context) error {
 	}
 
 	// crop long values
-	for k, v := range status.Envs {
+	for k, v := range status.Status.Envs {
 		if len(v) <= 100 {
 			continue
 		}
 
-		status.Envs[k] = v[:50] + buffer.String("...", buffer.FgBlue) + v[len(v)-50:]
+		status.Status.Envs[k] = v[:50] + buffer.String("...", buffer.FgBlue) + v[len(v)-50:]
 	}
 
 	log2.Info().
-		Any("Args", status.Args).
-		Any("Envs", status.Envs).
-		Str("Executable", status.Executable).
-		Any("CWD", status.Cwd).
-		Any("Groups", status.Groups).
-		Any("Page Size:", status.PageSize).
-		Any("Hostname", status.Hostname).
-		Any("User Cache Dir", status.UserCacheDir).
-		Any("User Config Dir", status.UserConfigDir).
-		Any("User Home Dir", status.UserHomeDir).
-		Any("PID", status.PID).
-		Any("PPID", status.PPID).
-		Any("UID", status.UID).
-		Any("EUID", status.EUID).
-		Any("GID", status.GID).
-		Any("EGID", status.EGID).
+		Any("Args", status.Status.Args).
+		Any("Envs", status.Status.Envs).
+		Str("Executable", status.Status.Executable).
+		Any("CWD", status.Status.Cwd).
+		Any("Groups", status.Status.Groups).
+		Any("Page Size:", status.Status.PageSize).
+		Any("Hostname", status.Status.Hostname).
+		Any("User Cache Dir", status.Status.UserCacheDir).
+		Any("User Config Dir", status.Status.UserConfigDir).
+		Any("User Home Dir", status.Status.UserHomeDir).
+		Any("PID", status.Status.PID).
+		Any("PPID", status.Status.PPID).
+		Any("UID", status.Status.UID).
+		Any("EUID", status.Status.EUID).
+		Any("GID", status.Status.GID).
+		Any("EGID", status.Status.EGID).
+		Any("Watches", status.Watches).
 		Msg("Daemon info")
 
 	return nil
@@ -313,13 +314,14 @@ func Main(ctx context.Context) error {
 	ebus := eventbus.Module(dbHandle)
 	go ebus.Start(ctx)
 
-	go watcher.Module(ctx, ebus)
+	watcher := watcher.New(ebus)
+	go watcher.Start(ctx)
 
 	go daemon.StartDeathCollector(ctx, ebus, dbHandle)
 	go daemon.StartStatuser(ctx, ebus, dbHandle)
 	go runner.Start(ctx, ebus, dbHandle)
 
-	srv := daemon.NewServer(ebus, dbHandle)
+	srv := daemon.NewServer(ebus, dbHandle, watcher)
 
 	sock, err := net.Listen("unix", core.SocketRPC)
 	if err != nil {
