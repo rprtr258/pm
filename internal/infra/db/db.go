@@ -191,10 +191,10 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) core.Procs {
 		})
 }
 
-func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) Error {
-	proc, ok := handle.procs.Get(strconv.FormatUint(procID, 10))
+func (handle Handle) SetStatus(id core.ProcID, newStatus core.Status) Error {
+	proc, ok := handle.procs.Get(strconv.FormatUint(id, 10))
 	if !ok {
-		return ProcNotFoundError{procID}
+		return ProcNotFoundError{id}
 	}
 
 	proc.Status = status{
@@ -211,10 +211,10 @@ func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) Error 
 	return nil
 }
 
-func (handle Handle) Delete(procID core.ProcID) (core.Proc, Error) {
+func (handle Handle) Delete(id core.ProcID) (core.Proc, Error) {
 	deletedProcs := handle.procs.
 		Where(func(_ string, proc procData) bool {
-			return proc.ProcID == procID
+			return proc.ProcID == id
 		}).
 		Delete()
 
@@ -223,7 +223,7 @@ func (handle Handle) Delete(procID core.ProcID) (core.Proc, Error) {
 	}
 
 	if len(deletedProcs) == 0 {
-		return fun.Zero[core.Proc](), ProcNotFoundError{procID}
+		return fun.Zero[core.Proc](), ProcNotFoundError{id}
 	}
 
 	proc := deletedProcs[0]

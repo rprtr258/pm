@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -291,6 +292,20 @@ func streamLoggerInterceptor(
 	return err
 }
 
+func deathCollector(ctx context.Context) {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGCHLD)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ch:
+			pid, err := syscall.Wait4(-1, nil, 0, nil)
+			log.Err(err).Int("pid", pid).Msg("child died")
+		}
+	}
+}
+
 func Main(ctx context.Context) error {
 	log.Logger = zerolog.New(os.Stderr).With().
 		Timestamp().
@@ -317,6 +332,7 @@ func Main(ctx context.Context) error {
 	watcher := watcher.New(ebus)
 	go watcher.Start(ctx)
 
+	go deathCollector(ctx)
 	go daemon.StartStatuser(ctx, ebus, dbHandle)
 	go runner.Start(ctx, ebus, dbHandle)
 

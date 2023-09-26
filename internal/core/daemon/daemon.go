@@ -14,6 +14,7 @@ import (
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/infra/db"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
 var (
@@ -124,8 +125,8 @@ func NewServer(ebus *eventbus.EventBus, dbHandle db.Handle, w watcher.Watcher) *
 
 // Start - run processes by their ids in database
 // TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
-func (srv *Server) Start(ctx context.Context, id core.ProcID) {
-	srv.ebus.Publish(ctx, eventbus.NewPublishProcStartRequest(id, eventbus.EmitReasonByUser))
+func (s *Server) Start(ctx context.Context, id core.ProcID) {
+	s.ebus.Publish(ctx, eventbus.NewPublishProcStartRequest(id, eventbus.EmitReasonByUser))
 }
 
 func (s *Server) Stop(ctx context.Context, id core.ProcID) {
@@ -133,7 +134,21 @@ func (s *Server) Stop(ctx context.Context, id core.ProcID) {
 }
 
 func (s *Server) List(_ context.Context) map[core.ProcID]core.Proc {
-	return s.db.GetProcs(core.WithAllIfNoFilters)
+	procs := s.db.GetProcs(core.WithAllIfNoFilters)
+	for id, proc := range procs {
+		if proc.Status.Status != core.StatusRunning {
+			continue
+		}
+
+		if _, err := linuxprocess.ReadProcessStat(proc.Status.Pid); err != nil {
+			proc.Status = core.NewStatusStopped()
+			if errSet := s.db.SetStatus(id, proc.Status); errSet != nil {
+				log.Error().Err(errSet).Msg("failed to update status to stopped")
+			}
+		}
+		procs[id] = proc
+	}
+	return procs
 }
 
 // Signal - send signal to process
