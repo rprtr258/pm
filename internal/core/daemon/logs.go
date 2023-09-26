@@ -88,10 +88,28 @@ func streamFile(
 	return nil
 }
 
-func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
+func (s *Server) streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
+	ctx, cancel := context.WithCancel(ctx)
 	logLinesCh := make(chan ProcLine)
 	go func() {
 		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer cancel()
+			ticker := time.NewTicker(100 * time.Millisecond) // TODO: subscribe to db instead ?
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if proc, ok := s.db.GetProc(proc.ID); !ok || proc.Status.Status != core.StatusRunning {
+						return
+					}
+				}
+			}
+		}()
 		if err := streamFile(
 			ctx,
 			logLinesCh,
@@ -141,7 +159,7 @@ func (s *Server) Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine,
 	go func() {
 		defer close(ch)
 
-		for line := range streamProcLogs(ctx, proc) {
+		for line := range s.streamProcLogs(ctx, proc) {
 			select {
 			case <-ctx.Done():
 				return
