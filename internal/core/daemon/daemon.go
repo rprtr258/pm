@@ -58,25 +58,17 @@ func MigrateConfig(config core.Config) error {
 
 func StartStatuser(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 	// status updater
-	statusUpdaterQ := ebus.Subscribe(
+	statusUpdaterCh := ebus.Subscribe(
 		"status_updater",
 		eventbus.KindProcStarted,
 		eventbus.KindProcStopped,
 	)
 
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			event, ok := statusUpdaterQ.Pop()
-			if !ok {
-				continue
-			}
-
+		case event := <-statusUpdaterCh:
 			switch e := event.Data.(type) {
 			case eventbus.DataProcStarted:
 				// TODO: fill/remove cpu, memory

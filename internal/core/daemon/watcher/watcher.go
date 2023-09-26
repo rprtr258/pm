@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"regexp"
-	"time"
 
 	"github.com/rjeczalik/notify"
 	"github.com/rprtr258/xerr"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
-	"github.com/rprtr258/pm/internal/core/daemon/eventbus/queue"
 )
 
 type WatcherEntry struct {
@@ -23,13 +21,13 @@ type WatcherEntry struct {
 type Watcher struct {
 	Watchplaces map[core.ProcID]WatcherEntry
 	ebus        *eventbus.EventBus
-	statusQ     *queue.Queue[eventbus.Event]
+	statusCh    <-chan eventbus.Event
 }
 
 func New(ebus *eventbus.EventBus) Watcher {
 	return Watcher{
 		Watchplaces: make(map[core.ProcID]WatcherEntry),
-		statusQ: ebus.Subscribe(
+		statusCh: ebus.Subscribe(
 			"watcher",
 			eventbus.KindProcStarted,
 			eventbus.KindProcStopped,
@@ -82,19 +80,11 @@ func (w Watcher) Remove(procID core.ProcID) {
 }
 
 func (w Watcher) Start(ctx context.Context) {
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			event, ok := w.statusQ.Pop()
-			if !ok {
-				continue
-			}
-
+		case event := <-w.statusCh:
 			switch e := event.Data.(type) {
 			case eventbus.DataProcStarted:
 				if _, ok := w.Watchplaces[e.Proc.ID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {

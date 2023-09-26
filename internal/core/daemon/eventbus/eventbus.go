@@ -101,7 +101,7 @@ type DataProcSignalRequest struct {
 
 type Subscriber struct {
 	Kinds map[EventKind]struct{}
-	Queue *queue.Queue[Event]
+	Queue chan Event
 }
 
 type EventBus struct {
@@ -158,7 +158,7 @@ func (e *EventBus) Start(ctx context.Context) {
 						Any("event", event).
 						Str("subscriber", name).
 						Msg("publishing event")
-					sub.Queue.Push(event)
+					sub.Queue <- event
 				}
 			}()
 		}
@@ -270,7 +270,7 @@ func NewPublishProcSignalRequest(signal syscall.Signal, procID core.ProcID) Even
 	}
 }
 
-func (e *EventBus) Subscribe(name string, kinds ...EventKind) *queue.Queue[Event] {
+func (e *EventBus) Subscribe(name string, kinds ...EventKind) <-chan Event {
 	kindsSet := make(map[EventKind]struct{}, len(kinds))
 	for _, kind := range kinds {
 		kindsSet[kind] = struct{}{}
@@ -281,7 +281,7 @@ func (e *EventBus) Subscribe(name string, kinds ...EventKind) *queue.Queue[Event
 		panic(fmt.Sprintf("duplicate subscriber: %s", name))
 	}
 
-	q := queue.New[Event]()
+	q := make(chan Event, 10)
 	e.subscribers[name] = Subscriber{
 		Kinds: kindsSet,
 		Queue: q,

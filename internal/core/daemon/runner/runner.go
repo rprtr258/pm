@@ -54,26 +54,18 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 		ebus: ebus,
 	}
 	// scheduler loop, starts/restarts/stops procs
-	procRequestsQ := ebus.Subscribe(
+	procRequestsCh := ebus.Subscribe(
 		"scheduler",
 		eventbus.KindProcStartRequest,
 		eventbus.KindProcStopRequest,
 		eventbus.KindProcSignalRequest,
 	)
 
-	ticker := time.NewTicker(500 * time.Millisecond)
-	defer ticker.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			event, ok := procRequestsQ.Pop()
-			if !ok {
-				continue
-			}
-
+		case event := <-procRequestsCh:
 			switch e := event.Data.(type) {
 			case eventbus.DataProcStartRequest:
 				proc, ok := dbHandle.GetProc(e.ProcID)
