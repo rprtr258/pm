@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 
@@ -161,7 +162,7 @@ var _runCmd = &cli.Command{
 				})
 			}
 
-			printIDs(procID)
+			fmt.Println(procID)
 
 			return nil
 		}
@@ -176,12 +177,14 @@ var _runCmd = &cli.Command{
 			// no filtering by names, run all processes
 			for _, config := range configs {
 				procID, err := app.Run(ctx.Context, config)
-				printIDs(procID)
+				fmt.Print(procID, " ")
 				if err != nil {
+					fmt.Println()
 					return xerr.NewWM(err, "create all procs from config", xerr.Fields{"proc_id": procID})
 				}
 			}
 
+			fmt.Println()
 			return nil
 		}
 
@@ -208,8 +211,9 @@ var _runCmd = &cli.Command{
 
 		for _, config := range configsByName {
 			procID, errCreate := app.Run(ctx.Context, config)
-			printIDs(procID)
+			fmt.Print(procID, " ")
 			if errCreate != nil {
+				fmt.Println()
 				return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{
 					"names":   names,
 					"proc_id": procID,
@@ -217,6 +221,7 @@ var _runCmd = &cli.Command{
 			}
 		}
 
+		fmt.Println()
 		return nil
 	},
 }
