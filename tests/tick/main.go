@@ -6,8 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 	"github.com/urfave/cli/v2"
+
+	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 )
 
 func main() {
