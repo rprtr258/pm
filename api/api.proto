@@ -69,7 +69,8 @@ message RunningProcessStatus {
   uint64                    memory     = 4;
 }
 
-message StoppedProcessStatus {}
+message StoppedProcessStatus {
+}
 
 message ProcID {
   uint64 id = 1;

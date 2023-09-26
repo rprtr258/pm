@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/daemon/eventbus/queue"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
 
@@ -105,7 +104,7 @@ type Subscriber struct {
 }
 
 type EventBus struct {
-	q  *queue.Queue[Event]
+	q  chan Event
 	db db.Handle
 
 	mu          sync.Mutex
@@ -114,7 +113,7 @@ type EventBus struct {
 
 func Module(db db.Handle) *EventBus {
 	return &EventBus{
-		q:           queue.New[Event](),
+		q:           make(chan Event, 100),
 		db:          db,
 		mu:          sync.Mutex{},
 		subscribers: map[string]Subscriber{},
@@ -122,19 +121,11 @@ func Module(db db.Handle) *EventBus {
 }
 
 func (e *EventBus) Start(ctx context.Context) {
-	tick := time.NewTicker(_tickInterval)
-	defer tick.Stop()
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-tick.C:
-			event, ok := e.q.Pop()
-			if !ok {
-				continue
-			}
-
+		case event := <-e.q:
 			log.Debug().
 				Stringer("event", event).
 				Msg("got event, routing")
@@ -193,7 +184,7 @@ func (e *EventBus) Publish(ctx context.Context, events ...Event) {
 				event.Data = data
 			}
 
-			e.q.Push(event)
+			e.q <- event
 		}
 	}
 }
