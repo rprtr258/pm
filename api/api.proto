@@ -119,9 +119,8 @@ message LogLine {
     TYPE_STDERR      = 2;
   };
 
-  uint64                    id   = 1;
-  string                    name = 2;
-  google.protobuf.Timestamp at   = 3;
-  Type                      type = 4;
-  string                    line = 5;
+  string                    name = 1;
+  google.protobuf.Timestamp at   = 2;
+  Type                      type = 3;
+  string                    line = 4;
 }

@@ -178,7 +178,6 @@ func (s *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error {
 		select {
 		case line := <-ch:
 			if errSend := stream.Send(&pb.LogLine{
-				Id:   line.ID,
 				Name: line.Name,
 				Line: line.Line,
 				At:   timestamppb.New(line.At),

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"syscall"
+	"time"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
@@ -205,10 +206,18 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine, e
 				return
 			case errIter := <-iterr.Err:
 				log.Error().Err(errIter).Msg("failed to receive log line")
+				res <- core.LogLine{
+					ID:   id,
+					Name: "",
+					At:   time.Now(),
+					Line: "",
+					Type: core.LogTypeUnspecified,
+					Err:  errIter,
+				}
 				return
 			case procLogs := <-iterr.Logs:
 				res <- core.LogLine{
-					ID:   procLogs.GetId(),
+					ID:   id,
 					Name: procLogs.GetName(),
 					At:   procLogs.GetAt().AsTime(),
 					Line: procLogs.GetLine(),
@@ -216,10 +225,10 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine, e
 						Case(pb.LogLine_TYPE_STDOUT, core.LogTypeStdout).
 						Case(pb.LogLine_TYPE_STDERR, core.LogTypeStderr).
 						Default(core.LogTypeUnspecified),
+					Err: nil,
 				}
 			}
 		}
 	}()
-
 	return res, nil
 }

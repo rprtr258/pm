@@ -1,3 +1,4 @@
+// TODO: make SCUF library: Simple Color bUFfer
 package buffer
 
 import (

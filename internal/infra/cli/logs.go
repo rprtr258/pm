@@ -42,34 +42,32 @@ func mergeChans(ctx context.Context, chans ...<-chan core.LogLine) <-chan core.L
 }
 
 func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
-	for {
+	for line := range ch {
 		select {
 		case <-ctx.Done():
 			return nil
-		case line, ok := <-ch:
-			if !ok {
-				return nil
-			}
-
-			lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
-											Case(core.LogTypeStdout, buffer.FgHiWhite).
-											Case(core.LogTypeStderr, buffer.FgHiBlack).
-											Default(buffer.FgRed)
-
-			fmt.Println(fmt2.FormatComplex(
-				// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
-				"{proc} {sep} {line}",
-				map[string]any{
-					"at": buffer.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack),
-					// TODO: different colors for different IDs
-					// TODO: pass proc name
-					"proc": buffer.String(fmt.Sprintf("%d|%s", line.ID, line.Name), buffer.FgRed),
-					"sep":  buffer.String("|", buffer.FgGreen),
-					"line": buffer.String(line.Line, lineColor),
-				},
-			))
+		default:
 		}
+
+		lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
+										Case(core.LogTypeStdout, buffer.FgHiWhite).
+										Case(core.LogTypeStderr, buffer.FgHiBlack).
+										Default(buffer.FgRed)
+
+		fmt.Println(fmt2.FormatComplex(
+			// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
+			"{proc} {sep} {line}",
+			map[string]any{
+				"at": buffer.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack),
+				// TODO: different colors for different IDs
+				// TODO: pass proc name
+				"proc": buffer.String(fmt.Sprintf("%d|%s", line.ID, line.Name), buffer.FgRed),
+				"sep":  buffer.String("|", buffer.FgGreen),
+				"line": buffer.String(line.Line, lineColor),
+			},
+		))
 	}
+	return nil
 }
 
 var _logsCmd = &cli.Command{
