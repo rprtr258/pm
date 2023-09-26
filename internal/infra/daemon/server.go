@@ -174,24 +174,27 @@ func (s *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error {
 		return err
 	}
 
-	for {
+	for line := range ch {
 		select {
-		case line := <-ch:
-			if errSend := stream.Send(&pb.LogLine{
-				Name: line.Name,
-				Line: line.Line,
-				At:   timestamppb.New(line.At),
-				Type: lo.Switch[core.LogType, pb.LogLine_Type](line.Type).
-					Case(core.LogTypeStdout, pb.LogLine_TYPE_STDOUT).
-					Case(core.LogTypeStderr, pb.LogLine_TYPE_STDERR).
-					Default(pb.LogLine_TYPE_UNSPECIFIED),
-			}); errSend != nil {
-				return xerr.NewWM(errSend, "send log lines", xerr.Fields{
-					"procID": req.GetId(),
-				})
-			}
 		case <-stream.Context().Done():
 			return nil
+		default:
+		}
+
+		if errSend := stream.Send(&pb.LogLine{
+			Name: line.Name,
+			Line: line.Line,
+			At:   timestamppb.New(line.At),
+			Type: lo.Switch[core.LogType, pb.LogLine_Type](line.Type).
+				Case(core.LogTypeStdout, pb.LogLine_TYPE_STDOUT).
+				Case(core.LogTypeStderr, pb.LogLine_TYPE_STDERR).
+				Default(pb.LogLine_TYPE_UNSPECIFIED),
+		}); errSend != nil {
+			return xerr.NewWM(errSend, "send log lines", xerr.Fields{
+				"proc_id": req.GetId(),
+			})
 		}
 	}
+
+	return nil
 }

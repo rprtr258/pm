@@ -89,6 +89,7 @@ func streamFile(
 }
 
 func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
 	var wg sync.WaitGroup
 	logLinesCh := make(chan ProcLine)
 	if err := streamFile(

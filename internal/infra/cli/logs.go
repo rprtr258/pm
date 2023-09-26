@@ -49,6 +49,10 @@ func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 		default:
 		}
 
+		if line.Err != nil {
+			line.Line = line.Err.Error()
+		}
+
 		lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
 										Case(core.LogTypeStdout, buffer.FgHiWhite).
 										Case(core.LogTypeStderr, buffer.FgHiBlack).
