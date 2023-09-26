@@ -81,11 +81,14 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 						// Any("proc", procFields(proc)).
 						Err(errStart).
 						Msg("failed to start proc")
-					if errSetStatus := dbHandle.SetStatus(proc.ID, core.NewStatusInvalid()); errSetStatus != nil {
-						log.Error().
-							Err(errSetStatus).
-							Uint64("proc_id", e.ProcID).
-							Msg("failed to set proc status to invalid")
+
+					if errStart != ErrAlreadyRunning {
+						if errSetStatus := dbHandle.SetStatus(proc.ID, core.NewStatusInvalid()); errSetStatus != nil {
+							log.Error().
+								Err(errSetStatus).
+								Uint64("proc_id", e.ProcID).
+								Msg("failed to set proc status to invalid")
+						}
 					}
 
 					continue
@@ -138,9 +141,11 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 	}
 }
 
+var ErrAlreadyRunning = errors.New("process is already running")
+
 func (r Runner) Start(proc core.Proc) (int, error) {
 	if proc.Status.Status == core.StatusRunning {
-		return 0, xerr.NewM("process is already running")
+		return 0, ErrAlreadyRunning
 	}
 
 	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)

@@ -320,6 +320,7 @@ var (
 )
 
 func main() {
+	// TODO: ???, why not just separate cli?
 	pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
 		Name:        "test",
 		Usage:       "run e2e tests",
