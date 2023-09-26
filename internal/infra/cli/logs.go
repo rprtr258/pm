@@ -20,25 +20,21 @@ import (
 
 func mergeChans(ctx context.Context, chans ...<-chan core.LogLine) <-chan core.LogLine {
 	out := make(chan core.LogLine)
-	var wg sync.WaitGroup
-	wg.Add(len(chans))
-	for _, ch := range chans {
-		go func(ch <-chan core.LogLine) {
-			defer wg.Done()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case v, ok := <-ch:
-					if !ok {
-						return
-					}
-					out <- v
-				}
-			}
-		}(ch)
-	}
 	go func() {
+		var wg sync.WaitGroup
+		wg.Add(len(chans))
+		for _, ch := range chans {
+			go func(ch <-chan core.LogLine) {
+				defer wg.Done()
+				for v := range ch {
+					select {
+					case <-ctx.Done():
+						return
+					case out <- v:
+					}
+				}
+			}(ch)
+		}
 		wg.Wait()
 		close(out)
 	}()
