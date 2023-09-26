@@ -89,42 +89,40 @@ func streamFile(
 }
 
 func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
-	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
-	var wg sync.WaitGroup
 	logLinesCh := make(chan ProcLine)
-	if err := streamFile(
-		ctx,
-		logLinesCh,
-		proc.ID,
-		proc.StdoutFile,
-		core.LogTypeStdout,
-		&wg,
-	); err != nil {
-		log.Error().
-			Uint64("procID", proc.ID).
-			Str("file", proc.StdoutFile).
-			Err(err).
-			Msg("failed to stream stdout log file")
-	}
-	if err := streamFile(
-		ctx,
-		logLinesCh,
-		proc.ID,
-		proc.StderrFile,
-		core.LogTypeStderr,
-		&wg,
-	); err != nil {
-		log.Error().
-			Uint64("procID", proc.ID).
-			Str("file", proc.StderrFile).
-			Err(err).
-			Msg("failed to stream stderr log file")
-	}
 	go func() {
+		var wg sync.WaitGroup
+		if err := streamFile(
+			ctx,
+			logLinesCh,
+			proc.ID,
+			proc.StdoutFile,
+			core.LogTypeStdout,
+			&wg,
+		); err != nil {
+			log.Error().
+				Uint64("procID", proc.ID).
+				Str("file", proc.StdoutFile).
+				Err(err).
+				Msg("failed to stream stdout log file")
+		}
+		if err := streamFile(
+			ctx,
+			logLinesCh,
+			proc.ID,
+			proc.StderrFile,
+			core.LogTypeStderr,
+			&wg,
+		); err != nil {
+			log.Error().
+				Uint64("procID", proc.ID).
+				Str("file", proc.StderrFile).
+				Err(err).
+				Msg("failed to stream stderr log file")
+		}
 		wg.Wait()
 		close(logLinesCh)
 	}()
-
 	return logLinesCh
 }
 
@@ -140,35 +138,26 @@ func (s *Server) Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine,
 	}
 
 	ch := make(chan core.LogLine)
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
-		procCh := streamProcLogs(ctx, proc)
-		for {
+		defer close(ch)
+
+		for line := range streamProcLogs(ctx, proc) {
 			select {
 			case <-ctx.Done():
 				return
-			case line, ok := <-procCh:
-				if !ok {
-					return
-				}
+			default:
+			}
 
-				// TODO: stop on proc death
-				ch <- core.LogLine{
-					ID:   id,
-					Name: proc.Name,
-					At:   line.At,
-					Line: line.Line,
-					Type: line.Type,
-					Err:  line.Err,
-				}
+			// TODO: stop on proc death
+			ch <- core.LogLine{
+				ID:   id,
+				Name: proc.Name,
+				At:   line.At,
+				Line: line.Line,
+				Type: line.Type,
+				Err:  line.Err,
 			}
 		}
 	}()
-	go func() {
-		wg.Wait()
-		close(ch)
-	}()
-
 	return ch, nil
 }

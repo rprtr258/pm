@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"io"
 	"net"
 	"syscall"
 
@@ -228,12 +229,14 @@ func (c Client) Logs(ctx context.Context, id core.ProcID) (LogsIterator, error) 
 		for {
 			select {
 			case <-ctx.Done():
-				res2.Err <- nil
+				res2.Err <- ctx.Err()
 				return
 			default:
 				line, err := res.Recv()
 				if err != nil {
-					res2.Err <- err
+					if err != io.EOF {
+						res2.Err <- err
+					}
 					return
 				}
 
