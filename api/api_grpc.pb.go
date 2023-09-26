@@ -8,7 +8,6 @@ package api
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -29,6 +28,7 @@ const (
 	Daemon_Delete_FullMethodName      = "/api.Daemon/Delete"
 	Daemon_HealthCheck_FullMethodName = "/api.Daemon/HealthCheck"
 	Daemon_Logs_FullMethodName        = "/api.Daemon/Logs"
+	Daemon_Subscribe_FullMethodName   = "/api.Daemon/Subscribe"
 )
 
 // DaemonClient is the client API for Daemon service.
@@ -45,6 +45,7 @@ type DaemonClient interface {
 	Delete(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Status, error)
 	Logs(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_LogsClient, error)
+	Subscribe(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_SubscribeClient, error)
 }
 
 type daemonClient struct {
@@ -150,6 +151,38 @@ func (x *daemonLogsClient) Recv() (*LogLine, error) {
 	return m, nil
 }
 
+func (c *daemonClient) Subscribe(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_SubscribeClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Daemon_ServiceDesc.Streams[1], Daemon_Subscribe_FullMethodName, opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &daemonSubscribeClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Daemon_SubscribeClient interface {
+	Recv() (*Process, error)
+	grpc.ClientStream
+}
+
+type daemonSubscribeClient struct {
+	grpc.ClientStream
+}
+
+func (x *daemonSubscribeClient) Recv() (*Process, error) {
+	m := new(Process)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // DaemonServer is the server API for Daemon service.
 // All implementations must embed UnimplementedDaemonServer
 // for forward compatibility
@@ -164,6 +197,7 @@ type DaemonServer interface {
 	Delete(context.Context, *ProcID) (*emptypb.Empty, error)
 	HealthCheck(context.Context, *emptypb.Empty) (*Status, error)
 	Logs(*ProcID, Daemon_LogsServer) error
+	Subscribe(*ProcID, Daemon_SubscribeServer) error
 	mustEmbedUnimplementedDaemonServer()
 }
 
@@ -194,6 +228,9 @@ func (UnimplementedDaemonServer) HealthCheck(context.Context, *emptypb.Empty) (*
 }
 func (UnimplementedDaemonServer) Logs(*ProcID, Daemon_LogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method Logs not implemented")
+}
+func (UnimplementedDaemonServer) Subscribe(*ProcID, Daemon_SubscribeServer) error {
+	return status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
 func (UnimplementedDaemonServer) mustEmbedUnimplementedDaemonServer() {}
 
@@ -355,6 +392,27 @@ func (x *daemonLogsServer) Send(m *LogLine) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Daemon_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ProcID)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DaemonServer).Subscribe(m, &daemonSubscribeServer{stream})
+}
+
+type Daemon_SubscribeServer interface {
+	Send(*Process) error
+	grpc.ServerStream
+}
+
+type daemonSubscribeServer struct {
+	grpc.ServerStream
+}
+
+func (x *daemonSubscribeServer) Send(m *Process) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // Daemon_ServiceDesc is the grpc.ServiceDesc for Daemon service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -395,6 +453,11 @@ var Daemon_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "Logs",
 			Handler:       _Daemon_Logs_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Subscribe",
+			Handler:       _Daemon_Subscribe_Handler,
 			ServerStreams: true,
 		},
 	},

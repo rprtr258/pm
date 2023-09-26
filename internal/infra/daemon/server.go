@@ -121,24 +121,28 @@ func mapStatus(status core.Status) *pb.ProcessStatus {
 	}
 }
 
+func mapProc(proc core.Proc) *pb.Process {
+	return &pb.Process{
+		Id:         proc.ID,
+		Name:       proc.Name,
+		Tags:       proc.Tags,
+		Command:    proc.Command,
+		Args:       proc.Args,
+		Cwd:        proc.Cwd,
+		Env:        proc.Env,
+		StdoutFile: proc.StdoutFile,
+		StderrFile: proc.StderrFile,
+		Watch:      proc.Watch.Ptr(),
+		Status:     mapStatus(proc.Status),
+	}
+}
+
 func (s *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
 	return &pb.ProcessesList{
 		Processes: fun.MapToSlice(
 			s.srv.List(ctx),
 			func(id core.ProcID, proc core.Proc) *pb.Process {
-				return &pb.Process{
-					Id:         id,
-					Name:       proc.Name,
-					Tags:       proc.Tags,
-					Command:    proc.Command,
-					Args:       proc.Args,
-					Cwd:        proc.Cwd,
-					Env:        proc.Env,
-					StdoutFile: proc.StdoutFile,
-					StderrFile: proc.StderrFile,
-					Watch:      proc.Watch.Ptr(),
-					Status:     mapStatus(proc.Status),
-				}
+				return mapProc(proc)
 			},
 		),
 	}, nil
@@ -191,6 +195,29 @@ func (s *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error {
 				Default(pb.LogLine_TYPE_UNSPECIFIED),
 		}); errSend != nil {
 			return xerr.NewWM(errSend, "send log lines", xerr.Fields{
+				"proc_id": req.GetId(),
+			})
+		}
+	}
+
+	return nil
+}
+
+func (s *daemonServer) Subscribe(req *pb.ProcID, stream pb.Daemon_SubscribeServer) error {
+	ch, err := s.srv.Subscribe(stream.Context(), req.GetId())
+	if err != nil {
+		return err
+	}
+
+	for proc := range ch {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		default:
+		}
+
+		if errSend := stream.Send(mapProc(proc)); errSend != nil {
+			return xerr.NewWM(errSend, "send proc update", xerr.Fields{
 				"proc_id": req.GetId(),
 			})
 		}

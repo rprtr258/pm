@@ -20,7 +20,8 @@ service Daemon {
 
   rpc HealthCheck(google.protobuf.Empty) returns (Status);
 
-  rpc Logs(ProcID) returns (stream LogLine);
+  rpc Logs     (ProcID) returns (stream LogLine); // TODO: remove, tail logs on client side
+  rpc Subscribe(ProcID) returns (stream Process); // subscribe to changes
 }
 
 message CreateRequest {
