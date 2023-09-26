@@ -82,6 +82,7 @@ func streamFile(
 					"file":   logFile,
 				}),
 			}
+			return
 		}
 	}()
 
@@ -104,7 +105,7 @@ func (s *Server) streamProcLogs(ctx context.Context, proc core.Proc) <-chan Proc
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					if proc, ok := s.db.GetProc(proc.ID); !ok || proc.Status.Status != core.StatusRunning {
+					if proc2, ok := s.db.GetProc(proc.ID); !ok || proc2.Status.Status != core.StatusRunning {
 						return
 					}
 				}

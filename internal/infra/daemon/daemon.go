@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-faster/tail"
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -31,6 +32,7 @@ import (
 	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 	"github.com/rprtr258/pm/internal/infra/db"
 	godaemon "github.com/rprtr258/pm/internal/infra/go-daemon"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 	"github.com/rprtr258/pm/pkg/client"
 )
 
@@ -292,16 +294,68 @@ func streamLoggerInterceptor(
 	return err
 }
 
-func deathCollector(ctx context.Context) {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGCHLD)
+func deathCollector(ctx context.Context, ebus *eventbus.EventBus, db db.Handle) {
+	c := make(chan os.Signal, 10) // arbitrary buffer size
+	signal.Notify(c, syscall.SIGCHLD)
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
+			log.Info().Msg("context canceled, stopping...")
 			return
-		case <-ch:
-			pid, err := syscall.Wait4(-1, nil, 0, nil)
-			log.Err(err).Int("pid", pid).Msg("child died")
+		case <-ticker.C:
+			for procID, proc := range db.GetProcs(core.WithAllIfNoFilters) {
+				if proc.Status.Status != core.StatusRunning {
+					continue
+				}
+
+				switch _, errStat := linuxprocess.ReadProcessStat(proc.Status.Pid); errStat {
+				case nil:
+					// process stat file exists hence process is still running
+					continue
+				case linuxprocess.ErrStatFileNotFound:
+					log.Info().
+						Int("pid", proc.Status.Pid).
+						Msg("process seems to be stopped, updating status...")
+
+					ebus.Publish(ctx, eventbus.NewPublishProcStopped(procID, eventbus.EmitReasonDied))
+				default:
+					log.Warn().
+						Err(errStat).
+						Int("pid", proc.Status.Pid).
+						Msg("read proc stat")
+				}
+			}
+		case <-c:
+			// wait for any of childs' death
+			for {
+				var status syscall.WaitStatus
+				pid, errWait := syscall.Wait4(-1, &status, 0, nil)
+				if pid < 0 {
+					break
+				}
+				if errWait != nil {
+					log.Error().Err(errWait).Msg("Wait4 failed")
+					continue
+				}
+
+				log.Info().Int("pid", pid).Msg("child died")
+
+				allProcs := db.GetProcs(core.WithAllIfNoFilters)
+
+				procID, procFound := fun.FindKeyBy(allProcs, func(_ core.ProcID, procData core.Proc) bool {
+					return procData.Status.Status == core.StatusRunning &&
+						procData.Status.Pid == pid
+				})
+				if !procFound {
+					continue
+				}
+
+				ebus.Publish(ctx, eventbus.NewPublishProcStopped(procID, eventbus.EmitReasonDied))
+			}
 		}
 	}
 }
@@ -332,7 +386,7 @@ func Main(ctx context.Context) error {
 	watcher := watcher.New(ebus)
 	go watcher.Start(ctx)
 
-	go deathCollector(ctx)
+	go deathCollector(ctx, ebus, dbHandle)
 	go daemon.StartStatuser(ctx, ebus, dbHandle)
 	go runner.Start(ctx, ebus, dbHandle)
 
