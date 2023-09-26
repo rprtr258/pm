@@ -69,10 +69,7 @@ message RunningProcessStatus {
   uint64                    memory     = 4;
 }
 
-message StoppedProcessStatus {
-  int64                     exit_code  = 1;
-  google.protobuf.Timestamp stopped_at = 2;
-}
+message StoppedProcessStatus {}
 
 message ProcID {
   uint64 id = 1;

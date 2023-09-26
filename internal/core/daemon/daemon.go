@@ -87,12 +87,11 @@ func StartStatuser(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Han
 						Msg("set proc status to running")
 				}
 			case eventbus.DataProcStopped:
-				dbStatus := core.NewStatusStopped(e.ExitCode)
+				dbStatus := core.NewStatusStopped()
 				if err := dbHandle.SetStatus(e.ProcID, dbStatus); err != nil {
 					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
 						log.Error().
 							Uint64("proc_id", e.ProcID).
-							Int("exit_code", e.ExitCode).
 							Msg("proc not found while trying to set stopped status")
 					} else {
 						log.Error().

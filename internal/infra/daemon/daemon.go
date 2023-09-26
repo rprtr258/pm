@@ -317,7 +317,6 @@ func Main(ctx context.Context) error {
 	watcher := watcher.New(ebus)
 	go watcher.Start(ctx)
 
-	go daemon.StartDeathCollector(ctx, ebus, dbHandle)
 	go daemon.StartStatuser(ctx, ebus, dbHandle)
 	go runner.Start(ctx, ebus, dbHandle)
 

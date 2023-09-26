@@ -96,7 +96,7 @@ func mapPbStatus(status *pb.ProcessStatus) core.Status {
 	case status.GetCreated() != nil:
 		return core.NewStatusCreated()
 	case status.GetStopped() != nil:
-		return core.NewStatusStopped(int(status.GetStopped().GetExitCode()))
+		return core.NewStatusStopped()
 	case status.GetRunning() != nil:
 		stat := status.GetRunning()
 		return core.NewStatusRunning(

@@ -114,7 +114,7 @@ var _listCmd = &cli.Command{
 				case core.StatusRunning:
 					return 100
 				case core.StatusStopped:
-					return 200 + p.Status.ExitCode
+					return 200
 				case core.StatusInvalid:
 					return 300
 				default:
@@ -191,14 +191,7 @@ func mapStatus(status core.Status) (string, *int, time.Duration) {
 	case core.StatusRunning:
 		return buffer.String("running", buffer.FgGreen), &status.Pid, time.Since(status.StartTime)
 	case core.StatusStopped:
-		switch status.ExitCode {
-		case -1:
-			return buffer.String("stopped(-1)", buffer.FgRed), nil, 0
-		case 0:
-			return buffer.String("exited", buffer.FgYellow), nil, 0
-		default:
-			return buffer.String(fmt.Sprintf("stopped(%d)", status.ExitCode), buffer.FgRed), nil, 0
-		}
+		return buffer.String("stopped", buffer.FgRed), nil, 0
 	case core.StatusInvalid:
 		return buffer.String(fmt.Sprintf("invalid(%#v)", status.Status), buffer.FgRed), nil, 0
 	default:

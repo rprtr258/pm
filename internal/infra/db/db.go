@@ -16,10 +16,8 @@ import (
 // status - db representation of core.Status
 type status struct {
 	StartTime time.Time `json:"start_time"` // StartTime, valid if running
-	StoppedAt time.Time `json:"stopped_at"` // StoppedAt - time when the process stopped, valid if stopped
 	Status    int       `json:"type"`
-	Pid       int       `json:"pid"`       // PID, valid if running
-	ExitCode  int       `json:"exit_code"` // ExitCode of the process, valid if stopped
+	Pid       int       `json:"pid"` // PID, valid if running
 }
 
 // procData - db representation of core.ProcData
@@ -127,10 +125,8 @@ func (handle Handle) UpdateProc(proc core.Proc) Error {
 		ProcID: proc.ID,
 		Status: status{
 			StartTime: proc.Status.StartTime,
-			StoppedAt: proc.Status.StoppedAt,
 			Status:    int(proc.Status.Status),
 			Pid:       proc.Status.Pid,
-			ExitCode:  proc.Status.ExitCode,
 		},
 		Command:    proc.Command,
 		Cwd:        proc.Cwd,
@@ -175,10 +171,8 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) core.Procs {
 				Watch:   fun.FromPtr(proc.Watch),
 				Status: core.Status{
 					StartTime: proc.Status.StartTime,
-					StoppedAt: proc.Status.StoppedAt,
 					Status:    core.StatusType(proc.Status.Status),
 					Pid:       proc.Status.Pid,
-					ExitCode:  proc.Status.ExitCode,
 					CPU:       0,
 					Memory:    0,
 				},
@@ -205,10 +199,8 @@ func (handle Handle) SetStatus(procID core.ProcID, newStatus core.Status) Error 
 
 	proc.Status = status{
 		StartTime: newStatus.StartTime,
-		StoppedAt: newStatus.StoppedAt,
 		Status:    int(newStatus.Status),
 		Pid:       newStatus.Pid,
-		ExitCode:  newStatus.ExitCode,
 	}
 	handle.procs.Upsert(proc)
 
@@ -245,10 +237,8 @@ func (handle Handle) Delete(procID core.ProcID) (core.Proc, Error) {
 		Watch:   fun.FromPtr(proc.Watch),
 		Status: core.Status{
 			StartTime: proc.Status.StartTime,
-			StoppedAt: proc.Status.StoppedAt,
 			Status:    core.StatusType(proc.Status.Status),
 			Pid:       proc.Status.Pid,
-			ExitCode:  proc.Status.ExitCode,
 			CPU:       0,
 			Memory:    0,
 		},

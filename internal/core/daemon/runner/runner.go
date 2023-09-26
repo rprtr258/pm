@@ -118,7 +118,7 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 				}
 
 				if stopped {
-					ebus.Publish(ctx, eventbus.NewPublishProcStopped(e.ProcID, -1, e.EmitReason))
+					ebus.Publish(ctx, eventbus.NewPublishProcStopped(e.ProcID, e.EmitReason))
 				}
 			case eventbus.DataProcSignalRequest:
 				proc, ok := dbHandle.GetProc(e.ProcID)

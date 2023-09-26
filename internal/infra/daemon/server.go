@@ -104,10 +104,7 @@ func mapStatus(status core.Status) *pb.ProcessStatus {
 		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Created{}}
 	case core.StatusStopped:
 		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Stopped{
-			Stopped: &pb.StoppedProcessStatus{
-				ExitCode:  int64(status.ExitCode),
-				StoppedAt: timestamppb.New(status.StoppedAt),
-			},
+			Stopped: &pb.StoppedProcessStatus{},
 		}}
 	case core.StatusRunning:
 		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Running{

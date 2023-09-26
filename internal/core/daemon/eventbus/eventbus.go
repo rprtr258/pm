@@ -76,9 +76,8 @@ type DataProcStarted struct {
 }
 
 type DataProcStopped struct {
-	ProcID   core.ProcID
-	ExitCode int
-	At       time.Time
+	ProcID core.ProcID
+	At     time.Time
 
 	// EmitReason = Died | ByUser | ByWatcher
 	EmitReason EmitReason
@@ -218,7 +217,7 @@ func NewPublishProcStarted(proc core.Proc, pid int, emitReason EmitReason) Event
 	}
 }
 
-func NewPublishProcStopped(procID core.ProcID, exitCode int, emitReason EmitReason) Event {
+func NewPublishProcStopped(procID core.ProcID, emitReason EmitReason) Event {
 	if emitReason&(emitReason-1) != 0 {
 		log.Warn().
 			Stringer("reason", emitReason).
@@ -230,7 +229,6 @@ func NewPublishProcStopped(procID core.ProcID, exitCode int, emitReason EmitReas
 		Kind: KindProcStopped,
 		Data: DataProcStopped{
 			ProcID:     procID,
-			ExitCode:   exitCode,
 			At:         time.Now(),
 			EmitReason: emitReason,
 		},

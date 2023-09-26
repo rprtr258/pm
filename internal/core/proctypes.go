@@ -33,12 +33,10 @@ func (ps StatusType) String() string {
 
 type Status struct {
 	StartTime time.Time // StartTime, valid if running
-	StoppedAt time.Time // StoppedAt - time when the process stopped, valid if stopped
 	Status    StatusType
 	Pid       int    // PID, valid if running
 	CPU       uint64 // CPU usage percentage rounded to integer, valid if running
 	Memory    uint64 // Memory usage in bytes, valid if running
-	ExitCode  int    // ExitCode of the process, valid if stopped
 }
 
 func NewStatusInvalid() Status {
@@ -63,11 +61,9 @@ func NewStatusRunning(startTime time.Time, pid int, cpu, memory uint64) Status {
 	}
 }
 
-func NewStatusStopped(exitCode int) Status {
+func NewStatusStopped() Status {
 	return Status{ //nolint:exhaustruct // not needed
-		Status:    StatusStopped,
-		ExitCode:  exitCode,
-		StoppedAt: time.Now(),
+		Status: StatusStopped,
 	}
 }
 
