@@ -7,7 +7,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
-	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -170,37 +169,6 @@ func (s *daemonServer) Signal(ctx context.Context, req *pb.SignalRequest) (*empt
 	s.srv.Signal(ctx, req.GetId().GetId(), signal)
 
 	return &emptypb.Empty{}, nil
-}
-
-func (s *daemonServer) Logs(req *pb.ProcID, stream pb.Daemon_LogsServer) error {
-	ch, err := s.srv.Logs(stream.Context(), req.GetId())
-	if err != nil {
-		return err
-	}
-
-	for line := range ch {
-		select {
-		case <-stream.Context().Done():
-			return nil
-		default:
-		}
-
-		if errSend := stream.Send(&pb.LogLine{
-			Name: line.Name,
-			Line: line.Line,
-			At:   timestamppb.New(line.At),
-			Type: lo.Switch[core.LogType, pb.LogLine_Type](line.Type).
-				Case(core.LogTypeStdout, pb.LogLine_TYPE_STDOUT).
-				Case(core.LogTypeStderr, pb.LogLine_TYPE_STDERR).
-				Default(pb.LogLine_TYPE_UNSPECIFIED),
-		}); errSend != nil {
-			return xerr.NewWM(errSend, "send log lines", xerr.Fields{
-				"proc_id": req.GetId(),
-			})
-		}
-	}
-
-	return nil
 }
 
 func (s *daemonServer) Subscribe(req *pb.ProcID, stream pb.Daemon_SubscribeServer) error {

@@ -207,43 +207,47 @@ func (c Client) HealthCheck(ctx context.Context) (Status, error) {
 	}, nil
 }
 
-type LogsIterator struct {
-	Logs chan *pb.LogLine
-	Err  chan error
-}
-
-func (c Client) Logs(ctx context.Context, id core.ProcID) (LogsIterator, error) {
-	res, err := c.client.Logs(ctx, &pb.ProcID{
+func (c Client) Subscribe(ctx context.Context, id core.ProcID) (<-chan core.Proc, error) {
+	resp, err := c.client.Subscribe(ctx, &pb.ProcID{
 		Id: id,
 	})
 	if err != nil {
-		return fun.Zero[LogsIterator](), xerr.NewWM(err, "server.logs")
+		return nil, xerr.NewWM(err, "server.subscribe")
 	}
 
-	res2 := LogsIterator{
-		Logs: make(chan *pb.LogLine),
-		Err:  make(chan error, 1),
-	}
-
+	res := make(chan core.Proc)
 	go func() {
+		defer close(res)
+
 		for {
 			select {
 			case <-ctx.Done():
-				res2.Err <- ctx.Err()
 				return
 			default:
-				line, err := res.Recv()
+				proc, err := resp.Recv()
 				if err != nil {
 					if err != io.EOF {
-						res2.Err <- err
+						// res.Err <- ctx.Err()
+						// log.Error().Err(errIter).Msg("failed to receive log line")
 					}
 					return
 				}
 
-				res2.Logs <- line
+				res <- core.Proc{
+					ID:         proc.GetId(),
+					Name:       proc.GetName(),
+					Tags:       proc.GetTags(),
+					Command:    proc.GetCommand(),
+					Args:       proc.GetArgs(),
+					Cwd:        proc.GetCwd(),
+					StdoutFile: proc.GetStdoutFile(),
+					StderrFile: proc.GetStderrFile(),
+					Watch:      fun.FromPtr(proc.Watch),
+					Status:     mapPbStatus(proc.GetStatus()),
+					Env:        proc.GetEnv(),
+				}
 			}
 		}
 	}()
-
-	return res2, nil
+	return res, nil
 }

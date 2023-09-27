@@ -20,7 +20,6 @@ service Daemon {
 
   rpc HealthCheck(google.protobuf.Empty) returns (Status);
 
-  rpc Logs     (ProcID) returns (stream LogLine); // TODO: remove, tail logs on client side
   rpc Subscribe(ProcID) returns (stream Process); // subscribe to changes
 }
 
@@ -111,17 +110,4 @@ message Status {
   int64                   gid             = 15;
   int64                   egid            = 16;
   map<uint64, Watchplace> watches         = 17;
-}
-
-message LogLine {
-  enum Type {
-    TYPE_UNSPECIFIED = 0;
-    TYPE_STDOUT      = 1;
-    TYPE_STDERR      = 2;
-  };
-
-  string                    name = 1;
-  google.protobuf.Timestamp at   = 2;
-  Type                      type = 3;
-  string                    line = 4;
 }

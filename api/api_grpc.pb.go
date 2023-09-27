@@ -27,7 +27,6 @@ const (
 	Daemon_List_FullMethodName        = "/api.Daemon/List"
 	Daemon_Delete_FullMethodName      = "/api.Daemon/Delete"
 	Daemon_HealthCheck_FullMethodName = "/api.Daemon/HealthCheck"
-	Daemon_Logs_FullMethodName        = "/api.Daemon/Logs"
 	Daemon_Subscribe_FullMethodName   = "/api.Daemon/Subscribe"
 )
 
@@ -44,7 +43,6 @@ type DaemonClient interface {
 	List(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ProcessesList, error)
 	Delete(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Status, error)
-	Logs(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_LogsClient, error)
 	Subscribe(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_SubscribeClient, error)
 }
 
@@ -119,40 +117,8 @@ func (c *daemonClient) HealthCheck(ctx context.Context, in *emptypb.Empty, opts 
 	return out, nil
 }
 
-func (c *daemonClient) Logs(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_LogsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Daemon_ServiceDesc.Streams[0], Daemon_Logs_FullMethodName, opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &daemonLogsClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Daemon_LogsClient interface {
-	Recv() (*LogLine, error)
-	grpc.ClientStream
-}
-
-type daemonLogsClient struct {
-	grpc.ClientStream
-}
-
-func (x *daemonLogsClient) Recv() (*LogLine, error) {
-	m := new(LogLine)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
 func (c *daemonClient) Subscribe(ctx context.Context, in *ProcID, opts ...grpc.CallOption) (Daemon_SubscribeClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Daemon_ServiceDesc.Streams[1], Daemon_Subscribe_FullMethodName, opts...)
+	stream, err := c.cc.NewStream(ctx, &Daemon_ServiceDesc.Streams[0], Daemon_Subscribe_FullMethodName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -196,7 +162,6 @@ type DaemonServer interface {
 	List(context.Context, *emptypb.Empty) (*ProcessesList, error)
 	Delete(context.Context, *ProcID) (*emptypb.Empty, error)
 	HealthCheck(context.Context, *emptypb.Empty) (*Status, error)
-	Logs(*ProcID, Daemon_LogsServer) error
 	Subscribe(*ProcID, Daemon_SubscribeServer) error
 	mustEmbedUnimplementedDaemonServer()
 }
@@ -225,9 +190,6 @@ func (UnimplementedDaemonServer) Delete(context.Context, *ProcID) (*emptypb.Empt
 }
 func (UnimplementedDaemonServer) HealthCheck(context.Context, *emptypb.Empty) (*Status, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
-}
-func (UnimplementedDaemonServer) Logs(*ProcID, Daemon_LogsServer) error {
-	return status.Errorf(codes.Unimplemented, "method Logs not implemented")
 }
 func (UnimplementedDaemonServer) Subscribe(*ProcID, Daemon_SubscribeServer) error {
 	return status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
@@ -371,27 +333,6 @@ func _Daemon_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Daemon_Logs_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ProcID)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(DaemonServer).Logs(m, &daemonLogsServer{stream})
-}
-
-type Daemon_LogsServer interface {
-	Send(*LogLine) error
-	grpc.ServerStream
-}
-
-type daemonLogsServer struct {
-	grpc.ServerStream
-}
-
-func (x *daemonLogsServer) Send(m *LogLine) error {
-	return x.ServerStream.SendMsg(m)
-}
-
 func _Daemon_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ProcID)
 	if err := stream.RecvMsg(m); err != nil {
@@ -450,11 +391,6 @@ var Daemon_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "Logs",
-			Handler:       _Daemon_Logs_Handler,
-			ServerStreams: true,
-		},
 		{
 			StreamName:    "Subscribe",
 			Handler:       _Daemon_Subscribe_Handler,
