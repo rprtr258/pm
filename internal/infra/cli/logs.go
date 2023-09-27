@@ -75,7 +75,6 @@ func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 				map[string]any{
 					"at": buffer.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack),
 					// TODO: different colors for different IDs
-					// TODO: pass proc name
 					"proc": buffer.String(fmt.Sprintf("%d|%s", line.ID, line.Name), buffer.FgRed),
 					"sep":  buffer.String("|", buffer.FgGreen),
 					"line": buffer.String(line.Line, lineColor),
@@ -83,7 +82,6 @@ func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 			))
 		}
 	}
-	return nil
 }
 
 var _logsCmd = &cli.Command{
