@@ -14,6 +14,7 @@ import (
 
 	pb "github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/cli/log"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
@@ -227,8 +228,8 @@ func (c Client) Subscribe(ctx context.Context, id core.ProcID) (<-chan core.Proc
 				proc, err := resp.Recv()
 				if err != nil {
 					if err != io.EOF {
-						// res.Err <- ctx.Err()
-						// log.Error().Err(errIter).Msg("failed to receive log line")
+						// res.Err <- err
+						log.Error().Err(err).Msg("failed to receive proc")
 					}
 					return
 				}
