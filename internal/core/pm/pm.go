@@ -345,10 +345,10 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine, e
 			case <-ctx.Done():
 				return
 				// TODO: stop on proc death
-			case proc := <-ch:
-				if proc.Status.Status != core.StatusRunning {
-					cancel()
-				}
+			case /*proc :=*/ <-ch:
+				// if proc.Status.Status != core.StatusRunning { // TODO: get back
+				cancel()
+				// }
 			case line, ok := <-logsCh:
 				if !ok {
 					return
