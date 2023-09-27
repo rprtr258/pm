@@ -229,7 +229,7 @@ func (c Client) Subscribe(ctx context.Context, id core.ProcID) (<-chan core.Proc
 				if err != nil {
 					if err != io.EOF {
 						// res.Err <- err
-						log.Error().Err(err).Msg("failed to receive proc")
+						log.Error().Err(err).Str("err_str", err.Error()).Msg("failed to receive proc")
 					}
 					return
 				}
