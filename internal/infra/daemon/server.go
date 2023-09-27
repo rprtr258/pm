@@ -177,19 +177,20 @@ func (s *daemonServer) Subscribe(req *pb.ProcID, stream pb.Daemon_SubscribeServe
 		return err
 	}
 
-	for proc := range ch {
+	for {
 		select {
 		case <-stream.Context().Done():
 			return nil
-		default:
-		}
+		case proc, ok := <-ch:
+			if !ok {
+				return nil
+			}
 
-		if errSend := stream.Send(mapProc(proc)); errSend != nil {
-			return xerr.NewWM(errSend, "send proc update", xerr.Fields{
-				"proc_id": req.GetId(),
-			})
+			if errSend := stream.Send(mapProc(proc)); errSend != nil {
+				return xerr.NewWM(errSend, "send proc update", xerr.Fields{
+					"proc_id": req.GetId(),
+				})
+			}
 		}
 	}
-
-	return nil
 }

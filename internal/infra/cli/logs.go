@@ -26,11 +26,20 @@ func mergeChans(ctx context.Context, chans ...<-chan core.LogLine) <-chan core.L
 		for _, ch := range chans {
 			go func(ch <-chan core.LogLine) {
 				defer wg.Done()
-				for v := range ch {
+				for {
 					select {
 					case <-ctx.Done():
 						return
-					case out <- v:
+					case v, ok := <-ch:
+						if !ok {
+							return
+						}
+
+						select {
+						case <-ctx.Done():
+							return
+						case out <- v:
+						}
 					}
 				}
 			}(ch)
@@ -42,34 +51,37 @@ func mergeChans(ctx context.Context, chans ...<-chan core.LogLine) <-chan core.L
 }
 
 func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
-	for line := range ch {
+	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		default:
+		case line, ok := <-ch:
+			if !ok {
+				return nil
+			}
+
+			if line.Err != nil {
+				line.Line = line.Err.Error()
+			}
+
+			lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
+											Case(core.LogTypeStdout, buffer.FgHiWhite).
+											Case(core.LogTypeStderr, buffer.FgHiBlack).
+											Default(buffer.FgRed)
+
+			fmt.Println(fmt2.FormatComplex(
+				// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
+				"{proc} {sep} {line}",
+				map[string]any{
+					"at": buffer.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack),
+					// TODO: different colors for different IDs
+					// TODO: pass proc name
+					"proc": buffer.String(fmt.Sprintf("%d|%s", line.ID, line.Name), buffer.FgRed),
+					"sep":  buffer.String("|", buffer.FgGreen),
+					"line": buffer.String(line.Line, lineColor),
+				},
+			))
 		}
-
-		if line.Err != nil {
-			line.Line = line.Err.Error()
-		}
-
-		lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
-										Case(core.LogTypeStdout, buffer.FgHiWhite).
-										Case(core.LogTypeStderr, buffer.FgHiBlack).
-										Default(buffer.FgRed)
-
-		fmt.Println(fmt2.FormatComplex(
-			// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
-			"{proc} {sep} {line}",
-			map[string]any{
-				"at": buffer.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack),
-				// TODO: different colors for different IDs
-				// TODO: pass proc name
-				"proc": buffer.String(fmt.Sprintf("%d|%s", line.ID, line.Name), buffer.FgRed),
-				"sep":  buffer.String("|", buffer.FgGreen),
-				"line": buffer.String(line.Line, lineColor),
-			},
-		))
 	}
 	return nil
 }

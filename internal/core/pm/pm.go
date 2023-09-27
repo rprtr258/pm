@@ -340,7 +340,6 @@ func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine, e
 	go func() {
 		defer close(res)
 		for {
-
 			select {
 			case <-ctx.Done():
 				return
