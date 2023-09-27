@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/infra/db"
 )
@@ -94,6 +95,7 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 					continue
 				}
 
+				daemon.StatusSetStarted(dbHandle, e.ProcID, pid)
 				ebus.Publish(ctx, eventbus.NewPublishProcStarted(proc, pid, e.EmitReason))
 			case eventbus.DataProcStopRequest:
 				proc, ok := dbHandle.GetProc(e.ProcID)
@@ -113,6 +115,7 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 				}
 
 				if stopped {
+					daemon.StatusSetStopped(dbHandle, e.ProcID)
 					ebus.Publish(ctx, eventbus.NewPublishProcStopped(e.ProcID, e.EmitReason))
 				}
 			case eventbus.DataProcSignalRequest:

@@ -321,6 +321,7 @@ func deathCollector(ctx context.Context, ebus *eventbus.EventBus, db db.Handle) 
 						Int("pid", proc.Status.Pid).
 						Msg("process seems to be stopped, updating status...")
 
+					daemon.StatusSetStopped(db, procID)
 					ebus.Publish(ctx, eventbus.NewPublishProcStopped(procID, eventbus.EmitReasonDied))
 				default:
 					log.Warn().
@@ -354,6 +355,7 @@ func deathCollector(ctx context.Context, ebus *eventbus.EventBus, db db.Handle) 
 					continue
 				}
 
+				daemon.StatusSetStopped(db, procID)
 				ebus.Publish(ctx, eventbus.NewPublishProcStopped(procID, eventbus.EmitReasonDied))
 			}
 		}
@@ -387,7 +389,6 @@ func Main(ctx context.Context) error {
 	go watcher.Start(ctx)
 
 	go deathCollector(ctx, ebus, dbHandle)
-	go daemon.StartStatuser(ctx, ebus, dbHandle)
 	go runner.Start(ctx, ebus, dbHandle)
 
 	srv := daemon.NewServer(ebus, dbHandle, watcher)

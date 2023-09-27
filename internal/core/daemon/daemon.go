@@ -56,44 +56,29 @@ func MigrateConfig(config core.Config) error {
 	return nil
 }
 
-func StartStatuser(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
-	// status updater
-	statusUpdaterCh := ebus.Subscribe(
-		"status_updater",
-		eventbus.KindProcStarted,
-		eventbus.KindProcStopped,
-	)
+func StatusSetStarted(dbHandle db.Handle, id core.ProcID, pid int) {
+	// TODO: fill/remove cpu, memory
+	runningStatus := core.NewStatusRunning(time.Now(), pid, 0, 0)
+	if err := dbHandle.SetStatus(id, runningStatus); err != nil {
+		log.Error().
+			Uint64("proc_id", id).
+			Any("new_status", runningStatus).
+			Msg("set proc status to running")
+	}
+}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case event := <-statusUpdaterCh:
-			switch e := event.Data.(type) {
-			case eventbus.DataProcStarted:
-				// TODO: fill/remove cpu, memory
-				runningStatus := core.NewStatusRunning(time.Now(), e.Pid, 0, 0)
-				if err := dbHandle.SetStatus(e.Proc.ID, runningStatus); err != nil {
-					log.Error().
-						Uint64("proc_id", e.Proc.ID).
-						Any("new_status", runningStatus).
-						Msg("set proc status to running")
-				}
-			case eventbus.DataProcStopped:
-				dbStatus := core.NewStatusStopped()
-				if err := dbHandle.SetStatus(e.ProcID, dbStatus); err != nil {
-					if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
-						log.Error().
-							Uint64("proc_id", e.ProcID).
-							Msg("proc not found while trying to set stopped status")
-					} else {
-						log.Error().
-							Uint64("proc_id", e.ProcID).
-							Any("new_status", dbStatus).
-							Msg("set proc status to stopped")
-					}
-				}
-			}
+func StatusSetStopped(dbHandle db.Handle, id core.ProcID) {
+	dbStatus := core.NewStatusStopped()
+	if err := dbHandle.SetStatus(id, dbStatus); err != nil {
+		if _, ok := xerr.As[db.ProcNotFoundError](err); ok {
+			log.Error().
+				Uint64("proc_id", id).
+				Msg("proc not found while trying to set stopped status")
+		} else {
+			log.Error().
+				Uint64("proc_id", id).
+				Any("new_status", dbStatus).
+				Msg("set proc status to stopped")
 		}
 	}
 }
