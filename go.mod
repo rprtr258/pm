@@ -9,7 +9,6 @@ require (
 	github.com/google/go-jsonnet v0.20.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
-	github.com/rjeczalik/notify v0.9.3
 	github.com/rprtr258/fun v0.0.7
 	github.com/rprtr258/simpdb v0.6.1
 	github.com/rprtr258/xerr v0.1.4

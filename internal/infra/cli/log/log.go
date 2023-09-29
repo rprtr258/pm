@@ -410,6 +410,7 @@ func (l *logger) Fatal(err error) {
 	} else {
 		e = e.Err(err)
 	}
+	e = e.Str("errstr", err.Error())
 
 	e.Msg("app exited abnormally")
 	os.Exit(1)

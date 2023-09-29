@@ -2,9 +2,11 @@ package watcher
 
 import (
 	"context"
+	"io/fs"
+	"os"
 	"regexp"
+	"time"
 
-	"github.com/rjeczalik/notify"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 
@@ -13,9 +15,9 @@ import (
 )
 
 type WatcherEntry struct {
-	RootDir string
-	Pattern *regexp.Regexp
-	ch      chan notify.EventInfo
+	RootDir     string
+	Pattern     *regexp.Regexp
+	LastModTime time.Time
 }
 
 type Watcher struct {
@@ -53,14 +55,7 @@ func (w Watcher) Add(procID core.ProcID, dir, pattern string) error {
 		return xerr.NewWM(errCompilePattern, "compile pattern")
 	}
 
-	ch := make(chan notify.EventInfo, 1)
-
-	if errWatch := notify.Watch(dir, ch, notify.InCloseWrite); errWatch != nil {
-		return xerr.NewWM(errWatch, "add watch dir")
-	}
-
 	w.Watchplaces[procID] = WatcherEntry{
-		ch:      ch,
 		RootDir: dir,
 		Pattern: re,
 	}
@@ -73,13 +68,14 @@ func (w Watcher) Remove(procID core.ProcID) {
 		Uint64("proc_id", procID).
 		Msg("removing watch dir")
 
-	if entry, ok := w.Watchplaces[procID]; ok {
-		notify.Stop(entry.ch)
-		close(entry.ch) // TODO: reuse channels?
-	}
+	delete(w.Watchplaces, procID)
 }
 
 func (w Watcher) Start(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	// TODO: rewrite
 	for {
 		select {
 		case <-ctx.Done():
@@ -104,31 +100,47 @@ func (w Watcher) Start(ctx context.Context) {
 					w.Remove(e.ProcID)
 				}
 			}
-		default:
+		case now := <-ticker.C:
+			// TODO: make concurrent
 			for id, wp := range w.Watchplaces {
-				var e notify.EventInfo
-				select {
-				case e = <-wp.ch:
-				default:
-					continue
-				}
-				log.Debug().
-					Uint64("proc_id", id).
-					Str("path", e.Path()).
-					Str("root", wp.RootDir).
-					Str("pattern", wp.Pattern.String()).
-					Str("event", e.Event().String()).
-					Msg("watcher got event")
+				updated := false
+				fs.WalkDir(os.DirFS(wp.RootDir), "/", func(path string, d fs.DirEntry, err error) error {
+					if err != nil {
+						return fs.SkipAll
+					}
 
-				if !wp.Pattern.MatchString(e.Path()) {
-					continue
-				}
+					if d.IsDir() {
+						return nil
+					}
+
+					info, errInfo := d.Info()
+					if errInfo != nil {
+						return errInfo
+					}
+
+					if !wp.Pattern.MatchString(info.Name()) || info.ModTime().Before(wp.LastModTime) {
+						return nil
+					}
+
+					updated = true
+					return fs.SkipAll
+				})
+				// log.Debug().
+				// 	Uint64("proc_id", id).
+				// 	Str("path", e.Path()).
+				// 	Str("root", wp.RootDir).
+				// 	Str("pattern", wp.Pattern.String()).
+				// 	Str("event", e.Event().String()).
+				// 	Msg("watcher got event")
 
 				// TODO: merge into restart request?
-				w.ebus.Publish(ctx,
-					eventbus.NewPublishProcStopRequest(id, eventbus.EmitReasonByWatcher),
-					eventbus.NewPublishProcStartRequest(id, eventbus.EmitReasonByWatcher),
-				)
+				if updated {
+					wp.LastModTime = now
+					w.ebus.Publish(ctx,
+						eventbus.NewPublishProcStopRequest(id, eventbus.EmitReasonByWatcher),
+						eventbus.NewPublishProcStartRequest(id, eventbus.EmitReasonByWatcher),
+					)
+				}
 			}
 		}
 	}
