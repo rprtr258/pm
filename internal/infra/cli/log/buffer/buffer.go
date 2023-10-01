@@ -40,7 +40,7 @@ var (
 )
 
 type Buffer struct {
-	out io.Writer
+	w io.Writer
 }
 
 func New(out io.Writer) *Buffer {
@@ -48,7 +48,7 @@ func New(out io.Writer) *Buffer {
 }
 
 func (b *Buffer) write(bs ...byte) *Buffer {
-	b.out.Write(bs) //nolint:errcheck // fuck you
+	b.w.Write(bs) //nolint:errcheck // fuck you
 	return b
 }
 
@@ -61,12 +61,12 @@ func (b *Buffer) RepeatByte(c byte, n int) *Buffer {
 }
 
 func (b *Buffer) Printf(format string, args ...any) *Buffer {
-	fmt.Fprintf(b.out, format, args...)
+	fmt.Fprintf(b.w, format, args...)
 	return b
 }
 
 func (b *Buffer) Println(format string) *Buffer {
-	fmt.Fprintln(b.out, format)
+	fmt.Fprintln(b.w, format)
 	return b
 }
 
@@ -76,7 +76,7 @@ func (b *Buffer) String(s string, mods ...[]byte) *Buffer {
 			b.write(mod...)
 		}
 	}
-	io.WriteString(b.out, s) //nolint:errcheck // fuck you
+	io.WriteString(b.w, s) //nolint:errcheck // fuck you
 	if len(mods) > 0 {
 		b.write(ColorReset...)
 	}
