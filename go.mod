@@ -10,11 +10,12 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/fun v0.0.7
+	github.com/rprtr258/scuf v0.0.2
 	github.com/rprtr258/simpdb v0.6.1
 	github.com/rprtr258/xerr v0.1.4
 	github.com/rs/zerolog v1.30.0
 	github.com/samber/lo v1.38.1
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
 	github.com/wissance/stringFormatter v1.1.1
 	golang.org/x/mod v0.12.0
@@ -24,6 +25,7 @@ require (
 )
 
 require (
+	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect

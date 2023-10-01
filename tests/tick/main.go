@@ -6,9 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/rprtr258/scuf"
 	"github.com/urfave/cli/v2"
-
-	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 )
 
 func main() {
@@ -29,13 +28,13 @@ func main() {
 				case <-ctx.Context.Done():
 					return nil
 				case now := <-ticker.C:
-					fmt.Println(buffer.NewString(func(b *buffer.Buffer) {
+					fmt.Println(scuf.NewString(func(b scuf.Buffer) {
 						b.
-							String(now.Format(time.RFC3339), buffer.ColorFaint).
+							String(now.Format(time.RFC3339), scuf.ModFaint).
 							String(": tick").
-							Styled(func(b *buffer.Buffer) {
+							Styled(func(b scuf.Buffer) {
 								b.Printf("%4d", i)
-							}, buffer.FgBlue)
+							}, scuf.FgBlue)
 					}))
 				}
 			}

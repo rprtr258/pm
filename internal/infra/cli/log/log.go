@@ -14,36 +14,31 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
+	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
-
-	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 )
 
 func colorStringFg(bb []byte, color []byte) []byte {
-	return []byte(buffer.NewString(func(b *buffer.Buffer) {
-		b.Styled(func(b *buffer.Buffer) {
-			b.Bytes(bb...)
-		}, color)
-	}))
+	return []byte(scuf.String(string(bb), color))
 }
 
 type prettyWriter struct {
 	maxSlicePrintSize int
-	b                 *buffer.Buffer
+	b                 scuf.Buffer
 }
 
 func levelColors(level zerolog.Level) (bg, fg []byte) { //nolint:nonamedreturns // for documentation purposes
 	switch {
 	case level < zerolog.InfoLevel:
-		return buffer.BgBlue, buffer.FgBlue
+		return scuf.BgBlue, scuf.FgBlue
 	case level < zerolog.WarnLevel:
-		return buffer.BgGreen, buffer.FgGreen
+		return scuf.BgGreen, scuf.FgGreen
 	case level < zerolog.ErrorLevel:
-		return buffer.BgYellow, buffer.FgYellow
+		return scuf.BgYellow, scuf.FgYellow
 	default:
-		return buffer.BgRed, buffer.FgRed
+		return scuf.BgRed, scuf.FgRed
 	}
 }
 
@@ -64,20 +59,20 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 	d := min(len(strconv.Itoa(sv.Len())), len(strconv.Itoa(w.maxSlicePrintSize)))
 
 	var bb bytes.Buffer
-	buffer.New(&bb).
+	scuf.New(&bb).
 		Bytes(w.buildTypeString(st.String())...).
-		InBytePair('(', ')', func(b *buffer.Buffer) {
-			b.String(strconv.Itoa(sv.Len()), buffer.FgBlue)
+		InBytePair('(', ')', func(b scuf.Buffer) {
+			b.String(strconv.Itoa(sv.Len()), scuf.FgBlue)
 		}).
-		Iter(iter.Map(iter.FromRange(0, min(sv.Len(), w.maxSlicePrintSize+1), 1), func(i int) func(*buffer.Buffer) {
-			return func(b *buffer.Buffer) {
+		Iter(iter.Map(iter.FromRange(0, min(sv.Len(), w.maxSlicePrintSize+1), 1), func(i int) func(scuf.Buffer) {
+			return func(b scuf.Buffer) {
 				if i == w.maxSlicePrintSize {
 					b.
 						Bytes('\n').
 						RepeatByte(' ', l*2+4).
 						RepeatByte(' ', d+2).
-						String("...", buffer.FgBlue).
-						String("]", buffer.FgGreen)
+						String("...", scuf.FgBlue).
+						String("]", scuf.FgGreen)
 					return
 				}
 
@@ -87,7 +82,7 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 					Bytes('\n').
 					RepeatByte(' ', l*2+4).
 					RepeatByte(' ', d-len(tb)).
-					String(tb, buffer.FgGreen).
+					String(tb, scuf.FgGreen).
 					Bytes(' ').
 					Bytes(w.formatValue(v, l+1)...)
 			}
@@ -100,7 +95,7 @@ func (w *prettyWriter) formatMap(typ reflect.Type, val reflect.Value, l int) []b
 	for _, k := range val.MapKeys() {
 		p = max(p, len(anyToStr(k)))
 	}
-	p += len(buffer.FgGreen) + len(buffer.ColorReset)
+	p += len(scuf.FgGreen) + len(scuf.ModReset)
 
 	sk := val.MapKeys()
 	slices.SortFunc(sk, func(i, j reflect.Value) int {
@@ -108,14 +103,14 @@ func (w *prettyWriter) formatMap(typ reflect.Type, val reflect.Value, l int) []b
 	})
 
 	var bb bytes.Buffer
-	buffer.New(&bb).
+	scuf.New(&bb).
 		Bytes(w.buildTypeString(typ.String())...).
-		InBytePair('(', ')', func(b *buffer.Buffer) {
-			b.String(strconv.Itoa(val.Len()), buffer.FgBlue)
+		InBytePair('(', ')', func(b scuf.Buffer) {
+			b.String(strconv.Itoa(val.Len()), scuf.FgBlue)
 		}).
-		Iter(iter.Map(iter.FromMany(sk...), func(k reflect.Value) func(*buffer.Buffer) {
-			return func(b *buffer.Buffer) {
-				tb := colorStringFg(w.formatValue(k, l+1), buffer.FgGreen)
+		Iter(iter.Map(iter.FromMany(sk...), func(k reflect.Value) func(scuf.Buffer) {
+			return func(b scuf.Buffer) {
+				tb := colorStringFg(w.formatValue(k, l+1), scuf.FgGreen)
 				b.
 					Bytes('\n').
 					RepeatByte(' ', l*2+4).
@@ -135,14 +130,14 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 			p = max(p, len(st.Field(i).Name))
 		}
 	}
-	p += len(buffer.FgGreen) + len(buffer.ColorReset)
+	p += len(scuf.FgGreen) + len(scuf.ModReset)
 
 	zeroes := 0
 	var bb bytes.Buffer
-	buffer.New(&bb).
+	scuf.New(&bb).
 		Bytes(w.buildTypeString(st.String())...).
-		Iter(iter.Map(iter.FromRange(0, st.NumField(), 1), func(i int) func(*buffer.Buffer) {
-			return func(b *buffer.Buffer) {
+		Iter(iter.Map(iter.FromRange(0, st.NumField(), 1), func(i int) func(scuf.Buffer) {
+			return func(b scuf.Buffer) {
 				if !sv.Type().Field(i).IsExported() {
 					return
 				}
@@ -153,7 +148,7 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 					return
 				}
 
-				fieldName := colorStringFg([]byte(sv.Type().Field(i).Name), buffer.FgGreen)
+				fieldName := colorStringFg([]byte(sv.Type().Field(i).Name), scuf.FgGreen)
 
 				b.
 					Bytes('\n').
@@ -164,12 +159,12 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 					Bytes(w.formatValue(val, l+1)...)
 			}
 		})).
-		Styled(func(b *buffer.Buffer) {
+		Styled(func(b scuf.Buffer) {
 			if zeroes > 0 {
 				b.
 					Bytes('\n').
 					RepeatByte(' ', l*2+4).
-					String("// zeros", buffer.ColorFaint)
+					String("// zeros", scuf.ModFaint)
 			}
 		})
 	return bb.Bytes()
@@ -178,8 +173,8 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 func (w *prettyWriter) formatValue(v reflect.Value, l int) []byte {
 	if v.IsZero() {
 		var bb bytes.Buffer
-		buffer.New(&bb).
-			String(anyToStr(v), buffer.ColorFaint)
+		scuf.New(&bb).
+			String(anyToStr(v), scuf.ModFaint)
 		return bb.Bytes()
 	}
 
@@ -207,10 +202,10 @@ func (w *prettyWriter) formatValue(v reflect.Value, l int) []byte {
 	}
 
 	if s := anyToStr(v); s == "<nil>" || s == "0" || s == "false" {
-		return []byte(buffer.NewString(func(b *buffer.Buffer) {
-			b.Styled(func(b *buffer.Buffer) {
+		return []byte(scuf.NewString(func(b scuf.Buffer) {
+			b.Styled(func(b scuf.Buffer) {
 				b.Bytes(res...)
-			}, buffer.FgWhite, buffer.ColorFaint)
+			}, scuf.FgWhite, scuf.ModFaint)
 		}))
 	}
 
@@ -220,19 +215,19 @@ func (w *prettyWriter) formatValue(v reflect.Value, l int) []byte {
 func (w *prettyWriter) buildTypeString(typeStr string) []byte {
 	typeStr = strings.ReplaceAll(typeStr, "interface {}", "any")
 	var bb bytes.Buffer
-	buffer.New(&bb).
-		Iter(iter.Map(iter.FromMany([]byte(typeStr)...), func(c byte) func(*buffer.Buffer) {
-			return func(b *buffer.Buffer) {
+	scuf.New(&bb).
+		Iter(iter.Map(iter.FromMany([]byte(typeStr)...), func(c byte) func(scuf.Buffer) {
+			return func(b scuf.Buffer) {
 				b.
 					Bytes(lo.Switch[byte, []byte](c).
-						Case('*', buffer.FgRed).
-						Case('[', buffer.FgGreen).
-						Case(']', buffer.FgGreen).
-						Default(buffer.FgYellow)...).
+						Case('*', scuf.FgRed).
+						Case('[', scuf.FgGreen).
+						Case(']', scuf.FgGreen).
+						Default(scuf.FgYellow)...).
 					Bytes(c)
 			}
 		})).
-		Bytes(buffer.ColorReset...)
+		Bytes(scuf.ModReset...)
 	return bb.Bytes()
 }
 
@@ -248,35 +243,35 @@ func (w *prettyWriter) write(msg string, ev *Event) {
 	for k := range ev.fields {
 		padding = max(padding, len(k))
 	}
-	padding += len(buffer.FgMagenta) + len(buffer.ColorReset)
+	padding += len(scuf.FgMagenta) + len(scuf.ModReset)
 
 	w.b.
-		String(ev.ts.Format("[15:06:05]"), buffer.ColorFaint, buffer.FgWhite).
+		String(ev.ts.Format("[15:06:05]"), scuf.ModFaint, scuf.FgWhite).
 		Bytes(' ').
 		// level
-		Styled(func(b *buffer.Buffer) {
-			b.InBytePair(' ', ' ', func(b *buffer.Buffer) {
+		Styled(func(b scuf.Buffer) {
+			b.InBytePair(' ', ' ', func(b scuf.Buffer) {
 				b.String(strings.ToUpper(ev.level.String()))
 			})
-		}, buffer.FgBlack, colorBg).
+		}, scuf.FgBlack, colorBg).
 		Bytes(' ').
 		String(msg, colorFg).
 		Bytes('\n').
 		// attributes
-		Iter(iter.Map(iterSorted(iter.FromDict(ev.fields)), func(kv fun.Pair[string, any]) func(*buffer.Buffer) {
+		Iter(iter.Map(iterSorted(iter.FromDict(ev.fields)), func(kv fun.Pair[string, any]) func(scuf.Buffer) {
 			k, value := kv.K, kv.V
-			return func(b *buffer.Buffer) {
+			return func(b scuf.Buffer) {
 				b.
-					String(k, buffer.FgMagenta).
+					String(k, scuf.FgMagenta).
 					RepeatByte(' ', padding-len(k)).
 					Bytes(' ')
 				switch vv := value.(type) {
 				case time.Time, time.Duration:
-					b.String(fmt.Sprint(vv), buffer.FgCyan)
+					b.String(fmt.Sprint(vv), scuf.FgCyan)
 				case *time.Time:
-					b.String(vv.String(), buffer.FgCyan)
+					b.String(vv.String(), scuf.FgCyan)
 				case *time.Duration:
-					b.String(vv.String(), buffer.FgCyan)
+					b.String(vv.String(), scuf.FgCyan)
 				default:
 					at := reflect.TypeOf(value)
 					av := reflect.ValueOf(value)
@@ -284,16 +279,16 @@ func (w *prettyWriter) write(msg string, ev *Event) {
 					case reflect.Float32, reflect.Float64,
 						reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 						reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-						b.String(fmt.Sprint(value), buffer.FgYellow)
+						b.String(fmt.Sprint(value), scuf.FgYellow)
 					case reflect.Bool:
-						b.String(fmt.Sprint(value), buffer.FgRed)
+						b.String(fmt.Sprint(value), scuf.FgRed)
 					case reflect.String:
 						v := value.(string) //nolint:forcetypeassert,errcheck // checked kind already
 						switch {
 						case v == "":
-							b.String("empty", buffer.FgWhite, buffer.ColorFaint)
+							b.String("empty", scuf.FgWhite, scuf.ModFaint)
 						case isURL(v):
-							b.String(v, buffer.FgBlue, buffer.ColorUnderline)
+							b.String(v, scuf.FgBlue, scuf.ModUnderline)
 						default:
 							b.String(v)
 						}
@@ -351,7 +346,7 @@ func (e *Event) Errs(k string, errs []error) *Event {
 func (e *Event) Msg(msg string) {
 	(&prettyWriter{
 		maxSlicePrintSize: 10,
-		b:                 buffer.New(os.Stderr),
+		b:                 scuf.New(os.Stderr),
 	}).write(msg, e)
 }
 

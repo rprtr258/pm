@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -31,7 +32,6 @@ import (
 	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 	"github.com/rprtr258/pm/internal/core/pm"
 	log2 "github.com/rprtr258/pm/internal/infra/cli/log"
-	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 	"github.com/rprtr258/pm/internal/infra/db"
 	godaemon "github.com/rprtr258/pm/internal/infra/go-daemon"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
@@ -71,10 +71,10 @@ func Status(ctx context.Context) error {
 	for k, v := range status.Status.Envs {
 		if !strings.ContainsAny(v, "\n\r\t ") {
 			status.Status.Envs[k] = strings.NewReplacer(
-				"\n", buffer.String(`\n`, buffer.FgGreen),
-				"\r", buffer.String(`\r`, buffer.FgGreen),
-				"\t", buffer.String(`\t`, buffer.FgGreen),
-				" ", buffer.String(`\x20`, buffer.FgGreen),
+				"\n", scuf.String(`\n`, scuf.FgGreen),
+				"\r", scuf.String(`\r`, scuf.FgGreen),
+				"\t", scuf.String(`\t`, scuf.FgGreen),
+				" ", scuf.String(`\x20`, scuf.FgGreen),
 			).Replace(v)
 		}
 	}
@@ -85,7 +85,7 @@ func Status(ctx context.Context) error {
 			continue
 		}
 
-		status.Status.Envs[k] = v[:50] + buffer.String("...", buffer.FgBlue) + v[len(v)-50:]
+		status.Status.Envs[k] = v[:50] + scuf.String("...", scuf.FgBlue) + v[len(v)-50:]
 	}
 
 	log2.Info().

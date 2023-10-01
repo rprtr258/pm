@@ -6,12 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 )
 
 func ensureDir(dirname string) error {
@@ -33,9 +33,9 @@ func ensureDir(dirname string) error {
 
 //nolint:lll // setting template strings
 func Init() {
-	cli.AppHelpTemplate = buffer.NewString(func(b *buffer.Buffer) {
+	cli.AppHelpTemplate = scuf.NewString(func(b scuf.Buffer) {
 		b.
-			String(`{{template "helpNameTemplate" .}}`, buffer.FgBlue).
+			String(`{{template "helpNameTemplate" .}}`, scuf.FgBlue).
 			String(`
 
 Usage:
@@ -49,23 +49,23 @@ Author{{template "authorsTemplate" .}}{{end}}{{if .VisibleCommands}}
 
 Commands:{{range .VisibleCategories}}{{if .Name}}
    `).
-			String(`{{.Name}}`, buffer.FgCyan).
+			String(`{{.Name}}`, scuf.FgCyan).
 			String(`:{{range .VisibleCommands}}
      `).
-			String(`{{join .Names ", "}}`, buffer.FgGreen).
+			String(`{{join .Names ", "}}`, scuf.FgGreen).
 			String(`{{"\t"}}`).
-			String(`{{.Usage}}`, buffer.FgWhite).
+			String(`{{.Usage}}`, scuf.FgWhite).
 			String(`{{end}}{{else}}{{ $cv := offsetCommands .VisibleCommands 5}}{{range .VisibleCommands}}
    {{$s := join .Names ", "}}`).
-			String(`{{$s}}`, buffer.FgGreen).
+			String(`{{$s}}`, scuf.FgGreen).
 			String(`{{ $sp := subtract $cv (offset $s 3) }}{{ indent $sp ""}}`).
-			String(`{{wrap .Usage $cv}}`, buffer.FgWhite).
+			String(`{{wrap .Usage $cv}}`, scuf.FgWhite).
 			String(`{{end}}{{end}}{{end}}{{end}}
 `)
 	})
-	cli.CommandHelpTemplate = buffer.NewString(func(b *buffer.Buffer) {
+	cli.CommandHelpTemplate = scuf.NewString(func(b scuf.Buffer) {
 		b.
-			String(`{{template "helpNameTemplate" .}}`, buffer.FgBlue).
+			String(`{{template "helpNameTemplate" .}}`, scuf.FgBlue).
 			String(`
 
 Usage:
@@ -79,7 +79,7 @@ Options:{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
 Options:{{range $i, $e := .VisibleFlags}}
    `).
 			// TODO: paint flags (before \t), dont paint description (after \t)
-			String(`{{$e.String}}`, buffer.FgGreen).
+			String(`{{$e.String}}`, scuf.FgGreen).
 			String(`{{end}}{{end}}
 `) // TODO: color flags similar to coloring commands in app help
 		// TODO: fix coloring for `pm ls --help“

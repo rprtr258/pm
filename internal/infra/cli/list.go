@@ -14,12 +14,12 @@ import (
 	"github.com/aquasecurity/table"
 	"github.com/kballard/go-shellquote"
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/pm"
-	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 	"github.com/rprtr258/pm/internal/infra/daemon"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -40,15 +40,15 @@ var _listCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:    "format",
 			Aliases: []string{"f"},
-			Usage: buffer.NewString(func(b *buffer.Buffer) {
+			Usage: scuf.NewString(func(b scuf.Buffer) {
 				b.
 					String("Listing format: ").
-					String(_formatTable, buffer.FgYellow).String(", ").
-					String(_formatCompact, buffer.FgYellow).String(", ").
-					String(_formatJSON, buffer.FgYellow).String(", ").
-					String(_formatShort, buffer.FgYellow).
+					String(_formatTable, scuf.FgYellow).String(", ").
+					String(_formatCompact, scuf.FgYellow).String(", ").
+					String(_formatJSON, scuf.FgYellow).String(", ").
+					String(_formatShort, scuf.FgYellow).
 					String(", any other string is rendred as Go template with ").
-					String("core.ProcData", buffer.FgGreen).
+					String("core.ProcData", scuf.FgGreen).
 					String(" struct")
 			}),
 			Value: "table",
@@ -56,18 +56,18 @@ var _listCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:    "sort",
 			Aliases: []string{"s"},
-			Usage: buffer.NewString(func(b *buffer.Buffer) {
+			Usage: scuf.NewString(func(b scuf.Buffer) {
 				b.
 					String("Sort order. Available sort fields: ").
-					String("id", buffer.FgYellow).String(", ").
-					String("name", buffer.FgYellow).String(", ").
-					String("status", buffer.FgYellow).String(", ").
-					String("pid", buffer.FgYellow).String(", ").
-					String("uptime", buffer.FgYellow).
+					String("id", scuf.FgYellow).String(", ").
+					String("name", scuf.FgYellow).String(", ").
+					String("status", scuf.FgYellow).String(", ").
+					String("pid", scuf.FgYellow).String(", ").
+					String("uptime", scuf.FgYellow).
 					String(". Order can be changed by adding ").
-					String(":asc", buffer.FgRed).
+					String(":asc", scuf.FgRed).
 					String(" or ").
-					String(":desc", buffer.FgRed)
+					String(":desc", scuf.FgRed)
 			}),
 			Value: "id:asc",
 		},
@@ -187,15 +187,15 @@ var _listCmd = &cli.Command{
 func mapStatus(status core.Status) (string, *int, time.Duration) {
 	switch status.Status {
 	case core.StatusCreated:
-		return buffer.String("created", buffer.FgYellow), nil, 0
+		return scuf.String("created", scuf.FgYellow), nil, 0
 	case core.StatusRunning:
-		return buffer.String("running", buffer.FgGreen), &status.Pid, time.Since(status.StartTime)
+		return scuf.String("running", scuf.FgGreen), &status.Pid, time.Since(status.StartTime)
 	case core.StatusStopped:
-		return buffer.String("stopped", buffer.FgRed), nil, 0
+		return scuf.String("stopped", scuf.FgRed), nil, 0
 	case core.StatusInvalid:
-		return buffer.String(fmt.Sprintf("invalid(%#v)", status.Status), buffer.FgRed), nil, 0
+		return scuf.String(fmt.Sprintf("invalid(%#v)", status.Status), scuf.FgRed), nil, 0
 	default:
-		return buffer.String(fmt.Sprintf("BROKEN(%T)", status), buffer.FgRed), nil, 0
+		return scuf.String(fmt.Sprintf("BROKEN(%T)", status), scuf.FgRed), nil, 0
 	}
 }
 
@@ -211,7 +211,7 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 		status, pid, uptime := mapStatus(proc.Status)
 
 		procsTable.AddRow(
-			buffer.String(fmt.Sprint(proc.ID), buffer.FgCyan, buffer.ColorBold),
+			scuf.String(fmt.Sprint(proc.ID), scuf.FgCyan, scuf.ModBold),
 			proc.Name,
 			status,
 			fun.

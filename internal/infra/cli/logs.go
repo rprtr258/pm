@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
 	"github.com/urfave/cli/v2"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/pm"
-	"github.com/rprtr258/pm/internal/infra/cli/log/buffer"
 	"github.com/rprtr258/pm/internal/infra/daemon"
 	"github.com/rprtr258/pm/pkg/client"
 )
@@ -65,19 +65,19 @@ func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 			}
 
 			lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
-											Case(core.LogTypeStdout, buffer.FgHiWhite).
-											Case(core.LogTypeStderr, buffer.FgHiBlack).
-											Default(buffer.FgRed)
+											Case(core.LogTypeStdout, scuf.FgHiWhite).
+											Case(core.LogTypeStderr, scuf.FgHiBlack).
+											Default(scuf.FgRed)
 
 			fmt.Println(fmt2.FormatComplex(
 				// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
 				"{proc} {sep} {line}",
 				map[string]any{
-					"at": buffer.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), buffer.FgHiBlack),
+					"at": scuf.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), scuf.FgHiBlack),
 					// TODO: different colors for different IDs
-					"proc": buffer.String(fmt.Sprintf("%d|%s", line.ID, line.Name), buffer.FgRed),
-					"sep":  buffer.String("|", buffer.FgGreen),
-					"line": buffer.String(line.Line, lineColor),
+					"proc": scuf.String(fmt.Sprintf("%d|%s", line.ID, line.Name), scuf.FgRed),
+					"sep":  scuf.String("|", scuf.FgGreen),
+					"line": scuf.String(line.Line, lineColor),
 				},
 			))
 		}
