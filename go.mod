@@ -7,6 +7,7 @@ require (
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
 	github.com/go-faster/tail v0.3.0
 	github.com/google/go-jsonnet v0.20.0
+	github.com/hashicorp/go-set v0.1.14
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/fun v0.0.7
