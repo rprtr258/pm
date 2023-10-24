@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"time"
 
-	set "github.com/hashicorp/go-set"
+	"github.com/rprtr258/fun/set"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -100,7 +100,7 @@ type DataProcSignalRequest struct {
 }
 
 type Subscriber struct {
-	Kinds *set.Set[EventKind]
+	Kinds set.Set[EventKind]
 	Queue chan Event
 }
 
@@ -264,7 +264,7 @@ func NewPublishProcSignalRequest(signal syscall.Signal, procID core.ProcID) Even
 
 func (e *EventBus) Subscribe(name string, kinds ...EventKind) <-chan Event {
 	kindsSet := set.New[EventKind](len(kinds))
-	kindsSet.InsertSlice(kinds)
+	kindsSet.Add(kinds...)
 
 	e.mu.Lock()
 	if _, ok := e.subscribers[name]; ok {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
+	"github.com/rprtr258/fun/set"
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -15,9 +16,9 @@ import (
 
 // compareTags and return true if equal
 func compareTags(first, second []string) bool {
-	firstSet := fun.SliceToSet(first)
-	secondSet := fun.SliceToSet(second)
-	return len(fun.Intersect(firstSet, secondSet)) == max(len(firstSet), len(secondSet))
+	firstSet := set.NewFrom(first...)
+	secondSet := set.NewFrom(second...)
+	return set.Intersect(firstSet, secondSet).Size() == max(firstSet.Size(), secondSet.Size())
 }
 
 // compareArgs and return true if equal
