@@ -154,7 +154,7 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 					Bytes('\n').
 					RepeatByte(' ', l*2+4).
 					Bytes(fieldName...).
-					RepeatByte(' ', p-len(fieldName)).
+					RepeatByte(' ', max(0, p-len(fieldName))).
 					Bytes(' ').
 					Bytes(w.formatValue(val, l+1)...)
 			}
