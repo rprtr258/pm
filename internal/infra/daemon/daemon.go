@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -365,10 +363,6 @@ func deathCollector(ctx context.Context, ebus *eventbus.EventBus, db db.Handle) 
 }
 
 func Main(ctx context.Context) error {
-	go func() {
-		log.Print(http.ListenAndServe("localhost:8000", nil))
-	}()
-
 	log.Logger = zerolog.New(os.Stderr).With().
 		Timestamp().
 		Caller().
