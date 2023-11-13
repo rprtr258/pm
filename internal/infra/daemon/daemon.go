@@ -164,14 +164,12 @@ func Kill() error {
 }
 
 func EnsureRunning(ctx context.Context) error {
-	_, errSearch := _daemonCtx.Search()
-	if errSearch == nil {
+	if _, errSearch := _daemonCtx.Search(); errSearch == nil {
 		return nil
 	}
 
-	_, errRestart := startDaemon(ctx)
-	if errRestart != nil {
-		return errRestart
+	if _, errRestart := startDaemon(ctx); errRestart != nil {
+		return fmt.Errorf("not found daemon: restarting: %w", errRestart)
 	}
 
 	tries := 5

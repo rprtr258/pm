@@ -17,7 +17,6 @@ import (
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
-	"github.com/samber/lo"
 )
 
 func colorStringFg(bb []byte, color []byte) []byte {
@@ -218,16 +217,22 @@ func (w *prettyWriter) buildTypeString(typeStr string) []byte {
 	scuf.New(&bb).
 		Iter(iter.Map(iter.FromMany([]byte(typeStr)...), func(c byte) func(scuf.Buffer) {
 			return func(b scuf.Buffer) {
-				b.
-					Bytes(lo.Switch[byte, []byte](c).
-						Case('*', scuf.FgRed).
-						Case('[', scuf.FgGreen).
-						Case(']', scuf.FgGreen).
-						Default(scuf.FgYellow)...).
-					Bytes(c)
+				switch c {
+				case '*':
+					b.Styled(func(b scuf.Buffer) {
+						b.Bytes(c)
+					}, scuf.FgRed)
+				case '[', ']':
+					b.Styled(func(b scuf.Buffer) {
+						b.Bytes(c)
+					}, scuf.FgGreen)
+				default:
+					b.Styled(func(b scuf.Buffer) {
+						b.Bytes(c)
+					}, scuf.FgYellow)
+				}
 			}
-		})).
-		Bytes(scuf.ModReset...)
+		}))
 	return bb.Bytes()
 }
 
