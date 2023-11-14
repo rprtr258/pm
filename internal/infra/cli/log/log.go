@@ -114,7 +114,7 @@ func (w *prettyWriter) formatMap(typ reflect.Type, val reflect.Value, l int) []b
 					Bytes('\n').
 					RepeatByte(' ', l*2+4).
 					Bytes(tb...).
-					RepeatByte(' ', p-len(tb)).
+					RepeatByte(' ', max(0, p-len(tb))).
 					Bytes(' ').
 					Bytes(w.formatValue(val.MapIndex(k), l+1)...)
 			}
