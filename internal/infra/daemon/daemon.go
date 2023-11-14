@@ -168,6 +168,10 @@ func EnsureRunning(ctx context.Context) error {
 		return nil
 	}
 
+	if errKill := Kill(); errKill != nil {
+		return fmt.Errorf("killing old daemon: %w", errKill)
+	}
+
 	if _, errRestart := startDaemon(ctx); errRestart != nil {
 		return fmt.Errorf("not found daemon: restarting: %w", errRestart)
 	}
