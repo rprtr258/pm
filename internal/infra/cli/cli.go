@@ -106,7 +106,7 @@ var App = &cli.App{
 	Commands: []*cli.Command{
 		_daemonCmd,
 		_runCmd, _startCmd, _restartCmd, _stopCmd, _deleteCmd,
-		_listCmd, _logsCmd,
+		_listCmd, _logsCmd, _inspectCmd,
 		_versionCmd,
 	},
 	HideHelpCommand: true,
