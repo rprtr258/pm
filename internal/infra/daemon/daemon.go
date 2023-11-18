@@ -405,7 +405,7 @@ func Main(ctx context.Context) error {
 		grpc.ChainUnaryInterceptor(unaryLoggerInterceptor),
 		grpc.ChainStreamInterceptor(streamLoggerInterceptor),
 	)
-	pb.RegisterDaemonServer(s, &daemonServer{
+	pb.RegisterDaemonServer(s, &server{
 		UnimplementedDaemonServer: pb.UnimplementedDaemonServer{},
 		srv:                       srv,
 	})

@@ -17,12 +17,12 @@ import (
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
-type daemonServer struct {
+type server struct {
 	pb.UnimplementedDaemonServer
 	srv *daemon.Server
 }
 
-func (s *daemonServer) HealthCheck(context.Context, *emptypb.Empty) (*pb.Status, error) {
+func (s *server) HealthCheck(context.Context, *emptypb.Empty) (*pb.Status, error) {
 	status, err := linuxprocess.GetSelfStatus()
 	if err != nil {
 		return nil, xerr.NewWM(err, "get proc status")
@@ -60,7 +60,7 @@ func (s *daemonServer) HealthCheck(context.Context, *emptypb.Empty) (*pb.Status,
 	}, nil
 }
 
-func (s *daemonServer) Create(_ context.Context, req *pb.CreateRequest) (*pb.ProcID, error) {
+func (s *server) Create(_ context.Context, req *pb.CreateRequest) (*pb.ProcID, error) {
 	procID, err := s.srv.Create(
 		req.GetCommand(),
 		req.GetArgs(),
@@ -81,12 +81,12 @@ func (s *daemonServer) Create(_ context.Context, req *pb.CreateRequest) (*pb.Pro
 	}, nil
 }
 
-func (s *daemonServer) Start(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
+func (s *server) Start(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
 	s.srv.Start(ctx, req.GetId())
 	return &emptypb.Empty{}, nil
 }
 
-func (s *daemonServer) Delete(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
+func (s *server) Delete(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
 	if err := s.srv.Delete(ctx, req.GetId()); err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func mapProc(proc core.Proc) *pb.Process {
 	}
 }
 
-func (s *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
+func (s *server) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList, error) {
 	return &pb.ProcessesList{
 		Processes: fun.MapToSlice(
 			s.srv.List(ctx),
@@ -147,13 +147,13 @@ func (s *daemonServer) List(ctx context.Context, _ *emptypb.Empty) (*pb.Processe
 	}, nil
 }
 
-func (s *daemonServer) Stop(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
+func (s *server) Stop(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
 	s.srv.Stop(ctx, req.GetId())
 
 	return &emptypb.Empty{}, nil
 }
 
-func (s *daemonServer) Signal(ctx context.Context, req *pb.SignalRequest) (*emptypb.Empty, error) {
+func (s *server) Signal(ctx context.Context, req *pb.SignalRequest) (*emptypb.Empty, error) {
 	var signal syscall.Signal
 	switch req.GetSignal() {
 	case pb.Signal_SIGNAL_SIGTERM:
@@ -171,7 +171,7 @@ func (s *daemonServer) Signal(ctx context.Context, req *pb.SignalRequest) (*empt
 	return &emptypb.Empty{}, nil
 }
 
-func (s *daemonServer) Subscribe(req *pb.ProcID, stream pb.Daemon_SubscribeServer) error {
+func (s *server) Subscribe(req *pb.ProcID, stream pb.Daemon_SubscribeServer) error {
 	ch, err := s.srv.Subscribe(stream.Context(), req.GetId())
 	if err != nil {
 		return err
