@@ -1,8 +1,6 @@
 package core
 
 import (
-	"strconv"
-
 	"github.com/rprtr258/fun"
 	"github.com/samber/lo"
 )
@@ -10,7 +8,7 @@ import (
 type Filter struct {
 	Names          []string
 	Tags           []string
-	IDs            []ProcID
+	IDs            []PMID
 	AllIfNoFilters bool
 }
 
@@ -23,9 +21,12 @@ func (f Filter) NoFilters() bool {
 type FilterOption func(*Filter)
 
 func WithGeneric(args []string) FilterOption {
-	ids := fun.FilterMap[ProcID](args, func(id string, _ int) (ProcID, bool) {
-		procID, err := strconv.ParseUint(id, 10, 64)
-		return procID, err == nil
+	ids := fun.FilterMap[PMID](args, func(id string, _ int) (PMID, bool) {
+		isHex := true
+		for _, c := range id {
+			isHex = isHex && ('0' <= c && c <= '9' || 'a' <= c && c <= 'f')
+		}
+		return PMID(id), isHex && len(id) == 16*2
 	})
 
 	return func(cfg *Filter) {
@@ -47,9 +48,11 @@ func WithTags(tags []string) FilterOption {
 	}
 }
 
-func WithIDs(ids ...ProcID) FilterOption {
+func WithIDs[ID interface{ ~string }](ids ...ID) FilterOption {
 	return func(cfg *Filter) {
-		cfg.IDs = append(cfg.IDs, ids...)
+		for _, id := range ids {
+			cfg.IDs = append(cfg.IDs, PMID(id))
+		}
 	}
 }
 
@@ -65,14 +68,14 @@ func NewFilter(opts ...FilterOption) Filter {
 	return filter
 }
 
-func FilterProcMap(procs map[ProcID]Proc, filter Filter) []ProcID {
+func FilterProcMap(procs map[PMID]Proc, filter Filter) []PMID {
 	if filter.NoFilters() {
 		return fun.Keys(procs)
 	}
 
 	return fun.MapFilterToSlice(
 		procs,
-		func(id ProcID, proc Proc) (ProcID, bool) {
+		func(id PMID, proc Proc) (PMID, bool) {
 			return id, fun.Contains(filter.Names, proc.Name) ||
 				lo.Some(filter.Tags, proc.Tags) ||
 				fun.Contains(filter.IDs, proc.ID)

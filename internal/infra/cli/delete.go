@@ -28,7 +28,7 @@ var _deleteCmd = &cli.Command{
 			Name:  "tag",
 			Usage: "tag(s) of process(es) to stop and remove",
 		},
-		&cli.Uint64SliceFlag{
+		&cli.StringSliceFlag{
 			Name:  "id",
 			Usage: "id(s) of process(es) to stop and remove",
 		},
@@ -41,7 +41,7 @@ var _deleteCmd = &cli.Command{
 
 		names := ctx.StringSlice("name")
 		tags := ctx.StringSlice("tag")
-		ids := ctx.Uint64Slice("id")
+		ids := ctx.StringSlice("id")
 
 		args := ctx.Args().Slice()
 

@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/go-faster/tail"
-	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
@@ -314,13 +313,19 @@ func deathCollector(ctx context.Context, ebus *eventbus.EventBus, db db.Handle) 
 					continue
 				}
 
-				switch _, errStat := linuxprocess.ReadProcessStat(proc.Status.Pid); errStat {
+				process, ok := linuxprocess.StatPMID(proc.ID, "PM_PMID")
+				pid := 0
+				if ok {
+					pid = process.Pid
+				}
+
+				switch _, errStat := linuxprocess.ReadProcessStat(pid); errStat {
 				case nil:
 					// process stat file exists hence process is still running
 					continue
 				case linuxprocess.ErrStatFileNotFound:
 					log.Info().
-						Int("pid", proc.Status.Pid).
+						Stringer("pid", proc.ID).
 						Msg("process seems to be stopped, updating status...")
 
 					daemon.StatusSetStopped(db, procID)
@@ -328,38 +333,39 @@ func deathCollector(ctx context.Context, ebus *eventbus.EventBus, db db.Handle) 
 				default:
 					log.Warn().
 						Err(errStat).
-						Int("pid", proc.Status.Pid).
+						Stringer("pmid", proc.ID).
 						Msg("read proc stat")
 				}
 			}
 		case <-c:
 			// wait for any of childs' death
-			for {
-				var status syscall.WaitStatus
-				pid, errWait := syscall.Wait4(-1, &status, 0, nil)
-				if pid < 0 {
-					break
-				}
-				if errWait != nil {
-					log.Error().Err(errWait).Msg("Wait4 failed")
-					continue
-				}
+			// TODO: get back/remove
+			// for {
+			// 	var status syscall.WaitStatus
+			// 	pid, errWait := syscall.Wait4(-1, &status, 0, nil)
+			// 	if pid < 0 {
+			// 		break
+			// 	}
+			// 	if errWait != nil {
+			// 		log.Error().Err(errWait).Msg("Wait4 failed")
+			// 		continue
+			// 	}
 
-				log.Info().Int("pid", pid).Msg("child died")
+			// 	log.Info().Int("pid", pid).Msg("child died")
 
-				allProcs := db.GetProcs(core.WithAllIfNoFilters)
+			// 	allProcs := db.GetProcs(core.WithAllIfNoFilters)
 
-				procID, procFound := fun.FindKeyBy(allProcs, func(_ core.ProcID, procData core.Proc) bool {
-					return procData.Status.Status == core.StatusRunning &&
-						procData.Status.Pid == pid
-				})
-				if !procFound {
-					continue
-				}
+			// 	procID, procFound := fun.FindKeyBy(allProcs, func(_ core.PMID, procData core.Proc) bool {
+			// 		return procData.Status.Status == core.StatusRunning &&
+			// 			procData.ID == pid
+			// 	})
+			// 	if !procFound {
+			// 		continue
+			// 	}
 
-				daemon.StatusSetStopped(db, procID)
-				ebus.Publish(ctx, eventbus.NewPublishProcStopped(procID, eventbus.EmitReasonDied))
-			}
+			// 	daemon.StatusSetStopped(db, procID)
+			// 	ebus.Publish(ctx, eventbus.NewPublishProcStopped(procID, eventbus.EmitReasonDied))
+			// }
 		}
 	}
 }

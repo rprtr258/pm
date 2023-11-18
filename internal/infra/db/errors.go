@@ -19,7 +19,7 @@ func (err GetTableError) Error() string {
 	return fmt.Sprintf("get table %q", err.Table)
 }
 
-type ProcNotFoundError struct{ ProcID core.ProcID }
+type ProcNotFoundError struct{ ProcID core.PMID }
 
 func (ProcNotFoundError) isError() {}
 

@@ -69,14 +69,13 @@ func (e EmitReason) String() string {
 type DataProcStarted struct {
 	Proc core.Proc
 	At   time.Time
-	Pid  int
 
 	// EmitReason = ByUser | ByWatcher
 	EmitReason EmitReason
 }
 
 type DataProcStopped struct {
-	ProcID core.ProcID
+	ProcID core.PMID
 	At     time.Time
 
 	// EmitReason = Died | ByUser | ByWatcher
@@ -84,18 +83,17 @@ type DataProcStopped struct {
 }
 
 type DataProcStartRequest struct {
-	ProcID     core.ProcID
+	ProcID     core.PMID
 	EmitReason EmitReason
 }
 
 type DataProcStopRequest struct {
-	ProcID     core.ProcID
-	PID        int
+	ProcID     core.PMID
 	EmitReason EmitReason
 }
 
 type DataProcSignalRequest struct {
-	ProcID core.ProcID
+	ProcID core.PMID
 	Signal syscall.Signal
 }
 
@@ -169,19 +167,19 @@ func (e *EventBus) Publish(ctx context.Context, events ...Event) {
 				proc, ok := e.db.GetProc(procID)
 				if !ok {
 					log.Error().
-						Uint64("proc_id", procID).
+						Stringer("pmid", procID).
 						Msg("proc not found")
 					continue
 				}
 
 				if proc.Status.Status != core.StatusRunning {
 					log.Error().
-						Uint64("proc_id", procID).
+						Stringer("pmid", procID).
 						Msg("proc is not running")
 					continue
 				}
 
-				data.PID = proc.Status.Pid
+				data.ProcID = proc.ID
 				event.Data = data
 			}
 
@@ -190,7 +188,7 @@ func (e *EventBus) Publish(ctx context.Context, events ...Event) {
 	}
 }
 
-func NewPublishProcStarted(proc core.Proc, pid int, emitReason EmitReason) Event {
+func NewPublishProcStarted(proc core.Proc, emitReason EmitReason) Event {
 	if emitReason&(emitReason-1) != 0 {
 		log.Warn().
 			Stringer("reason", emitReason).
@@ -202,14 +200,13 @@ func NewPublishProcStarted(proc core.Proc, pid int, emitReason EmitReason) Event
 		Kind: KindProcStarted,
 		Data: DataProcStarted{
 			Proc:       proc,
-			Pid:        pid,
 			At:         time.Now(),
 			EmitReason: emitReason,
 		},
 	}
 }
 
-func NewPublishProcStopped(procID core.ProcID, emitReason EmitReason) Event {
+func NewPublishProcStopped(procID core.PMID, emitReason EmitReason) Event {
 	if emitReason&(emitReason-1) != 0 {
 		log.Warn().
 			Stringer("reason", emitReason).
@@ -227,9 +224,9 @@ func NewPublishProcStopped(procID core.ProcID, emitReason EmitReason) Event {
 	}
 }
 
-func NewPublishProcStartRequest(procID core.ProcID, emitReason EmitReason) Event {
+func NewPublishProcStartRequest(procID core.PMID, emitReason EmitReason) Event {
 	log.Debug().
-		Uint64("proc_id", procID).
+		Stringer("pmid", procID).
 		Stringer("emit_reason", emitReason).
 		Msg("publishing proc start request")
 	return Event{
@@ -241,18 +238,17 @@ func NewPublishProcStartRequest(procID core.ProcID, emitReason EmitReason) Event
 	}
 }
 
-func NewPublishProcStopRequest(procID core.ProcID, emitReason EmitReason) Event {
+func NewPublishProcStopRequest(procID core.PMID, emitReason EmitReason) Event {
 	return Event{
 		Kind: KindProcStopRequest,
 		Data: DataProcStopRequest{
 			ProcID:     procID,
-			PID:        0, // NOTE: filled on Publish
 			EmitReason: emitReason,
 		},
 	}
 }
 
-func NewPublishProcSignalRequest(signal syscall.Signal, procID core.ProcID) Event {
+func NewPublishProcSignalRequest(signal syscall.Signal, procID core.PMID) Event {
 	return Event{
 		Kind: KindProcSignalRequest,
 		Data: DataProcSignalRequest{

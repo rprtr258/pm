@@ -21,14 +21,14 @@ type WatcherEntry struct {
 }
 
 type Watcher struct {
-	Watchplaces map[core.ProcID]WatcherEntry
+	Watchplaces map[core.PMID]WatcherEntry
 	ebus        *eventbus.EventBus
 	statusCh    <-chan eventbus.Event
 }
 
 func New(ebus *eventbus.EventBus) Watcher {
 	return Watcher{
-		Watchplaces: make(map[core.ProcID]WatcherEntry),
+		Watchplaces: make(map[core.PMID]WatcherEntry),
 		statusCh: ebus.Subscribe(
 			"watcher",
 			eventbus.KindProcStarted,
@@ -38,9 +38,9 @@ func New(ebus *eventbus.EventBus) Watcher {
 	}
 }
 
-func (w Watcher) Add(procID core.ProcID, dir, pattern string) error {
+func (w Watcher) Add(procID core.PMID, dir, pattern string) error {
 	log.Info().
-		Uint64("proc_id", procID).
+		Stringer("pmid", procID).
 		Str("dir", dir).
 		Str("pattern", pattern).
 		Msg("adding watch dir")
@@ -63,9 +63,9 @@ func (w Watcher) Add(procID core.ProcID, dir, pattern string) error {
 	return nil
 }
 
-func (w Watcher) Remove(procID core.ProcID) {
+func (w Watcher) Remove(procID core.PMID) {
 	log.Info().
-		Uint64("proc_id", procID).
+		Stringer("pmid", procID).
 		Msg("removing watch dir")
 
 	delete(w.Watchplaces, procID)
@@ -88,7 +88,7 @@ func (w Watcher) Start(ctx context.Context) {
 						if err := w.Add(e.Proc.ID, e.Proc.Cwd, watch); err != nil {
 							log.Error().
 								Err(err).
-								Uint64("proc_id", e.Proc.ID).
+								Stringer("pmid", e.Proc.ID).
 								Str("watch", watch).
 								Str("cwd", e.Proc.Cwd).
 								Msg("add watch failed")
@@ -126,7 +126,7 @@ func (w Watcher) Start(ctx context.Context) {
 					return fs.SkipAll
 				})
 				// log.Debug().
-				// 	Uint64("proc_id", id).
+				// 	Stringer("pmid", id).
 				// 	Str("path", e.Path()).
 				// 	Str("root", wp.RootDir).
 				// 	Str("pattern", wp.Pattern.String()).

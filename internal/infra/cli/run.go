@@ -158,7 +158,7 @@ var _runCmd = &cli.Command{
 			if errRun != nil {
 				return xerr.NewWM(errRun, "run command", xerr.Fields{
 					"run_config": runConfig,
-					"proc_id":    procID,
+					"pmid":       procID,
 				})
 			}
 
@@ -180,7 +180,7 @@ var _runCmd = &cli.Command{
 				fmt.Print(procID, " ")
 				if err != nil {
 					fmt.Println()
-					return xerr.NewWM(err, "create all procs from config", xerr.Fields{"proc_id": procID})
+					return xerr.NewWM(err, "create all procs from config", xerr.Fields{"pmid": procID})
 				}
 			}
 
@@ -215,8 +215,8 @@ var _runCmd = &cli.Command{
 			if errCreate != nil {
 				fmt.Println()
 				return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{
-					"names":   names,
-					"proc_id": procID,
+					"names": names,
+					"pmid":  procID,
 				})
 			}
 		}

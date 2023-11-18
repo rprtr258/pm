@@ -40,7 +40,7 @@ message ProcessesList {
 }
 
 message Process {
-  uint64              id          = 1;
+  ProcID              id          = 1;
   ProcessStatus       status      = 2;
   string              name        = 3;
   string              cwd         = 4;
@@ -63,17 +63,16 @@ message ProcessStatus {
 }
 
 message RunningProcessStatus {
-  int64                     pid        = 1;
-  google.protobuf.Timestamp start_time = 2;
-  uint64                    cpu        = 3;
-  uint64                    memory     = 4;
+  google.protobuf.Timestamp start_time = 1;
+  uint64                    cpu        = 2;
+  uint64                    memory     = 3;
 }
 
 message StoppedProcessStatus {
 }
 
 message ProcID {
-  uint64 id = 1;
+  string id = 1;
 }
 
 enum Signal {
@@ -109,5 +108,5 @@ message Status {
   int64                   euid            = 14;
   int64                   gid             = 15;
   int64                   egid            = 16;
-  map<uint64, Watchplace> watches         = 17;
+  map<string, Watchplace> watches         = 17;
 }

@@ -55,10 +55,10 @@ func (c Client) Close() error {
 	return nil
 }
 
-func (c Client) Create(ctx context.Context, opts *pb.CreateRequest) (uint64, error) {
+func (c Client) Create(ctx context.Context, opts *pb.CreateRequest) (string, error) {
 	resp, err := c.client.Create(ctx, opts)
 	if err != nil {
-		return 0, xerr.NewWM(err, "server.create")
+		return "", xerr.NewWM(err, "server.create")
 	}
 
 	return resp.GetId(), nil
@@ -70,10 +70,10 @@ func (c Client) List(ctx context.Context) (core.Procs, error) {
 		return nil, xerr.NewWM(err, "server.list")
 	}
 
-	return fun.SliceToMap[core.ProcID, core.Proc](
+	return fun.SliceToMap[core.PMID, core.Proc](
 		resp.GetProcesses(),
-		func(proc *pb.Process) (core.ProcID, core.Proc) {
-			procID := proc.GetId()
+		func(proc *pb.Process) (core.PMID, core.Proc) {
+			procID := core.PMID(proc.GetId().GetId())
 			return procID, core.Proc{
 				ID:         procID,
 				Name:       proc.GetName(),
@@ -103,7 +103,6 @@ func mapPbStatus(status *pb.ProcessStatus) core.Status {
 		stat := status.GetRunning()
 		return core.NewStatusRunning(
 			stat.GetStartTime().AsTime(),
-			int(stat.GetPid()),
 			stat.GetCpu(),
 			stat.GetMemory(),
 		)
@@ -112,30 +111,30 @@ func mapPbStatus(status *pb.ProcessStatus) core.Status {
 	}
 }
 
-func (c Client) Delete(ctx context.Context, id uint64) error {
+func (c Client) Delete(ctx context.Context, id string) error {
 	if _, err := c.client.Delete(ctx, &pb.ProcID{Id: id}); err != nil {
-		return xerr.NewWM(err, "server.delete", xerr.Fields{"proc_id": id})
+		return xerr.NewWM(err, "server.delete", xerr.Fields{"pmid": id})
 	}
 	return nil
 }
 
-func (c Client) Start(ctx context.Context, id uint64) error {
+func (c Client) Start(ctx context.Context, id string) error {
 	if _, err := c.client.Start(ctx, &pb.ProcID{Id: id}); err != nil {
-		return xerr.NewWM(err, "server.start", xerr.Fields{"proc_id": id})
+		return xerr.NewWM(err, "server.start", xerr.Fields{"pmid": id})
 	}
 
 	return nil
 }
 
-func (c Client) Stop(ctx context.Context, id uint64) error {
+func (c Client) Stop(ctx context.Context, id string) error {
 	if _, err := c.client.Stop(ctx, &pb.ProcID{Id: id}); err != nil {
-		return xerr.NewWM(err, "server.stop", xerr.Fields{"proc_id": id})
+		return xerr.NewWM(err, "server.stop", xerr.Fields{"pmid": id})
 	}
 
 	return nil
 }
 
-func (c Client) Signal(ctx context.Context, signal syscall.Signal, id uint64) error {
+func (c Client) Signal(ctx context.Context, signal syscall.Signal, id core.PMID) error {
 	var apiSignal pb.Signal
 	switch signal { //nolint:exhaustive // other signals are not supported now
 	case syscall.SIGTERM:
@@ -147,10 +146,10 @@ func (c Client) Signal(ctx context.Context, signal syscall.Signal, id uint64) er
 	}
 
 	if _, err := c.client.Signal(ctx, &pb.SignalRequest{
-		Id:     &pb.ProcID{Id: id},
+		Id:     &pb.ProcID{Id: id.String()},
 		Signal: apiSignal,
 	}); err != nil {
-		return xerr.NewWM(err, "server.signal", xerr.Fields{"proc_id": id})
+		return xerr.NewWM(err, "server.signal", xerr.Fields{"pmid": id})
 	}
 
 	return nil
@@ -163,7 +162,7 @@ type WatcherEntry struct {
 
 type Status struct {
 	Status  linuxprocess.Status
-	Watches map[core.ProcID]WatcherEntry
+	Watches map[core.PMID]WatcherEntry
 }
 
 func (c Client) HealthCheck(ctx context.Context) (Status, error) {
@@ -172,9 +171,9 @@ func (c Client) HealthCheck(ctx context.Context) (Status, error) {
 		return fun.Zero[Status](), xerr.NewWM(err, "server.healthcheck")
 	}
 
-	watches := map[core.ProcID]WatcherEntry{}
+	watches := map[core.PMID]WatcherEntry{}
 	for k, v := range status.GetWatches() {
-		watches[k] = WatcherEntry{
+		watches[core.PMID(k)] = WatcherEntry{
 			Root:    v.GetRoot(),
 			Pattern: v.GetPattern(),
 		}
@@ -208,9 +207,9 @@ func (c Client) HealthCheck(ctx context.Context) (Status, error) {
 	}, nil
 }
 
-func (c Client) Subscribe(ctx context.Context, id core.ProcID) (<-chan core.Proc, error) {
+func (c Client) Subscribe(ctx context.Context, id core.PMID) (<-chan core.Proc, error) {
 	resp, err := c.client.Subscribe(ctx, &pb.ProcID{
-		Id: id,
+		Id: id.String(),
 	})
 	if err != nil {
 		return nil, xerr.NewWM(err, "server.subscribe")
@@ -235,7 +234,7 @@ func (c Client) Subscribe(ctx context.Context, id core.ProcID) (<-chan core.Proc
 				}
 
 				res <- core.Proc{
-					ID:         proc.GetId(),
+					ID:         core.PMID(proc.GetId().GetId()),
 					Name:       proc.GetName(),
 					Tags:       proc.GetTags(),
 					Command:    proc.GetCommand(),

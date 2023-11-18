@@ -30,7 +30,7 @@ var _inspectCmd = &cli.Command{
 			Name:  "tag",
 			Usage: "tag(s) of process(es) to list",
 		},
-		&cli.Uint64SliceFlag{
+		&cli.StringSliceFlag{
 			Name:  "id",
 			Usage: "id(s) of process(es) to list",
 		},
@@ -45,7 +45,9 @@ var _inspectCmd = &cli.Command{
 			ctx.Args().Slice(),
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
-			ctx.Uint64Slice("id"),
+			fun.Map[core.PMID](ctx.StringSlice("id"), func(id string) core.PMID {
+				return core.PMID(id)
+			}),
 		)
 	},
 }
@@ -53,7 +55,7 @@ var _inspectCmd = &cli.Command{
 func inspect(
 	ctx context.Context,
 	genericFilters, nameFilters, tagFilters []string,
-	idFilters []core.ProcID,
+	idFilters []core.PMID,
 ) error {
 	pmClient, err := client.New()
 	if err != nil {

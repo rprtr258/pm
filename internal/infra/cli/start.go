@@ -27,7 +27,7 @@ var _startCmd = &cli.Command{
 			Name:  "tag",
 			Usage: "tag(s) of process(es) to start",
 		},
-		&cli.Uint64SliceFlag{
+		&cli.StringSliceFlag{
 			Name:  "id",
 			Usage: "id(s) of process(es) to start",
 		},
@@ -40,7 +40,7 @@ var _startCmd = &cli.Command{
 
 		names := ctx.StringSlice("name")
 		tags := ctx.StringSlice("tag")
-		ids := ctx.Uint64Slice("id")
+		ids := ctx.StringSlice("id")
 		args := ctx.Args().Slice()
 
 		client, errList := client.New()

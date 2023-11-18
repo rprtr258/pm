@@ -16,7 +16,10 @@ import (
 	"github.com/rprtr258/pm/internal/core/daemon"
 	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 	"github.com/rprtr258/pm/internal/infra/db"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
+
+const _envPMID = "PM_PMID"
 
 func optionToString[T any](opt fun.Option[T]) string {
 	if !opt.Valid {
@@ -71,14 +74,13 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 			case eventbus.DataProcStartRequest:
 				proc, ok := dbHandle.GetProc(e.ProcID)
 				if !ok {
-					log.Error().Uint64("proc_id", e.ProcID).Msg("not found proc to start")
+					log.Error().Stringer("pmid", e.ProcID).Msg("not found proc to start")
 					continue
 				}
 
-				pid, errStart := pmRunner.Start(proc)
-				if errStart != nil {
+				if errStart := pmRunner.Start(proc); errStart != nil {
 					log.Error().
-						Uint64("proc_id", e.ProcID).
+						Stringer("pmid", e.ProcID).
 						// Any("proc", procFields(proc)).
 						Err(errStart).
 						Msg("failed to start proc")
@@ -87,7 +89,7 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 						if errSetStatus := dbHandle.SetStatus(proc.ID, core.NewStatusInvalid()); errSetStatus != nil {
 							log.Error().
 								Err(errSetStatus).
-								Uint64("proc_id", e.ProcID).
+								Stringer("pmid", e.ProcID).
 								Msg("failed to set proc status to invalid")
 						}
 					}
@@ -95,20 +97,20 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 					continue
 				}
 
-				daemon.StatusSetStarted(dbHandle, e.ProcID, pid)
-				ebus.Publish(ctx, eventbus.NewPublishProcStarted(proc, pid, e.EmitReason))
+				daemon.StatusSetStarted(dbHandle, e.ProcID)
+				ebus.Publish(ctx, eventbus.NewPublishProcStarted(proc, e.EmitReason))
 			case eventbus.DataProcStopRequest:
 				proc, ok := dbHandle.GetProc(e.ProcID)
 				if !ok {
-					log.Error().Uint64("proc_id", e.ProcID).Msg("not found proc to stop")
+					log.Error().Stringer("pmid", e.ProcID).Msg("not found proc to stop")
 					continue
 				}
 
-				stopped, errStart := pmRunner.Stop(ctx, proc.Status.Pid)
+				stopped, errStart := pmRunner.Stop(ctx, proc.ID)
 				if errStart != nil {
 					log.Error().
 						Err(errStart).
-						Uint64("proc_id", e.ProcID).
+						Stringer("pmid", proc.ID).
 						// Any("proc", procFields(proc)).
 						Msg("failed to stop proc")
 					continue
@@ -121,21 +123,21 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 			case eventbus.DataProcSignalRequest:
 				proc, ok := dbHandle.GetProc(e.ProcID)
 				if !ok {
-					log.Error().Uint64("proc_id", e.ProcID).Msg("not found proc to stop")
+					log.Error().Stringer("pmid", e.ProcID).Msg("not found proc to stop")
 					continue
 				}
 
 				if proc.Status.Status != core.StatusRunning {
 					log.Error().
-						Uint64("proc_id", e.ProcID).
+						Stringer("pmid", e.ProcID).
 						Msg("proc is not running, can't send signal")
 					continue
 				}
 
-				if err := pmRunner.Signal(e.Signal, proc.Status.Pid); err != nil {
+				if err := pmRunner.Signal(e.Signal, proc.ID); err != nil {
 					log.Error().
 						Err(err).
-						Uint64("proc_id", e.ProcID).
+						Stringer("pmid", e.ProcID).
 						Any("signal", e.Signal).
 						Msg("failed to signal procs")
 				}
@@ -146,20 +148,20 @@ func Start(ctx context.Context, ebus *eventbus.EventBus, dbHandle db.Handle) {
 
 var ErrAlreadyRunning = errors.New("process is already running")
 
-func (r Runner) Start(proc core.Proc) (int, error) {
+func (r Runner) Start(proc core.Proc) error {
 	if proc.Status.Status == core.StatusRunning {
-		return 0, ErrAlreadyRunning
+		return ErrAlreadyRunning
 	}
 
 	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return 0, xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": proc.StdoutFile})
+		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": proc.StdoutFile})
 	}
 	defer stdoutLogFile.Close()
 
 	stderrLogFile, err := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return 0, xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": proc.StderrFile})
+		return xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": proc.StderrFile})
 	}
 	defer func() {
 		if errClose := stderrLogFile.Close(); errClose != nil {
@@ -172,6 +174,7 @@ func (r Runner) Start(proc core.Proc) (int, error) {
 	for k, v := range proc.Env {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
+	env = append(env, fmt.Sprintf("%s=%s", _envPMID, proc.ID))
 
 	procAttr := os.ProcAttr{
 		Dir: proc.Cwd,
@@ -191,37 +194,40 @@ func (r Runner) Start(proc core.Proc) (int, error) {
 		},
 	}
 
-	args := append([]string{proc.Command}, proc.Args...)
-	process, err := os.StartProcess(proc.Command, args, &procAttr)
-	if err != nil {
-		return 0, xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
+	if _, err := os.StartProcess(
+		proc.Command,
+		append([]string{proc.Command}, proc.Args...),
+		&procAttr,
+	); err != nil {
+		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
 	}
 
-	return process.Pid, nil
+	return nil
 }
 
-func (r Runner) Stop(ctx context.Context, pid int) (bool, error) {
-	l := log.With().Int("pid", pid).Logger()
+// TODO: remove bool from return, it is just err==nil
+func (r Runner) Stop(ctx context.Context, pmid core.PMID) (bool, error) {
+	l := log.With().Stringer("pmid", pmid).Logger()
 
-	process, errFindProc := os.FindProcess(pid)
-	if errFindProc != nil {
-		return false, xerr.NewWM(errFindProc, "find process", xerr.Fields{"pid": pid})
+	proc, ok := linuxprocess.StatPMID(pmid, _envPMID)
+	if !ok {
+		return false, xerr.NewM("find process", xerr.Fields{"pmid": pmid})
 	}
 
-	if errKill := syscall.Kill(-process.Pid, syscall.SIGTERM); errKill != nil {
+	if errKill := syscall.Kill(-proc.Pid, syscall.SIGTERM); errKill != nil {
 		switch {
 		case errors.Is(errKill, os.ErrProcessDone):
 			l.Warn().Msg("tried stop process which is done")
 		case errors.Is(errKill, syscall.ESRCH): // no such process
 			l.Warn().Msg("tried stop process which doesn't exist")
 		default:
-			return false, xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
+			return false, xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": proc.Pid})
 		}
 	}
 
 	doneCh := make(chan struct{}, 1)
 	go func() {
-		state, errFindProc := process.Wait()
+		state, errFindProc := proc.Wait()
 		if errFindProc != nil {
 			if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
 				l.Error().Err(errFindProc).Msg("releasing process")
@@ -246,8 +252,8 @@ func (r Runner) Stop(ctx context.Context, pid int) (bool, error) {
 	case <-timer.C:
 		l.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
 
-		if errKill := syscall.Kill(-process.Pid, syscall.SIGKILL); errKill != nil {
-			return false, xerr.NewWM(errKill, "kill process", xerr.Fields{"pid": process.Pid})
+		if errKill := syscall.Kill(-proc.Pid, syscall.SIGKILL); errKill != nil {
+			return false, xerr.NewWM(errKill, "kill process", xerr.Fields{"pid": proc.Pid})
 		}
 	case <-ctx.Done():
 		return false, nil
@@ -257,28 +263,28 @@ func (r Runner) Stop(ctx context.Context, pid int) (bool, error) {
 	return true, nil
 }
 
-func (r Runner) Signal(signal syscall.Signal, pid int) error {
+func (r Runner) Signal(signal syscall.Signal, pmid core.PMID) error {
 	l := log.With().
-		Int("pid", pid).
+		Stringer("pmid", pmid).
 		Stringer("signal", signal).
 		Logger()
 
-	process, errFindProc := os.FindProcess(pid)
-	if errFindProc != nil {
-		return xerr.NewWM(errFindProc, "getting process by pid failed", xerr.Fields{
-			"pid":    pid,
+	proc, ok := linuxprocess.StatPMID(pmid, _envPMID)
+	if !ok {
+		return xerr.NewM("getting process by pmid failed", xerr.Fields{
+			"pmid":   pmid,
 			"signal": signal,
 		})
 	}
 
-	if errKill := syscall.Kill(-process.Pid, signal); errKill != nil {
+	if errKill := syscall.Kill(-proc.Pid, signal); errKill != nil {
 		switch {
 		case errors.Is(errKill, os.ErrProcessDone):
 			l.Warn().Msg("tried to send signal to process which is done")
 		case errors.Is(errKill, syscall.ESRCH): // no such process
 			l.Warn().Msg("tried to send signal to process which doesn't exist")
 		default:
-			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": process.Pid})
+			return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": proc.Pid})
 		}
 	}
 

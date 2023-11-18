@@ -79,7 +79,7 @@ var _listCmd = &cli.Command{
 			Name:  "tag",
 			Usage: "tag(s) of process(es) to list",
 		},
-		&cli.Uint64SliceFlag{
+		&cli.StringSliceFlag{
 			Name:  "id",
 			Usage: "id(s) of process(es) to list",
 		},
@@ -138,7 +138,7 @@ var _listCmd = &cli.Command{
 					return a.ID < b.ID
 				}
 
-				return a.Status.Pid < b.Status.Pid
+				return a.ID < b.ID
 			}
 		case "uptime":
 			now := time.Now()
@@ -177,7 +177,9 @@ var _listCmd = &cli.Command{
 			ctx.Args().Slice(),
 			ctx.StringSlice("name"),
 			ctx.StringSlice("tags"),
-			ctx.Uint64Slice("id"),
+			fun.Map[core.PMID](ctx.StringSlice("id"), func(id string) core.PMID {
+				return core.PMID(id)
+			}),
 			ctx.String("format"),
 			sortFunc,
 		)
@@ -189,7 +191,8 @@ func mapStatus(status core.Status) (string, *int, time.Duration) {
 	case core.StatusCreated:
 		return scuf.String("created", scuf.FgYellow), nil, 0
 	case core.StatusRunning:
-		return scuf.String("running", scuf.FgGreen), &status.Pid, time.Since(status.StartTime)
+		// TODO: get back real pid
+		return scuf.String("running", scuf.FgGreen), fun.Ptr(0), time.Since(status.StartTime)
 	case core.StatusStopped:
 		return scuf.String("stopped", scuf.FgRed), nil, 0
 	case core.StatusInvalid:
@@ -233,7 +236,7 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 func list(
 	ctx context.Context,
 	genericFilters, nameFilters, tagFilters []string,
-	idFilters []core.ProcID,
+	idFilters []core.PMID,
 	format string,
 	sortFunc func(a, b core.Proc) bool,
 ) error {

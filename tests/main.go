@@ -194,11 +194,11 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	}
 
 	for id := range list {
-		if errStop := client.Stop(ctx, id); errStop != nil {
+		if errStop := client.Stop(ctx, id.String()); errStop != nil {
 			return xerr.NewWM(errStop, "stop all old processes")
 		}
 
-		if errDelete := client.Delete(ctx, id); errDelete != nil {
+		if errDelete := client.Delete(ctx, id.String()); errDelete != nil {
 			return xerr.NewWM(errDelete, "delete all old processes")
 		}
 	}
@@ -224,7 +224,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		}
 
 		// START TEST PROCESSES
-		ids := []core.ProcID{}
+		ids := []core.PMID{}
 		for _, c := range test.runConfigs {
 			id, errCreate := client.Create(ctx, &api.CreateRequest{
 				Name:       c.Name.Ptr(),
@@ -242,10 +242,10 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 			}
 
 			if errStart := client.Start(ctx, id); errStart != nil {
-				return xerr.NewWM(errStart, "start process", xerr.Fields{"proc_id": id})
+				return xerr.NewWM(errStart, "start process", xerr.Fields{"pmid": id})
 			}
 
-			ids = append(ids, id)
+			ids = append(ids, core.PMID(id))
 		}
 
 		// RUN TEST
@@ -257,15 +257,15 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 
 		// STOP AND REMOVE TEST PROCESSES
 		for _, id := range ids {
-			if errStop := client.Stop(ctx, id); errStop != nil {
-				return xerr.NewWM(errStop, "stop process", xerr.Fields{"proc_id": id})
+			if errStop := client.Stop(ctx, id.String()); errStop != nil {
+				return xerr.NewWM(errStop, "stop process", xerr.Fields{"pmid": id})
 			}
 
 			// TODO: block on stop method instead, now it is async
 			time.Sleep(3 * time.Second)
 
-			if errDelete := client.Delete(ctx, id); errDelete != nil {
-				return xerr.NewWM(errDelete, "delete process", xerr.Fields{"proc_id": id})
+			if errDelete := client.Delete(ctx, id.String()); errDelete != nil {
+				return xerr.NewWM(errDelete, "delete process", xerr.Fields{"pmid": id})
 			}
 		}
 

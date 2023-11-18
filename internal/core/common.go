@@ -33,7 +33,7 @@ const (
 )
 
 type LogLine struct {
-	ID   ProcID
+	ID   PMID
 	Name string
 	At   time.Time
 	Type LogType

@@ -3,7 +3,6 @@ package db
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/rprtr258/fun"
@@ -17,14 +16,13 @@ import (
 type status struct {
 	StartTime time.Time `json:"start_time"` // StartTime, valid if running
 	Status    int       `json:"type"`
-	Pid       int       `json:"pid"` // PID, valid if running
 }
 
 // procData - db representation of core.ProcData
 type procData struct {
-	ProcID core.ProcID `json:"id"`
-	Name   string      `json:"name"`
-	Tags   []string    `json:"tags"`
+	ProcID core.PMID `json:"id"`
+	Name   string    `json:"name"`
+	Tags   []string  `json:"tags"`
 
 	// Command - executable to run
 	Command string `json:"command"`
@@ -46,7 +44,7 @@ type procData struct {
 }
 
 func (p procData) ID() string {
-	return strconv.FormatUint(p.ProcID, 10)
+	return p.ProcID.String()
 }
 
 type Handle struct {
@@ -86,17 +84,10 @@ type CreateQuery struct {
 	// Respawns int
 }
 
-func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.ProcID, Error) {
-	maxProcID := core.ProcID(0)
-	handle.procs.Iter(func(_ string, proc procData) bool {
-		maxProcID = max(maxProcID, proc.ProcID)
-		return true
-	})
-
-	newProcID := maxProcID + 1
-
+func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, Error) {
+	id := core.GenPMID()
 	handle.procs.Insert(procData{
-		ProcID:  newProcID,
+		ProcID:  id,
 		Command: query.Command,
 		Cwd:     query.Cwd,
 		Name:    query.Name,
@@ -108,16 +99,16 @@ func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.ProcID, Er
 		},
 		Env: query.Env,
 		StdoutFile: query.StdoutFile.
-			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stdout", newProcID))),
+			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stdout", id))),
 		StderrFile: query.StderrFile.
-			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stderr", newProcID))),
+			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stderr", id))),
 	})
 
 	if err := handle.procs.Flush(); err != nil {
-		return 0, FlushError{err}
+		return "", FlushError{err}
 	}
 
-	return newProcID, nil
+	return id, nil
 }
 
 func (handle Handle) UpdateProc(proc core.Proc) Error {
@@ -126,7 +117,6 @@ func (handle Handle) UpdateProc(proc core.Proc) Error {
 		Status: status{
 			StartTime: proc.Status.StartTime,
 			Status:    int(proc.Status.Status),
-			Pid:       proc.Status.Pid,
 		},
 		Command:    proc.Command,
 		Cwd:        proc.Cwd,
@@ -146,7 +136,7 @@ func (handle Handle) UpdateProc(proc core.Proc) Error {
 	return nil
 }
 
-func (handle Handle) GetProc(id core.ProcID) (core.Proc, bool) {
+func (handle Handle) GetProc(id core.PMID) (core.Proc, bool) {
 	procs := handle.GetProcs(core.WithIDs(id))
 	if len(procs) != 1 {
 		return fun.Zero[core.Proc](), false
@@ -172,7 +162,6 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) core.Procs {
 				Status: core.Status{
 					StartTime: proc.Status.StartTime,
 					Status:    core.StatusType(proc.Status.Status),
-					Pid:       proc.Status.Pid,
 					CPU:       0,
 					Memory:    0,
 				},
@@ -184,15 +173,15 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) core.Procs {
 			return true
 		})
 
-	return fun.SliceToMap[core.ProcID, core.Proc](
+	return fun.SliceToMap[core.PMID, core.Proc](
 		core.FilterProcMap(procs, filter),
-		func(id core.ProcID) (core.ProcID, core.Proc) {
+		func(id core.PMID) (core.PMID, core.Proc) {
 			return id, procs[id]
 		})
 }
 
-func (handle Handle) SetStatus(id core.ProcID, newStatus core.Status) Error {
-	proc, ok := handle.procs.Get(strconv.FormatUint(id, 10))
+func (handle Handle) SetStatus(id core.PMID, newStatus core.Status) Error {
+	proc, ok := handle.procs.Get(id.String())
 	if !ok {
 		return ProcNotFoundError{id}
 	}
@@ -200,7 +189,6 @@ func (handle Handle) SetStatus(id core.ProcID, newStatus core.Status) Error {
 	proc.Status = status{
 		StartTime: newStatus.StartTime,
 		Status:    int(newStatus.Status),
-		Pid:       newStatus.Pid,
 	}
 	handle.procs.Upsert(proc)
 
@@ -211,7 +199,7 @@ func (handle Handle) SetStatus(id core.ProcID, newStatus core.Status) Error {
 	return nil
 }
 
-func (handle Handle) Delete(id core.ProcID) (core.Proc, Error) {
+func (handle Handle) Delete(id core.PMID) (core.Proc, Error) {
 	deletedProcs := handle.procs.
 		Where(func(_ string, proc procData) bool {
 			return proc.ProcID == id
@@ -238,7 +226,6 @@ func (handle Handle) Delete(id core.ProcID) (core.Proc, Error) {
 		Status: core.Status{
 			StartTime: proc.Status.StartTime,
 			Status:    core.StatusType(proc.Status.Status),
-			Pid:       proc.Status.Pid,
 			CPU:       0,
 			Memory:    0,
 		},

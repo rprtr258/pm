@@ -39,12 +39,12 @@ func (s *Server) Create(
 	watch fun.Option[string],
 	stdoutFile fun.Option[string],
 	stderrFile fun.Option[string],
-) (core.ProcID, error) {
+) (core.PMID, error) {
 	// try to find by name and update
 	if name, ok := name.Unpack(); ok { //nolint:nestif // no idea how to simplify it now
 		procs := s.db.GetProcs(core.WithAllIfNoFilters)
 
-		if procID, ok := fun.FindKeyBy(procs, func(_ core.ProcID, procData core.Proc) bool {
+		if procID, ok := fun.FindKeyBy(procs, func(_ core.PMID, procData core.Proc) bool {
 			return procData.Name == name
 		}); ok {
 			procData := core.Proc{
@@ -73,7 +73,7 @@ func (s *Server) Create(
 			}
 
 			if errUpdate := s.db.UpdateProc(procData); errUpdate != nil {
-				return 0, xerr.NewWM(errUpdate, "update proc", xerr.Fields{
+				return "", xerr.NewWM(errUpdate, "update proc", xerr.Fields{
 					// "procData": procFields(procData),
 				})
 			}
@@ -94,7 +94,7 @@ func (s *Server) Create(
 		StderrFile: stderrFile,
 	}, s.logsDir)
 	if err != nil {
-		return 0, xerr.NewWM(err, "save proc")
+		return "", xerr.NewWM(err, "save proc")
 	}
 
 	return procID, nil

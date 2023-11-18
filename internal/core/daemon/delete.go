@@ -35,14 +35,14 @@ func removeLogFiles(proc core.Proc) error {
 	return nil
 }
 
-func (s *Server) Delete(_ context.Context, id core.ProcID) error {
+func (s *Server) Delete(_ context.Context, id core.PMID) error {
 	deletedProc, errDelete := s.db.Delete(id)
 	if errDelete != nil {
-		return xerr.NewWM(errDelete, "delete proc", xerr.Fields{"proc_id": id})
+		return xerr.NewWM(errDelete, "delete proc", xerr.Fields{"pmid": id})
 	}
 
 	if err := removeLogFiles(deletedProc); err != nil {
-		return xerr.NewWM(err, "delete proc", xerr.Fields{"proc_id": id})
+		return xerr.NewWM(err, "delete proc", xerr.Fields{"pmid": id})
 	}
 
 	return nil

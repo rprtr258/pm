@@ -1,7 +1,11 @@
 package core
 
 import (
+	rand2 "crypto/rand"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"math/rand"
 	"time"
 
 	"github.com/rprtr258/fun"
@@ -31,10 +35,28 @@ func (ps StatusType) String() string {
 	}
 }
 
+// PMID is a unique identifier for a process
+type PMID string
+
+func (pmid PMID) String() string {
+	return string(pmid)
+}
+
+func GenPMID() PMID {
+	b := make([]byte, 16)
+	if _, err := io.ReadFull(rand2.Reader, b); err != nil {
+		// fallback to random string
+		for i := range b {
+			b[i] = byte(rand.Intn(256)) //nolint:gosec // fuck you
+		}
+	}
+
+	return PMID(hex.EncodeToString(b))
+}
+
 type Status struct {
 	StartTime time.Time // StartTime, valid if running
 	Status    StatusType
-	Pid       int    // PID, valid if running
 	CPU       uint64 // CPU usage percentage rounded to integer, valid if running
 	Memory    uint64 // Memory usage in bytes, valid if running
 }
@@ -51,11 +73,10 @@ func NewStatusCreated() Status {
 	}
 }
 
-func NewStatusRunning(startTime time.Time, pid int, cpu, memory uint64) Status {
+func NewStatusRunning(startTime time.Time, cpu, memory uint64) Status {
 	return Status{ //nolint:exhaustruct // not needed
 		Status:    StatusRunning,
 		StartTime: startTime,
-		Pid:       pid,
 		CPU:       cpu,
 		Memory:    memory,
 	}
@@ -67,10 +88,8 @@ func NewStatusStopped() Status {
 	}
 }
 
-type ProcID = uint64
-
 type Proc struct {
-	ID   ProcID
+	ID   PMID
 	Name string
 	Tags []string
 
@@ -89,4 +108,4 @@ type Proc struct {
 	// Respawns int
 }
 
-type Procs = map[ProcID]Proc
+type Procs = map[PMID]Proc

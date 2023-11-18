@@ -16,7 +16,7 @@ var configFlag = &cli.StringFlag{
 	Required:  false,
 }
 
-func printIDs(ids ...core.ProcID) {
+func printIDs(ids ...core.PMID) {
 	for i, id := range ids {
 		if i > 0 {
 			fmt.Print(" ")

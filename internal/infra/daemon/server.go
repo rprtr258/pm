@@ -28,9 +28,9 @@ func (s *server) HealthCheck(context.Context, *emptypb.Empty) (*pb.Status, error
 		return nil, xerr.NewWM(err, "get proc status")
 	}
 
-	watches := map[core.ProcID]*pb.Watchplace{}
-	iter.FromDict(s.srv.W.Watchplaces)(func(kv fun.Pair[core.ProcID, watcher.WatcherEntry]) bool {
-		watches[kv.K] = &pb.Watchplace{
+	watches := map[string]*pb.Watchplace{}
+	iter.FromDict(s.srv.W.Watchplaces)(func(kv fun.Pair[core.PMID, watcher.WatcherEntry]) bool {
+		watches[kv.K.String()] = &pb.Watchplace{
 			Root:    kv.V.RootDir,
 			Pattern: kv.V.Pattern.String(),
 		}
@@ -77,17 +77,17 @@ func (s *server) Create(_ context.Context, req *pb.CreateRequest) (*pb.ProcID, e
 	}
 
 	return &pb.ProcID{
-		Id: procID,
+		Id: procID.String(),
 	}, nil
 }
 
 func (s *server) Start(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
-	s.srv.Start(ctx, req.GetId())
+	s.srv.Start(ctx, core.PMID(req.GetId()))
 	return &emptypb.Empty{}, nil
 }
 
 func (s *server) Delete(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
-	if err := s.srv.Delete(ctx, req.GetId()); err != nil {
+	if err := s.srv.Delete(ctx, core.PMID(req.GetId())); err != nil {
 		return nil, err
 	}
 
@@ -108,7 +108,6 @@ func mapStatus(status core.Status) *pb.ProcessStatus {
 	case core.StatusRunning:
 		return &pb.ProcessStatus{Status: &pb.ProcessStatus_Running{
 			Running: &pb.RunningProcessStatus{
-				Pid:       int64(status.Pid),
 				StartTime: timestamppb.New(status.StartTime),
 				// TODO: get from /proc/PID/stat
 				Cpu:    status.CPU,
@@ -122,7 +121,9 @@ func mapStatus(status core.Status) *pb.ProcessStatus {
 
 func mapProc(proc core.Proc) *pb.Process {
 	return &pb.Process{
-		Id:         proc.ID,
+		Id: &pb.ProcID{
+			Id: proc.ID.String(),
+		},
 		Name:       proc.Name,
 		Tags:       proc.Tags,
 		Command:    proc.Command,
@@ -140,7 +141,7 @@ func (s *server) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList,
 	return &pb.ProcessesList{
 		Processes: fun.MapToSlice(
 			s.srv.List(ctx),
-			func(id core.ProcID, proc core.Proc) *pb.Process {
+			func(id core.PMID, proc core.Proc) *pb.Process {
 				return mapProc(proc)
 			},
 		),
@@ -148,7 +149,7 @@ func (s *server) List(ctx context.Context, _ *emptypb.Empty) (*pb.ProcessesList,
 }
 
 func (s *server) Stop(ctx context.Context, req *pb.ProcID) (*emptypb.Empty, error) {
-	s.srv.Stop(ctx, req.GetId())
+	s.srv.Stop(ctx, core.PMID(req.GetId()))
 
 	return &emptypb.Empty{}, nil
 }
@@ -166,13 +167,13 @@ func (s *server) Signal(ctx context.Context, req *pb.SignalRequest) (*emptypb.Em
 		return nil, xerr.NewM("unknown signal", xerr.Fields{"signal": req.GetSignal()})
 	}
 
-	s.srv.Signal(ctx, req.GetId().GetId(), signal)
+	s.srv.Signal(ctx, core.PMID(req.GetId().GetId()), signal)
 
 	return &emptypb.Empty{}, nil
 }
 
 func (s *server) Subscribe(req *pb.ProcID, stream pb.Daemon_SubscribeServer) error {
-	ch, err := s.srv.Subscribe(stream.Context(), req.GetId())
+	ch, err := s.srv.Subscribe(stream.Context(), core.PMID(req.GetId()))
 	if err != nil {
 		return err
 	}
@@ -188,7 +189,7 @@ func (s *server) Subscribe(req *pb.ProcID, stream pb.Daemon_SubscribeServer) err
 
 			if errSend := stream.Send(mapProc(proc)); errSend != nil {
 				return xerr.NewWM(errSend, "send proc update", xerr.Fields{
-					"proc_id": req.GetId(),
+					"pmid": req.GetId(),
 				})
 			}
 		}

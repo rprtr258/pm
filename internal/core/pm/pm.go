@@ -65,7 +65,7 @@ func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig
 		return cfg.Name
 	})
 
-	configList := lo.PickBy(list, func(_ core.ProcID, procData core.Proc) bool {
+	configList := lo.PickBy(list, func(_ core.PMID, procData core.Proc) bool {
 		return fun.Contains(procNames, procData.Name)
 	})
 
@@ -75,35 +75,35 @@ func (app App) ListByRunConfigs(ctx context.Context, runConfigs []core.RunConfig
 func (app App) Signal(
 	ctx context.Context,
 	signal syscall.Signal,
-	procIDs ...core.ProcID,
-) ([]core.ProcID, error) {
+	procIDs ...core.PMID,
+) ([]core.PMID, error) {
 	if len(procIDs) == 0 {
-		return []core.ProcID{}, nil
+		return []core.PMID{}, nil
 	}
 
 	for _, id := range procIDs {
 		if err := app.client.Signal(ctx, signal, id); err != nil {
-			return nil, xerr.NewWM(err, "client.stop", xerr.Fields{"proc_id": id})
+			return nil, xerr.NewWM(err, "client.stop", xerr.Fields{"pmid": id})
 		}
 	}
 
 	return procIDs, nil
 }
 
-func (app App) Stop(ctx context.Context, procIDs ...core.ProcID) error {
+func (app App) Stop(ctx context.Context, procIDs ...core.PMID) error {
 	for _, id := range procIDs {
-		if err := app.client.Stop(ctx, id); err != nil {
-			return xerr.NewWM(err, "client.stop", xerr.Fields{"proc_id": id})
+		if err := app.client.Stop(ctx, id.String()); err != nil {
+			return xerr.NewWM(err, "client.stop", xerr.Fields{"pmid": id})
 		}
 	}
 
 	return nil
 }
 
-func (app App) Delete(ctx context.Context, procIDs ...core.ProcID) error {
+func (app App) Delete(ctx context.Context, procIDs ...core.PMID) error {
 	for _, id := range procIDs {
-		if errDelete := app.client.Delete(ctx, id); errDelete != nil {
-			return xerr.NewWM(errDelete, "client.delete", xerr.Fields{"proc_id": id})
+		if errDelete := app.client.Delete(ctx, id.String()); errDelete != nil {
+			return xerr.NewWM(errDelete, "client.delete", xerr.Fields{"pmid": id})
 		}
 	}
 
@@ -122,7 +122,7 @@ func (app App) List(ctx context.Context) (core.Procs, error) {
 // Run - create and start processes, returns ids of created processes.
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
-func (app App) Run(ctx context.Context, config core.RunConfig) (core.ProcID, error) {
+func (app App) Run(ctx context.Context, config core.RunConfig) (core.PMID, error) {
 	command, errLook := exec.LookPath(config.Command)
 	if errLook != nil {
 		// if command is relative and failed to look it up, add workdir first
@@ -132,7 +132,7 @@ func (app App) Run(ctx context.Context, config core.RunConfig) (core.ProcID, err
 
 		command, errLook = exec.LookPath(config.Command)
 		if errLook != nil {
-			return 0, xerr.NewWM(
+			return "", xerr.NewWM(
 				errLook,
 				"look for executable path",
 				xerr.Fields{"executable": config.Command},
@@ -166,26 +166,26 @@ func (app App) Run(ctx context.Context, config core.RunConfig) (core.ProcID, err
 		StdoutFile: config.StdoutFile.Ptr(),
 		StderrFile: config.StdoutFile.Ptr(),
 	}
-	createdProcIDs, errCreate := app.client.Create(ctx, request)
+	id, errCreate := app.client.Create(ctx, request)
 	if errCreate != nil {
-		return 0, xerr.NewWM(
+		return "", xerr.NewWM(
 			errCreate,
 			"server.create",
 			xerr.Fields{"process_options": request},
 		)
 	}
 
-	if errStart := app.client.Start(ctx, createdProcIDs); errStart != nil {
-		return createdProcIDs, xerr.NewWM(errStart, "start processes", xerr.Errors{merr})
+	if errStart := app.client.Start(ctx, id); errStart != nil {
+		return core.PMID(id), xerr.NewWM(errStart, "start processes", xerr.Errors{merr})
 	}
 
-	return createdProcIDs, merr
+	return core.PMID(id), merr
 }
 
 // Start already created processes
-func (app App) Start(ctx context.Context, ids ...core.ProcID) error {
+func (app App) Start(ctx context.Context, ids ...core.PMID) error {
 	for _, id := range ids {
-		if errStart := app.client.Start(ctx, id); errStart != nil {
+		if errStart := app.client.Start(ctx, id.String()); errStart != nil {
 			return xerr.NewWM(errStart, "start processes")
 		}
 	}
@@ -193,7 +193,7 @@ func (app App) Start(ctx context.Context, ids ...core.ProcID) error {
 	return nil
 }
 
-func (app App) Subscribe(ctx context.Context, id core.ProcID) (<-chan core.Proc, error) {
+func (app App) Subscribe(ctx context.Context, id core.PMID) (<-chan core.Proc, error) {
 	ch, errLogs := app.client.Subscribe(ctx, id)
 	if errLogs != nil {
 		return nil, xerr.NewWM(errLogs, "start processes")
@@ -222,7 +222,7 @@ type ProcLine struct {
 func streamFile(
 	ctx context.Context,
 	logLinesCh chan ProcLine,
-	procID core.ProcID,
+	procID core.PMID,
 	logFile string,
 	logLineType core.LogType,
 	wg *sync.WaitGroup,
@@ -315,12 +315,12 @@ func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
 }
 
 // Logs - watch for processes logs
-func (app App) Logs(ctx context.Context, id core.ProcID) (<-chan core.LogLine, error) {
+func (app App) Logs(ctx context.Context, id core.PMID) (<-chan core.LogLine, error) {
 	procs, err := app.client.List(ctx)
 	if err != nil {
 		return nil, err
 	} else if _, ok := procs[id]; !ok {
-		return nil, xerr.NewWM(err, "logs", xerr.Fields{"proc_id": id})
+		return nil, xerr.NewWM(err, "logs", xerr.Fields{"pmid": id})
 	}
 	proc := procs[id]
 

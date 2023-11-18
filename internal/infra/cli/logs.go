@@ -75,7 +75,7 @@ func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 				map[string]any{
 					"at": scuf.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), scuf.FgHiBlack),
 					// TODO: different colors for different IDs
-					"proc": scuf.String(fmt.Sprintf("%d|%s", line.ID, line.Name), scuf.FgRed),
+					"proc": scuf.String(fmt.Sprintf("%s|%s", line.ID, line.Name), scuf.FgRed),
 					"sep":  scuf.String("|", scuf.FgGreen),
 					"line": scuf.String(line.Line, lineColor),
 				},
@@ -98,7 +98,7 @@ var _logsCmd = &cli.Command{
 			Name:  "tag",
 			Usage: "tag(s) of process(es) to run",
 		},
-		&cli.Uint64SliceFlag{
+		&cli.StringSliceFlag{
 			Name:  "id",
 			Usage: "id(s) of process(es) to run",
 		},
@@ -122,7 +122,7 @@ var _logsCmd = &cli.Command{
 
 		names := ctx.StringSlice("name")
 		tags := ctx.StringSlice("tag")
-		ids := ctx.Uint64Slice("id")
+		ids := ctx.StringSlice("id")
 		args := ctx.Args().Slice()
 
 		// TODO: filter on server

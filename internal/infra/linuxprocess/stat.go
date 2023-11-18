@@ -7,11 +7,23 @@ import (
 	"os"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/xerr"
 )
 
+func StatPMID(pmid core.PMID, env string) (*os.Process, bool) {
+	procs := List()
+	for _, p := range procs {
+		if p.Environ[env] == string(pmid) {
+			return p.Handle, true
+		}
+	}
+	return nil, false
+}
+
 // Status information about the process.
-// See /proc/PID/stat file struct e.g. here https://mjmwired.net/kernel/Documentation/filesystems/proc.txt#313
+// See /proc/PID/stat file struct
+// e.g. https://mjmwired.net/kernel/Documentation/filesystems/proc.txt#313
 type ProcessStat struct {
 	Comm                string
 	State               string

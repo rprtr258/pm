@@ -47,7 +47,7 @@ var _stopCmd = &cli.Command{
 			Name:  "tag",
 			Usage: "tag(s) of process(es) to stop",
 		},
-		&cli.Uint64SliceFlag{
+		&cli.StringSliceFlag{
 			Name:  "id",
 			Usage: "id(s) of process(es) to stop",
 		},
@@ -61,8 +61,10 @@ var _stopCmd = &cli.Command{
 		stopCmd := stopCmd{
 			names: ctx.StringSlice("name"),
 			tags:  ctx.StringSlice("tag"),
-			ids:   ctx.Uint64Slice("id"),
-			args:  ctx.Args().Slice(),
+			ids: fun.Map[core.PMID](ctx.StringSlice("id"), func(id string) core.PMID {
+				return core.PMID(id)
+			}),
+			args: ctx.Args().Slice(),
 		}
 
 		client, errList := client.New()
@@ -91,7 +93,7 @@ var _stopCmd = &cli.Command{
 				return cfg.Name
 			})
 
-		configList := lo.PickBy(list, func(_ core.ProcID, procData core.Proc) bool {
+		configList := lo.PickBy(list, func(_ core.PMID, procData core.Proc) bool {
 			return fun.Contains(names, procData.Name)
 		})
 
@@ -102,7 +104,7 @@ var _stopCmd = &cli.Command{
 type stopCmd struct {
 	names []string
 	tags  []string
-	ids   []core.ProcID
+	ids   []core.PMID
 	args  []string
 }
 
