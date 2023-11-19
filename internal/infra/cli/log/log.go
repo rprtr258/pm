@@ -14,6 +14,7 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
+	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
@@ -288,7 +289,10 @@ func (w *prettyWriter) write(msg string, ev *Event) {
 					case reflect.Bool:
 						b.String(fmt.Sprint(value), scuf.FgRed)
 					case reflect.String:
-						v := value.(string) //nolint:forcetypeassert,errcheck // checked kind already
+						v, ok := value.(string) //nolint:forcetypeassert,errcheck // checked kind already
+						if !ok {
+							v = value.(core.PMID).String()
+						}
 						switch {
 						case v == "":
 							b.String("empty", scuf.FgWhite, scuf.ModFaint)

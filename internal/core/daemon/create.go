@@ -57,8 +57,8 @@ func (s *Server) Create(
 				Args:       args,
 				Watch:      watch,
 				Env:        env,
-				StdoutFile: stdoutFile.OrDefault(filepath.Join(s.logsDir, fmt.Sprintf("%d.stdout", procID))),
-				StderrFile: stderrFile.OrDefault(filepath.Join(s.logsDir, fmt.Sprintf("%d.stderr", procID))),
+				StdoutFile: stdoutFile.OrDefault(filepath.Join(s.logsDir, fmt.Sprintf("%v.stdout", procID))),
+				StderrFile: stderrFile.OrDefault(filepath.Join(s.logsDir, fmt.Sprintf("%v.stderr", procID))),
 			}
 
 			proc := procs[procID]

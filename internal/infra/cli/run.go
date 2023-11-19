@@ -167,7 +167,9 @@ var _runCmd = &cli.Command{
 			return nil
 		}
 
-		configs, errLoadConfigs := core.LoadConfigs(ctx.String("config"))
+		configPath := ctx.String("config")
+
+		configs, errLoadConfigs := core.LoadConfigs(configPath)
 		if errLoadConfigs != nil {
 			return xerr.NewWM(errLoadConfigs, "load run configs")
 		}

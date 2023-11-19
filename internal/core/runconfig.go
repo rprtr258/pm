@@ -159,9 +159,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			watch = fun.Valid(re)
 		}
 
-		relativeCwd := fun.
-			If(config.Cwd == nil, filepath.Dir(filename)).
-			ElseDeref(config.Cwd)
+		relativeCwd := filepath.Join(filepath.Dir(filename), fun.Deref(config.Cwd))
 		cwd, err := filepath.Abs(relativeCwd) // TODO: add config abs path instead
 		if err != nil {
 			return fun.Zero[RunConfig](), xerr.NewWM(err, "get absolute cwd", xerr.Fields{"cwd": relativeCwd})

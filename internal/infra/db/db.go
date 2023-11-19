@@ -99,9 +99,9 @@ func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, Erro
 		},
 		Env: query.Env,
 		StdoutFile: query.StdoutFile.
-			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stdout", id))),
+			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stdout", id))),
 		StderrFile: query.StderrFile.
-			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%d.stderr", id))),
+			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stderr", id))),
 	})
 
 	if err := handle.procs.Flush(); err != nil {

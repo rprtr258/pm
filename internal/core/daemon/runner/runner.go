@@ -31,7 +31,7 @@ func optionToString[T any](opt fun.Option[T]) string {
 
 func procFields(proc core.Proc) string {
 	return fmt.Sprintf(
-		`Proc[id=%d, command=%q, cwd=%q, name=%q, args=%q, tags=%q, watch=%q, status=%q, stdout_file=%q, stderr_file=%q]`,
+		`Proc[id=%s, command=%q, cwd=%q, name=%q, args=%q, tags=%q, watch=%q, status=%q, stdout_file=%q, stderr_file=%q]`,
 		proc.ID,
 		proc.Command,
 		proc.Cwd,
