@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/rprtr258/pm/internal/infra/cli/log"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
+	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 func main() {

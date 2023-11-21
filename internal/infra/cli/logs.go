@@ -13,9 +13,7 @@ import (
 	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/daemon"
-	"github.com/rprtr258/pm/pkg/client"
 )
 
 func mergeChans(ctx context.Context, chans ...<-chan core.LogLine) <-chan core.LogLine {
@@ -75,7 +73,7 @@ func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 				map[string]any{
 					"at": scuf.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), scuf.FgHiBlack),
 					// TODO: different colors for different IDs
-					"proc": scuf.String(fmt.Sprintf("%s|%s", line.ID, line.Name), scuf.FgRed),
+					"proc": scuf.String(line.ProcName, scuf.FgRed),
 					"sep":  scuf.String("|", scuf.FgGreen),
 					"line": scuf.String(line.Line, lineColor),
 				},
@@ -84,7 +82,7 @@ func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 	}
 }
 
-var _logsCmd = &cli.Command{
+var _cmdLogs = &cli.Command{
 	Name:      "logs",
 	ArgsUsage: "<name|tag|id|status>...",
 	Usage:     "watch for processes logs",
@@ -105,17 +103,7 @@ var _logsCmd = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
-			return xerr.NewWM(errDaemon, "ensure daemon is running")
-		}
-
-		client, errClient := client.New()
-		if errClient != nil {
-			return xerr.NewWM(errClient, "new grpc client")
-		}
-		defer deferErr(client.Close)()
-
-		app, errNewApp := pm.New(client)
+		app, errNewApp := daemon.New()
 		if errNewApp != nil {
 			return xerr.NewWM(errNewApp, "new app")
 		}
@@ -126,10 +114,7 @@ var _logsCmd = &cli.Command{
 		args := ctx.Args().Slice()
 
 		// TODO: filter on server
-		list, errList := client.List(ctx.Context)
-		if errList != nil {
-			return xerr.NewWM(errList, "server.list")
-		}
+		list := app.List()
 
 		if !ctx.IsSet("config") {
 			procIDs := core.FilterProcMap(
@@ -171,7 +156,7 @@ var _logsCmd = &cli.Command{
 			})
 		}
 
-		filteredList, err := app.ListByRunConfigs(ctx.Context, configs)
+		filteredList, err := app.ListByRunConfigs(configs)
 		if err != nil {
 			return xerr.NewWM(err, "list procs by configs")
 		}

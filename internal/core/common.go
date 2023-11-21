@@ -33,10 +33,10 @@ const (
 )
 
 type LogLine struct {
-	ID   PMID
-	Name string
-	At   time.Time
-	Type LogType
-	Line string
-	Err  error // TODO: also pass and process, e.g. for stopped proc
+	ProcID   PMID
+	ProcName string
+	At       time.Time
+	Type     LogType
+	Line     string
+	Err      error // TODO: also pass and process, e.g. for stopped proc
 }

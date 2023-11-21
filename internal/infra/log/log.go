@@ -332,6 +332,10 @@ func (e *Event) Str(k string, v string) *Event {
 	return e
 }
 
+func (e *Event) Stringer(k string, v fmt.Stringer) *Event {
+	return e.Str(k, v.String())
+}
+
 func (e *Event) Time(k string, v time.Time) *Event {
 	e.fields[k] = v
 	return e
@@ -373,6 +377,10 @@ func (l *logger) log(level zerolog.Level) *Event {
 		level:  level,
 		fields: map[string]any{},
 	}
+}
+
+func (l *logger) Debug() *Event {
+	return l.log(zerolog.DebugLevel)
 }
 
 func (l *logger) Info() *Event {
@@ -418,6 +426,10 @@ func (l *logger) Fatal(err error) {
 
 	e.Msg("app exited abnormally")
 	os.Exit(1)
+}
+
+func Debug() *Event {
+	return _logger.Debug()
 }
 
 func Info() *Event {

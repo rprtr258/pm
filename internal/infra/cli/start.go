@@ -8,12 +8,10 @@ import (
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/daemon"
-	"github.com/rprtr258/pm/pkg/client"
 )
 
-var _startCmd = &cli.Command{
+var _cmdStart = &cli.Command{
 	Name:      "start",
 	ArgsUsage: "<name|tag|id|status>...",
 	Usage:     "start already added process(es)",
@@ -34,30 +32,17 @@ var _startCmd = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
-			return xerr.NewWM(errDaemon, "ensure daemon is running")
-		}
-
 		names := ctx.StringSlice("name")
 		tags := ctx.StringSlice("tag")
 		ids := ctx.StringSlice("id")
 		args := ctx.Args().Slice()
 
-		client, errList := client.New()
-		if errList != nil {
-			return xerr.NewWM(errList, "new grpc client")
-		}
-		defer deferErr(client.Close)()
-
-		app, errNewApp := pm.New(client)
+		app, errNewApp := daemon.New()
 		if errNewApp != nil {
 			return xerr.NewWM(errNewApp, "new app")
 		}
 
-		list, errList := client.List(ctx.Context)
-		if errList != nil {
-			return xerr.NewWM(errList, "server.list")
-		}
+		list := app.List()
 
 		if !ctx.IsSet("config") {
 			procIDs := core.FilterProcMap(
@@ -75,7 +60,7 @@ var _startCmd = &cli.Command{
 				return nil
 			}
 
-			if err := app.Start(ctx.Context, procIDs...); err != nil {
+			if err := app.Start(procIDs...); err != nil {
 				return xerr.NewWM(err, "client.start")
 			}
 
@@ -93,7 +78,7 @@ var _startCmd = &cli.Command{
 			})
 		}
 
-		filteredList, err := app.ListByRunConfigs(ctx.Context, configs)
+		filteredList, err := app.ListByRunConfigs(configs)
 		if err != nil {
 			return xerr.NewWM(err, "list procs by configs")
 		}
@@ -115,7 +100,7 @@ var _startCmd = &cli.Command{
 			return nil
 		}
 
-		if err := app.Start(ctx.Context, procIDs...); err != nil {
+		if err := app.Start(procIDs...); err != nil {
 			return xerr.NewWM(err, "client.start")
 		}
 

@@ -11,12 +11,15 @@ type Error interface {
 	error
 }
 
-type GetTableError struct{ Table string }
+type GetTableError struct {
+	Err   error
+	Table string
+}
 
 func (GetTableError) isError() {}
 
 func (err GetTableError) Error() string {
-	return fmt.Sprintf("get table %q", err.Table)
+	return fmt.Sprintf("get table %q: %s", err.Table, err.Err.Error())
 }
 
 type ProcNotFoundError struct{ ProcID core.PMID }
@@ -24,7 +27,7 @@ type ProcNotFoundError struct{ ProcID core.PMID }
 func (ProcNotFoundError) isError() {}
 
 func (err ProcNotFoundError) Error() string {
-	return fmt.Sprintf("proc #%d not found", err.ProcID)
+	return fmt.Sprintf("proc #%s not found", err.ProcID)
 }
 
 type FlushError struct{ Err error }

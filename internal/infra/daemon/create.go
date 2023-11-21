@@ -3,6 +3,7 @@ package daemon
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
@@ -29,7 +30,7 @@ func compareArgs(first, second []string) bool {
 	})
 }
 
-func (s *Server) Create(
+func (app App) create(
 	command string,
 	args []string,
 	name fun.Option[string],
@@ -42,7 +43,7 @@ func (s *Server) Create(
 ) (core.PMID, error) {
 	// try to find by name and update
 	if name, ok := name.Unpack(); ok { //nolint:nestif // no idea how to simplify it now
-		procs := s.db.GetProcs(core.WithAllIfNoFilters)
+		procs := app.db.GetProcs(core.WithAllIfNoFilters)
 
 		if procID, ok := fun.FindKeyBy(procs, func(_ core.PMID, procData core.Proc) bool {
 			return procData.Name == name
@@ -57,8 +58,8 @@ func (s *Server) Create(
 				Args:       args,
 				Watch:      watch,
 				Env:        env,
-				StdoutFile: stdoutFile.OrDefault(filepath.Join(s.logsDir, fmt.Sprintf("%v.stdout", procID))),
-				StderrFile: stderrFile.OrDefault(filepath.Join(s.logsDir, fmt.Sprintf("%v.stderr", procID))),
+				StdoutFile: stdoutFile.OrDefault(filepath.Join(app.logsDir, fmt.Sprintf("%v.stdout", procID))),
+				StderrFile: stderrFile.OrDefault(filepath.Join(app.logsDir, fmt.Sprintf("%v.stderr", procID))),
 			}
 
 			proc := procs[procID]
@@ -72,7 +73,7 @@ func (s *Server) Create(
 				return procID, nil
 			}
 
-			if errUpdate := s.db.UpdateProc(procData); errUpdate != nil {
+			if errUpdate := app.db.UpdateProc(procData); errUpdate != nil {
 				return "", xerr.NewWM(errUpdate, "update proc", xerr.Fields{
 					// "procData": procFields(procData),
 				})
@@ -82,7 +83,7 @@ func (s *Server) Create(
 		}
 	}
 
-	procID, err := s.db.AddProc(db.CreateQuery{
+	procID, err := app.db.AddProc(db.CreateQuery{
 		Name:       name.OrDefault(namegen.New()),
 		Cwd:        cwd,
 		Tags:       fun.Uniq(append(tags, "all")),
@@ -92,9 +93,30 @@ func (s *Server) Create(
 		Env:        env,
 		StdoutFile: stdoutFile,
 		StderrFile: stderrFile,
-	}, s.logsDir)
+	}, app.logsDir)
 	if err != nil {
 		return "", xerr.NewWM(err, "save proc")
+	}
+
+	return procID, nil
+}
+
+func (app App) Create(req core.RunConfig) (core.PMID, error) {
+	procID, err := app.create(
+		req.Command,
+		req.Args,
+		req.Name,
+		req.Cwd,
+		req.Tags,
+		req.Env,
+		fun.OptMap(req.Watch, func(r *regexp.Regexp) string {
+			return r.String()
+		}),
+		req.StdoutFile,
+		req.StderrFile,
+	)
+	if err != nil {
+		return "", xerr.NewWM(err, "server.create")
 	}
 
 	return procID, nil

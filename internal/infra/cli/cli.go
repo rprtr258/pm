@@ -104,10 +104,11 @@ var App = &cli.App{
 		//               Usage: "override systemd script to wait for full internet connectivity to launch pm2"},
 	},
 	Commands: []*cli.Command{
-		_daemonCmd,
-		_runCmd, _startCmd, _restartCmd, _stopCmd, _deleteCmd,
-		_listCmd, _logsCmd, _inspectCmd,
-		_versionCmd,
+		_cmdAgent,
+
+		_cmdRun, _cmdStart, _cmdRestart, _cmdStop, _cmdDelete,
+		_cmdList, _cmdLogs, _cmdInspect,
+		_cmdVersion,
 	},
 	HideHelpCommand: true,
 	Before: func(c *cli.Context) error {

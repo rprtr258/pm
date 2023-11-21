@@ -11,7 +11,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/daemon/eventbus"
 )
 
 type WatcherEntry struct {
@@ -22,19 +21,11 @@ type WatcherEntry struct {
 
 type Watcher struct {
 	Watchplaces map[core.PMID]WatcherEntry
-	ebus        *eventbus.EventBus
-	statusCh    <-chan eventbus.Event
 }
 
-func New(ebus *eventbus.EventBus) Watcher {
+func New() Watcher {
 	return Watcher{
 		Watchplaces: make(map[core.PMID]WatcherEntry),
-		statusCh: ebus.Subscribe(
-			"watcher",
-			eventbus.KindProcStarted,
-			eventbus.KindProcStopped,
-		),
-		ebus: ebus,
 	}
 }
 
@@ -80,29 +71,29 @@ func (w Watcher) Start(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case event := <-w.statusCh:
-			switch e := event.Data.(type) {
-			case eventbus.DataProcStarted:
-				if _, ok := w.Watchplaces[e.Proc.ID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
-					if watch, ok := e.Proc.Watch.Unpack(); ok {
-						if err := w.Add(e.Proc.ID, e.Proc.Cwd, watch); err != nil {
-							log.Error().
-								Err(err).
-								Stringer("pmid", e.Proc.ID).
-								Str("watch", watch).
-								Str("cwd", e.Proc.Cwd).
-								Msg("add watch failed")
-						}
-					}
-				}
-			case eventbus.DataProcStopped:
-				if _, ok := w.Watchplaces[e.ProcID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
-					w.Remove(e.ProcID)
-				}
-			}
+		// case event := <-w.statusCh:
+		// 	switch e := event.Data.(type) {
+		// 	case eventbus.DataProcStarted:
+		// 		if _, ok := w.Watchplaces[e.Proc.ID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
+		// 			if watch, ok := e.Proc.Watch.Unpack(); ok {
+		// 				if err := w.Add(e.Proc.ID, e.Proc.Cwd, watch); err != nil {
+		// 					log.Error().
+		// 						Err(err).
+		// 						Stringer("pmid", e.Proc.ID).
+		// 						Str("watch", watch).
+		// 						Str("cwd", e.Proc.Cwd).
+		// 						Msg("add watch failed")
+		// 				}
+		// 			}
+		// 		}
+		// 	case eventbus.DataProcStopped:
+		// 		if _, ok := w.Watchplaces[e.ProcID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
+		// 			w.Remove(e.ProcID)
+		// 		}
+		// 	}
 		case now := <-ticker.C:
 			// TODO: make concurrent
-			for id, wp := range w.Watchplaces {
+			for /*id*/ _, wp := range w.Watchplaces {
 				updated := false
 				fs.WalkDir(os.DirFS(wp.RootDir), "/", func(path string, d fs.DirEntry, err error) error {
 					if err != nil {
@@ -136,10 +127,10 @@ func (w Watcher) Start(ctx context.Context) {
 				// TODO: merge into restart request?
 				if updated {
 					wp.LastModTime = now
-					w.ebus.Publish(ctx,
-						eventbus.NewPublishProcStopRequest(id, eventbus.EmitReasonByWatcher),
-						eventbus.NewPublishProcStartRequest(id, eventbus.EmitReasonByWatcher),
-					)
+					// w.ebus.Publish(ctx,
+					// 	eventbus.NewPublishProcStopRequest(id, eventbus.EmitReasonByWatcher),
+					// 	eventbus.NewPublishProcStartRequest(id, eventbus.EmitReasonByWatcher),
+					// )
 				}
 			}
 		}

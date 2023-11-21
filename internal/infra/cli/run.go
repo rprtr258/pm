@@ -10,12 +10,10 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/daemon"
-	"github.com/rprtr258/pm/pkg/client"
 )
 
-var _runCmd = &cli.Command{
+var _cmdRun = &cli.Command{
 	Name:      "run",
 	ArgsUsage: "cmd args...",
 	Usage:     "create and run new process",
@@ -90,17 +88,7 @@ var _runCmd = &cli.Command{
 		// &cli.IntFlag{Name: "uid", Usage: "run process with <uid> rights"},
 	},
 	Action: func(ctx *cli.Context) error {
-		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
-			return xerr.NewWM(errDaemon, "ensure daemon is running")
-		}
-
-		client, errList := client.New()
-		if errList != nil {
-			return xerr.NewWM(errList, "new grpc client")
-		}
-		defer deferErr(client.Close)()
-
-		app, errNewApp := pm.New(client)
+		app, errNewApp := daemon.New()
 		if errNewApp != nil {
 			return xerr.NewWM(errNewApp, "new app")
 		}

@@ -12,7 +12,7 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 )
 
-var _versionCmd = &cli.Command{
+var _cmdVersion = &cli.Command{
 	Name:    "version",
 	Aliases: []string{"v"},
 	Usage:   "print pm version",

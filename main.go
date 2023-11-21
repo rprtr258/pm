@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/rprtr258/pm/internal/infra/cli"
-	"github.com/rprtr258/pm/internal/infra/cli/log"
+	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 func main() {

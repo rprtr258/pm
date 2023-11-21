@@ -8,8 +8,10 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/simpdb"
 	"github.com/rprtr258/simpdb/storages"
+	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 // status - db representation of core.Status
@@ -57,7 +59,7 @@ func New(dir string) (Handle, Error) {
 
 	procs, errTableProcs := simpdb.GetTable(db, "procs", storages.NewJSONStorage[procData]())
 	if errTableProcs != nil {
-		return fun.Zero[Handle](), GetTableError{"procs"}
+		return fun.Zero[Handle](), GetTableError{errTableProcs, "procs"}
 	}
 
 	return Handle{
@@ -233,4 +235,31 @@ func (handle Handle) Delete(id core.PMID) (core.Proc, Error) {
 		StdoutFile: proc.StdoutFile,
 		StderrFile: proc.StderrFile,
 	}, nil
+}
+
+func (handle Handle) StatusSetStarted(id core.PMID) {
+	// TODO: fill/remove cpu, memory
+	runningStatus := core.NewStatusRunning(time.Now(), 0, 0)
+	if err := handle.SetStatus(id, runningStatus); err != nil {
+		log.Error().
+			Stringer("pmid", id).
+			Any("new_status", runningStatus).
+			Msg("set proc status to running")
+	}
+}
+
+func (handle Handle) StatusSetStopped(id core.PMID) {
+	dbStatus := core.NewStatusStopped()
+	if err := handle.SetStatus(id, dbStatus); err != nil {
+		if _, ok := xerr.As[ProcNotFoundError](err); ok {
+			log.Error().
+				Stringer("pmid", id).
+				Msg("proc not found while trying to set stopped status")
+		} else {
+			log.Error().
+				Stringer("pmid", id).
+				Any("new_status", dbStatus).
+				Msg("set proc status to stopped")
+		}
+	}
 }

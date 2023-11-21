@@ -17,11 +17,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 
-	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
 	pmcli "github.com/rprtr258/pm/internal/infra/cli"
 	"github.com/rprtr258/pm/internal/infra/daemon"
-	pmclient "github.com/rprtr258/pm/pkg/client"
 )
 
 // tcpPortAvailable checks if a given TCP port is bound on the local network interface.
@@ -67,9 +65,7 @@ func httpResponse(
 	return nil
 }
 
-var client pmclient.Client
-
-type testHook func(ctx context.Context, client pmclient.Client) error
+type testHook func(ctx context.Context, client daemon.App) error
 
 type testcase struct {
 	beforeFunc testHook
@@ -89,19 +85,19 @@ var tests = map[string]testcase{
 			Name:    fun.Valid("http-hello-server"),
 			Command: "./tests/hello-http/main",
 		}},
-		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
+		beforeFunc: func(ctx context.Context, client daemon.App) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
 				return xerr.NewM("port not available", xerr.Fields{"port": _helloHTTPServerPort})
 			}
 
 			return nil
 		},
-		testFunc: func(ctx context.Context, client pmclient.Client) error {
+		testFunc: func(ctx context.Context, client daemon.App) error {
 			time.Sleep(time.Second)
 
 			return httpResponse(ctx, "http://localhost:8080/", "hello world")
 		},
-		afterFunc: func(ctx context.Context, client pmclient.Client) error {
+		afterFunc: func(ctx context.Context, client daemon.App) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
 				return xerr.NewM("server not stopped", xerr.Fields{"port": _helloHTTPServerPort})
 			}
@@ -122,14 +118,14 @@ var tests = map[string]testcase{
 				Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(_ncServerPort)},
 			},
 		},
-		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
+		beforeFunc: func(ctx context.Context, client daemon.App) error {
 			if !tcpPortAvailable(_ncServerPort) {
 				return xerr.NewM("port not available", xerr.Fields{"port": _ncServerPort})
 			}
 
 			return nil
 		},
-		testFunc: func(ctx context.Context, client pmclient.Client) error {
+		testFunc: func(ctx context.Context, client daemon.App) error {
 			homeDir, errHome := os.UserHomeDir()
 			if errHome != nil {
 				return xerr.NewWM(errHome, "get home dir")
@@ -148,7 +144,7 @@ var tests = map[string]testcase{
 
 			return nil
 		},
-		afterFunc: func(ctx context.Context, client pmclient.Client) error {
+		afterFunc: func(ctx context.Context, client daemon.App) error {
 			if !tcpPortAvailable(_ncServerPort) {
 				return xerr.NewM("server not stopped", xerr.Fields{"port": _ncServerPort})
 			}
@@ -160,45 +156,20 @@ var tests = map[string]testcase{
 
 //nolint:nonamedreturns // required to check test result
 func runTest(ctx context.Context, name string, test testcase) (ererer error) { //nolint:funlen,gocognit,lll // no idea how to refactor right now
-	var errClient error
-	client, errClient = pmclient.New()
+	client, errClient := daemon.New()
 	if errClient != nil {
 		return xerr.NewWM(errClient, "create client")
 	}
 
-	// START DAEMON
-	log.Debug().Msg("starting daemon...")
-	_, errRestart := daemon.Restart(ctx)
-	if errRestart != nil {
-		return xerr.NewWM(errRestart, "restart daemon")
-	}
-
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		if _, err := client.HealthCheck(ctx); err == nil {
-			break
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-		}
-	}
-
 	// DELETE ALL PROCS
-	list, errList := client.List(ctx)
-	if errList != nil {
-		return xerr.NewWM(errList, "list processes")
-	}
+	list := client.List()
 
 	for id := range list {
-		if errStop := client.Stop(ctx, id.String()); errStop != nil {
+		if errStop := client.Stop(ctx, id); errStop != nil {
 			return xerr.NewWM(errStop, "stop all old processes")
 		}
 
-		if errDelete := client.Delete(ctx, id.String()); errDelete != nil {
+		if errDelete := client.Delete(id); errDelete != nil {
 			return xerr.NewWM(errDelete, "delete all old processes")
 		}
 	}
@@ -226,22 +197,15 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		// START TEST PROCESSES
 		ids := []core.PMID{}
 		for _, c := range test.runConfigs {
-			id, errCreate := client.Create(ctx, &api.CreateRequest{
-				Name:       c.Name.Ptr(),
-				Command:    c.Command,
-				Args:       c.Args,
-				Cwd:        c.Cwd,
-				Tags:       c.Tags,
-				Env:        c.Env,
-				Watch:      nil,
-				StdoutFile: nil,
-				StderrFile: nil,
+			id, errStart := client.Run(ctx, core.RunConfig{
+				Name:    c.Name,
+				Command: c.Command,
+				Args:    c.Args,
+				Cwd:     c.Cwd,
+				Tags:    c.Tags,
+				Env:     c.Env,
 			})
-			if errCreate != nil {
-				return xerr.NewWM(errCreate, "create process")
-			}
-
-			if errStart := client.Start(ctx, id); errStart != nil {
+			if errStart != nil {
 				return xerr.NewWM(errStart, "start process", xerr.Fields{"pmid": id})
 			}
 
@@ -257,14 +221,14 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 
 		// STOP AND REMOVE TEST PROCESSES
 		for _, id := range ids {
-			if errStop := client.Stop(ctx, id.String()); errStop != nil {
+			if errStop := client.Stop(ctx, id); errStop != nil {
 				return xerr.NewWM(errStop, "stop process", xerr.Fields{"pmid": id})
 			}
 
 			// TODO: block on stop method instead, now it is async
 			time.Sleep(3 * time.Second)
 
-			if errDelete := client.Delete(ctx, id.String()); errDelete != nil {
+			if errDelete := client.Delete(id); errDelete != nil {
 				return xerr.NewWM(errDelete, "delete process", xerr.Fields{"pmid": id})
 			}
 		}
@@ -279,16 +243,6 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		return nil
 	}(); errTest != nil {
 		return errTest
-	}
-
-	// KILL DAEMON
-	log.Debug().Msg("killing daemon...")
-	if errKill := daemon.Kill(); errKill != nil {
-		return xerr.NewWM(errKill, "kill daemon")
-	}
-
-	if _, errHealth := client.HealthCheck(ctx); errHealth == nil {
-		return xerr.NewM("daemon is healthy but must not")
 	}
 
 	return nil

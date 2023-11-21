@@ -10,12 +10,10 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/daemon"
-	"github.com/rprtr258/pm/pkg/client"
 )
 
-var _stopCmd = &cli.Command{
+var _cmdStop = &cli.Command{
 	Name:      "stop",
 	Usage:     "stop process(es)",
 	ArgsUsage: "(id|name|tag|all)...",
@@ -54,10 +52,6 @@ var _stopCmd = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
-			return xerr.NewWM(errDaemon, "ensure daemon is running")
-		}
-
 		stopCmd := stopCmd{
 			names: ctx.StringSlice("name"),
 			tags:  ctx.StringSlice("tag"),
@@ -67,16 +61,12 @@ var _stopCmd = &cli.Command{
 			args: ctx.Args().Slice(),
 		}
 
-		client, errList := client.New()
+		client, errList := daemon.New()
 		if errList != nil {
 			return xerr.NewWM(errList, "new grpc client")
 		}
-		defer deferErr(client.Close)()
 
-		list, errList := client.List(ctx.Context)
-		if errList != nil {
-			return xerr.NewWM(errList, "server.list")
-		}
+		list := client.List()
 
 		if !ctx.IsSet("config") {
 			return stopCmd.Run(ctx.Context, client, list)
@@ -110,14 +100,9 @@ type stopCmd struct {
 
 func (cmd *stopCmd) Run(
 	ctx context.Context,
-	pmClient client.Client,
+	app daemon.App,
 	configList core.Procs,
 ) error {
-	app, errNewApp := pm.New(pmClient)
-	if errNewApp != nil {
-		return xerr.NewWM(errNewApp, "new app")
-	}
-
 	procIDs := core.FilterProcMap(
 		configList,
 		core.NewFilter(

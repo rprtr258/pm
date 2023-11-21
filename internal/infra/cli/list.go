@@ -19,9 +19,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/pm"
 	"github.com/rprtr258/pm/internal/infra/daemon"
-	"github.com/rprtr258/pm/pkg/client"
 )
 
 const (
@@ -31,7 +29,9 @@ const (
 	_formatShort   = "short"
 )
 
-var _listCmd = &cli.Command{
+const _shortIDLength = 8
+
+var _cmdList = &cli.Command{
 	Name:     "list",
 	Aliases:  []string{"l", "ls", "ps", "status"},
 	Usage:    "list processes",
@@ -85,10 +85,6 @@ var _listCmd = &cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
-			return xerr.NewWM(errDaemon, "ensure daemon is running")
-		}
-
 		sortField := ctx.String("sort")
 		sortOrder := "asc"
 		if i := strings.IndexRune(sortField, ':'); i != -1 {
@@ -214,7 +210,7 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 		status, pid, uptime := mapStatus(proc.Status)
 
 		procsTable.AddRow(
-			scuf.String(fmt.Sprint(proc.ID), scuf.FgCyan, scuf.ModBold),
+			scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold),
 			proc.Name,
 			status,
 			fun.
@@ -240,21 +236,12 @@ func list(
 	format string,
 	sortFunc func(a, b core.Proc) bool,
 ) error {
-	pmClient, err := client.New()
-	if err != nil {
-		return xerr.NewWM(err, "new grpc client")
-	}
-	defer deferErr(pmClient.Close)()
-
-	app, errNewApp := pm.New(pmClient)
+	app, errNewApp := daemon.New()
 	if errNewApp != nil {
 		return xerr.NewWM(errNewApp, "new app")
 	}
 
-	list, err := app.List(ctx) // TODO: move in filters which are bit below
-	if err != nil {
-		return xerr.NewWM(err, "list server call")
-	}
+	list := app.List() // TODO: move in filters which are bit below
 
 	procIDsToShow := core.FilterProcMap(
 		list,
