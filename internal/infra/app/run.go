@@ -1,7 +1,6 @@
-package daemon
+package app
 
 import (
-	"context"
 	"os/exec"
 	"path/filepath"
 
@@ -13,7 +12,7 @@ import (
 // Run - create and start processes, returns ids of created processes.
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
-func (app App) Run(ctx context.Context, config core.RunConfig) (core.PMID, error) {
+func (app App) Run(config core.RunConfig) (core.PMID, error) {
 	command, errLook := exec.LookPath(config.Command)
 	if errLook != nil {
 		// if command is relative and failed to look it up, add workdir first

@@ -1,7 +1,6 @@
-package daemon
+package app
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/db"
 )
 
 const CmdAgent = "agent"
@@ -78,6 +76,7 @@ func (app App) startAgent(id core.PMID) error {
 			},
 		}
 
+		dbHandle.StatusSetRunning(id)
 		if err := cmd.Start(); err != nil {
 			return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
 		}
@@ -103,84 +102,7 @@ func (app App) startAgent(id core.PMID) error {
 			Msg("already running")
 	}
 
-	dbHandle.StatusSetStarted(id)
-
 	return nil
-}
-
-func deathCollector(ctx context.Context, db db.Handle) {
-	// c := make(chan os.Signal, 10) // arbitrary buffer size
-	// signal.Notify(c, syscall.SIGCHLD)
-
-	// ticker := time.NewTicker(5 * time.Second)
-	// defer ticker.Stop()
-
-	// for {
-	// 	select {
-	// 	case <-ctx.Done():
-	// 		log.Info().Msg("context canceled, stopping...")
-	// 		return
-	// 	case <-ticker.C:
-	// 		for procID, proc := range db.GetProcs(core.WithAllIfNoFilters) {
-	// 			if proc.Status.Status != core.StatusRunning {
-	// 				continue
-	// 			}
-
-	// 			process, ok := linuxprocess.StatPMID(proc.ID, "PM_PMID")
-	// 			pid := 0
-	// 			if ok {
-	// 				pid = process.Pid
-	// 			}
-
-	// 			switch _, errStat := linuxprocess.ReadProcessStat(pid); errStat {
-	// 			case nil:
-	// 				// process stat file exists hence process is still running
-	// 				continue
-	// 			case linuxprocess.ErrStatFileNotFound:
-	// 				log.Info().
-	// 					Stringer("pid", proc.ID).
-	// 					Msg("process seems to be stopped, updating status...")
-
-	// 				db.StatusSetStopped(procID)
-	// 				ebus.Publish(ctx, eventbus.NewPublishProcStopped(procID, eventbus.EmitReasonDied))
-	// 			default:
-	// 				log.Warn().
-	// 					Err(errStat).
-	// 					Stringer("pmid", proc.ID).
-	// 					Msg("read proc stat")
-	// 			}
-	// 		}
-	// 	case <-c:
-	// 		// wait for any of childs' death
-	// 		// TODO: get back/remove
-	// 		for {
-	// 			var status syscall.WaitStatus
-	// 			pid, errWait := syscall.Wait4(-1, &status, 0, nil)
-	// 			if pid < 0 {
-	// 				break
-	// 			}
-	// 			if errWait != nil {
-	// 				log.Error().Err(errWait).Msg("Wait4 failed")
-	// 				continue
-	// 			}
-
-	// 			log.Info().Int("pid", pid).Msg("child died")
-
-	// 			allProcs := db.GetProcs(core.WithAllIfNoFilters)
-
-	// 			procID, procFound := fun.FindKeyBy(allProcs, func(_ core.PMID, procData core.Proc) bool {
-	// 				return procData.Status.Status == core.StatusRunning &&
-	// 					procData.ID == pid
-	// 			})
-	// 			if !procFound {
-	// 				continue
-	// 			}
-
-	// 			daemon.StatusSetStopped(db, procID)
-	// 			ebus.Publish(ctx, eventbus.NewPublishProcStopped(procID, eventbus.EmitReasonDied))
-	// 		}
-	// 	}
-	// }
 }
 
 func (app App) StartRaw(proc core.Proc) error {
@@ -219,16 +141,30 @@ func (app App) StartRaw(proc core.Proc) error {
 	}
 
 	if err = cmd.Start(); err != nil {
-		app.db.StatusSetStopped(proc.ID)
+		if err, ok := err.(*exec.ExitError); ok {
+			app.db.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
+			return nil
+		}
+
+		app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
 		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": proc})
 	}
 
-	app.db.StatusSetStarted(proc.ID)
+	// TODO: handle and pass signals
 
 	err = cmd.Wait()
-	// TODO: use status code to update stopped
-	app.db.StatusSetStopped(proc.ID)
-	return err
+	if err != nil {
+		if err, ok := err.(*exec.ExitError); ok {
+			app.db.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
+			return nil
+		}
+
+		app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
+		return xerr.NewWM(err, "wait process", xerr.Fields{"procData": proc})
+	}
+
+	app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
+	return nil
 }
 
 // Start already created processes

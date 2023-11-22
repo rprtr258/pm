@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -19,7 +18,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/daemon"
+	"github.com/rprtr258/pm/internal/infra/app"
 )
 
 const (
@@ -182,44 +181,40 @@ var _cmdList = &cli.Command{
 	},
 }
 
-func mapStatus(status core.Status) (string, *int, time.Duration) {
+func mapStatus(status core.Status) (string, time.Duration) {
 	switch status.Status {
 	case core.StatusCreated:
-		return scuf.String("created", scuf.FgYellow), nil, 0
+		return scuf.String("created", scuf.FgYellow), 0
 	case core.StatusRunning:
 		// TODO: get back real pid
-		return scuf.String("running", scuf.FgGreen), fun.Ptr(0), time.Since(status.StartTime)
+		return scuf.String("running", scuf.FgGreen), time.Since(status.StartTime)
 	case core.StatusStopped:
-		return scuf.String("stopped", scuf.FgRed), nil, 0
+		return scuf.String(fmt.Sprintf("stopped(%d)", status.ExitCode), scuf.FgRed), 0
 	case core.StatusInvalid:
-		return scuf.String(fmt.Sprintf("invalid(%#v)", status.Status), scuf.FgRed), nil, 0
+		return scuf.String(fmt.Sprintf("invalid(%#v)", status.Status), scuf.FgRed), 0
 	default:
-		return scuf.String(fmt.Sprintf("BROKEN(%T)", status), scuf.FgRed), nil, 0
+		return scuf.String(fmt.Sprintf("BROKEN(%T)", status), scuf.FgRed), 0
 	}
 }
 
 func renderTable(procs []core.Proc, setRowLines bool) {
 	procsTable := table.New(os.Stdout)
 	procsTable.SetDividers(table.UnicodeRoundedDividers)
-	procsTable.SetHeaders("id", "name", "status", "pid", "uptime", "tags" /*"cpu", "memory",*/, "cmd")
+	procsTable.SetHeaders("id", "name", "status", "uptime", "tags" /*"cpu", "memory",*/, "cmd")
 	procsTable.SetHeaderStyle(table.StyleBold)
 	procsTable.SetLineStyle(table.StyleDim)
 	procsTable.SetRowLines(setRowLines)
 	for _, proc := range procs {
 		// TODO: if errored/stopped show time since start instead of uptime (not in place of)
-		status, pid, uptime := mapStatus(proc.Status)
+		status, uptime := mapStatus(proc.Status)
 
 		procsTable.AddRow(
 			scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold),
 			proc.Name,
 			status,
 			fun.
-				If(pid == nil, "").
-				ElseF(func() string {
-					return strconv.Itoa(*pid)
-				}),
-			// TODO: check status instead for following parameters
-			fun.If(pid == nil, "").Else(uptime.Truncate(time.Second).String()),
+				If(proc.Status.Status != core.StatusRunning, "").
+				Else(uptime.Truncate(time.Second).String()),
 			strings.Join(proc.Tags, "\n"),
 			// fmt.Sprint(proc.Status.CPU),
 			// fmt.Sprint(proc.Status.Memory),
@@ -236,7 +231,7 @@ func list(
 	format string,
 	sortFunc func(a, b core.Proc) bool,
 ) error {
-	app, errNewApp := daemon.New()
+	app, errNewApp := app.New()
 	if errNewApp != nil {
 		return xerr.NewWM(errNewApp, "new app")
 	}

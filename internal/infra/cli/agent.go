@@ -8,11 +8,11 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/daemon"
+	"github.com/rprtr258/pm/internal/infra/app"
 )
 
 var _cmdAgent = &cli.Command{
-	Name:   daemon.CmdAgent,
+	Name:   app.CmdAgent,
 	Hidden: true,
 	Action: func(ctx *cli.Context) error {
 		arg := core.PMID(ctx.Args().First())
@@ -24,7 +24,7 @@ var _cmdAgent = &cli.Command{
 		// a little sleep to wait while calling process closes db file
 		time.Sleep(1 * time.Second)
 
-		app, errNewApp := daemon.New()
+		app, errNewApp := app.New()
 		if errNewApp != nil {
 			return xerr.NewWM(errNewApp, "new app")
 		}

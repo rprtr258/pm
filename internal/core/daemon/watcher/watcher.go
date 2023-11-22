@@ -13,19 +13,19 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 )
 
-type WatcherEntry struct {
+type Entry struct {
 	RootDir     string
 	Pattern     *regexp.Regexp
 	LastModTime time.Time
 }
 
 type Watcher struct {
-	Watchplaces map[core.PMID]WatcherEntry
+	Watchplaces map[core.PMID]Entry
 }
 
 func New() Watcher {
 	return Watcher{
-		Watchplaces: make(map[core.PMID]WatcherEntry),
+		Watchplaces: make(map[core.PMID]Entry),
 	}
 }
 
@@ -46,9 +46,10 @@ func (w Watcher) Add(procID core.PMID, dir, pattern string) error {
 		return xerr.NewWM(errCompilePattern, "compile pattern")
 	}
 
-	w.Watchplaces[procID] = WatcherEntry{
-		RootDir: dir,
-		Pattern: re,
+	w.Watchplaces[procID] = Entry{
+		RootDir:     dir,
+		Pattern:     re,
+		LastModTime: time.Time{},
 	}
 
 	return nil
@@ -106,7 +107,7 @@ func (w Watcher) Start(ctx context.Context) {
 
 					info, errInfo := d.Info()
 					if errInfo != nil {
-						return errInfo
+						return xerr.NewWM(errInfo, "get file info")
 					}
 
 					if !wp.Pattern.MatchString(info.Name()) || info.ModTime().Before(wp.LastModTime) {

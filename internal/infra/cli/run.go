@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/daemon"
+	"github.com/rprtr258/pm/internal/infra/app"
 )
 
 var _cmdRun = &cli.Command{
@@ -88,7 +88,7 @@ var _cmdRun = &cli.Command{
 		// &cli.IntFlag{Name: "uid", Usage: "run process with <uid> rights"},
 	},
 	Action: func(ctx *cli.Context) error {
-		app, errNewApp := daemon.New()
+		app, errNewApp := app.New()
 		if errNewApp != nil {
 			return xerr.NewWM(errNewApp, "new app")
 		}
@@ -142,7 +142,7 @@ var _cmdRun = &cli.Command{
 				MaxRestarts:  0,
 			}
 
-			procID, errRun := app.Run(ctx.Context, runConfig)
+			procID, errRun := app.Run(runConfig)
 			if errRun != nil {
 				return xerr.NewWM(errRun, "run command", xerr.Fields{
 					"run_config": runConfig,
@@ -166,15 +166,14 @@ var _cmdRun = &cli.Command{
 		if len(names) == 0 {
 			// no filtering by names, run all processes
 			for _, config := range configs {
-				procID, err := app.Run(ctx.Context, config)
-				fmt.Print(procID, " ")
+				procID, err := app.Run(config)
+				fmt.Println(procID)
 				if err != nil {
 					fmt.Println()
 					return xerr.NewWM(err, "create all procs from config", xerr.Fields{"pmid": procID})
 				}
 			}
 
-			fmt.Println()
 			return nil
 		}
 
@@ -200,18 +199,16 @@ var _cmdRun = &cli.Command{
 		}
 
 		for _, config := range configsByName {
-			procID, errCreate := app.Run(ctx.Context, config)
-			fmt.Print(procID, " ")
+			id, errCreate := app.Run(config)
+			fmt.Println(id)
 			if errCreate != nil {
-				fmt.Println()
 				return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{
 					"names": names,
-					"pmid":  procID,
+					"pmid":  id,
 				})
 			}
 		}
 
-		fmt.Println()
 		return nil
 	},
 }

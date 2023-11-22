@@ -55,10 +55,15 @@ func GenPMID() PMID {
 }
 
 type Status struct {
-	StartTime time.Time // StartTime, valid if running
-	Status    StatusType
-	CPU       uint64 // CPU usage percentage rounded to integer, valid if running
-	Memory    uint64 // Memory usage in bytes, valid if running
+	Status StatusType
+
+	// running
+	StartTime time.Time // StartTime
+	CPU       uint64    // CPU usage percentage rounded to integer
+	Memory    uint64    // Memory usage in bytes
+
+	// stopped
+	ExitCode int
 }
 
 func NewStatusInvalid() Status {
@@ -82,9 +87,10 @@ func NewStatusRunning(startTime time.Time, cpu, memory uint64) Status {
 	}
 }
 
-func NewStatusStopped() Status {
+func NewStatusStopped(exitCode int) Status {
 	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusStopped,
+		Status:   StatusStopped,
+		ExitCode: exitCode,
 	}
 }
 

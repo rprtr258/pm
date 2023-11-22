@@ -8,7 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/daemon"
+	"github.com/rprtr258/pm/internal/infra/app"
 )
 
 var _cmdDelete = &cli.Command{
@@ -39,7 +39,7 @@ var _cmdDelete = &cli.Command{
 
 		args := ctx.Args().Slice()
 
-		app, errNewApp := daemon.New()
+		app, errNewApp := app.New()
 		if errNewApp != nil {
 			return xerr.NewWM(errNewApp, "new app")
 		}

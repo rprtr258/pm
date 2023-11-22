@@ -1,4 +1,4 @@
-package daemon
+package app
 
 import (
 	"fmt"
@@ -80,9 +80,6 @@ func New() (App, error) {
 	// TODO: move to agent
 	// watcher := watcher.New(ebus)
 	// go watcher.Start(ctx)
-
-	// TODO: move to agent
-	// go deathCollector(ctx, dbHandle)
 
 	config, errConfig := core.ReadConfig()
 	if errConfig != nil {

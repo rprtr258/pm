@@ -1,4 +1,4 @@
-package daemon
+package app
 
 import (
 	"context"
@@ -185,27 +185,30 @@ func (app App) Logs(ctx context.Context, id core.PMID) (<-chan core.LogLine, err
 		ctx, cancel = context.WithTimeout(ctx, time.Millisecond)
 	}
 
-	// ch, errLogs := app.Client.Subscribe(ctx, id)
-	// if errLogs != nil {
-	// 	cancel()
-	// 	return nil, xerr.NewWM(errLogs, "start processes")
-	// }
-
 	logsCh := streamProcLogs(ctx, proc)
 
 	res := make(chan core.LogLine)
 	go func() {
 		defer close(res)
 		defer cancel()
+
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			// TODO: stop on proc death
-			// case proc := <-ch:
-			// 	if proc.Status.Status != core.StatusRunning {
-			// 		cancel()
-			// 	}
+			case <-ticker.C:
+				// TODO: reread database without recreating whole app
+				newApp, err := New()
+				if err != nil {
+					log.Error().Err(err).Msg("failed to check proc status")
+				}
+
+				if newApp.List()[id].Status.Status != core.StatusRunning {
+					return
+				}
 			case line, ok := <-logsCh:
 				if !ok {
 					return

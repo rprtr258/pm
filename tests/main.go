@@ -18,8 +18,8 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/app"
 	pmcli "github.com/rprtr258/pm/internal/infra/cli"
-	"github.com/rprtr258/pm/internal/infra/daemon"
 )
 
 // tcpPortAvailable checks if a given TCP port is bound on the local network interface.
@@ -65,7 +65,7 @@ func httpResponse(
 	return nil
 }
 
-type testHook func(ctx context.Context, client daemon.App) error
+type testHook func(ctx context.Context, client app.App) error
 
 type testcase struct {
 	beforeFunc testHook
@@ -85,19 +85,19 @@ var tests = map[string]testcase{
 			Name:    fun.Valid("http-hello-server"),
 			Command: "./tests/hello-http/main",
 		}},
-		beforeFunc: func(ctx context.Context, client daemon.App) error {
+		beforeFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
 				return xerr.NewM("port not available", xerr.Fields{"port": _helloHTTPServerPort})
 			}
 
 			return nil
 		},
-		testFunc: func(ctx context.Context, client daemon.App) error {
+		testFunc: func(ctx context.Context, client app.App) error {
 			time.Sleep(time.Second)
 
 			return httpResponse(ctx, "http://localhost:8080/", "hello world")
 		},
-		afterFunc: func(ctx context.Context, client daemon.App) error {
+		afterFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
 				return xerr.NewM("server not stopped", xerr.Fields{"port": _helloHTTPServerPort})
 			}
@@ -118,14 +118,14 @@ var tests = map[string]testcase{
 				Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(_ncServerPort)},
 			},
 		},
-		beforeFunc: func(ctx context.Context, client daemon.App) error {
+		beforeFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_ncServerPort) {
 				return xerr.NewM("port not available", xerr.Fields{"port": _ncServerPort})
 			}
 
 			return nil
 		},
-		testFunc: func(ctx context.Context, client daemon.App) error {
+		testFunc: func(ctx context.Context, client app.App) error {
 			homeDir, errHome := os.UserHomeDir()
 			if errHome != nil {
 				return xerr.NewWM(errHome, "get home dir")
@@ -144,7 +144,7 @@ var tests = map[string]testcase{
 
 			return nil
 		},
-		afterFunc: func(ctx context.Context, client daemon.App) error {
+		afterFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_ncServerPort) {
 				return xerr.NewM("server not stopped", xerr.Fields{"port": _ncServerPort})
 			}
@@ -156,7 +156,7 @@ var tests = map[string]testcase{
 
 //nolint:nonamedreturns // required to check test result
 func runTest(ctx context.Context, name string, test testcase) (ererer error) { //nolint:funlen,gocognit,lll // no idea how to refactor right now
-	client, errClient := daemon.New()
+	client, errClient := app.New()
 	if errClient != nil {
 		return xerr.NewWM(errClient, "create client")
 	}
@@ -197,7 +197,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		// START TEST PROCESSES
 		ids := []core.PMID{}
 		for _, c := range test.runConfigs {
-			id, errStart := client.Run(ctx, core.RunConfig{
+			id, errStart := client.Run(core.RunConfig{
 				Name:    c.Name,
 				Command: c.Command,
 				Args:    c.Args,

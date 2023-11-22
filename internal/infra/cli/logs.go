@@ -13,7 +13,7 @@ import (
 	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/daemon"
+	"github.com/rprtr258/pm/internal/infra/app"
 )
 
 func mergeChans(ctx context.Context, chans ...<-chan core.LogLine) <-chan core.LogLine {
@@ -103,7 +103,7 @@ var _cmdLogs = &cli.Command{
 		configFlag,
 	},
 	Action: func(ctx *cli.Context) error {
-		app, errNewApp := daemon.New()
+		app, errNewApp := app.New()
 		if errNewApp != nil {
 			return xerr.NewWM(errNewApp, "new app")
 		}

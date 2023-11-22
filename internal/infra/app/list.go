@@ -1,4 +1,4 @@
-package daemon
+package app
 
 import "github.com/rprtr258/pm/internal/core"
 

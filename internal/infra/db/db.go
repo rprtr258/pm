@@ -18,6 +18,7 @@ import (
 type status struct {
 	StartTime time.Time `json:"start_time"` // StartTime, valid if running
 	Status    int       `json:"type"`
+	ExitCode  int       `json:"exit_code,omitempty"`
 }
 
 // procData - db representation of core.ProcData
@@ -166,6 +167,7 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) core.Procs {
 					Status:    core.StatusType(proc.Status.Status),
 					CPU:       0,
 					Memory:    0,
+					ExitCode:  proc.Status.ExitCode,
 				},
 				Env:        proc.Env,
 				StdoutFile: proc.StdoutFile,
@@ -191,6 +193,7 @@ func (handle Handle) SetStatus(id core.PMID, newStatus core.Status) Error {
 	proc.Status = status{
 		StartTime: newStatus.StartTime,
 		Status:    int(newStatus.Status),
+		ExitCode:  newStatus.ExitCode,
 	}
 	handle.procs.Upsert(proc)
 
@@ -237,7 +240,7 @@ func (handle Handle) Delete(id core.PMID) (core.Proc, Error) {
 	}, nil
 }
 
-func (handle Handle) StatusSetStarted(id core.PMID) {
+func (handle Handle) StatusSetRunning(id core.PMID) {
 	// TODO: fill/remove cpu, memory
 	runningStatus := core.NewStatusRunning(time.Now(), 0, 0)
 	if err := handle.SetStatus(id, runningStatus); err != nil {
@@ -248,8 +251,8 @@ func (handle Handle) StatusSetStarted(id core.PMID) {
 	}
 }
 
-func (handle Handle) StatusSetStopped(id core.PMID) {
-	dbStatus := core.NewStatusStopped()
+func (handle Handle) StatusSetStopped(id core.PMID, exitCode int) {
+	dbStatus := core.NewStatusStopped(exitCode)
 	if err := handle.SetStatus(id, dbStatus); err != nil {
 		if _, ok := xerr.As[ProcNotFoundError](err); ok {
 			log.Error().

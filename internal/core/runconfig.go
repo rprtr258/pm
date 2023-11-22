@@ -105,6 +105,7 @@ func newVM() *jsonnet.VM {
 	return vm
 }
 
+//nolint:funlen // no
 func LoadConfigs(filename string) ([]RunConfig, error) {
 	if !isConfigFile(filename) {
 		return nil, xerr.NewM(
@@ -160,7 +161,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		}
 
 		relativeCwd := filepath.Join(filepath.Dir(filename), fun.Deref(config.Cwd))
-		cwd, err := filepath.Abs(relativeCwd) // TODO: add config abs path instead
+		cwd, err := filepath.Abs(relativeCwd)
 		if err != nil {
 			return fun.Zero[RunConfig](), xerr.NewWM(err, "get absolute cwd", xerr.Fields{"cwd": relativeCwd})
 		}

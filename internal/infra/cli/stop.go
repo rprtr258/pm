@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/daemon"
+	"github.com/rprtr258/pm/internal/infra/app"
 )
 
 var _cmdStop = &cli.Command{
@@ -61,7 +61,7 @@ var _cmdStop = &cli.Command{
 			args: ctx.Args().Slice(),
 		}
 
-		client, errList := daemon.New()
+		client, errList := app.New()
 		if errList != nil {
 			return xerr.NewWM(errList, "new grpc client")
 		}
@@ -100,7 +100,7 @@ type stopCmd struct {
 
 func (cmd *stopCmd) Run(
 	ctx context.Context,
-	app daemon.App,
+	appp app.App,
 	configList core.Procs,
 ) error {
 	procIDs := core.FilterProcMap(
@@ -119,7 +119,7 @@ func (cmd *stopCmd) Run(
 		return nil
 	}
 
-	err := app.Stop(ctx, procIDs...)
+	err := appp.Stop(ctx, procIDs...)
 	if err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}
