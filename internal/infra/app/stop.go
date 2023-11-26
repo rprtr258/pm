@@ -1,11 +1,9 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"os"
 	"syscall"
-	"time"
 
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
@@ -14,7 +12,7 @@ import (
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
-func (app App) stop(ctx context.Context, id core.PMID) error {
+func (app App) stop(id core.PMID) error {
 	{
 		proc, ok := app.db.GetProc(id)
 		if !ok {
@@ -28,6 +26,7 @@ func (app App) stop(ctx context.Context, id core.PMID) error {
 
 	l := log.With().Stringer("pmid", id).Logger()
 
+	log.Print(id)
 	proc, ok := linuxprocess.StatPMID(id, _envPMID)
 	if !ok {
 		return xerr.NewM("find process")
@@ -44,49 +43,12 @@ func (app App) stop(ctx context.Context, id core.PMID) error {
 		}
 	}
 
-	doneCh := make(chan error, 1)
-	go func() {
-		defer close(doneCh)
-		state, errFindProc := proc.Wait()
-		if errFindProc != nil {
-			if errno, ok := xerr.As[syscall.Errno](errFindProc); !ok || errno != 10 {
-				doneCh <- xerr.NewWM(errFindProc, "releasing process")
-				return
-			}
-
-			l.Info().Msg("process is not a child")
-		} else {
-			l.Info().
-				Bool("is_state_nil", state == nil).
-				Int("exit_code", state.ExitCode()).
-				Msg("process is stopped")
-		}
-		doneCh <- nil
-	}()
-
-	timer := time.NewTimer(5 * time.Second) // arbitrary timeout
-	defer timer.Stop()
-
-	select {
-	case <-timer.C:
-		l.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
-
-		// TODO: is proc.Kill() enough?
-		if errKill := syscall.Kill(-proc.Pid, syscall.SIGKILL); errKill != nil {
-			return xerr.NewWM(errKill, "kill process")
-		}
-
-		return nil
-	case <-ctx.Done():
-		return nil
-	case err := <-doneCh:
-		return err
-	}
+	return nil
 }
 
-func (app App) Stop(ctx context.Context, ids ...core.PMID) error {
+func (app App) Stop(ids ...core.PMID) error {
 	for _, id := range ids {
-		if errStop := app.stop(ctx, id); errStop != nil {
+		if errStop := app.stop(id); errStop != nil {
 			log.Error().
 				Err(errStop).
 				Stringer("pmid", id).

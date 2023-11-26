@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
@@ -150,9 +152,24 @@ func (app App) StartRaw(proc core.Proc) error {
 		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": proc})
 	}
 
-	// TODO: handle and pass signals
+	doneCh := make(chan struct{}, 1)
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+
+		_ = cmd.Process.Signal(syscall.SIGTERM)
+
+		select {
+		case <-doneCh:
+		case <-time.After(5 * time.Second):
+			log.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
+			_ = cmd.Process.Kill()
+		}
+	}()
 
 	err = cmd.Wait()
+	doneCh <- struct{}{}
 	if err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
 			app.db.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())

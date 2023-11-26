@@ -63,7 +63,7 @@ var _cmdDelete = &cli.Command{
 				return nil
 			}
 
-			if err := app.Stop(ctx.Context, procIDs...); err != nil {
+			if err := app.Stop(procIDs...); err != nil {
 				return xerr.NewWM(err, "delete")
 			}
 
@@ -95,7 +95,7 @@ var _cmdDelete = &cli.Command{
 			),
 		)
 
-		if err := app.Stop(ctx.Context, procIDs...); err != nil {
+		if err := app.Stop(procIDs...); err != nil {
 			return xerr.NewWM(err, "stop")
 		}
 

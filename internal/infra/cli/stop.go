@@ -119,7 +119,7 @@ func (cmd *stopCmd) Run(
 		return nil
 	}
 
-	err := appp.Stop(ctx, procIDs...)
+	err := appp.Stop(procIDs...)
 	if err != nil {
 		return xerr.NewWM(err, "client.stop")
 	}

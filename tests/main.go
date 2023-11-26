@@ -165,7 +165,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	list := client.List()
 
 	for id := range list {
-		if errStop := client.Stop(ctx, id); errStop != nil {
+		if errStop := client.Stop(id); errStop != nil {
 			return xerr.NewWM(errStop, "stop all old processes")
 		}
 
@@ -221,7 +221,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 
 		// STOP AND REMOVE TEST PROCESSES
 		for _, id := range ids {
-			if errStop := client.Stop(ctx, id); errStop != nil {
+			if errStop := client.Stop(id); errStop != nil {
 				return xerr.NewWM(errStop, "stop process", xerr.Fields{"pmid": id})
 			}
 

@@ -60,7 +60,7 @@ var _cmdRestart = &cli.Command{
 				return nil
 			}
 
-			if err := app.Stop(ctx.Context, procIDs...); err != nil {
+			if err := app.Stop(procIDs...); err != nil {
 				return xerr.NewWM(err, "client.stop")
 			}
 
@@ -102,7 +102,7 @@ var _cmdRestart = &cli.Command{
 			return nil
 		}
 
-		if errStop := app.Stop(ctx.Context, procIDs...); errStop != nil {
+		if errStop := app.Stop(procIDs...); errStop != nil {
 			return xerr.NewWM(errStop, "client.stop")
 		}
 
