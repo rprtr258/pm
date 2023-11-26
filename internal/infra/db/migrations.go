@@ -19,14 +19,8 @@ var Migrations = []migration{
 	{ // initial version
 		version: "0.0.1",
 		do: func() error {
-			handler, err := New(filepath.Join(core.DirHome, "db"))
-			if err != nil {
+			if _, err := New(filepath.Join(core.DirHome, "db")); err != nil {
 				return xerr.NewWM(err, "create db handler")
-			}
-
-			errFlush := handler.procs.Flush()
-			if errFlush != nil {
-				return xerr.NewWM(errFlush, "flush procs")
 			}
 
 			return nil

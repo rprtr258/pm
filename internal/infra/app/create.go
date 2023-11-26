@@ -43,7 +43,10 @@ func (app App) create(
 ) (core.PMID, error) {
 	// try to find by name and update
 	if name, ok := name.Unpack(); ok { //nolint:nestif // no idea how to simplify it now
-		procs := app.db.GetProcs(core.WithAllIfNoFilters)
+		procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
+		if err != nil {
+			return "", xerr.NewWM(err, "get procs from db")
+		}
 
 		if procID, ok := fun.FindKeyBy(procs, func(_ core.PMID, procData core.Proc) bool {
 			return procData.Name == name

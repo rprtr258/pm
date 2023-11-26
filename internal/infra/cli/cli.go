@@ -8,10 +8,10 @@ import (
 
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
-	"github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 func ensureDir(dirname string) error {
@@ -23,7 +23,7 @@ func ensureDir(dirname string) error {
 		return xerr.NewWM(errStat, "stat dir")
 	}
 
-	log.Info().Str("dir", dirname).Msg("creating home dir...")
+	log.Info().Str("dir", dirname).Msg("creating dir...")
 	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
 		return xerr.NewWM(errMkdir, "create dir")
 	}

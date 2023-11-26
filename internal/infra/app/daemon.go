@@ -2,16 +2,14 @@ package app
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/db"
+	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 var (
@@ -58,11 +56,6 @@ type App struct {
 }
 
 func New() (App, error) {
-	log.Logger = zerolog.New(os.Stderr).With().
-		Timestamp().
-		Caller().
-		Logger()
-
 	cfg, errCfg := ReadPMConfig()
 	if errCfg != nil {
 		return App{}, fmt.Errorf("config: %w", errCfg)

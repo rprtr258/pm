@@ -3,7 +3,11 @@ package app
 import "github.com/rprtr258/pm/internal/core"
 
 func (app App) List() map[core.PMID]core.Proc {
-	procs := app.db.GetProcs(core.WithAllIfNoFilters)
+	procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
+	if err != nil {
+		return nil
+	}
+
 	for id, proc := range procs {
 		if proc.Status.Status != core.StatusRunning {
 			continue

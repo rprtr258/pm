@@ -11,17 +11,6 @@ type Error interface {
 	error
 }
 
-type GetTableError struct {
-	Err   error
-	Table string
-}
-
-func (GetTableError) isError() {}
-
-func (err GetTableError) Error() string {
-	return fmt.Sprintf("get table %q: %s", err.Table, err.Err.Error())
-}
-
 type ProcNotFoundError struct{ ProcID core.PMID }
 
 func (ProcNotFoundError) isError() {}

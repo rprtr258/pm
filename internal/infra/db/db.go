@@ -1,13 +1,13 @@
 package db
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/simpdb"
-	"github.com/rprtr258/simpdb/storages"
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -50,22 +50,45 @@ func (p procData) ID() string {
 	return p.ProcID.String()
 }
 
-type Handle struct {
-	db    *simpdb.DB
-	procs *simpdb.Table[procData]
+func mapFromRepo(proc procData) core.Proc {
+	return core.Proc{
+		ID:      proc.ProcID,
+		Command: proc.Command,
+		Cwd:     proc.Cwd,
+		Name:    proc.Name,
+		Args:    proc.Args,
+		Tags:    proc.Tags,
+		Watch:   fun.FromPtr(proc.Watch),
+		Status: core.Status{
+			StartTime: proc.Status.StartTime,
+			Status:    core.StatusType(proc.Status.Status),
+			CPU:       0,
+			Memory:    0,
+			ExitCode:  proc.Status.ExitCode,
+		},
+		Env:        proc.Env,
+		StdoutFile: proc.StdoutFile,
+		StderrFile: proc.StderrFile,
+	}
 }
 
-func New(dir string) (Handle, Error) {
-	db := simpdb.New(dir)
+type Handle struct {
+	dir string
+}
 
-	procs, errTableProcs := simpdb.GetTable(db, "procs", storages.NewJSONStorage[procData]())
-	if errTableProcs != nil {
-		return fun.Zero[Handle](), GetTableError{errTableProcs, "procs"}
+func New(dir string) (Handle, error) {
+	if _, err := os.Stat(dir); err != nil {
+		if !os.IsNotExist(err) {
+			return Handle{}, fmt.Errorf("check directory: %w", err)
+		}
+
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			return Handle{}, fmt.Errorf("create directory: %w", err)
+		}
 	}
 
 	return Handle{
-		db:    db,
-		procs: procs,
+		dir: dir,
 	}, nil
 }
 
@@ -87,9 +110,38 @@ type CreateQuery struct {
 	// Respawns int
 }
 
-func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, Error) {
+func (handle Handle) writeProc(proc procData) error {
+	f, err := os.OpenFile(filepath.Join(handle.dir, proc.ProcID.String()), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if err = json.NewEncoder(f).Encode(proc); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (handle Handle) readProc(id core.PMID) (procData, error) {
+	f, err := os.Open(filepath.Join(handle.dir, id.String()))
+	if err != nil {
+		return procData{}, err
+	}
+
+	var proc procData
+	if err := json.NewDecoder(f).Decode(&proc); err != nil {
+		return procData{}, err
+	}
+
+	return proc, nil
+}
+
+func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 	id := core.GenPMID()
-	handle.procs.Insert(procData{
+
+	if err := handle.writeProc(procData{
 		ProcID:  id,
 		Command: query.Command,
 		Cwd:     query.Cwd,
@@ -105,21 +157,20 @@ func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, Erro
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stdout", id))),
 		StderrFile: query.StderrFile.
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stderr", id))),
-	})
-
-	if err := handle.procs.Flush(); err != nil {
-		return "", FlushError{err}
+	}); err != nil {
+		return "", err
 	}
 
 	return id, nil
 }
 
 func (handle Handle) UpdateProc(proc core.Proc) Error {
-	handle.procs.Upsert(procData{
+	if err := handle.writeProc(procData{
 		ProcID: proc.ID,
 		Status: status{
 			StartTime: proc.Status.StartTime,
 			Status:    int(proc.Status.Status),
+			ExitCode:  proc.Status.ExitCode,
 		},
 		Command:    proc.Command,
 		Cwd:        proc.Cwd,
@@ -130,9 +181,7 @@ func (handle Handle) UpdateProc(proc core.Proc) Error {
 		Env:        proc.Env,
 		StdoutFile: proc.StdoutFile,
 		StderrFile: proc.StderrFile,
-	})
-
-	if err := handle.procs.Flush(); err != nil {
+	}); err != nil {
 		return FlushError{err}
 	}
 
@@ -140,53 +189,42 @@ func (handle Handle) UpdateProc(proc core.Proc) Error {
 }
 
 func (handle Handle) GetProc(id core.PMID) (core.Proc, bool) {
-	procs := handle.GetProcs(core.WithIDs(id))
-	if len(procs) != 1 {
+	proc, err := handle.readProc(id)
+	if err != nil {
 		return fun.Zero[core.Proc](), false
 	}
 
-	return procs[id], true
+	return mapFromRepo(proc), true
 }
 
-func (handle Handle) GetProcs(filterOpts ...core.FilterOption) core.Procs {
+func (handle Handle) GetProcs(filterOpts ...core.FilterOption) (core.Procs, error) {
 	filter := core.NewFilter(filterOpts...)
 
-	procs := core.Procs{}
-	handle.procs.
-		Iter(func(id string, proc procData) bool {
-			procs[proc.ProcID] = core.Proc{
-				ID:      proc.ProcID,
-				Command: proc.Command,
-				Cwd:     proc.Cwd,
-				Name:    proc.Name,
-				Args:    proc.Args,
-				Tags:    proc.Tags,
-				Watch:   fun.FromPtr(proc.Watch),
-				Status: core.Status{
-					StartTime: proc.Status.StartTime,
-					Status:    core.StatusType(proc.Status.Status),
-					CPU:       0,
-					Memory:    0,
-					ExitCode:  proc.Status.ExitCode,
-				},
-				Env:        proc.Env,
-				StdoutFile: proc.StdoutFile,
-				StderrFile: proc.StderrFile,
-			}
+	entries, err := os.ReadDir(handle.dir)
+	if err != nil {
+		return nil, err
+	}
 
-			return true
-		})
+	procs := core.Procs{}
+	for _, entry := range entries {
+		proc, err := handle.readProc(core.PMID(entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+
+		procs[proc.ProcID] = mapFromRepo(proc)
+	}
 
 	return fun.SliceToMap[core.PMID, core.Proc](
 		core.FilterProcMap(procs, filter),
 		func(id core.PMID) (core.PMID, core.Proc) {
 			return id, procs[id]
-		})
+		}), nil
 }
 
 func (handle Handle) SetStatus(id core.PMID, newStatus core.Status) Error {
-	proc, ok := handle.procs.Get(id.String())
-	if !ok {
+	proc, err := handle.readProc(id)
+	if err != nil {
 		return ProcNotFoundError{id}
 	}
 
@@ -195,9 +233,8 @@ func (handle Handle) SetStatus(id core.PMID, newStatus core.Status) Error {
 		Status:    int(newStatus.Status),
 		ExitCode:  newStatus.ExitCode,
 	}
-	handle.procs.Upsert(proc)
 
-	if err := handle.procs.Flush(); err != nil {
+	if err := handle.writeProc(proc); err != nil {
 		return FlushError{err}
 	}
 
@@ -205,39 +242,16 @@ func (handle Handle) SetStatus(id core.PMID, newStatus core.Status) Error {
 }
 
 func (handle Handle) Delete(id core.PMID) (core.Proc, Error) {
-	deletedProcs := handle.procs.
-		Where(func(_ string, proc procData) bool {
-			return proc.ProcID == id
-		}).
-		Delete()
-
-	if err := handle.procs.Flush(); err != nil {
-		return fun.Zero[core.Proc](), FlushError{err}
-	}
-
-	if len(deletedProcs) == 0 {
+	proc, err := handle.readProc(id)
+	if err != nil {
 		return fun.Zero[core.Proc](), ProcNotFoundError{id}
 	}
 
-	proc := deletedProcs[0]
-	return core.Proc{
-		ID:      proc.ProcID,
-		Command: proc.Command,
-		Cwd:     proc.Cwd,
-		Name:    proc.Name,
-		Args:    proc.Args,
-		Tags:    proc.Tags,
-		Watch:   fun.FromPtr(proc.Watch),
-		Status: core.Status{
-			StartTime: proc.Status.StartTime,
-			Status:    core.StatusType(proc.Status.Status),
-			CPU:       0,
-			Memory:    0,
-		},
-		Env:        proc.Env,
-		StdoutFile: proc.StdoutFile,
-		StderrFile: proc.StderrFile,
-	}, nil
+	if err := os.Remove(filepath.Join(handle.dir, id.String())); err != nil {
+		return fun.Zero[core.Proc](), FlushError{err}
+	}
+
+	return mapFromRepo(proc), nil
 }
 
 func (handle Handle) StatusSetRunning(id core.PMID) {
