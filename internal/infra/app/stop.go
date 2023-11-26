@@ -86,9 +86,9 @@ func (app App) stop(ctx context.Context, id core.PMID) error {
 
 func (app App) Stop(ctx context.Context, ids ...core.PMID) error {
 	for _, id := range ids {
-		if errStart := app.stop(ctx, id); errStart != nil {
+		if errStop := app.stop(ctx, id); errStop != nil {
 			log.Error().
-				Err(errStart).
+				Err(errStop).
 				Stringer("pmid", id).
 				Msg("failed to stop proc")
 		}
