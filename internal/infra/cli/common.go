@@ -2,19 +2,16 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/urfave/cli/v2"
+	flags "github.com/rprtr258/cli/contrib"
+	"github.com/rprtr258/fun/set"
+	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/log"
 )
-
-var configFlag = &cli.StringFlag{
-	Name:      "config",
-	Usage:     "config file to use",
-	Aliases:   []string{"f"},
-	TakesFile: true,
-	Required:  false,
-}
 
 func printIDs(ids ...core.PMID) {
 	for i, id := range ids {
@@ -24,6 +21,109 @@ func printIDs(ids ...core.PMID) {
 		fmt.Print(id)
 	}
 	fmt.Println()
+}
+
+type configFlag struct {
+	Config *flags.Filename `short:"f" long:"config" description:"config file to use"`
+}
+
+type flagPMID core.PMID
+
+func (f *flagPMID) Complete(match string) []flags.Completion {
+	app, errNewApp := app.New()
+	if errNewApp != nil {
+		log.Error().Err(errNewApp).Msg("new app")
+		return nil
+	}
+
+	list := app.List()
+
+	res := make([]flags.Completion, 0, len(list))
+	for id, proc := range list {
+		if !strings.HasPrefix(string(id), match) {
+			continue
+		}
+
+		res = append(res, flags.Completion{
+			Item:        string(id),
+			Description: "name: " + proc.Name,
+		})
+	}
+	return res
+}
+
+type flagProcName string
+
+func (f *flagProcName) Complete(match string) []flags.Completion {
+	app, errNewApp := app.New()
+	if errNewApp != nil {
+		log.Error().Err(errNewApp).Msg("new app")
+		return nil
+	}
+
+	list := app.List()
+
+	res := make([]flags.Completion, 0, len(list))
+	for _, proc := range list {
+		if !strings.HasPrefix(proc.Name, match) {
+			continue
+		}
+
+		res = append(res, flags.Completion{
+			Item:        proc.Name,
+			Description: "status: " + proc.Status.Status.String(),
+		})
+	}
+	return res
+}
+
+type flagProcTag string
+
+func (f *flagProcTag) Complete(match string) []flags.Completion {
+	app, errNewApp := app.New()
+	if errNewApp != nil {
+		log.Error().Err(errNewApp).Msg("new app")
+		return nil
+	}
+
+	list := app.List()
+
+	tags := set.New[string](0)
+	if strings.HasPrefix(match, "all") {
+		tags.Add("all")
+	}
+	for _, proc := range list {
+		for _, tag := range proc.Tags {
+			if !strings.HasPrefix(tag, match) {
+				continue
+			}
+
+			tags.Add(tag)
+		}
+	}
+
+	res := make([]flags.Completion, 0, tags.Size())
+	tags.Iter()(func(tag string) bool {
+		res = append(res, flags.Completion{
+			Item:        tag,
+			Description: "",
+		})
+		return true
+	})
+	return res
+}
+
+type flagGenericSelector string
+
+func (f *flagGenericSelector) Complete(match string) []flags.Completion {
+	var fPMID flagPMID
+	var fName flagProcName
+	var fTag flagProcTag
+	return lo.Flatten([][]flags.Completion{
+		fPMID.Complete(match),
+		fName.Complete(match),
+		fTag.Complete(match),
+	})
 }
 
 // { Name: "pid", commander.command('[app_name]')

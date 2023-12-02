@@ -2,7 +2,7 @@ package app
 
 import "github.com/rprtr258/pm/internal/core"
 
-func (app App) List() map[core.PMID]core.Proc {
+func (app App) List() map[core.PMID]core.Proc { // TODO: return iterator
 	procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
 	if err != nil {
 		return nil

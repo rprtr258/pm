@@ -198,8 +198,6 @@ func (handle Handle) GetProc(id core.PMID) (core.Proc, bool) {
 }
 
 func (handle Handle) GetProcs(filterOpts ...core.FilterOption) (core.Procs, error) {
-	filter := core.NewFilter(filterOpts...)
-
 	entries, err := os.ReadDir(handle.dir)
 	if err != nil {
 		return nil, err
@@ -216,7 +214,7 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) (core.Procs, erro
 	}
 
 	return fun.SliceToMap[core.PMID, core.Proc](
-		core.FilterProcMap(procs, filter),
+		core.FilterProcMap(procs, filterOpts...),
 		func(id core.PMID) (core.PMID, core.Proc) {
 			return id, procs[id]
 		}), nil

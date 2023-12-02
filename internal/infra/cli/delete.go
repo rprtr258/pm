@@ -5,106 +5,89 @@ import (
 
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
-	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 )
 
-var _cmdDelete = &cli.Command{
-	Name:      "delete",
-	Aliases:   []string{"del", "rm"},
-	Usage:     "stop and remove process(es)",
-	ArgsUsage: "<name|id|namespace|tag|json>...",
-	Category:  "management",
-	Flags: []cli.Flag{
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to stop and remove",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to stop and remove",
-		},
-		&cli.StringSliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to stop and remove",
-		},
-		configFlag,
-	},
-	Action: func(ctx *cli.Context) error {
-		names := ctx.StringSlice("name")
-		tags := ctx.StringSlice("tag")
-		ids := ctx.StringSlice("id")
+type _cmdDelete struct {
+	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
+	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
+	IDs   []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
+	Args  struct {
+		Rest []flagGenericSelector `positional-arg-name:"name|tag|id"`
+	} `positional-args:"yes"`
+	configFlag
+}
 
-		args := ctx.Args().Slice()
+func (x *_cmdDelete) Execute(_ []string) error {
+	names := x.Names
+	tags := x.Tags
+	ids := x.IDs
+	args := x.Args.Rest
 
-		app, errNewApp := app.New()
-		if errNewApp != nil {
-			return xerr.NewWM(errNewApp, "new app")
-		}
+	app, errNewApp := app.New()
+	if errNewApp != nil {
+		return xerr.NewWM(errNewApp, "new app")
+	}
 
-		list := app.List()
+	list := app.List()
 
-		if !ctx.IsSet("config") {
-			// TODO: extract to filter struct
-			procIDs := core.FilterProcMap(
-				list,
-				core.NewFilter(
-					core.WithGeneric(args),
-					core.WithIDs(ids...),
-					core.WithNames(names),
-					core.WithTags(tags),
-				),
-			)
+	if x.configFlag.Config == nil {
+		procIDs := core.FilterProcMap(
+			list,
+			core.WithGeneric(args...),
+			core.WithIDs(ids...),
+			core.WithNames(names...),
+			core.WithTags(tags...),
+		)
 
-			if len(procIDs) == 0 {
-				fmt.Println("Nothing to delete, leaving")
-				return nil
-			}
-
-			if err := app.Stop(procIDs...); err != nil {
-				return xerr.NewWM(err, "delete")
-			}
-
-			if errDelete := app.Delete(procIDs...); errDelete != nil {
-				return xerr.NewWM(errDelete, "delete")
-			}
-
+		if len(procIDs) == 0 {
+			fmt.Println("Nothing to delete, leaving")
 			return nil
 		}
 
-		configs, errLoadConfigs := core.LoadConfigs(ctx.String("config"))
-		if errLoadConfigs != nil {
-			return xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{"configfile": ctx.String("config")})
-		}
-
-		list, errList := app.ListByRunConfigs(configs)
-		if errList != nil {
-			return xerr.NewWM(errList, "list by run configs", xerr.Fields{"configs": configs})
-		}
-
-		procIDs := core.FilterProcMap(
-			list,
-			core.NewFilter(
-				core.WithGeneric(args),
-				core.WithIDs(ids...),
-				core.WithNames(names),
-				core.WithTags(tags),
-				core.WithAllIfNoFilters,
-			),
-		)
-
 		if err := app.Stop(procIDs...); err != nil {
-			return xerr.NewWM(err, "stop")
-		}
-
-		if err := app.Delete(procIDs...); err != nil {
 			return xerr.NewWM(err, "delete")
 		}
 
+		if errDelete := app.Delete(procIDs...); errDelete != nil {
+			return xerr.NewWM(errDelete, "delete")
+		}
+
 		return nil
-	},
+	}
+
+	configs, errLoadConfigs := core.LoadConfigs(string(*x.configFlag.Config))
+	if errLoadConfigs != nil {
+		return xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{
+			"config": string(*x.configFlag.Config),
+		})
+	}
+
+	list, errList := app.ListByRunConfigs(configs)
+	if errList != nil {
+		return xerr.NewWM(errList, "list by run configs", xerr.Fields{"configs": configs})
+	}
+
+	procIDs := core.FilterProcMap(
+		list,
+		core.WithGeneric(args...),
+		core.WithIDs(ids...),
+		core.WithNames(names...),
+		core.WithTags(tags...),
+		core.WithAllIfNoFilters,
+	)
+
+	if err := app.Stop(procIDs...); err != nil {
+		return xerr.NewWM(err, "stop")
+	}
+
+	if err := app.Delete(procIDs...); err != nil {
+		return xerr.NewWM(err, "delete")
+	}
+
+	return nil
 }
 
 func deferErr(closer func() error) func() {

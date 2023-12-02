@@ -1,13 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
+	flags "github.com/rprtr258/cli/contrib"
 	"github.com/rs/zerolog"
 	zerologlog "github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/infra/cli"
-	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 func main() {
@@ -16,8 +17,13 @@ func main() {
 		Caller().
 		Logger()
 
-	cli.Init()
-	if errRun := cli.App.Run(os.Args); errRun != nil {
-		log.Fatal(errRun)
+	// cli.Init()
+
+	if _, err := cli.Parser.ParseArgs(os.Args[1:]...); err != nil {
+		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Kind == flags.ErrHelp {
+			return
+		}
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 }
