@@ -9,7 +9,6 @@ import (
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
 	"github.com/samber/lo"
-	"github.com/urfave/cli/v2"
 	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -82,95 +81,34 @@ func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 	}
 }
 
-var _cmdLogs = &cli.Command{
-	Name:      "logs",
-	ArgsUsage: "<name|tag|id|status>...",
-	Usage:     "watch for processes logs",
-	Category:  "inspection",
-	Flags: []cli.Flag{
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to run",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to run",
-		},
-		&cli.StringSliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to run",
-		},
-		configFlag,
-	},
-	Action: func(ctx *cli.Context) error {
-		app, errNewApp := app.New()
-		if errNewApp != nil {
-			return xerr.NewWM(errNewApp, "new app")
-		}
+type _cmdLogs struct {
+	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
+	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
+	IDs   []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
+	Args  struct {
+		Rest []flagGenericSelector `positional-arg-name:"name|tag|id"`
+	} `positional-args:"yes"`
+	configFlag
+}
 
-		names := ctx.StringSlice("name")
-		tags := ctx.StringSlice("tag")
-		ids := ctx.StringSlice("id")
-		args := ctx.Args().Slice()
+func (x *_cmdLogs) Execut(_ []string) error {
+	ctx := context.TODO()
 
-		// TODO: filter on server
-		list := app.List()
+	app, errNewApp := app.New()
+	if errNewApp != nil {
+		return xerr.NewWM(errNewApp, "new app")
+	}
 
-		if !ctx.IsSet("config") {
-			procIDs := core.FilterProcMap(
-				list,
-				core.NewFilter(
-					core.WithGeneric(args),
-					core.WithIDs(ids...),
-					core.WithNames(names),
-					core.WithTags(tags),
-				),
-			)
+	// TODO: filter on server
+	list := app.List()
 
-			if len(procIDs) == 0 {
-				fmt.Println("nothing to watch")
-				return nil
-			}
-
-			logsChs := make([]<-chan core.LogLine, len(procIDs))
-			for i, procID := range procIDs {
-				logsCh, errLogs := app.Logs(ctx.Context, procID)
-				if errLogs != nil {
-					return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
-				}
-
-				logsChs[i] = logsCh
-			}
-
-			mergedLogsCh := mergeChans(ctx.Context, logsChs...)
-
-			return watchLogs(ctx.Context, mergedLogsCh)
-		}
-
-		configFile := ctx.String("config")
-
-		configs, errLoadConfigs := core.LoadConfigs(configFile)
-		if errLoadConfigs != nil {
-			return xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{
-				"config": configFile,
-			})
-		}
-
-		filteredList, err := app.ListByRunConfigs(configs)
-		if err != nil {
-			return xerr.NewWM(err, "list procs by configs")
-		}
-
-		// TODO: reuse filter options
+	if x.configFlag.Config == nil {
 		procIDs := core.FilterProcMap(
-			filteredList,
-			core.NewFilter(
-				core.WithGeneric(args),
-				core.WithIDs(ids...),
-				core.WithNames(names),
-				core.WithTags(tags),
-				core.WithAllIfNoFilters,
-			),
+			list,
+			core.WithGeneric(x.Args.Rest...),
+			core.WithIDs(x.IDs...),
+			core.WithNames(x.Names...),
+			core.WithTags(x.Tags...),
 		)
 
 		if len(procIDs) == 0 {
@@ -180,16 +118,57 @@ var _cmdLogs = &cli.Command{
 
 		logsChs := make([]<-chan core.LogLine, len(procIDs))
 		for i, procID := range procIDs {
-			logsCh, errLogs := app.Logs(ctx.Context, procID)
+			logsCh, errLogs := app.Logs(ctx, procID)
 			if errLogs != nil {
-				return xerr.NewWM(errLogs, "watch procs from config", xerr.Fields{"procIDs": procIDs})
+				return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
 			}
 
 			logsChs[i] = logsCh
 		}
 
-		mergedLogsCh := mergeChans(ctx.Context, logsChs...)
+		mergedLogsCh := mergeChans(ctx, logsChs...)
 
-		return watchLogs(ctx.Context, mergedLogsCh)
-	},
+		return watchLogs(ctx, mergedLogsCh)
+	}
+
+	configs, errLoadConfigs := core.LoadConfigs(string(*x.Config))
+	if errLoadConfigs != nil {
+		return xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{
+			"config": *x.Config,
+		})
+	}
+
+	filteredList, err := app.ListByRunConfigs(configs)
+	if err != nil {
+		return xerr.NewWM(err, "list procs by configs")
+	}
+
+	// TODO: reuse filter options
+	procIDs := core.FilterProcMap(
+		filteredList,
+		core.WithGeneric(x.Args.Rest...),
+		core.WithIDs(x.IDs...),
+		core.WithNames(x.Names...),
+		core.WithTags(x.Tags...),
+		core.WithAllIfNoFilters,
+	)
+
+	if len(procIDs) == 0 {
+		fmt.Println("nothing to watch")
+		return nil
+	}
+
+	logsChs := make([]<-chan core.LogLine, len(procIDs))
+	for i, procID := range procIDs {
+		logsCh, errLogs := app.Logs(ctx, procID)
+		if errLogs != nil {
+			return xerr.NewWM(errLogs, "watch procs from config", xerr.Fields{"procIDs": procIDs})
+		}
+
+		logsChs[i] = logsCh
+	}
+
+	mergedLogsCh := mergeChans(ctx, logsChs...)
+
+	return watchLogs(ctx, mergedLogsCh)
 }

@@ -19,7 +19,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
-	pmcli "github.com/rprtr258/pm/internal/infra/cli"
 )
 
 // tcpPortAvailable checks if a given TCP port is bound on the local network interface.
@@ -274,14 +273,14 @@ var (
 )
 
 func main() {
-	// TODO: ???, why not just separate cli?
-	pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
-		Name:        "test",
-		Usage:       "run e2e tests",
-		Subcommands: append(_testsCmds, _testAllCmd),
-	})
+	// // TODO: ???, why not just separate cli?
+	// pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
+	// 	Name:        "test",
+	// 	Usage:       "run e2e tests",
+	// 	Subcommands: append(_testsCmds, _testAllCmd),
+	// })
 
-	if err := pmcli.App.Run(os.Args); err != nil {
-		log.Fatal().Err(err).Send()
-	}
+	// if err := pmcli.App.Run(os.Args); err != nil {
+	// 	log.Fatal().Err(err).Send()
+	// }
 }
