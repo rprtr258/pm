@@ -89,30 +89,30 @@ func (x *_cmdLogs) Execute(_ []string) error {
 	}
 
 	mergedLogsCh := make(chan core.LogLine)
-	go func() {
-		var wg sync.WaitGroup
-		for _, ch := range logsChs {
-			wg.Add(1)
-			go func(ch <-chan core.LogLine) {
-				defer wg.Done()
-				for {
+	var wg sync.WaitGroup
+	for _, ch := range logsChs {
+		wg.Add(1)
+		go func(ch <-chan core.LogLine) {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case v, ok := <-ch:
+					if !ok {
+						return
+					}
+
 					select {
 					case <-ctx.Done():
 						return
-					case v, ok := <-ch:
-						if !ok {
-							return
-						}
-
-						select {
-						case <-ctx.Done():
-							return
-						case mergedLogsCh <- v:
-						}
+					case mergedLogsCh <- v:
 					}
 				}
-			}(ch)
-		}
+			}
+		}(ch)
+	}
+	go func() {
 		wg.Wait()
 		close(mergedLogsCh)
 	}()
