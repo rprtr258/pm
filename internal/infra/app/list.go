@@ -1,6 +1,9 @@
 package app
 
-import "github.com/rprtr258/pm/internal/core"
+import (
+	"github.com/rprtr258/fun"
+	"github.com/rprtr258/pm/internal/core"
+)
 
 func (app App) List() map[core.PMID]core.Proc { // TODO: return iterator
 	procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
@@ -23,4 +26,17 @@ func (app App) List() map[core.PMID]core.Proc { // TODO: return iterator
 		procs[id] = proc
 	}
 	return procs
+}
+
+func (app App) Get(id core.PMID) (core.Proc, bool) {
+	procs, err := app.db.GetProcs(core.WithIDs(id))
+	if err != nil {
+		return fun.Zero[core.Proc](), false
+	}
+
+	if proc, ok := procs[id]; ok {
+		return proc, true
+	}
+
+	return fun.Zero[core.Proc](), false
 }

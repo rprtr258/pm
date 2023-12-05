@@ -171,11 +171,10 @@ func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
 
 // Logs - watch for processes logs
 func (app App) Logs(ctx context.Context, id core.PMID) (<-chan core.LogLine, error) {
-	procs := app.List()
-	if _, ok := procs[id]; !ok {
+	proc, ok := app.Get(id)
+	if !ok {
 		return nil, xerr.NewM("logs", xerr.Fields{"pmid": id})
 	}
-	proc := procs[id]
 
 	ctx, cancel := context.WithCancel(ctx)
 	if proc.Status.Status != core.StatusRunning {
