@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -131,6 +132,7 @@ func (x *_cmdLogs) Execute(_ []string) error {
 		close(mergedLogsCh)
 	}()
 
+	pad := 0
 	for {
 		select {
 		case <-ctx.Done():
@@ -149,15 +151,17 @@ func (x *_cmdLogs) Execute(_ []string) error {
 				Case(core.LogTypeStderr, scuf.FgHiBlack).
 				End()
 
+			pad = max(pad, len(line.ProcName))
 			fmt.Println(fmt2.FormatComplex(
 				// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
-				"{proc} {sep} {line}",
+				"{proc} {pad}{sep} {line}",
 				map[string]any{
 					"at": scuf.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), scuf.FgHiBlack),
 					// TODO: different colors for different IDs
 					"proc": scuf.String(line.ProcName, colorByID(line.ProcID)),
 					"sep":  scuf.String("|", scuf.FgGreen),
 					"line": scuf.String(line.Line, lineColor),
+					"pad":  strings.Repeat(" ", pad-len(line.ProcName)+1),
 				},
 			))
 		}
