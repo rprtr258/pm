@@ -15,72 +15,6 @@ import (
 	"github.com/rprtr258/pm/internal/infra/app"
 )
 
-func mergeChans(ctx context.Context, chans ...<-chan core.LogLine) <-chan core.LogLine {
-	out := make(chan core.LogLine)
-	go func() {
-		var wg sync.WaitGroup
-		wg.Add(len(chans))
-		for _, ch := range chans {
-			go func(ch <-chan core.LogLine) {
-				defer wg.Done()
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					case v, ok := <-ch:
-						if !ok {
-							return
-						}
-
-						select {
-						case <-ctx.Done():
-							return
-						case out <- v:
-						}
-					}
-				}
-			}(ch)
-		}
-		wg.Wait()
-		close(out)
-	}()
-	return out
-}
-
-func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case line, ok := <-ch:
-			if !ok {
-				return nil
-			}
-
-			if line.Err != nil {
-				line.Line = line.Err.Error()
-			}
-
-			lineColor := fun.Switch(line.Type, scuf.FgRed).
-				Case(core.LogTypeStdout, scuf.FgHiWhite).
-				Case(core.LogTypeStderr, scuf.FgHiBlack).
-				End()
-
-			fmt.Println(fmt2.FormatComplex(
-				// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
-				"{proc} {sep} {line}",
-				map[string]any{
-					"at": scuf.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), scuf.FgHiBlack),
-					// TODO: different colors for different IDs
-					"proc": scuf.String(line.ProcName, scuf.FgRed),
-					"sep":  scuf.String("|", scuf.FgGreen),
-					"line": scuf.String(line.Line, lineColor),
-				},
-			))
-		}
-	}
-}
-
 type _cmdLogs struct {
 	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
 	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
@@ -154,7 +88,64 @@ func (x *_cmdLogs) Execute(_ []string) error {
 		logsChs[i] = logsCh
 	}
 
-	mergedLogsCh := mergeChans(ctx, logsChs...)
+	mergedLogsCh := make(chan core.LogLine)
+	go func() {
+		var wg sync.WaitGroup
+		for _, ch := range logsChs {
+			wg.Add(1)
+			go func(ch <-chan core.LogLine) {
+				defer wg.Done()
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case v, ok := <-ch:
+						if !ok {
+							return
+						}
 
-	return watchLogs(ctx, mergedLogsCh)
+						select {
+						case <-ctx.Done():
+							return
+						case mergedLogsCh <- v:
+						}
+					}
+				}
+			}(ch)
+		}
+		wg.Wait()
+		close(mergedLogsCh)
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case line, ok := <-mergedLogsCh:
+			if !ok {
+				return nil
+			}
+
+			if line.Err != nil {
+				line.Line = line.Err.Error()
+			}
+
+			lineColor := fun.Switch(line.Type, scuf.FgRed).
+				Case(core.LogTypeStdout, scuf.FgHiWhite).
+				Case(core.LogTypeStderr, scuf.FgHiBlack).
+				End()
+
+			fmt.Println(fmt2.FormatComplex(
+				// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
+				"{proc} {sep} {line}",
+				map[string]any{
+					"at": scuf.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), scuf.FgHiBlack),
+					// TODO: different colors for different IDs
+					"proc": scuf.String(line.ProcName, scuf.FgRed),
+					"sep":  scuf.String("|", scuf.FgGreen),
+					"line": scuf.String(line.Line, lineColor),
+				},
+			))
+		}
+	}
 }
