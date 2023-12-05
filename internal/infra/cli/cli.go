@@ -29,6 +29,20 @@ func ensureDir(dirname string) error {
 }
 
 type App struct {
+	// 	Name:    "pm",
+	// 	Usage:   "manage running processes",
+
+	// If sets and script’s memory usage goes about the configured number, pm2 restarts the script.
+	// Uses human-friendly suffixes: ‘K’ for kilobytes, ‘M’ for megabytes, ‘G’ for gigabytes’, etc. Eg “150M”.
+	// &cli.IntFlag{Name: "max-memory-restart", Usage: "Restart the app if an amount of memory is exceeded (in bytes)"},
+	// &cli.BoolFlag{Name:        "attach", Usage: "attach logging after your start/restart/stop/reload"},
+	// &cli.DurationFlag{Name:    "listen-timeout", Usage: "listen timeout on application reload"},
+	// &cli.BoolFlag{Name:        "no-daemon", Usage: "run pm2 daemon in the foreground if it doesn\t exist already"},
+	// &cli.BoolFlag{Name:        "no-vizion", Usage: "start an app without vizion feature (versioning control)"},
+	// &cli.IntFlag{Name:         "parallel", Usage: "number of parallel actions (for restart/reload)"},
+	// &cli.BoolFlag{Name:        "silent", Aliases: []string{"s"}, Usage: "hide all messages", Value: false},
+	// &cli.BoolFlag{Name:        "wait-ip",
+	//               Usage: "override systemd script to wait for full internet connectivity to launch pm2"},
 	App struct {
 		Version _cmdVersion `command:"version" description:"print pm version"`
 		Agent   _cmdAgent   `command:"agent" hidden:"yes"`
@@ -55,25 +69,6 @@ var Parser = func() *flags.Parser {
 		}
 	}
 
-	// var App = &flags.App{
-	// 	Name:    "pm",
-	// 	Usage:   "manage running processes",
-	// 	Flags:   []flags.Flag{
-	// 		// If sets and script’s memory usage goes about the configured number, pm2 restarts the script.
-	// 		// Uses human-friendly suffixes: ‘K’ for kilobytes, ‘M’ for megabytes, ‘G’ for gigabytes’, etc. Eg “150M”.
-	// 		// &cli.IntFlag{Name: "max-memory-restart", Usage: "Restart the app if an amount of memory is exceeded (in bytes)"},
-	// 		// &cli.BoolFlag{Name:        "attach", Usage: "attach logging after your start/restart/stop/reload"},
-	// 		// &cli.DurationFlag{Name:    "listen-timeout", Usage: "listen timeout on application reload"},
-	// 		// &cli.BoolFlag{Name:        "no-daemon", Usage: "run pm2 daemon in the foreground if it doesn\t exist already"},
-	// 		// &cli.BoolFlag{Name:        "no-vizion", Usage: "start an app without vizion feature (versioning control)"},
-	// 		// &cli.IntFlag{Name:         "parallel", Usage: "number of parallel actions (for restart/reload)"},
-	// 		// &cli.BoolFlag{Name:        "silent", Aliases: []string{"s"}, Usage: "hide all messages", Value: false},
-	// 		// &cli.BoolFlag{Name:        "wait-ip",
-	// 		//               Usage: "override systemd script to wait for full internet connectivity to launch pm2"},
-	// 	},
-	// 	Commands: []*flags.Command{
-	// 	},
-	// 	HideHelpCommand: true,
 	// 	Before: func(c *flags.Context) error {
 	// 		if err := ensureDir(core.DirHome); err != nil {
 	// 			return xerr.NewWM(err, "ensure home dir", xerr.Fields{"dir": core.DirHome})
@@ -86,7 +81,6 @@ var Parser = func() *flags.Parser {
 
 	// 		return nil
 	// 	},
-	// }
 
 	//nolint:lll // setting template strings
 	// func Init() {
@@ -145,12 +139,3 @@ var Parser = func() *flags.Parser {
 
 	return parser
 }()
-
-func main() {
-	if _, err := Parser.Parse(); err != nil {
-		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Kind == flags.ErrHelp {
-			return
-		}
-		os.Exit(1)
-	}
-}
