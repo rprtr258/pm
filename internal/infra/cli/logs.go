@@ -91,7 +91,7 @@ type _cmdLogs struct {
 	configFlag
 }
 
-func (x *_cmdLogs) Execut(_ []string) error {
+func (x *_cmdLogs) Execute(_ []string) error {
 	ctx := context.TODO()
 
 	app, errNewApp := app.New()
@@ -99,7 +99,6 @@ func (x *_cmdLogs) Execut(_ []string) error {
 		return xerr.NewWM(errNewApp, "new app")
 	}
 
-	// TODO: filter on server
 	list := app.List()
 
 	if x.configFlag.Config == nil {
@@ -110,7 +109,6 @@ func (x *_cmdLogs) Execut(_ []string) error {
 			core.WithNames(x.Names...),
 			core.WithTags(x.Tags...),
 		)
-
 		if len(procIDs) == 0 {
 			fmt.Println("nothing to watch")
 			return nil
