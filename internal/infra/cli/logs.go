@@ -61,6 +61,24 @@ func (x *_cmdLogs) getProcs(app app.App) ([]core.PMID, error) {
 	), nil
 }
 
+var colors = [...]scuf.Modifier{
+	scuf.FgHiRed,
+	scuf.FgHiGreen,
+	scuf.FgHiYellow,
+	scuf.FgHiBlue,
+	scuf.FgHiMagenta,
+	scuf.FgHiCyan,
+	scuf.FgHiWhite,
+}
+
+func colorByID(id core.PMID) scuf.Modifier {
+	x := 0
+	for i := 0; i < len(id); i++ {
+		x += int(id[i])
+	}
+	return colors[x%len(colors)]
+}
+
 func (x *_cmdLogs) Execute(_ []string) error {
 	ctx := context.TODO()
 
@@ -137,7 +155,7 @@ func (x *_cmdLogs) Execute(_ []string) error {
 				map[string]any{
 					"at": scuf.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), scuf.FgHiBlack),
 					// TODO: different colors for different IDs
-					"proc": scuf.String(line.ProcName, scuf.FgRed),
+					"proc": scuf.String(line.ProcName, colorByID(line.ProcID)),
 					"sep":  scuf.String("|", scuf.FgGreen),
 					"line": scuf.String(line.Line, lineColor),
 				},
