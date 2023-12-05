@@ -91,6 +91,42 @@ type _cmdLogs struct {
 	configFlag
 }
 
+func (x *_cmdLogs) getProcs(app app.App) ([]core.PMID, error) {
+	list := app.List()
+
+	if x.configFlag.Config == nil {
+		return core.FilterProcMap(
+			list,
+			core.WithGeneric(x.Args.Rest...),
+			core.WithIDs(x.IDs...),
+			core.WithNames(x.Names...),
+			core.WithTags(x.Tags...),
+		), nil
+	}
+
+	configs, errLoadConfigs := core.LoadConfigs(string(*x.Config))
+	if errLoadConfigs != nil {
+		return nil, xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{
+			"config": *x.Config,
+		})
+	}
+
+	filteredList, err := app.ListByRunConfigs(configs)
+	if err != nil {
+		return nil, xerr.NewWM(err, "list procs by configs")
+	}
+
+	// TODO: reuse filter options
+	return core.FilterProcMap(
+		filteredList,
+		core.WithGeneric(x.Args.Rest...),
+		core.WithIDs(x.IDs...),
+		core.WithNames(x.Names...),
+		core.WithTags(x.Tags...),
+		core.WithAllIfNoFilters,
+	), nil
+}
+
 func (x *_cmdLogs) Execute(_ []string) error {
 	ctx := context.TODO()
 
@@ -99,57 +135,10 @@ func (x *_cmdLogs) Execute(_ []string) error {
 		return xerr.NewWM(errNewApp, "new app")
 	}
 
-	list := app.List()
-
-	if x.configFlag.Config == nil {
-		procIDs := core.FilterProcMap(
-			list,
-			core.WithGeneric(x.Args.Rest...),
-			core.WithIDs(x.IDs...),
-			core.WithNames(x.Names...),
-			core.WithTags(x.Tags...),
-		)
-		if len(procIDs) == 0 {
-			fmt.Println("nothing to watch")
-			return nil
-		}
-
-		logsChs := make([]<-chan core.LogLine, len(procIDs))
-		for i, procID := range procIDs {
-			logsCh, errLogs := app.Logs(ctx, procID)
-			if errLogs != nil {
-				return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
-			}
-
-			logsChs[i] = logsCh
-		}
-
-		mergedLogsCh := mergeChans(ctx, logsChs...)
-
-		return watchLogs(ctx, mergedLogsCh)
-	}
-
-	configs, errLoadConfigs := core.LoadConfigs(string(*x.Config))
-	if errLoadConfigs != nil {
-		return xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{
-			"config": *x.Config,
-		})
-	}
-
-	filteredList, err := app.ListByRunConfigs(configs)
+	procIDs, err := x.getProcs(app)
 	if err != nil {
-		return xerr.NewWM(err, "list procs by configs")
+		return xerr.NewWM(err, "get proc ids")
 	}
-
-	// TODO: reuse filter options
-	procIDs := core.FilterProcMap(
-		filteredList,
-		core.WithGeneric(x.Args.Rest...),
-		core.WithIDs(x.IDs...),
-		core.WithNames(x.Names...),
-		core.WithTags(x.Tags...),
-		core.WithAllIfNoFilters,
-	)
 	if len(procIDs) == 0 {
 		fmt.Println("nothing to watch")
 		return nil
@@ -159,7 +148,7 @@ func (x *_cmdLogs) Execute(_ []string) error {
 	for i, procID := range procIDs {
 		logsCh, errLogs := app.Logs(ctx, procID)
 		if errLogs != nil {
-			return xerr.NewWM(errLogs, "watch procs from config", xerr.Fields{"procIDs": procIDs})
+			return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
 		}
 
 		logsChs[i] = logsCh
