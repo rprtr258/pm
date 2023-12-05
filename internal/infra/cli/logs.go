@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
@@ -153,11 +152,8 @@ func (x *_cmdLogs) Execute(_ []string) error {
 
 			pad = max(pad, len(line.ProcName))
 			fmt.Println(fmt2.FormatComplex(
-				// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
 				"{proc} {pad}{sep} {line}",
 				map[string]any{
-					"at": scuf.String(line.At.In(time.Local).Format("2006-01-02 15:04:05"), scuf.FgHiBlack),
-					// TODO: different colors for different IDs
 					"proc": scuf.String(line.ProcName, colorByID(line.ProcID)),
 					"sep":  scuf.String("|", scuf.FgGreen),
 					"line": scuf.String(line.Line, lineColor),

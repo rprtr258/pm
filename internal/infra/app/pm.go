@@ -73,7 +73,6 @@ const (
 type ProcLine struct {
 	Line string
 	Type core.LogType
-	At   time.Time
 	Err  error
 }
 
@@ -111,7 +110,6 @@ func streamFile(
 				return nil
 			case logLinesCh <- ProcLine{
 				Line: string(l.Data),
-				At:   time.Now(),
 				Type: logLineType,
 				Err:  nil,
 			}:
@@ -120,7 +118,6 @@ func streamFile(
 		}); err != nil {
 			logLinesCh <- ProcLine{
 				Line: "",
-				At:   time.Now(),
 				Type: logLineType,
 				Err: xerr.NewWM(err, "to tail log", xerr.Fields{
 					"procID": procID,
@@ -222,7 +219,6 @@ func (app App) Logs(ctx context.Context, id core.PMID) (<-chan core.LogLine, err
 					ProcName: proc.Name,
 					Line:     line.Line,
 					Type:     line.Type,
-					At:       line.At,
 					Err:      line.Err,
 				}:
 				}

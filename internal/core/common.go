@@ -3,7 +3,6 @@ package core
 import (
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/rs/zerolog/log"
 )
@@ -35,8 +34,7 @@ const (
 type LogLine struct {
 	ProcID   PMID
 	ProcName string
-	At       time.Time
 	Type     LogType
 	Line     string
-	Err      error // TODO: also pass and process, e.g. for stopped proc
+	Err      error
 }
