@@ -78,21 +78,17 @@ func (x *_cmdLogs) Execute(_ []string) error {
 		return nil
 	}
 
-	logsChs := make([]<-chan core.LogLine, len(procIDs))
-	for i, procID := range procIDs {
+	var wg sync.WaitGroup
+	mergedLogsCh := make(chan core.LogLine)
+	for _, procID := range procIDs {
 		logsCh, errLogs := app.Logs(ctx, procID)
 		if errLogs != nil {
 			return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procID": procID})
 		}
 
-		logsChs[i] = logsCh
-	}
-
-	mergedLogsCh := make(chan core.LogLine)
-	var wg sync.WaitGroup
-	for _, ch := range logsChs {
 		wg.Add(1)
-		go func(ch <-chan core.LogLine) {
+		ch := logsCh
+		go func() {
 			defer wg.Done()
 			for {
 				select {
@@ -110,7 +106,7 @@ func (x *_cmdLogs) Execute(_ []string) error {
 					}
 				}
 			}
-		}(ch)
+		}()
 	}
 	go func() {
 		wg.Wait()
