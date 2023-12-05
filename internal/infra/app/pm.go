@@ -182,7 +182,7 @@ func (app App) Logs(ctx context.Context, id core.PMID) (<-chan core.LogLine, err
 
 	ctx, cancel := context.WithCancel(ctx)
 	if proc.Status.Status != core.StatusRunning {
-		ctx, cancel = context.WithTimeout(ctx, time.Millisecond)
+		ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
 	}
 
 	logsCh := streamProcLogs(ctx, proc)
