@@ -148,7 +148,7 @@ func (x *_cmdLogs) Execute(_ []string) error {
 	for i, procID := range procIDs {
 		logsCh, errLogs := app.Logs(ctx, procID)
 		if errLogs != nil {
-			return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procIDs": procIDs})
+			return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procID": procID})
 		}
 
 		logsChs[i] = logsCh
