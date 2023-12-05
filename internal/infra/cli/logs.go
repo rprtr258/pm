@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
-	"github.com/samber/lo"
 	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -61,10 +61,10 @@ func watchLogs(ctx context.Context, ch <-chan core.LogLine) error {
 				line.Line = line.Err.Error()
 			}
 
-			lineColor := lo.Switch[core.LogType, []byte](line.Type). // all interesting cases are handled
-											Case(core.LogTypeStdout, scuf.FgHiWhite).
-											Case(core.LogTypeStderr, scuf.FgHiBlack).
-											Default(scuf.FgRed)
+			lineColor := fun.Switch(line.Type, scuf.FgRed).
+				Case(core.LogTypeStdout, scuf.FgHiWhite).
+				Case(core.LogTypeStderr, scuf.FgHiBlack).
+				End()
 
 			fmt.Println(fmt2.FormatComplex(
 				// "{at} {proc} {sep} {line}", // TODO: don't show 'at' by default, enable on flag
@@ -150,7 +150,6 @@ func (x *_cmdLogs) Execute(_ []string) error {
 		core.WithTags(x.Tags...),
 		core.WithAllIfNoFilters,
 	)
-
 	if len(procIDs) == 0 {
 		fmt.Println("nothing to watch")
 		return nil
