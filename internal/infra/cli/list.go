@@ -197,17 +197,18 @@ func (*flagListFormat) Usage() string {
 }
 
 func (f *flagListFormat) Complete(prefix string) []flags.Completion {
-	return fun.FilterMap[flags.Completion]([]string{
+	return fun.FilterMap[flags.Completion](
+		func(format string) (flags.Completion, bool) {
+			return flags.Completion{
+				Item:        format,
+				Description: "",
+			}, strings.HasPrefix(format, prefix)
+		},
 		_formatTable,
 		_formatCompact,
 		_formatJSON,
 		_formatShort,
-	}, func(format string) (flags.Completion, bool) {
-		return flags.Completion{
-			Item:        format,
-			Description: "",
-		}, strings.HasPrefix(format, prefix)
-	})
+	)
 }
 
 func (f *flagListFormat) UnmarshalFlag(value string) error {
@@ -302,7 +303,7 @@ func (x *_cmdList) Execute(_ []string) error {
 		core.WithTags(x.Tags...),
 	)
 
-	procsToShow := fun.MapDict(procIDsToShow, list)
+	procsToShow := fun.MapDict(list, procIDsToShow...)
 	sort.Slice(procsToShow, func(i, j int) bool {
 		return x.Sort.less(procsToShow[i], procsToShow[j])
 	})

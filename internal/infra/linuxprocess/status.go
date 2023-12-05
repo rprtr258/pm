@@ -74,10 +74,10 @@ func GetSelfStatus() (Status, error) {
 
 	return Status{
 		Args: os.Args,
-		Envs: fun.SliceToMap[string, string](syscall.Environ(), func(v string) (string, string) {
+		Envs: fun.SliceToMap[string, string](func(v string) (string, string) {
 			name, val, _ := strings.Cut(v, "=")
 			return name, val
-		}),
+		}, syscall.Environ()...),
 		Executable:    executable,
 		Cwd:           cwd,
 		Groups:        groups,

@@ -53,14 +53,12 @@ func (x *_cmdStop) Execute(_ []string) error {
 			return xerr.NewWM(errLoadConfigs, "load configs")
 		}
 
-		names := fun.FilterMap[string](
-			configs,
-			func(cfg core.RunConfig) fun.Option[string] {
-				return cfg.Name
-			})
+		names := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
+			return cfg.Name
+		}, configs...)
 
 		configList := lo.PickBy(list, func(_ core.PMID, procData core.Proc) bool {
-			return fun.Contains(names, procData.Name)
+			return fun.Contains(procData.Name, names...)
 		})
 		list = configList
 	}

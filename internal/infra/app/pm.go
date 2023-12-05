@@ -23,12 +23,12 @@ const _envPMID = "PM_PMID"
 func (app App) ListByRunConfigs(runConfigs []core.RunConfig) (core.Procs, error) {
 	list := app.List()
 
-	procNames := fun.FilterMap[string](runConfigs, func(cfg core.RunConfig) fun.Option[string] {
+	procNames := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
 		return cfg.Name
-	})
+	}, runConfigs...)
 
 	configList := lo.PickBy(list, func(_ core.PMID, procData core.Proc) bool {
-		return fun.Contains(procNames, procData.Name)
+		return fun.Contains(procData.Name, procNames...)
 	})
 
 	return configList, nil

@@ -214,10 +214,10 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) (core.Procs, erro
 	}
 
 	return fun.SliceToMap[core.PMID, core.Proc](
-		core.FilterProcMap(procs, filterOpts...),
 		func(id core.PMID) (core.PMID, core.Proc) {
 			return id, procs[id]
-		}), nil
+		},
+		core.FilterProcMap(procs, filterOpts...)...), nil
 }
 
 func (handle Handle) SetStatus(id core.PMID, newStatus core.Status) Error {

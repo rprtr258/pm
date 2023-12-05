@@ -56,7 +56,7 @@ func (app App) create(
 				Status:     core.NewStatusCreated(),
 				Name:       name,
 				Cwd:        cwd,
-				Tags:       fun.Uniq(append(tags, "all")),
+				Tags:       fun.Uniq(append(tags, "all")...),
 				Command:    command,
 				Args:       args,
 				Watch:      watch,
@@ -89,7 +89,7 @@ func (app App) create(
 	procID, err := app.db.AddProc(db.CreateQuery{
 		Name:       name.OrDefault(namegen.New()),
 		Cwd:        cwd,
-		Tags:       fun.Uniq(append(tags, "all")),
+		Tags:       fun.Uniq(append(tags, "all")...),
 		Command:    command,
 		Args:       args,
 		Watch:      watch,

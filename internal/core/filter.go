@@ -27,13 +27,13 @@ func reinterpretSlice[R, T any](slice []T) []R {
 }
 
 func WithGeneric[S ~string](args ...S) FilterOption {
-	ids := fun.FilterMap[PMID](args, func(id S, _ int) (PMID, bool) {
+	ids := fun.FilterMap[PMID](func(id S, _ int) (PMID, bool) {
 		isHex := true
 		for _, c := range id {
 			isHex = isHex && ('0' <= c && c <= '9' || 'a' <= c && c <= 'f')
 		}
 		return PMID(id), isHex && len(id) == 16*2
-	})
+	}, args...)
 
 	return func(cfg *filter) {
 		cfg.IDs = append(cfg.IDs, ids...)
@@ -79,8 +79,8 @@ func FilterProcMap(procs map[PMID]Proc, opts ...FilterOption) []PMID {
 	return fun.MapFilterToSlice(
 		procs,
 		func(id PMID, proc Proc) (PMID, bool) {
-			return id, fun.Contains(_filter.Names, proc.Name) ||
+			return id, fun.Contains(proc.Name, _filter.Names...) ||
 				lo.Some(_filter.Tags, proc.Tags) ||
-				fun.Contains(_filter.IDs, proc.ID)
+				fun.Contains(proc.ID, _filter.IDs...)
 		})
 }

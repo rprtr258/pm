@@ -159,20 +159,20 @@ func (x *_cmdRun) Execute(_ []string) error {
 	configsByName := make(map[string]core.RunConfig, len(names))
 	for _, cfg := range configs {
 		name, ok := cfg.Name.Unpack()
-		if !ok || !fun.Contains(names, name) {
+		if !ok || !fun.Contains(name, names...) {
 			continue
 		}
 
 		configsByName[name] = cfg
 	}
 
-	merr := xerr.Combine(fun.Map[error](names, func(name string) error {
+	merr := xerr.Combine(fun.Map[error](func(name string) error {
 		if _, ok := configsByName[name]; !ok {
 			return xerr.NewM("unknown proc name", xerr.Fields{"name": name})
 		}
 
 		return nil
-	})...)
+	}, names...)...)
 	if merr != nil {
 		return merr
 	}
