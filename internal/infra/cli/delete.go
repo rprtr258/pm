@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 
@@ -34,14 +35,17 @@ func (x *_cmdDelete) Execute(_ []string) error {
 	list := app.List()
 
 	if x.configFlag.Config == nil {
-		procIDs := core.FilterProcMap(
-			list,
-			core.WithGeneric(args...),
-			core.WithIDs(ids...),
-			core.WithNames(names...),
-			core.WithTags(tags...),
-		)
-
+		procIDs := iter.Map(list.
+			Filter(core.FilterFunc(
+				core.WithGeneric(args...),
+				core.WithIDs(ids...),
+				core.WithNames(names...),
+				core.WithTags(tags...),
+			)),
+			func(proc core.Proc) core.PMID {
+				return proc.ID
+			}).
+			ToSlice()
 		if len(procIDs) == 0 {
 			fmt.Println("Nothing to delete, leaving")
 			return nil
@@ -65,19 +69,19 @@ func (x *_cmdDelete) Execute(_ []string) error {
 		})
 	}
 
-	list, errList := app.ListByRunConfigs(configs)
-	if errList != nil {
-		return xerr.NewWM(errList, "list by run configs", xerr.Fields{"configs": configs})
-	}
-
-	procIDs := core.FilterProcMap(
-		list,
-		core.WithGeneric(args...),
-		core.WithIDs(ids...),
-		core.WithNames(names...),
-		core.WithTags(tags...),
-		core.WithAllIfNoFilters,
-	)
+	procIDs := iter.Map(app.
+		ListByRunConfigs(configs).
+		Filter(core.FilterFunc(
+			core.WithGeneric(args...),
+			core.WithIDs(ids...),
+			core.WithNames(names...),
+			core.WithTags(tags...),
+			core.WithAllIfNoFilters,
+		)),
+		func(proc core.Proc) core.PMID {
+			return proc.ID
+		}).
+		ToSlice()
 
 	if err := app.Stop(procIDs...); err != nil {
 		return xerr.NewWM(err, "stop")

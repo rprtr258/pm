@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	flags "github.com/rprtr258/cli/contrib"
-	"github.com/rprtr258/fun/set"
+	"github.com/rprtr258/fun/iter"
 	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -36,20 +36,18 @@ func (f *flagPMID) Complete(match string) []flags.Completion {
 		return nil
 	}
 
-	list := app.List()
-
-	res := make([]flags.Completion, 0, len(list))
-	for id, proc := range list {
-		if !strings.HasPrefix(string(id), match) {
-			continue
-		}
-
-		res = append(res, flags.Completion{
-			Item:        string(id),
-			Description: "name: " + proc.Name,
-		})
-	}
-	return res
+	return iter.Map(app.
+		List().
+		Filter(func(p core.Proc) bool {
+			return strings.HasPrefix(string(p.ID), match)
+		}),
+		func(proc core.Proc) flags.Completion {
+			return flags.Completion{
+				Item:        proc.ID.String(),
+				Description: "name: " + proc.Name,
+			}
+		}).
+		ToSlice()
 }
 
 type flagProcName string
@@ -61,20 +59,18 @@ func (f *flagProcName) Complete(match string) []flags.Completion {
 		return nil
 	}
 
-	list := app.List()
-
-	res := make([]flags.Completion, 0, len(list))
-	for _, proc := range list {
-		if !strings.HasPrefix(proc.Name, match) {
-			continue
-		}
-
-		res = append(res, flags.Completion{
-			Item:        proc.Name,
-			Description: "status: " + proc.Status.Status.String(),
-		})
-	}
-	return res
+	return iter.Map(app.
+		List().
+		Filter(func(p core.Proc) bool {
+			return strings.HasPrefix(p.Name, match)
+		}),
+		func(proc core.Proc) flags.Completion {
+			return flags.Completion{
+				Item:        proc.Name,
+				Description: "status: " + proc.Status.Status.String(),
+			}
+		}).
+		ToSlice()
 }
 
 type flagProcTag string
@@ -86,31 +82,22 @@ func (f *flagProcTag) Complete(match string) []flags.Completion {
 		return nil
 	}
 
-	list := app.List()
-
-	tags := set.New[string](0)
-	if strings.HasPrefix(match, "all") {
-		tags.Add("all")
-	}
-	for _, proc := range list {
-		for _, tag := range proc.Tags {
-			if !strings.HasPrefix(tag, match) {
-				continue
+	return iter.Map(iter.Unique(iter.FlatMap(app.
+		List(),
+		func(proc core.Proc) iter.Seq[string] {
+			return iter.FromMany(proc.Tags...)
+		}).
+		Chain(iter.FromMany("all"))).
+		Filter(func(tag string) bool {
+			return strings.HasPrefix(tag, match)
+		}),
+		func(tag string) flags.Completion {
+			return flags.Completion{
+				Item:        tag,
+				Description: "",
 			}
-
-			tags.Add(tag)
-		}
-	}
-
-	res := make([]flags.Completion, 0, tags.Size())
-	tags.Iter()(func(tag string) bool {
-		res = append(res, flags.Completion{
-			Item:        tag,
-			Description: "",
-		})
-		return true
-	})
-	return res
+		}).
+		ToSlice()
 }
 
 type flagGenericSelector string

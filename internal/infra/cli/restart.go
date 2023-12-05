@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -33,14 +34,17 @@ func (x *_cmdRestart) Execute(_ []string) error {
 	list := app.List()
 
 	if x.configFlag.Config == nil {
-		procIDs := core.FilterProcMap(
-			list,
-			core.WithGeneric(args...),
-			core.WithIDs(ids...),
-			core.WithNames(names...),
-			core.WithTags(tags...),
-		)
-
+		procIDs := iter.Map(list.
+			Filter(core.FilterFunc(
+				core.WithGeneric(args...),
+				core.WithIDs(ids...),
+				core.WithNames(names...),
+				core.WithTags(tags...),
+			)),
+			func(proc core.Proc) core.PMID {
+				return proc.ID
+			}).
+			ToSlice()
 		if len(procIDs) == 0 {
 			fmt.Println("nothing to restart")
 			return nil
@@ -66,20 +70,19 @@ func (x *_cmdRestart) Execute(_ []string) error {
 		})
 	}
 
-	filteredList, err := app.ListByRunConfigs(configs)
-	if err != nil {
-		return xerr.NewWM(err, "list procs by configs")
-	}
-
-	// TODO: reuse filter options
-	procIDs := core.FilterProcMap(
-		filteredList,
-		core.WithGeneric(args...),
-		core.WithIDs(ids...),
-		core.WithNames(names...),
-		core.WithTags(tags...),
-		core.WithAllIfNoFilters,
-	)
+	procIDs := iter.Map(app.
+		ListByRunConfigs(configs).
+		Filter(core.FilterFunc(
+			core.WithGeneric(args...),
+			core.WithIDs(ids...),
+			core.WithNames(names...),
+			core.WithTags(tags...),
+			core.WithAllIfNoFilters,
+		)),
+		func(proc core.Proc) core.PMID {
+			return proc.ID
+		}).
+		ToSlice()
 
 	if len(procIDs) == 0 {
 		fmt.Println("nothing to start")
@@ -91,7 +94,7 @@ func (x *_cmdRestart) Execute(_ []string) error {
 	}
 
 	if errStart := app.Start(procIDs...); errStart != nil {
-		return xerr.NewWM(err, "client.start")
+		return xerr.NewWM(errStart, "client.start")
 	}
 
 	return nil

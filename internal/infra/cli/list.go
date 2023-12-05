@@ -1,10 +1,11 @@
 package cli
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/aquasecurity/table"
 	"github.com/kballard/go-shellquote"
 	flags "github.com/rprtr258/cli/contrib"
+	cmp2 "github.com/rprtr258/cmp"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/xerr"
@@ -73,7 +75,7 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 }
 
 type flagListSort struct {
-	less func(a, b core.Proc) bool
+	less func(a, b core.Proc) int
 }
 
 func (f *flagListSort) Usage() string {
@@ -83,7 +85,6 @@ func (f *flagListSort) Usage() string {
 			String("id", scuf.FgYellow).String(", ").
 			String("name", scuf.FgYellow).String(", ").
 			String("status", scuf.FgYellow).String(", ").
-			String("pid", scuf.FgYellow).String(", ").
 			String("uptime", scuf.FgYellow).
 			String(". Order can be changed by adding ").
 			String(":asc", scuf.FgRed).
@@ -101,12 +102,12 @@ func (f *flagListSort) UnmarshalFlag(value string) error {
 
 	switch sortField {
 	case "id":
-		f.less = func(a, b core.Proc) bool {
-			return a.ID < b.ID
+		f.less = func(a, b core.Proc) int {
+			return cmp.Compare(a.ID, b.ID)
 		}
 	case "name":
-		f.less = func(a, b core.Proc) bool {
-			return a.Name < b.Name
+		f.less = func(a, b core.Proc) int {
+			return cmp.Compare(a.Name, b.Name)
 		}
 	case "status":
 		getOrder := func(p core.Proc) int {
@@ -124,42 +125,31 @@ func (f *flagListSort) UnmarshalFlag(value string) error {
 				return 400
 			}
 		}
-		f.less = func(a, b core.Proc) bool {
-			return getOrder(a) < getOrder(b)
-		}
-	case "pid":
-		f.less = func(a, b core.Proc) bool {
-			if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
-				if a.Status.Status == core.StatusRunning {
-					return true
-				}
-
-				if b.Status.Status == core.StatusRunning {
-					return false
-				}
-
-				return a.ID < b.ID
-			}
-
-			return a.ID < b.ID
+		f.less = func(a, b core.Proc) int {
+			return cmp.Compare(getOrder(a), getOrder(b))
 		}
 	case "uptime":
-		now := time.Now()
-		f.less = func(a, b core.Proc) bool {
+		f.less = cmp2.Comparator[core.Proc](func(a, b core.Proc) int {
 			if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
 				if a.Status.Status == core.StatusRunning {
-					return true
+					return -1
 				}
 
 				if b.Status.Status == core.StatusRunning {
-					return false
+					return 1
 				}
-
-				return a.ID < b.ID
 			}
-
-			return a.Status.StartTime.Sub(now) < b.Status.StartTime.Sub(now)
-		}
+			return 0
+		}).Then(func(a, b core.Proc) int {
+			switch {
+			case a.Status.StartTime.Before(b.Status.StartTime):
+				return -1
+			case b.Status.StartTime.Before(a.Status.StartTime):
+				return 1
+			default:
+				return 0
+			}
+		})
 	default:
 		return xerr.NewM("unknown sort field", xerr.Fields{"field": sortField})
 	}
@@ -168,9 +158,7 @@ func (f *flagListSort) UnmarshalFlag(value string) error {
 	case "asc":
 	case "desc":
 		oldSortFunc := f.less
-		f.less = func(a, b core.Proc) bool {
-			return !oldSortFunc(a, b)
-		}
+		f.less = cmp2.Comparator[core.Proc](oldSortFunc).Reversed()
 	default:
 		return xerr.NewM("unknown sort order", xerr.Fields{"order": sortOrder})
 	}
@@ -292,21 +280,20 @@ func (x *_cmdList) Execute(_ []string) error {
 		return xerr.NewWM(errNewApp, "new app")
 	}
 
-	list := app.List() // TODO: move in filters which are bit below
+	procIDsToShow := app.
+		List().
+		Filter(core.FilterFunc(
+			core.WithAllIfNoFilters,
+			core.WithGeneric(x.Args.Rest...),
+			core.WithIDs(x.IDs...),
+			core.WithNames(x.Names...),
+			core.WithTags(x.Tags...),
+		)).
+		ToSlice()
 
-	procIDsToShow := core.FilterProcMap(
-		list,
-		core.WithAllIfNoFilters,
-		core.WithGeneric(x.Args.Rest...),
-		core.WithIDs(x.IDs...),
-		core.WithNames(x.Names...),
-		core.WithTags(x.Tags...),
-	)
-
-	procsToShow := fun.MapDict(list, procIDsToShow...)
-	sort.Slice(procsToShow, func(i, j int) bool {
-		return x.Sort.less(procsToShow[i], procsToShow[j])
+	slices.SortFunc(procIDsToShow, func(i, j core.Proc) int {
+		return x.Sort.less(i, j)
 	})
 
-	return x.Format.f(procsToShow)
+	return x.Format.f(procIDsToShow)
 }

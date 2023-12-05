@@ -10,9 +10,9 @@ import (
 
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core"
 	// "github.com/rprtr258/pm/internal/infra/log"
@@ -20,18 +20,16 @@ import (
 
 const _envPMID = "PM_PMID"
 
-func (app App) ListByRunConfigs(runConfigs []core.RunConfig) (core.Procs, error) {
-	list := app.List()
-
-	procNames := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
-		return cfg.Name
+func (app App) ListByRunConfigs(runConfigs []core.RunConfig) iter.Seq[core.Proc] {
+	procNames := fun.FilterMap[string](func(cfg core.RunConfig) (string, bool) {
+		return cfg.Name.Unpack()
 	}, runConfigs...)
 
-	configList := lo.PickBy(list, func(_ core.PMID, procData core.Proc) bool {
-		return fun.Contains(procData.Name, procNames...)
-	})
-
-	return configList, nil
+	return app.
+		List().
+		Filter(func(proc core.Proc) bool {
+			return fun.Contains(proc.Name, procNames...)
+		})
 }
 
 func procFields(proc core.Proc) string {
@@ -170,12 +168,7 @@ func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
 }
 
 // Logs - watch for processes logs
-func (app App) Logs(ctx context.Context, id core.PMID) (<-chan core.LogLine, error) {
-	proc, ok := app.Get(id)
-	if !ok {
-		return nil, xerr.NewM("logs", xerr.Fields{"pmid": id})
-	}
-
+func (app App) Logs(ctx context.Context, proc core.Proc) (<-chan core.LogLine, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	if proc.Status.Status != core.StatusRunning {
 		ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
@@ -202,7 +195,8 @@ func (app App) Logs(ctx context.Context, id core.PMID) (<-chan core.LogLine, err
 					log.Error().Err(err).Msg("failed to check proc status")
 				}
 
-				if newApp.List()[id].Status.Status != core.StatusRunning {
+				proc, _ := newApp.Get(proc.ID)
+				if proc.Status.Status != core.StatusRunning {
 					return
 				}
 			case line, ok := <-logsCh:
@@ -214,7 +208,7 @@ func (app App) Logs(ctx context.Context, id core.PMID) (<-chan core.LogLine, err
 				case <-ctx.Done():
 					return
 				case res <- core.LogLine{
-					ProcID:   id,
+					ProcID:   proc.ID,
 					ProcName: proc.Name,
 					Line:     line.Line,
 					Type:     line.Type,

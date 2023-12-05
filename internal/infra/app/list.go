@@ -2,13 +2,14 @@ package app
 
 import (
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/pm/internal/core"
 )
 
-func (app App) List() map[core.PMID]core.Proc { // TODO: return iterator
+func (app App) List() iter.Seq[core.Proc] { // TODO: return iterator
 	procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
 	if err != nil {
-		return nil
+		return iter.FromNothing[core.Proc]()
 	}
 
 	for id, proc := range procs {
@@ -25,7 +26,7 @@ func (app App) List() map[core.PMID]core.Proc { // TODO: return iterator
 		// }
 		procs[id] = proc
 	}
-	return procs
+	return iter.Values(iter.FromDict(procs))
 }
 
 func (app App) Get(id core.PMID) (core.Proc, bool) {

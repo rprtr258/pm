@@ -25,17 +25,20 @@ type _cmdLogs struct {
 	configFlag
 }
 
-func (x *_cmdLogs) getProcs(app app.App) ([]core.PMID, error) {
-	list := app.List()
+func (x *_cmdLogs) getProcs(app app.App) ([]core.Proc, error) {
+	filterFunc := core.FilterFunc(
+		core.WithGeneric(x.Args.Rest...),
+		core.WithIDs(x.IDs...),
+		core.WithNames(x.Names...),
+		core.WithTags(x.Tags...),
+		core.WithAllIfNoFilters,
+	)
 
 	if x.configFlag.Config == nil {
-		return core.FilterProcMap(
-			list,
-			core.WithGeneric(x.Args.Rest...),
-			core.WithIDs(x.IDs...),
-			core.WithNames(x.Names...),
-			core.WithTags(x.Tags...),
-		), nil
+		return app.
+			List().
+			Filter(filterFunc).
+			ToSlice(), nil
 	}
 
 	configs, errLoadConfigs := core.LoadConfigs(string(*x.Config))
@@ -45,20 +48,10 @@ func (x *_cmdLogs) getProcs(app app.App) ([]core.PMID, error) {
 		})
 	}
 
-	filteredList, err := app.ListByRunConfigs(configs)
-	if err != nil {
-		return nil, xerr.NewWM(err, "list procs by configs")
-	}
-
-	// TODO: reuse filter options
-	return core.FilterProcMap(
-		filteredList,
-		core.WithGeneric(x.Args.Rest...),
-		core.WithIDs(x.IDs...),
-		core.WithNames(x.Names...),
-		core.WithTags(x.Tags...),
-		core.WithAllIfNoFilters,
-	), nil
+	return app.
+		ListByRunConfigs(configs).
+		Filter(filterFunc).
+		ToSlice(), nil
 }
 
 var colors = [...]scuf.Modifier{
@@ -87,21 +80,21 @@ func (x *_cmdLogs) Execute(_ []string) error {
 		return xerr.NewWM(errNewApp, "new app")
 	}
 
-	procIDs, err := x.getProcs(app)
+	procs, err := x.getProcs(app)
 	if err != nil {
 		return xerr.NewWM(err, "get proc ids")
 	}
-	if len(procIDs) == 0 {
+	if len(procs) == 0 {
 		fmt.Println("nothing to watch")
 		return nil
 	}
 
 	var wg sync.WaitGroup
 	mergedLogsCh := make(chan core.LogLine)
-	for _, procID := range procIDs {
-		logsCh, errLogs := app.Logs(ctx, procID)
+	for _, proc := range procs {
+		logsCh, errLogs := app.Logs(ctx, proc)
 		if errLogs != nil {
-			return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procID": procID})
+			return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procID": proc})
 		}
 
 		wg.Add(1)

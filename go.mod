@@ -1,6 +1,6 @@
 module github.com/rprtr258/pm
 
-go 1.21
+go 1.21.0
 
 replace github.com/rprtr258/cli => ../cli
 
@@ -12,6 +12,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rprtr258/cli v0.0.0-20231126160821-d9c17352d5a0
+	github.com/rprtr258/cmp v0.0.2
 	github.com/rprtr258/fun v0.0.11
 	github.com/rprtr258/scuf v0.0.5
 	github.com/rprtr258/xerr v0.1.4

@@ -66,21 +66,31 @@ func WithAllIfNoFilters(cfg *filter) {
 	cfg.AllIfNoFilters = true
 }
 
-func FilterProcMap(procs map[PMID]Proc, opts ...FilterOption) []PMID {
+func FilterFunc(opts ...FilterOption) func(Proc) bool {
 	var _filter filter
 	for _, opt := range opts {
 		opt(&_filter)
 	}
 
 	if _filter.NoFilters() {
-		return fun.Keys(procs)
+		return func(Proc) bool {
+			return _filter.AllIfNoFilters
+		}
 	}
+
+	return func(proc Proc) bool {
+		return fun.Contains(proc.Name, _filter.Names...) ||
+			lo.Some(_filter.Tags, proc.Tags) ||
+			fun.Contains(proc.ID, _filter.IDs...)
+	}
+}
+
+func FilterProcMap(procs map[PMID]Proc, opts ...FilterOption) []PMID {
+	f := FilterFunc(opts...)
 
 	return fun.MapFilterToSlice(
 		procs,
 		func(id PMID, proc Proc) (PMID, bool) {
-			return id, fun.Contains(proc.Name, _filter.Names...) ||
-				lo.Some(_filter.Tags, proc.Tags) ||
-				fun.Contains(proc.ID, _filter.IDs...)
+			return id, f(proc)
 		})
 }

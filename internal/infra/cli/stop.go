@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
-	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -57,20 +57,24 @@ func (x *_cmdStop) Execute(_ []string) error {
 			return cfg.Name
 		}, configs...)
 
-		configList := lo.PickBy(list, func(_ core.PMID, procData core.Proc) bool {
-			return fun.Contains(procData.Name, names...)
-		})
-		list = configList
+		list = list.
+			Filter(func(proc core.Proc) bool {
+				return fun.Contains(proc.Name, names...)
+			})
 	}
 
-	procIDs := core.FilterProcMap(
-		list,
-		core.WithGeneric(x.Args.Rest...),
-		core.WithIDs(x.IDs...),
-		core.WithNames(x.Names...),
-		core.WithTags(x.Tags...),
-		core.WithAllIfNoFilters,
-	)
+	procIDs := iter.Map(list.
+		Filter(core.FilterFunc(
+			core.WithGeneric(x.Args.Rest...),
+			core.WithIDs(x.IDs...),
+			core.WithNames(x.Names...),
+			core.WithTags(x.Tags...),
+			core.WithAllIfNoFilters,
+		)),
+		func(proc core.Proc) core.PMID {
+			return proc.ID
+		}).
+		ToSlice()
 	if len(procIDs) == 0 {
 		fmt.Println("nothing to stop")
 		return nil
