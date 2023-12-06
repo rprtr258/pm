@@ -22,11 +22,6 @@ type _cmdDelete struct {
 }
 
 func (x *_cmdDelete) Execute(_ []string) error {
-	names := x.Names
-	tags := x.Tags
-	ids := x.IDs
-	args := x.Args.Rest
-
 	app, errNewApp := app.New()
 	if errNewApp != nil {
 		return xerr.NewWM(errNewApp, "new app")
@@ -37,10 +32,10 @@ func (x *_cmdDelete) Execute(_ []string) error {
 	if x.configFlag.Config == nil {
 		procIDs := iter.Map(list.
 			Filter(core.FilterFunc(
-				core.WithGeneric(args...),
-				core.WithIDs(ids...),
-				core.WithNames(names...),
-				core.WithTags(tags...),
+				core.WithGeneric(x.Args.Rest...),
+				core.WithIDs(x.IDs...),
+				core.WithNames(x.Names...),
+				core.WithTags(x.Tags...),
 			)),
 			func(proc core.Proc) core.PMID {
 				return proc.ID
@@ -72,10 +67,10 @@ func (x *_cmdDelete) Execute(_ []string) error {
 	procIDs := iter.Map(app.
 		ListByRunConfigs(configs).
 		Filter(core.FilterFunc(
-			core.WithGeneric(args...),
-			core.WithIDs(ids...),
-			core.WithNames(names...),
-			core.WithTags(tags...),
+			core.WithGeneric(x.Args.Rest...),
+			core.WithIDs(x.IDs...),
+			core.WithNames(x.Names...),
+			core.WithTags(x.Tags...),
 			core.WithAllIfNoFilters,
 		)),
 		func(proc core.Proc) core.PMID {

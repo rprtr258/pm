@@ -78,9 +78,6 @@ func (x *_cmdRun) Execute(_ []string) error {
 	}
 
 	if x.Config == nil {
-		command := x.Args.Command
-		commandArgs := x.Args.Args
-		tags := x.Tags
 		var workDir string
 		if x.Cwd == nil {
 			cwd, err := os.Getwd()
@@ -103,10 +100,10 @@ func (x *_cmdRun) Execute(_ []string) error {
 		}
 
 		runConfig := core.RunConfig{
-			Command:    command,
-			Args:       commandArgs,
+			Command:    x.Args.Command,
+			Args:       x.Args.Args,
 			Name:       fun.FromPtr(x.Name),
-			Tags:       tags,
+			Tags:       x.Tags,
 			Cwd:        workDir,
 			Env:        nil,
 			Watch:      watch,
