@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"syscall"
 
+	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 
@@ -48,11 +50,15 @@ func (app App) startAgentImpl(id core.PMID) error {
 		}
 	}()
 
-	env := os.Environ()
-	for k, v := range proc.Env {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
-	env = append(env, fmt.Sprintf("%s=%s", _envPMID, proc.ID))
+	env := iter.
+		FromMany(os.Environ()...).
+		Chain(iter.Map(iter.
+			FromDict(proc.Env),
+			func(kv fun.Pair[string, string]) string {
+				return fmt.Sprintf("%s=%s", kv.K, kv.V)
+			})).
+		Chain(iter.FromMany(fmt.Sprintf("%s=%s", _envPMID, proc.ID))).
+		ToSlice()
 
 	procDesc, err := json.Marshal(proc)
 	if err != nil {
