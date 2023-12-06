@@ -7,10 +7,12 @@ replace github.com/rprtr258/cli => ../cli
 require (
 	github.com/aquasecurity/table v1.8.0
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
+	github.com/fsnotify/fsnotify v1.7.0
 	github.com/go-faster/tail v0.3.0
 	github.com/google/go-jsonnet v0.20.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+	github.com/rogpeppe/go-internal v1.11.0
 	github.com/rprtr258/cli v0.0.0-20231126160821-d9c17352d5a0
 	github.com/rprtr258/cmp v0.0.2
 	github.com/rprtr258/fun v0.0.11
@@ -26,7 +28,6 @@ require (
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-faster/errors v0.7.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -37,8 +38,8 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/term v0.14.0 // indirect
+	golang.org/x/tools v0.15.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
