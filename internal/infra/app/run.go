@@ -63,9 +63,7 @@ func (app App) Run(config core.RunConfig) (core.PMID, error) {
 		)
 	}
 
-	if errStart := app.startAgent(id); errStart != nil {
-		return core.PMID(id), xerr.NewWM(errStart, "start processes", xerr.Errors{merr})
-	}
+	app.startAgent(id)
 
 	return core.PMID(id), merr
 }
