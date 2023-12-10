@@ -13,14 +13,14 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/rogpeppe/go-internal v1.11.0
-	github.com/rprtr258/cli v0.0.0-20231126160821-d9c17352d5a0
+	github.com/rprtr258/cli v0.0.0-20231207015011-69288b6fbc48
 	github.com/rprtr258/cmp v0.0.2
-	github.com/rprtr258/fun v0.0.11
+	github.com/rprtr258/fun v0.0.12
 	github.com/rprtr258/scuf v0.0.5
 	github.com/rprtr258/xerr v0.1.4
 	github.com/rs/zerolog v1.31.0
-	github.com/samber/lo v1.38.1
-	github.com/urfave/cli/v2 v2.25.7
+	github.com/samber/lo v1.39.0
+	github.com/urfave/cli/v2 v2.26.0
 	github.com/wissance/stringFormatter v1.1.1
 	golang.org/x/mod v0.14.0
 )
@@ -37,9 +37,9 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/sys v0.14.0 // indirect
-	golang.org/x/term v0.14.0 // indirect
-	golang.org/x/tools v0.15.0 // indirect
+	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/tools v0.16.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
