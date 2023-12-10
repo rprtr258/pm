@@ -2,8 +2,6 @@ module github.com/rprtr258/pm
 
 go 1.21.0
 
-replace github.com/rprtr258/cli => ../cli
-
 require (
 	github.com/aquasecurity/table v1.8.0
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
