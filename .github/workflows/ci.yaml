@@ -39,8 +39,24 @@ jobs:
           go-version: '1.21'
           cache: true
 
+      - name: Add SSH Go Module Private Key
+        env:
+            SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
+            ssh-add - <<< "${{ secrets.GO_MODULE_PRIVATE_KEY }}"
+            echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV      
+
+      - name: Setup access for private go modules
+        run: |
+          git config --global url."ssh://git@github.com/".insteadOf https://github.com/
+        
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
+        env:
+          GOPRIVATE: github.com/rprtr258
         with:
           version: latest
           args: --config=.golangci.yml
