@@ -2,15 +2,15 @@ package watcher
 
 import (
 	"context"
-	"io/fs"
-	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
-	"github.com/rs/zerolog/log"
 
-	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/fsnotify"
+	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 type Entry struct {
@@ -20,120 +20,73 @@ type Entry struct {
 }
 
 type Watcher struct {
-	Watchplaces map[core.PMID]Entry
+	dir      string
+	re       *regexp.Regexp
+	watcher  *fsnotify.BatchedRecursiveWatcher
+	callback func(context.Context) error
 }
 
-func New() Watcher {
-	return Watcher{
-		Watchplaces: make(map[core.PMID]Entry),
-	}
-}
-
-func (w Watcher) Add(procID core.PMID, dir, pattern string) error {
-	log.Info().
-		Stringer("pmid", procID).
-		Str("dir", dir).
-		Str("pattern", pattern).
-		Msg("adding watch dir")
-
-	if _, ok := w.Watchplaces[procID]; ok {
-		// already added
-		return nil
+func New(dir, pattern string, callback func(context.Context) error) (Watcher, error) {
+	watcher, err := fsnotify.NewBatchedRecursiveWatcher(dir, "", time.Second)
+	if err != nil {
+		return fun.Zero[Watcher](), xerr.NewWM(err, "create fsnotify watcher")
 	}
 
 	re, errCompilePattern := regexp.Compile(pattern)
 	if errCompilePattern != nil {
-		return xerr.NewWM(errCompilePattern, "compile pattern")
+		return fun.Zero[Watcher](), xerr.NewWM(errCompilePattern, "compile pattern")
 	}
 
-	w.Watchplaces[procID] = Entry{
-		RootDir:     dir,
-		Pattern:     re,
-		LastModTime: time.Time{},
-	}
-
-	return nil
+	return Watcher{
+		dir:      dir,
+		re:       re,
+		watcher:  watcher,
+		callback: callback,
+	}, nil
 }
 
-func (w Watcher) Remove(procID core.PMID) {
-	log.Info().
-		Stringer("pmid", procID).
-		Msg("removing watch dir")
+func (w Watcher) processEventBatch(ctx context.Context, events []fsnotify.Event) {
+	triggered := false
+	for _, event := range events {
+		filename, err := filepath.Rel(w.dir, event.Name)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Stringer("event", event).
+				Str("dir", w.dir).
+				Msg("get relative filename failed")
+			continue
+		}
 
-	delete(w.Watchplaces, procID)
+		if !w.re.MatchString(filename) {
+			continue
+		}
+
+		triggered = true
+		break
+	}
+
+	if triggered {
+		if err := w.callback(ctx); err != nil {
+			log.Error().
+				Err(err).
+				Msg("execute callback failed")
+		}
+	}
 }
 
 func (w Watcher) Start(ctx context.Context) {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	// TODO: rewrite
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		// case event := <-w.statusCh:
-		// 	switch e := event.Data.(type) {
-		// 	case eventbus.DataProcStarted:
-		// 		if _, ok := w.Watchplaces[e.Proc.ID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
-		// 			if watch, ok := e.Proc.Watch.Unpack(); ok {
-		// 				if err := w.Add(e.Proc.ID, e.Proc.Cwd, watch); err != nil {
-		// 					log.Error().
-		// 						Err(err).
-		// 						Stringer("pmid", e.Proc.ID).
-		// 						Str("watch", watch).
-		// 						Str("cwd", e.Proc.Cwd).
-		// 						Msg("add watch failed")
-		// 				}
-		// 			}
-		// 		}
-		// 	case eventbus.DataProcStopped:
-		// 		if _, ok := w.Watchplaces[e.ProcID]; !ok && e.EmitReason&^eventbus.EmitReasonByWatcher != 0 {
-		// 			w.Remove(e.ProcID)
-		// 		}
-		// 	}
-		case now := <-ticker.C:
-			// TODO: make concurrent
-			for /*id*/ _, wp := range w.Watchplaces {
-				updated := false
-				fs.WalkDir(os.DirFS(wp.RootDir), "/", func(path string, d fs.DirEntry, err error) error {
-					if err != nil {
-						return fs.SkipAll
-					}
-
-					if d.IsDir() {
-						return nil
-					}
-
-					info, errInfo := d.Info()
-					if errInfo != nil {
-						return xerr.NewWM(errInfo, "get file info")
-					}
-
-					if !wp.Pattern.MatchString(info.Name()) || info.ModTime().Before(wp.LastModTime) {
-						return nil
-					}
-
-					updated = true
-					return fs.SkipAll
-				})
-				// log.Debug().
-				// 	Stringer("pmid", id).
-				// 	Str("path", e.Path()).
-				// 	Str("root", wp.RootDir).
-				// 	Str("pattern", wp.Pattern.String()).
-				// 	Str("event", e.Event().String()).
-				// 	Msg("watcher got event")
-
-				// TODO: merge into restart request?
-				if updated {
-					wp.LastModTime = now
-					// w.ebus.Publish(ctx,
-					// 	eventbus.NewPublishProcStopRequest(id, eventbus.EmitReasonByWatcher),
-					// 	eventbus.NewPublishProcStartRequest(id, eventbus.EmitReasonByWatcher),
-					// )
-				}
-			}
+		case err := <-w.watcher.Errors():
+			log.Error().
+				Err(err).
+				Msg("fsnotify error")
+			return
+		case events := <-w.watcher.Events():
+			w.processEventBatch(ctx, events)
 		}
 	}
 }
