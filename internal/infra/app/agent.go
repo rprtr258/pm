@@ -65,13 +65,17 @@ func (app App) StartRaw(proc core.Proc) error {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 
-		_ = cmd.Process.Signal(syscall.SIGTERM)
+		if errTerm := cmd.Process.Signal(syscall.SIGTERM); errTerm != nil {
+			log.Error().Err(errTerm).Msg("failed to send SIGTERM to process")
+		}
 
 		select {
 		case <-doneCh:
 		case <-time.After(5 * time.Second):
 			log.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
-			_ = cmd.Process.Kill()
+			if errKill := cmd.Process.Signal(syscall.SIGKILL); errKill != nil {
+				log.Error().Err(errKill).Msg("failed to send SIGKILL to process")
+			}
 		}
 	}()
 
