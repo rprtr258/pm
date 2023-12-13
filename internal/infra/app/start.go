@@ -87,9 +87,10 @@ func (app App) startAgentImpl(id core.PMID) error {
 }
 
 // startAgent - run processes by their ids in database
-// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 func (app App) startAgent(id core.PMID) {
 	l := log.With().Stringer("pmid", id).Logger()
+
+	// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 
 	if errStart := app.startAgentImpl(id); errStart != nil {
 		if errStart != ErrAlreadyRunning {

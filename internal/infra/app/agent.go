@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/core/daemon/watcher"
 )
 
 func (app App) StartRaw(proc core.Proc) error {
@@ -57,6 +59,28 @@ func (app App) StartRaw(proc core.Proc) error {
 
 		app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
 		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": proc})
+	}
+
+	if watchRE, ok := proc.Watch.Unpack(); ok {
+		watcher, errWatcher := watcher.New(proc.Cwd, watchRE, func(ctx context.Context) error {
+			if errTerm := cmd.Process.Signal(syscall.SIGKILL); errTerm != nil {
+				return xerr.NewWM(errTerm, "failed to send SIGKILL to process on watch")
+			}
+
+			if errStart := cmd.Start(); errStart != nil {
+				return xerr.NewWM(errStart, "failed to start process on watch")
+			}
+
+			return nil
+		})
+		if errWatcher != nil {
+			return xerr.NewWM(errWatcher, "create watcher")
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go watcher.Start(ctx)
 	}
 
 	doneCh := make(chan struct{}, 1)

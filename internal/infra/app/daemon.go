@@ -62,17 +62,13 @@ func New() (App, error) {
 	}
 
 	if errMigrate := MigrateConfig(cfg); errMigrate != nil {
-		return App{}, fmt.Errorf("migrate: %w", errMigrate)
+		return fun.Zero[App](), fmt.Errorf("migrate: %w", errMigrate)
 	}
 
 	dbHandle, errDB := db.New(_dirDB)
 	if errDB != nil {
-		return App{}, xerr.NewWM(errDB, "new db", xerr.Fields{"dir": _dirDB})
+		return fun.Zero[App](), xerr.NewWM(errDB, "new db", xerr.Fields{"dir": _dirDB})
 	}
-
-	// TODO: move to agent
-	// watcher := watcher.New(ebus)
-	// go watcher.Start(ctx)
 
 	config, errConfig := core.ReadConfig()
 	if errConfig != nil {
