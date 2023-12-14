@@ -76,6 +76,7 @@ func (w Watcher) processEventBatch(ctx context.Context, events []fsnotify.Event)
 }
 
 func (w Watcher) Start(ctx context.Context) {
+	defer w.watcher.Close()
 	for {
 		select {
 		case <-ctx.Done():

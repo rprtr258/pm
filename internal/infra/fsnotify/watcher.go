@@ -52,13 +52,6 @@ type RecursiveWatcher struct {
 	doneClose chan struct{}
 }
 
-var _ Watcher[fsnotify.Event] = (*RecursiveWatcher)(nil)
-
-// NewRecursiveWatcher creates a new recursive watcher rooted at directory rootDir.
-func NewRecursiveWatcher(rootDir string) (*RecursiveWatcher, error) {
-	return newRecursiveWatcher(rootDir, "")
-}
-
 // newRecursiveWatcher creates a new recursive watcher rooted at directory
 // rootDir. If gittoplevel is non-empty, then the $gittoplevel/.git is watched
 // for for an index.lock file that signals git operations. This allows a
@@ -116,14 +109,6 @@ func newRecursiveWatcher(rootDir, gittoplevel string) (*RecursiveWatcher, error)
 	go res.runEventLoop()
 
 	return res, nil
-}
-
-func (w *RecursiveWatcher) Events() <-chan fsnotify.Event {
-	return w.events
-}
-
-func (w *RecursiveWatcher) Errors() <-chan error {
-	return w.errors
 }
 
 // Close shuts down the watcher, by removing all watches and closing the Events

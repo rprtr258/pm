@@ -66,10 +66,11 @@ install-linter: bindir
 		mv ${BINDIR}/golangci-lint-${GOLANGCILINTVER}-linux-amd64/golangci-lint ${GOLANGCILINTBIN} && \
 		rm -rf ${BINDRI}/${GOLANGCILINTBIN}.tar.gz ${BINDIR}/golangci-lint-${GOLANGCILINTVER}-linux-amd64)
 
-# TODO: pin go-critic
+# TODO: pin go-critic, deadcode
 lint-go: install-linter # run go linter
 	@${GOLANGCILINTBIN} run ./...
 	gocritic check -enableAll -disable='rangeValCopy,hugeParam,unnamedResult' ./...
+	deadcode .
 
 lint: lint-go # run all linters
 

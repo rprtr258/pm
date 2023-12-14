@@ -5,7 +5,6 @@ import (
 
 	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
-	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -87,12 +86,4 @@ func (x *_cmdDelete) Execute(_ []string) error {
 	}
 
 	return nil
-}
-
-func deferErr(closer func() error) func() {
-	return func() {
-		if err := closer(); err != nil {
-			log.Error().Err(err).Msg("some defer action failed:")
-		}
-	}
 }

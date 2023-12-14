@@ -92,8 +92,6 @@ func setup(e *testscript.Env) (err error) {
 			return fmt.Errorf("failed to parse time.Duration from contents of %s: %w", batchedFn, err)
 		}
 		h, herr = s.batchedWatcher(d)
-	} else {
-		h, herr = s.watcher()
 	}
 	s.hander = h
 	return herr
@@ -148,20 +146,6 @@ Walk:
 		s.gittoplevel = *_gittoplevel
 	}
 	return nil
-}
-
-func (s *setupCtx) watcher() (specialHander, error) {
-	w, err := fsnotify.NewRecursiveWatcher(s.rootdir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
-	}
-	s.Defer(func() {
-		w.Close()
-	})
-	bwh := newBatchedWatcherHandler[fsnotify.Event](s, w, handleEvent)
-	s.hander = bwh
-	go bwh.run()
-	return bwh, nil
 }
 
 func (s *setupCtx) batchedWatcher(d time.Duration) (specialHander, error) {
