@@ -20,7 +20,7 @@ type _cmdStart struct {
 	configFlag
 }
 
-func (x *_cmdStart) Execute(_ []string) error {
+func (x *_cmdStart) Execute([]string) error {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
 		return xerr.NewWM(errNewApp, "new app")
