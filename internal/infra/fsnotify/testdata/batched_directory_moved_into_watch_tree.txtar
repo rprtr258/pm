@@ -1,5 +1,5 @@
 # Move a directory structure into and out of a watched tree a couple of times.
-# Ensure that touching a file then contined within the directory that has been
+# Ensure that touching a file then contained within the directory that has been
 # moved in place works. We use a long batch period to ensure that we have
 # almost 100% consistency of grouping of events, without blowing the testing
 # time.

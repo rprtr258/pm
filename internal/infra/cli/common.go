@@ -238,7 +238,7 @@ func (f *flagGenericSelector) Complete(match string) []flags.Completion {
 //   .option('--out', 'only shows standard output')
 //   .option('--lines <n>', 'output the last N lines, instead of the last 15 by default')
 //   .option('--timestamp [format]', 'add timestamps (default format YYYY-MM-DD-HH:mm:ss)')
-//   .option('--nostream', 'print logs without lauching the log stream')
+//   .option('--nostream', 'print logs without launching the log stream')
 //   .option('--highlight [value]', 'highlights the given value')
 
 // { Name:      "serve",
@@ -247,6 +247,6 @@ func (f *flagGenericSelector) Complete(match string) []flags.Completion {
 // 	Aliases:   []string{"expose"},
 // 	Flags:     []cli.Flag{
 //   .option('--port [port]', 'specify port to listen to')
-//   .option('--spa', 'always serving index.html on inexistant sub path')
+//   .option('--spa', 'always serving index.html on inexistent sub path')
 //   .option('--basic-auth-username [username]', 'set basic auth username')
 //   .option('--basic-auth-password [password]', 'set basic auth password')

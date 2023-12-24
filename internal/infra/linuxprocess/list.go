@@ -13,13 +13,13 @@ type ProcListItem struct {
 }
 
 func List() []ProcListItem {
-	entires, err := os.ReadDir("/proc")
+	entries, err := os.ReadDir("/proc")
 	if err != nil {
 		return nil
 	}
 
-	procs := make([]ProcListItem, 0, len(entires))
-	for _, entry := range entires {
+	procs := make([]ProcListItem, 0, len(entries))
+	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}

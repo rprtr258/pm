@@ -78,7 +78,7 @@ func setup(e *testscript.Env) (err error) {
 
 	// If there is a .batched file in e.Cd, we want a BatchedWatcher. If it has
 	// non-empty contents, they should parse to a time.Duration
-	var h specialHander
+	var h specialHandler
 	var herr error
 	batchedFn := filepath.Join(e.Cd, ".batched")
 	if f, err := os.Open(batchedFn); err == nil {
@@ -93,13 +93,13 @@ func setup(e *testscript.Env) (err error) {
 		}
 		h, herr = s.batchedWatcher(d)
 	}
-	s.hander = h
+	s.handler = h
 	return herr
 }
 
 type setupCtx struct {
 	*testscript.Env
-	hander      specialHander
+	handler     specialHandler
 	log         *watcherLog
 	rootdir     string
 	gittoplevel string
@@ -148,7 +148,7 @@ Walk:
 	return nil
 }
 
-func (s *setupCtx) batchedWatcher(d time.Duration) (specialHander, error) {
+func (s *setupCtx) batchedWatcher(d time.Duration) (specialHandler, error) {
 	bw, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
@@ -161,7 +161,7 @@ func (s *setupCtx) batchedWatcher(d time.Duration) (specialHander, error) {
 	return bwh, nil
 }
 
-type specialHander interface {
+type specialHandler interface {
 	SpecialWatch() chan string
 	SpecialWait() chan struct{}
 }
@@ -186,7 +186,7 @@ type batchedWatcherHandler[T any] struct {
 	handler      eventHandler[T]
 }
 
-var _ specialHander = (*batchedWatcherHandler[fsnotify.Event])(nil)
+var _ specialHandler = (*batchedWatcherHandler[fsnotify.Event])(nil)
 
 func (b *batchedWatcherHandler[T]) SpecialWatch() chan string {
 	return b.specialWatch
@@ -301,12 +301,12 @@ func logCmd(ts *testscript.TestScript, neg bool, args []string) {
 
 	done := make(chan struct{})
 	go func() {
-		<-sc.hander.SpecialWait()
+		<-sc.handler.SpecialWait()
 		close(done)
 	}()
 
 	// Tell the handler about the special file
-	sc.hander.SpecialWatch() <- sf
+	sc.handler.SpecialWatch() <- sf
 
 	// Now touch the special file
 	now := time.Now()

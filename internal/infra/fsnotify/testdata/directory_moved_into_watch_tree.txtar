@@ -1,5 +1,5 @@
 # Move a directory structure into and out of a watched tree a couple of times.
-# Ensure that touching a file then contined within the directory that has been
+# Ensure that touching a file then contained within the directory that has been
 # moved in place works.
 
 # Only run these tests on linux for now.
