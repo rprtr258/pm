@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	flags "github.com/rprtr258/cli/contrib"
@@ -17,13 +16,12 @@ func main() {
 		Caller().
 		Logger()
 
-	// cli.Init()
-
 	if _, err := cli.Parser.ParseArgs(os.Args[1:]...); err != nil {
 		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Kind == flags.ErrHelp {
 			return
 		}
-		fmt.Fprintln(os.Stderr, err.Error())
+		cli.Parser.WriteHelp(os.Stderr)
+		// fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 }
