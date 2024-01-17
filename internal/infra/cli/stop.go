@@ -47,7 +47,7 @@ func (x *_cmdStop) Execute(_ []string) error {
 
 	list := client.List()
 
-	if x.configFlag.Config == nil {
+	if x.configFlag.Config != nil {
 		configs, errLoadConfigs := core.LoadConfigs(string(*x.configFlag.Config))
 		if errLoadConfigs != nil {
 			return xerr.NewWM(errLoadConfigs, "load configs")

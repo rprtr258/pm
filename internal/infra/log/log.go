@@ -20,6 +20,18 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// TODO: make scuf conform to go1.22rc1 iterator spec
+func legacy(iterator iter.Seq[func(scuf.Buffer)]) func(yield func(func(scuf.Buffer)) bool) bool {
+	return func(yield func(func(scuf.Buffer)) bool) bool {
+		for f := range iterator {
+			if !yield(f) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
 func colorStringFg(bb []byte, color []byte) []byte {
 	return []byte(scuf.String(string(bb), color))
 }
@@ -64,7 +76,7 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 		InBytePair('(', ')', func(b scuf.Buffer) {
 			b.String(strconv.Itoa(sv.Len()), scuf.FgBlue)
 		}).
-		Iter(iter.Map(iter.FromRange(0, min(sv.Len(), w.maxSlicePrintSize+1), 1), func(i int) func(scuf.Buffer) {
+		Iter(legacy(iter.Map(iter.FromRange(0, min(sv.Len(), w.maxSlicePrintSize+1), 1), func(i int) func(scuf.Buffer) {
 			return func(b scuf.Buffer) {
 				if i == w.maxSlicePrintSize {
 					b.
@@ -86,7 +98,7 @@ func (w *prettyWriter) formatSlice(st reflect.Type, sv reflect.Value, l int) []b
 					Bytes(' ').
 					Bytes(w.formatValue(v, l+1)...)
 			}
-		}))
+		})))
 	return bb.Bytes()
 }
 
@@ -108,7 +120,7 @@ func (w *prettyWriter) formatMap(typ reflect.Type, val reflect.Value, l int) []b
 		InBytePair('(', ')', func(b scuf.Buffer) {
 			b.String(strconv.Itoa(val.Len()), scuf.FgBlue)
 		}).
-		Iter(iter.Map(iter.FromMany(sk...), func(k reflect.Value) func(scuf.Buffer) {
+		Iter(legacy(iter.Map(iter.FromMany(sk...), func(k reflect.Value) func(scuf.Buffer) {
 			return func(b scuf.Buffer) {
 				tb := colorStringFg(w.formatValue(k, l+1), scuf.FgGreen)
 				b.
@@ -119,7 +131,7 @@ func (w *prettyWriter) formatMap(typ reflect.Type, val reflect.Value, l int) []b
 					Bytes(' ').
 					Bytes(w.formatValue(val.MapIndex(k), l+1)...)
 			}
-		}))
+		})))
 	return bb.Bytes()
 }
 
@@ -136,7 +148,7 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 	var bb bytes.Buffer
 	scuf.New(&bb).
 		Bytes(w.buildTypeString(st.String())...).
-		Iter(iter.Map(iter.FromRange(0, st.NumField(), 1), func(i int) func(scuf.Buffer) {
+		Iter(legacy(iter.Map(iter.FromRange(0, st.NumField(), 1), func(i int) func(scuf.Buffer) {
 			return func(b scuf.Buffer) {
 				if !sv.Type().Field(i).IsExported() {
 					return
@@ -158,7 +170,7 @@ func (w *prettyWriter) formatStruct(st reflect.Type, sv reflect.Value, l int) []
 					Bytes(' ').
 					Bytes(w.formatValue(val, l+1)...)
 			}
-		})).
+		}))).
 		Styled(func(b scuf.Buffer) {
 			if zeroes > 0 {
 				b.
@@ -216,7 +228,7 @@ func (w *prettyWriter) buildTypeString(typeStr string) []byte {
 	typeStr = strings.ReplaceAll(typeStr, "interface {}", "any")
 	var bb bytes.Buffer
 	scuf.New(&bb).
-		Iter(iter.Map(iter.FromMany([]byte(typeStr)...), func(c byte) func(scuf.Buffer) {
+		Iter(legacy(iter.Map(iter.FromMany([]byte(typeStr)...), func(c byte) func(scuf.Buffer) {
 			return func(b scuf.Buffer) {
 				switch c {
 				case '*':
@@ -233,7 +245,7 @@ func (w *prettyWriter) buildTypeString(typeStr string) []byte {
 					}, scuf.FgYellow)
 				}
 			}
-		}))
+		})))
 	return bb.Bytes()
 }
 
@@ -264,7 +276,7 @@ func (w *prettyWriter) write(msg string, ev *Event) {
 		String(msg, colorFg).
 		Bytes('\n').
 		// attributes
-		Iter(iter.Map(iterSorted(iter.FromDict(ev.fields)), func(kv fun.Pair[string, any]) func(scuf.Buffer) {
+		Iter(legacy(iter.Map(iterSorted(iter.FromDict(ev.fields)), func(kv fun.Pair[string, any]) func(scuf.Buffer) {
 			k, value := kv.K, kv.V
 			return func(b scuf.Buffer) {
 				b.
@@ -318,7 +330,7 @@ func (w *prettyWriter) write(msg string, ev *Event) {
 				}
 				b.Bytes('\n')
 			}
-		}))
+		})))
 }
 
 type Event struct {

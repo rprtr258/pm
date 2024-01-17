@@ -12,13 +12,14 @@ import (
 	"strings"
 	"time"
 
+	flags "github.com/rprtr258/cli/contrib"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
-	"github.com/urfave/cli/v2"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/cli"
 )
 
 // tcpPortAvailable checks if a given TCP port is bound on the local network interface.
@@ -161,23 +162,14 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	}
 
 	// DELETE ALL PROCS
-	list := client.List()
-
-	var err error
-	if !list(func(proc core.Proc) bool {
+	for _, proc := range client.List() {
 		if errStop := client.Stop(proc.ID); errStop != nil {
-			err = xerr.NewWM(errStop, "stop all old processes")
-			return false
+			return xerr.NewWM(errStop, "stop all old processes")
 		}
 
 		if errDelete := client.Delete(proc.ID); errDelete != nil {
-			err = xerr.NewWM(errDelete, "delete all old processes")
-			return false
+			return xerr.NewWM(errDelete, "delete all old processes")
 		}
-
-		return true
-	}) {
-		return err
 	}
 
 	// RUN TEST
@@ -254,40 +246,43 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	return nil
 }
 
-var (
-	_testsCmds = fun.MapToSlice(
-		tests,
-		func(name string, test testcase) *cli.Command {
-			return &cli.Command{
-				Name: name,
-				Action: func(ctx *cli.Context) error {
-					return runTest(ctx.Context, name, test)
-				},
-			}
-		})
-	_testAllCmd = &cli.Command{
-		Name: "all",
-		Action: func(ctx *cli.Context) error {
-			for name, test := range tests {
-				if errTest := runTest(ctx.Context, name, test); errTest != nil {
-					return xerr.NewWM(errTest, "run test", xerr.Fields{"test": name})
-				}
-			}
+type cmdTest struct {
+	Args struct {
+		Test string `positional-arg-name:"TESTNAME"`
+	} `positional-args:"yes"`
+}
 
-			return nil
-		},
+func (x *cmdTest) Execute(_ []string) error {
+	ctx := context.Background()
+
+	if x.Args.Test == "all" {
+		for name, test := range tests {
+			if errTest := runTest(ctx, name, test); errTest != nil {
+				return xerr.NewWM(errTest, "run test", xerr.Fields{"test": name})
+			}
+		}
+		return nil
 	}
-)
+
+	test, ok := tests[x.Args.Test]
+	if !ok {
+		return xerr.NewM("unknown test", xerr.Fields{"test": x.Args.Test})
+	}
+
+	return runTest(ctx, x.Args.Test, test)
+}
+
+type App struct {
+	cli.App
+	Test cmdTest `command:"test" description:"run e2e tests"`
+}
 
 func main() {
-	// // TODO: ???, why not just separate cli?
-	// pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
-	// 	Name:        "test",
-	// 	Usage:       "run e2e tests",
-	// 	Subcommands: append(_testsCmds, _testAllCmd),
-	// })
-
-	// if err := pmcli.App.Run(os.Args); err != nil {
-	// 	log.Fatal().Err(err).Send()
-	// }
+	// TODO: separate cli?
+	if _, err := flags.NewParser(&App{}, flags.Default).ParseArgs(os.Args[1:]...); err != nil {
+		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Kind == flags.ErrHelp {
+			return
+		}
+		os.Exit(1)
+	}
 }
