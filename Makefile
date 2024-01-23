@@ -42,10 +42,6 @@ bump: # bump dependencies
 todo: # check todos
 	rg 'TODO' --glob '**/*.go' || echo 'All done!'
 
-
-
-## CI
-
 fmt: # run formatters
 	@go install mvdan.cc/gofumpt@latest
 	@go install golang.org/x/tools/cmd/goimports@latest
@@ -58,6 +54,13 @@ fmt: # run formatters
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./...
 	go mod tidy
+
+run-task: # TODO: remove # run "long running" task
+	${PM} run --name qmen24-$(date +'%H:%M:%S') sleep 10
+
+
+
+## CI
 
 install-linter: bindir
 	@test -f ${GOLANGCILINTBIN} || \
@@ -89,12 +92,3 @@ test-e2e-docker: # run integration tests in docker
 	@docker build -t pm-e2e --file tests/Dockerfile .
 	@docker run pm-e2e
 
-
-
-## Run & test
-
-watch-daemon: # run daemon and restart on file changes
-	reflex --start-service --regex='\.go$$' -- ${PM} daemon run
-
-run-task: # TODO: remove # run "long running" task
-	${PM} run --name qmen24-$(date +'%H:%M:%S') sleep 10
