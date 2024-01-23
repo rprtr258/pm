@@ -82,7 +82,7 @@ lint: lint-go # run all linters
 ## Test
 
 test: # run tests
-	@go run gotest.tools/gotestsum@latest --format dots-v2 ./...
+	@GOEXPERIMENT=rangefunc go run gotest.tools/gotestsum@latest --format dots-v2 ./...
 
 test-e2e: # run integration tests
 	go build -o tests/hello-http tests/hello-http/main.go
