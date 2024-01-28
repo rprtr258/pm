@@ -14,26 +14,26 @@ require (
 	github.com/rprtr258/cli v0.0.0-20231207015011-69288b6fbc48
 	github.com/rprtr258/cmp v0.0.2
 	github.com/rprtr258/fun v0.0.14-0.20240117010344-130fdfd41e7d
-	github.com/rprtr258/scuf v0.0.5
+	github.com/rprtr258/scuf v0.0.6
 	github.com/rprtr258/xerr v0.1.4
 	github.com/rs/zerolog v1.31.0
 	github.com/samber/lo v1.39.0
-	github.com/wissance/stringFormatter v1.1.1
+	github.com/wissance/stringFormatter v1.2.0
 	golang.org/x/mod v0.14.0
 )
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/go-faster/errors v0.7.0 // indirect
+	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
-	github.com/rivo/uniseg v0.4.4 // indirect
+	github.com/rivo/uniseg v0.4.6 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
-	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/term v0.15.0 // indirect
-	golang.org/x/tools v0.16.0 // indirect
+	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a // indirect
+	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/term v0.16.0 // indirect
+	golang.org/x/tools v0.17.0 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )

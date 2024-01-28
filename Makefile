@@ -59,7 +59,6 @@ run-task: # TODO: remove # run "long running" task
 	${PM} run --name qmen24-$(date +'%H:%M:%S') sleep 10
 
 
-
 ## CI
 
 install-linter: bindir
@@ -77,6 +76,8 @@ lint-go: install-linter # run go linter
 
 lint: lint-go # run all linters
 
+docs: # generate docs
+	jsonnet --string --multi . docs.jsonnet
 
 
 ## Test
