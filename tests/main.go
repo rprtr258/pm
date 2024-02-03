@@ -162,14 +162,22 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	}
 
 	// DELETE ALL PROCS
-	for _, proc := range client.List() {
+	var err error
+	client.List()(func(proc core.Proc) bool {
 		if errStop := client.Stop(proc.ID); errStop != nil {
-			return xerr.NewWM(errStop, "stop all old processes")
+			err = xerr.NewWM(errStop, "stop all old processes")
+			return false
 		}
 
 		if errDelete := client.Delete(proc.ID); errDelete != nil {
-			return xerr.NewWM(errDelete, "delete all old processes")
+			err = xerr.NewWM(errDelete, "delete all old processes")
+			return false
 		}
+
+		return true
+	})
+	if err != nil {
+		return err
 	}
 
 	// RUN TEST

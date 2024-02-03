@@ -1,6 +1,8 @@
 module github.com/rprtr258/pm
 
-go 1.22rc1
+go 1.21.0
+
+toolchain go1.21.6
 
 require (
 	github.com/aquasecurity/table v1.8.0
@@ -13,7 +15,7 @@ require (
 	github.com/rogpeppe/go-internal v1.11.0
 	github.com/rprtr258/cli v0.0.0-20231207015011-69288b6fbc48
 	github.com/rprtr258/cmp v0.0.2
-	github.com/rprtr258/fun v0.0.14-0.20240117010344-130fdfd41e7d
+	github.com/rprtr258/fun v0.0.13
 	github.com/rprtr258/scuf v0.0.6
 	github.com/rprtr258/xerr v0.1.4
 	github.com/rs/zerolog v1.31.0
