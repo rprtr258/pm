@@ -26,7 +26,7 @@ func (app App) stop(id core.PMID) error {
 
 	l := log.With().Stringer("pmid", id).Logger()
 
-	proc, ok := linuxprocess.StatPMID(id, _envPMID)
+	proc, ok := linuxprocess.StatPMID(id, EnvPMID)
 	if !ok {
 		return xerr.NewM("find process")
 	}

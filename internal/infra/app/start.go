@@ -57,7 +57,7 @@ func (app App) startAgentImpl(id core.PMID) error {
 			func(kv fun.Pair[string, string]) string {
 				return fmt.Sprintf("%s=%s", kv.K, kv.V)
 			})).
-		Chain(iter.FromMany(fmt.Sprintf("%s=%s", _envPMID, proc.ID))).
+		Chain(iter.FromMany(fmt.Sprintf("%s=%s", EnvPMID, proc.ID))).
 		ToSlice()
 
 	procDesc, err := json.Marshal(proc)

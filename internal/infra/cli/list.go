@@ -280,7 +280,7 @@ func (x *_cmdList) Execute(_ []string) error {
 		return xerr.NewWM(errNewApp, "new app")
 	}
 
-	procIDsToShow := app.
+	procsToShow := app.
 		List().
 		Filter(core.FilterFunc(
 			core.WithAllIfNoFilters,
@@ -291,9 +291,9 @@ func (x *_cmdList) Execute(_ []string) error {
 		)).
 		ToSlice()
 
-	slices.SortFunc(procIDsToShow, func(i, j core.Proc) int {
+	slices.SortFunc(procsToShow, func(i, j core.Proc) int {
 		return x.Sort.less(i, j)
 	})
 
-	return x.Format.f(procIDsToShow)
+	return x.Format.f(procsToShow)
 }

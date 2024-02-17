@@ -2,10 +2,12 @@ package cli
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 
 	flags "github.com/rprtr258/cli/contrib"
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/infra/log"
@@ -48,19 +50,21 @@ type App struct {
 		Agent   _cmdAgent   `command:"agent" hidden:"yes"`
 	} `category:""` // TODO: unused
 	Inspection struct {
-		List _cmdList `command:"list" description:"list processes" alias:"l" alias:"ls" alias:"ps" alias:"status"`
-		Logs _cmdLogs `command:"logs" description:"watch for processes logs"`
+		List    _cmdList    `command:"list" description:"list processes" alias:"l" alias:"ls" alias:"ps" alias:"status"`
+		Logs    _cmdLogs    `command:"logs" description:"watch for processes logs"`
+		Inspect _cmdInspect `command:"inspect" description:"inspect process" alias:"i"`
 	} `category:"inspection"` // TODO: unused
 	Management struct {
 		Run     _cmdRun     `command:"run" description:"create and run new process"`
 		Start   _cmdStart   `command:"start" description:"start already added process(es)"`
 		Restart _cmdRestart `command:"restart" description:"restart already added process(es)"`
-		Stop    _cmdStop    `command:"stop" description:"stop process(es)"`
+		Stop    _cmdStop    `command:"stop" description:"stop process(es)" alias:"kill"`
 		Delete  _cmdDelete  `command:"delete" description:"stop and remove process(es)" alias:"del" alias:"rm"`
+		Signal  _cmdSignal  `command:"signal" description:"send signal to process(es)"`
 	} `category:"management"`
 }
 
-var Parser = func() *flags.Parser {
+func Run(argv []string) error {
 	parser := flags.NewParser(&App{}, flags.Default)
 	for _, cmd := range parser.Commands() {
 		if cmd.Name == "list" {
@@ -137,5 +141,19 @@ var Parser = func() *flags.Parser {
 	// 	})
 	// }
 
-	return parser
-}()
+	if _, err := parser.ParseArgs(os.Args[1:]...); err != nil {
+		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Kind == flags.ErrHelp {
+			return nil
+		}
+
+		if flagsErr, ok := err.(*flags.Error); ok && fun.Contains(flagsErr.Kind, flags.ErrCommandRequired, flags.ErrUnknownCommand) {
+			return errors.New("")
+		}
+
+		// cli.Parser.WriteHelp(os.Stderr)
+		fmt.Printf("%#v\n", err)
+		return err
+	}
+
+	return nil
+}

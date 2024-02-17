@@ -33,7 +33,7 @@ func (app App) signal(id core.PMID, signal syscall.Signal) {
 			Stringer("signal", signal).
 			Logger()
 
-		proc, ok := linuxprocess.StatPMID(pmid, _envPMID)
+		proc, ok := linuxprocess.StatPMID(pmid, EnvPMID)
 		if !ok {
 			return xerr.NewM("getting process by pmid failed", xerr.Fields{
 				"pmid":   pmid,

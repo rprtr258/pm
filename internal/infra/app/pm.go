@@ -18,7 +18,7 @@ import (
 	// "github.com/rprtr258/pm/internal/infra/log"
 )
 
-const _envPMID = "PM_PMID"
+const EnvPMID = "PM_PMID"
 
 func (app App) ListByRunConfigs(runConfigs []core.RunConfig) iter.Seq[core.Proc] {
 	procNames := fun.FilterMap[string](func(cfg core.RunConfig) (string, bool) {

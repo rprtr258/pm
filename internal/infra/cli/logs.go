@@ -19,7 +19,15 @@ type _cmdLogs struct {
 	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
 	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
 	IDs   []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
-	Args  struct {
+	//   .option('--json', 'json log output')
+	//   .option('--format', 'formated log output')
+	//   .option('--raw', 'raw output')
+	//   .option('--err', 'only shows error output')
+	//   .option('--out', 'only shows standard output')
+	//   .option('--lines <n>', 'output the last N lines, instead of the last 15 by default')
+	//   .option('--timestamp [format]', 'add timestamps (default format YYYY-MM-DD-HH:mm:ss)')
+	//   .option('--highlight', 'enable highlighting')
+	Args struct {
 		Rest []flagGenericSelector `positional-arg-name:"name|tag|id"`
 	} `positional-args:"yes"`
 	configFlag

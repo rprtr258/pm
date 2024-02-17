@@ -27,8 +27,8 @@ func StatPMID(pmid core.PMID, env string) (*os.Process, bool) {
 type ProcessStat struct {
 	Comm                string
 	State               string
-	Pid                 uint64
-	Ppid                int64
+	Pid                 int
+	Ppid                int
 	Pgrp                int64
 	Session             int64
 	TtyNr               int64
