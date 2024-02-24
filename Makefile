@@ -78,6 +78,7 @@ lint: lint-go # run all linters
 
 docs: # generate docs
 	jsonnet --string --multi . docs.jsonnet
+	go run github.com/eliben/static-server@latest
 
 
 ## Test
