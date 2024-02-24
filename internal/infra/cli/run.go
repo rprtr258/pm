@@ -21,7 +21,7 @@ type _cmdRun struct {
 	Args  struct {
 		Command string
 		Args    []string
-	} `positional-args:"yes" required:"true"`
+	} `positional-args:"yes"`
 	// TODO: not yet implemented run parameters
 	// // logs parameters
 	// &cli.BoolFlag{Name: "output", Aliases: []string{"o"}, Usage: "specify log file for stdout"},
