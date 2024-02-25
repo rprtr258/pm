@@ -1,27 +1,58 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"regexp"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
+
+func run(app app.App, configs iter.Seq[core.RunConfig]) error {
+	var merr error
+	configs(func(config core.RunConfig) bool {
+		id, errRun := app.Run(config)
+		if errRun != nil {
+			log.Error().
+				Err(errRun).
+				Dict("config", zerolog.Dict().
+					Any("name", config.Name).
+					Str("command", config.Command).
+					Strs("args", config.Args).
+					Str("cwd", config.Cwd).
+					Strs("tags", config.Tags).
+					Any("watch", config.Watch).
+					Any("env", config.Env).
+					Any("stdout_file", config.StdoutFile).
+					Any("stderr_file", config.StderrFile),
+				).
+				Msg("failed to run proc")
+			merr = errors.New("failed to start some procs")
+		} else {
+			fmt.Println(id)
+		}
+
+		return true
+	})
+	return merr
+}
 
 type _cmdRun struct {
 	Name *string  `short:"n" long:"name" description:"set a name for the process"`
 	Tags []string `short:"t" long:"tag" description:"add specified tag"`
 	Cwd  *string  `long:"cwd" description:"set working directory"`
 	configFlag
-	Watch *string `long:"watch" description:"restart on changes to files matching specified regex"`
-	Args  struct {
-		Command string
-		Args    []string
-	} `positional-args:"yes"`
+	Watch *string  `long:"watch" description:"restart on changes to files matching specified regex"`
+	Args  []string `positional-args:"yes"`
 	// TODO: not yet implemented run parameters
 	// // logs parameters
 	// &cli.BoolFlag{Name: "output", Aliases: []string{"o"}, Usage: "specify log file for stdout"},
@@ -71,18 +102,23 @@ type _cmdRun struct {
 	// &cli.IntFlag{Name: "uid", Usage: "run process with <uid> rights"},
 }
 
-func (x *_cmdRun) Execute(_ []string) error {
+func (x _cmdRun) Execute(ctx context.Context) error {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
-		return xerr.NewWM(errNewApp, "new app")
+		return errors.Wrap(errNewApp, "new app")
 	}
 
 	if x.Config == nil {
+		if len(x.Args) == 0 {
+			return errors.New("neither command nor config specified")
+		}
+		command, args := x.Args[0], x.Args[1:]
+
 		var workDir string
 		if x.Cwd == nil {
 			cwd, err := os.Getwd()
 			if err != nil {
-				return xerr.NewWM(err, "get cwd")
+				return errors.Wrap(err, "get cwd")
 			}
 			workDir = cwd
 		} else {
@@ -93,15 +129,15 @@ func (x *_cmdRun) Execute(_ []string) error {
 		if pattern := x.Watch; pattern != nil {
 			watchRE, errCompile := regexp.Compile(*pattern)
 			if errCompile != nil {
-				return xerr.NewWM(errCompile, "compile watch regex", xerr.Fields{"pattern": *pattern})
+				return errors.Wrap(errCompile, "compile watch regex: %q", *pattern)
 			}
 
 			watch = fun.Valid(watchRE)
 		}
 
 		runConfig := core.RunConfig{
-			Command:    x.Args.Command,
-			Args:       x.Args.Args,
+			Command:    command,
+			Args:       args,
 			Name:       fun.FromPtr(x.Name),
 			Tags:       x.Tags,
 			Cwd:        workDir,
@@ -119,38 +155,19 @@ func (x *_cmdRun) Execute(_ []string) error {
 			MaxRestarts:  0,
 		}
 
-		procID, errRun := app.Run(runConfig)
-		if errRun != nil {
-			return xerr.NewWM(errRun, "run command", xerr.Fields{
-				"run_config": runConfig,
-				"pmid":       procID,
-			})
-		}
-
-		fmt.Println(procID)
-
-		return nil
+		return run(app, iter.FromMany(runConfig))
 	}
 
 	configs, errLoadConfigs := core.LoadConfigs(string(*x.configFlag.Config))
 	if errLoadConfigs != nil {
-		return xerr.NewWM(errLoadConfigs, "load run configs")
+		return errors.Wrap(errLoadConfigs, "load run configs")
 	}
 
 	// TODO: if config is specified Args.Command and Args.Args are not required
-	names := append(x.Args.Args, x.Args.Command)
+	names := x.Args
 	if len(names) == 0 {
 		// no filtering by names, run all processes
-		for _, config := range configs {
-			procID, err := app.Run(config)
-			fmt.Println(procID)
-			if err != nil {
-				fmt.Println()
-				return xerr.NewWM(err, "create all procs from config", xerr.Fields{"pmid": procID})
-			}
-		}
-
-		return nil
+		return run(app, iter.FromMany(configs...))
 	}
 
 	configsByName := make(map[string]core.RunConfig, len(names))
@@ -165,7 +182,7 @@ func (x *_cmdRun) Execute(_ []string) error {
 
 	merr := xerr.Combine(fun.Map[error](func(name string) error {
 		if _, ok := configsByName[name]; !ok {
-			return xerr.NewM("unknown proc name", xerr.Fields{"name": name})
+			return errors.New("unknown proc name: %q", name)
 		}
 
 		return nil
@@ -174,16 +191,5 @@ func (x *_cmdRun) Execute(_ []string) error {
 		return merr
 	}
 
-	for _, config := range configsByName {
-		id, errCreate := app.Run(config)
-		fmt.Println(id)
-		if errCreate != nil {
-			return xerr.NewWM(errCreate, "run procs filtered by name from config", xerr.Fields{
-				"names": names,
-				"pmid":  id,
-			})
-		}
-	}
-
-	return nil
+	return run(app, iter.Values(iter.FromDict(configsByName)))
 }

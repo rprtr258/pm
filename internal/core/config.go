@@ -2,13 +2,13 @@ package core
 
 import (
 	"encoding/json"
-	"errors"
+	stdErrors "errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 // TODO: set at compile time
@@ -16,7 +16,7 @@ import (
 const Version = "0.1.0"
 
 var (
-	ErrConfigNotExists = errors.New("config file not exists")
+	ErrConfigNotExists = stdErrors.New("config file not exists")
 
 	_configPath = filepath.Join(DirHome, "config.json")
 )
@@ -34,18 +34,18 @@ var DefaultConfig = Config{
 func ReadConfig() (Config, error) {
 	configBytes, errRead := os.ReadFile(_configPath)
 	if errRead != nil {
-		if errors.Is(errRead, fs.ErrNotExist) {
+		if stdErrors.Is(errRead, fs.ErrNotExist) {
 			return Config{}, ErrConfigNotExists
 		}
 
-		return fun.Zero[Config](), xerr.NewWM(errRead, "read config file", xerr.Fields{
+		return fun.Zero[Config](), errors.Wrap(errRead, "read config file", map[string]any{
 			"filename": _configPath,
 		})
 	}
 
 	var config Config
 	if errUnmarshal := json.Unmarshal(configBytes, &config); errUnmarshal != nil {
-		return fun.Zero[Config](), xerr.NewWM(errUnmarshal, "parse config")
+		return fun.Zero[Config](), errors.Wrap(errUnmarshal, "parse config")
 	}
 
 	return config, nil
@@ -54,11 +54,11 @@ func ReadConfig() (Config, error) {
 func WriteConfig(config Config) error {
 	configBytes, errMarshal := json.Marshal(config)
 	if errMarshal != nil {
-		return xerr.NewWM(errMarshal, "marshal config")
+		return errors.Wrap(errMarshal, "marshal config")
 	}
 
 	if errWrite := os.WriteFile(_configPath, configBytes, 0o644); errWrite != nil { //nolint:gosec // not unsafe i guess
-		return xerr.NewWM(errWrite, "write config", xerr.Fields{
+		return errors.Wrap(errWrite, "write config", map[string]any{
 			"filename": _configPath,
 		})
 	}

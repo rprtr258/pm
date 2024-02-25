@@ -1,13 +1,13 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/rprtr258/xerr"
-
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
@@ -20,10 +20,10 @@ type _cmdInspect struct {
 	} `positional-args:"yes"`
 }
 
-func (x *_cmdInspect) Execute(_ []string) error {
+func (x _cmdInspect) Execute(ctx context.Context) error {
 	appp, errNewApp := app.New()
 	if errNewApp != nil {
-		return xerr.NewWM(errNewApp, "new app")
+		return errors.Wrap(errNewApp, "new app")
 	}
 
 	procsToShow := appp.

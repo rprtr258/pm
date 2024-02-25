@@ -3,7 +3,7 @@ package db
 import (
 	"path/filepath"
 
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/mod/semver"
 
@@ -20,7 +20,7 @@ var Migrations = []migration{
 		version: "0.0.1",
 		do: func() error {
 			if _, err := New(filepath.Join(core.DirHome, "db")); err != nil {
-				return xerr.NewWM(err, "create db handler")
+				return errors.Wrap(err, "create db handler")
 			}
 
 			return nil
@@ -39,7 +39,7 @@ func Migrate(fromVersion, toVersion string) (string, error) {
 				Msg("migrating...")
 
 			if err := m.do(); err != nil {
-				return lastVersion, xerr.NewWM(err, "migrate", xerr.Fields{
+				return lastVersion, errors.Wrap(err, "migrate", map[string]any{
 					"from": lastVersion,
 					"to":   m.version,
 				})

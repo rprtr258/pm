@@ -4,6 +4,8 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
+	"github.com/rs/zerolog/log"
 )
 
 func (app App) List() iter.Seq[core.Proc] { // TODO: return iterator
@@ -17,13 +19,12 @@ func (app App) List() iter.Seq[core.Proc] { // TODO: return iterator
 			continue
 		}
 
-		// TODO: uncomment
-		// if _, err := linuxprocess.ReadProcessStat(proc.PMID); err != nil {
-		// 	proc.Status = core.NewStatusStopped()
-		// 	if errSet := s.db.SetStatus(id, proc.Status); errSet != nil {
-		// 		log.Error().Err(errSet).Msg("failed to update status to stopped")
-		// 	}
-		// }
+		if _, ok := linuxprocess.StatPMID(proc.ID, EnvPMID); !ok {
+			proc.Status = core.NewStatusStopped(-1)
+			if errSet := app.db.SetStatus(id, proc.Status); errSet != nil {
+				log.Error().Err(errSet).Msg("failed to update status to stopped")
+			}
+		}
 		procs[id] = proc
 	}
 	return iter.Values(iter.FromDict(procs))

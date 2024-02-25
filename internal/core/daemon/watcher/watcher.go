@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/fsnotify"
-	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 type Entry struct {
@@ -29,12 +29,12 @@ type Watcher struct {
 func New(dir, pattern string, callback func(context.Context) error) (Watcher, error) {
 	watcher, err := fsnotify.NewBatchedRecursiveWatcher(dir, "", time.Second)
 	if err != nil {
-		return fun.Zero[Watcher](), xerr.NewWM(err, "create fsnotify watcher")
+		return fun.Zero[Watcher](), errors.Wrap(err, "create fsnotify watcher")
 	}
 
 	re, errCompilePattern := regexp.Compile(pattern)
 	if errCompilePattern != nil {
-		return fun.Zero[Watcher](), xerr.NewWM(errCompilePattern, "compile pattern")
+		return fun.Zero[Watcher](), errors.Wrap(errCompilePattern, "compile pattern")
 	}
 
 	return Watcher{

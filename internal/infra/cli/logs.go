@@ -7,8 +7,8 @@ import (
 	"sync"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/scuf"
-	"github.com/rprtr258/xerr"
 	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -51,9 +51,7 @@ func (x *_cmdLogs) getProcs(app app.App) ([]core.Proc, error) {
 
 	configs, errLoadConfigs := core.LoadConfigs(string(*x.Config))
 	if errLoadConfigs != nil {
-		return nil, xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{
-			"config": *x.Config,
-		})
+		return nil, errors.Wrap(errLoadConfigs, "load configs: %v", *x.Config)
 	}
 
 	return app.
@@ -80,17 +78,15 @@ func colorByID(id core.PMID) scuf.Modifier {
 	return colors[x%len(colors)]
 }
 
-func (x *_cmdLogs) Execute(_ []string) error {
-	ctx := context.TODO()
-
+func (x _cmdLogs) Execute(ctx context.Context) error {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
-		return xerr.NewWM(errNewApp, "new app")
+		return errors.Wrap(errNewApp, "new app")
 	}
 
 	procs, err := x.getProcs(app)
 	if err != nil {
-		return xerr.NewWM(err, "get proc ids")
+		return errors.Wrap(err, "get proc ids")
 	}
 	if len(procs) == 0 {
 		fmt.Println("nothing to watch")
@@ -102,7 +98,7 @@ func (x *_cmdLogs) Execute(_ []string) error {
 	for _, proc := range procs {
 		logsCh, errLogs := app.Logs(ctx, proc)
 		if errLogs != nil {
-			return xerr.NewWM(errLogs, "watch procs", xerr.Fields{"procID": proc})
+			return errors.Wrap(errLogs, "watch procs: %v", proc)
 		}
 
 		wg.Add(1)

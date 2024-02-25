@@ -1,16 +1,16 @@
 package cli
 
 import (
-	"errors"
+	"context"
+	stdErrors "errors"
 	"fmt"
 	"io/fs"
 	"os"
 
-	flags "github.com/rprtr258/cli/contrib"
-	"github.com/rprtr258/fun"
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/cli"
+	"github.com/rs/zerolog/log"
 
-	"github.com/rprtr258/pm/internal/infra/log"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 func ensureDir(dirname string) error {
@@ -18,13 +18,13 @@ func ensureDir(dirname string) error {
 	if errStat == nil {
 		return nil
 	}
-	if !errors.Is(errStat, fs.ErrNotExist) {
-		return xerr.NewWM(errStat, "stat dir")
+	if !stdErrors.Is(errStat, fs.ErrNotExist) {
+		return errors.Wrap(errStat, "stat dir")
 	}
 
 	log.Info().Str("dir", dirname).Msg("creating dir...")
 	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
-		return xerr.NewWM(errMkdir, "create dir")
+		return errors.Wrap(errMkdir, "create dir")
 	}
 
 	return nil
@@ -45,42 +45,34 @@ type App struct {
 	// &cli.BoolFlag{Name:        "silent", Aliases: []string{"s"}, Usage: "hide all messages", Value: false},
 	// &cli.BoolFlag{Name:        "wait-ip",
 	//               Usage: "override systemd script to wait for full internet connectivity to launch pm2"},
-	App struct {
-		Version _cmdVersion `command:"version" description:"print pm version"`
-		Agent   _cmdAgent   `command:"agent" hidden:"yes"`
-	} `category:""` // TODO: unused
-	Inspection struct {
-		List    _cmdList    `command:"list" description:"list processes" alias:"l" alias:"ls" alias:"ps" alias:"status"`
-		Logs    _cmdLogs    `command:"logs" description:"watch for processes logs"`
-		Inspect _cmdInspect `command:"inspect" description:"inspect process" alias:"i"`
-	} `category:"inspection"` // TODO: unused
-	Management struct {
-		Run     _cmdRun     `command:"run" description:"create and run new process"`
-		Start   _cmdStart   `command:"start" description:"start already added process(es)"`
-		Restart _cmdRestart `command:"restart" description:"restart already added process(es)"`
-		Stop    _cmdStop    `command:"stop" description:"stop process(es)" alias:"kill"`
-		Delete  _cmdDelete  `command:"delete" description:"stop and remove process(es)" alias:"del" alias:"rm"`
-		Signal  _cmdSignal  `command:"signal" description:"send signal to process(es)"`
-	} `category:"management"`
+	// App struct {
+	Version _cmdVersion `command:"version" description:"print pm version"`
+	Agent   _cmdAgent   `command:"agent" hidden:"yes"`
+	// } `category:""` // TODO: unused
+	// Inspection struct {
+	List    _cmdList    `command:"list" description:"list processes" alias:"l" alias:"ls" alias:"ps" alias:"status"`
+	Logs    _cmdLogs    `command:"logs" description:"watch for processes logs"`
+	Inspect _cmdInspect `command:"inspect" description:"inspect process" alias:"i"`
+	// } `category:"inspection"` // TODO: unused
+	// Management struct {
+	Run     _cmdRun     `command:"run" description:"create and run new process"`
+	Start   _cmdStart   `command:"start" description:"start already added process(es)"`
+	Restart _cmdRestart `command:"restart" description:"restart already added process(es)"`
+	Stop    _cmdStop    `command:"stop" description:"stop process(es)" alias:"kill"`
+	Delete  _cmdDelete  `command:"delete" description:"stop and remove process(es)" alias:"del" alias:"rm"`
+	Signal  _cmdSignal  `command:"signal" description:"send signal to process(es)"`
+	// } `category:"management"`
 }
 
 func Run(argv []string) error {
-	parser := flags.NewParser(&App{}, flags.Default)
-	for _, cmd := range parser.Commands() {
-		if cmd.Name == "list" {
-			cmd.FindOptionByLongName("format").Description = (*flagListFormat)(nil).Usage() // TODO: use as flag type method
-			cmd.FindOptionByLongName("sort").Description = (*flagListSort)(nil).Usage()     // TODO: use as flag type method
-		}
-	}
-
 	// 	Before: func(c *flags.Context) error {
 	// 		if err := ensureDir(core.DirHome); err != nil {
-	// 			return xerr.NewWM(err, "ensure home dir", xerr.Fields{"dir": core.DirHome})
+	// 			return errors.Wrap(err, "ensure home dir", map[string]any{"dir": core.DirHome})
 	// 		}
 
 	// 		_dirProcsLogs := filepath.Join(core.DirHome, "logs")
 	// 		if err := ensureDir(_dirProcsLogs); err != nil {
-	// 			return xerr.NewWM(err, "ensure logs dir", xerr.Fields{"dir": _dirProcsLogs})
+	// 			return errors.Wrap(err, "ensure logs dir", map[string]any{"dir": _dirProcsLogs})
 	// 		}
 
 	// 		return nil
@@ -141,17 +133,12 @@ func Run(argv []string) error {
 	// 	})
 	// }
 
-	if _, err := parser.ParseArgs(os.Args[1:]...); err != nil {
-		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Kind == flags.ErrHelp {
+	if err := cli.RunContext[App](context.Background(), argv...); err != nil {
+		if err, ok := err.(*cli.Error); ok && err.Kind == cli.ErrHelp {
+			fmt.Println(err.Error())
 			return nil
 		}
 
-		if flagsErr, ok := err.(*flags.Error); ok && fun.Contains(flagsErr.Kind, flags.ErrCommandRequired, flags.ErrUnknownCommand) {
-			return errors.New("")
-		}
-
-		// cli.Parser.WriteHelp(os.Stderr)
-		fmt.Printf("%#v\n", err)
 		return err
 	}
 

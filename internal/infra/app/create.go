@@ -8,7 +8,7 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/fun/set"
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/pm/internal/infra/errors"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/namegen"
@@ -45,7 +45,7 @@ func (app App) create(
 	if name, ok := name.Unpack(); ok { //nolint:nestif // no idea how to simplify it now
 		procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
 		if err != nil {
-			return "", xerr.NewWM(err, "get procs from db")
+			return "", errors.Wrap(err, "get procs from db")
 		}
 
 		if procID, ok := fun.FindKeyBy(procs, func(_ core.PMID, procData core.Proc) bool {
@@ -77,9 +77,7 @@ func (app App) create(
 			}
 
 			if errUpdate := app.db.UpdateProc(procData); errUpdate != nil {
-				return "", xerr.NewWM(errUpdate, "update proc", xerr.Fields{
-					// "procData": procFields(procData),
-				})
+				return "", errors.Wrap(errUpdate, "update proc: %v", procFields(procData))
 			}
 
 			return procID, nil
@@ -98,7 +96,7 @@ func (app App) create(
 		StderrFile: stderrFile,
 	}, app.logsDir)
 	if err != nil {
-		return "", xerr.NewWM(err, "save proc")
+		return "", errors.Wrap(err, "save proc")
 	}
 
 	return procID, nil
@@ -119,7 +117,7 @@ func (app App) Create(req core.RunConfig) (core.PMID, error) {
 		req.StderrFile,
 	)
 	if err != nil {
-		return "", xerr.NewWM(err, "server.create")
+		return "", errors.Wrap(err, "server.create")
 	}
 
 	return procID, nil

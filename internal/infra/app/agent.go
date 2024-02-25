@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -19,13 +19,13 @@ import (
 func (app App) StartRaw(proc core.Proc) error {
 	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": proc.StdoutFile})
+		return errors.Wrap(err, "open stdout file %q", proc.StdoutFile)
 	}
 	defer stdoutLogFile.Close()
 
 	stderrLogFile, err := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": proc.StderrFile})
+		return errors.Wrap(err, "open stderr file %q", proc.StderrFile)
 	}
 	defer func() {
 		if errClose := stderrLogFile.Close(); errClose != nil {
@@ -38,18 +38,21 @@ func (app App) StartRaw(proc core.Proc) error {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	cmd := exec.Cmd{
-		Path:   proc.Command,
-		Args:   append([]string{proc.Command}, proc.Args...),
-		Dir:    proc.Cwd,
-		Env:    env,
-		Stdin:  os.Stdin,
-		Stdout: stdoutLogFile,
-		Stderr: stderrLogFile,
-		SysProcAttr: &syscall.SysProcAttr{
-			Setpgid: true,
-		},
+	newCmd := func() exec.Cmd {
+		return exec.Cmd{
+			Path:   proc.Command,
+			Args:   append([]string{proc.Command}, proc.Args...),
+			Dir:    proc.Cwd,
+			Env:    env,
+			Stdin:  os.Stdin,
+			Stdout: stdoutLogFile,
+			Stderr: stderrLogFile,
+			SysProcAttr: &syscall.SysProcAttr{
+				Setpgid: true,
+			},
+		}
 	}
+	cmd := newCmd()
 
 	if err = cmd.Start(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
@@ -58,23 +61,25 @@ func (app App) StartRaw(proc core.Proc) error {
 		}
 
 		app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
-		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": proc})
+		return errors.Wrap(err, "run proc: %v", proc)
 	}
 
 	if watchRE, ok := proc.Watch.Unpack(); ok {
 		watcher, errWatcher := watcher.New(proc.Cwd, watchRE, func(ctx context.Context) error {
-			if errTerm := cmd.Process.Signal(syscall.SIGKILL); errTerm != nil {
-				return xerr.NewWM(errTerm, "failed to send SIGKILL to process on watch")
+			if errTerm := app.stop(proc.ID); errTerm != nil {
+				return errors.Wrap(errTerm, "failed to send SIGKILL to process on watch")
 			}
 
+			cmd = newCmd() // TODO: awful kostyl
+
 			if errStart := cmd.Start(); errStart != nil {
-				return xerr.NewWM(errStart, "failed to start process on watch")
+				return errors.Wrap(errStart, "failed to start process on watch")
 			}
 
 			return nil
 		})
 		if errWatcher != nil {
-			return xerr.NewWM(errWatcher, "create watcher")
+			return errors.Wrap(errWatcher, "create watcher")
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -83,13 +88,13 @@ func (app App) StartRaw(proc core.Proc) error {
 		go watcher.Start(ctx)
 	}
 
-	doneCh := make(chan struct{}, 1)
+	doneCh := make(chan struct{})
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 
-		if errTerm := cmd.Process.Signal(syscall.SIGTERM); errTerm != nil {
+		if errTerm := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM); errTerm != nil {
 			log.Error().Err(errTerm).Msg("failed to send SIGTERM to process")
 		}
 
@@ -97,22 +102,27 @@ func (app App) StartRaw(proc core.Proc) error {
 		case <-doneCh:
 		case <-time.After(5 * time.Second):
 			log.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
-			if errKill := cmd.Process.Signal(syscall.SIGKILL); errKill != nil {
+			if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
 				log.Error().Err(errKill).Msg("failed to send SIGKILL to process")
 			}
 		}
 	}()
 
 	err = cmd.Wait()
-	doneCh <- struct{}{}
+	close(doneCh)
 	if err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
+			if !err.Exited() {
+				if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
+					log.Error().Err(errKill).Msg("failed to send SIGKILL to process")
+				}
+			}
 			app.db.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
 			return nil
 		}
 
 		app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
-		return xerr.NewWM(err, "wait process", xerr.Fields{"procData": proc})
+		return errors.Wrap(err, "wait process: %v", proc)
 	}
 
 	app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())

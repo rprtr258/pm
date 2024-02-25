@@ -1,14 +1,14 @@
 package app
 
 import (
-	"errors"
+	stdErrors "errors"
 	"os"
 	"syscall"
 
-	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
@@ -35,20 +35,17 @@ func (app App) signal(id core.PMID, signal syscall.Signal) {
 
 		proc, ok := linuxprocess.StatPMID(pmid, EnvPMID)
 		if !ok {
-			return xerr.NewM("getting process by pmid failed", xerr.Fields{
-				"pmid":   pmid,
-				"signal": signal,
-			})
+			return errors.New("get process by pmid, id=%s signal=%s", pmid, signal.String())
 		}
 
 		if errKill := syscall.Kill(-proc.Pid, signal); errKill != nil {
 			switch {
-			case errors.Is(errKill, os.ErrProcessDone):
+			case stdErrors.Is(errKill, os.ErrProcessDone):
 				l.Warn().Msg("tried to send signal to process which is done")
-			case errors.Is(errKill, syscall.ESRCH): // no such process
+			case stdErrors.Is(errKill, syscall.ESRCH): // no such process
 				l.Warn().Msg("tried to send signal to process which doesn't exist")
 			default:
-				return xerr.NewWM(errKill, "killing process failed", xerr.Fields{"pid": proc.Pid})
+				return errors.Wrap(errKill, "kill process, pid=%d", proc.Pid)
 			}
 		}
 

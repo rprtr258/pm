@@ -15,6 +15,8 @@ import (
 	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 type Actions struct {
@@ -81,19 +83,19 @@ func newVM() *jsonnet.VM {
 
 			filename, ok := args[0].(string)
 			if !ok {
-				return nil, xerr.NewM("filename must be a string", xerr.Fields{"filename": args[0]})
+				return nil, errors.New("filename must be a string", map[string]any{"filename": args[0]})
 			}
 
 			// TODO: somehow relative to cwd
 
 			data, errRead := os.ReadFile(filename)
 			if errRead != nil {
-				return nil, xerr.NewWM(errRead, "read env file", xerr.Fields{"filename": filename})
+				return nil, errors.Wrap(errRead, "read env file", map[string]any{"filename": filename})
 			}
 
 			env, errUnmarshal := godotenv.UnmarshalBytes(data)
 			if errUnmarshal != nil {
-				return nil, xerr.NewWM(errUnmarshal, "parse env file", xerr.Fields{"filename": filename})
+				return nil, errors.Wrap(errUnmarshal, "parse env file", map[string]any{"filename": filename})
 			}
 
 			return lo.MapValues(env, func(v string, _ string) any {
@@ -108,16 +110,16 @@ func newVM() *jsonnet.VM {
 //nolint:funlen // no
 func LoadConfigs(filename string) ([]RunConfig, error) {
 	if !isConfigFile(filename) {
-		return nil, xerr.NewM(
+		return nil, errors.New(
 			"invalid config file",
-			xerr.Fields{"configFilename": filename},
+			map[string]any{"configFilename": filename},
 			xerr.Stacktrace,
 		)
 	}
 
 	jsonText, err := newVM().EvaluateFile(filename)
 	if err != nil {
-		return nil, xerr.NewWM(err, "evaluate jsonnet file")
+		return nil, errors.Wrap(err, "evaluate jsonnet file")
 	}
 
 	type configScanDTO struct {
@@ -131,15 +133,15 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
-		return nil, xerr.NewWM(err, "unmarshal configs json")
+		return nil, errors.Wrap(err, "unmarshal configs json")
 	}
 
 	// validate configs
 	errValidation := xerr.Combine(fun.Map[error](func(config configScanDTO) error {
 		if config.Command == "" {
-			return xerr.NewM(
+			return errors.New(
 				"missing command",
-				xerr.Fields{"config": config},
+				map[string]any{"config": config},
 			)
 		}
 
@@ -154,8 +156,8 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		if config.Watch != nil {
 			re, err := regexp.Compile(*config.Watch)
 			if err != nil {
-				return fun.Zero[RunConfig](), xerr.NewWM(err, "invalid watch pattern",
-					xerr.Fields{"pattern": *config.Watch})
+				return fun.Zero[RunConfig](), errors.Wrap(err, "invalid watch pattern",
+					map[string]any{"pattern": *config.Watch})
 			}
 			watch = fun.Valid(re)
 		}
@@ -163,7 +165,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		relativeCwd := filepath.Join(filepath.Dir(filename), fun.Deref(config.Cwd))
 		cwd, err := filepath.Abs(relativeCwd)
 		if err != nil {
-			return fun.Zero[RunConfig](), xerr.NewWM(err, "get absolute cwd", xerr.Fields{"cwd": relativeCwd})
+			return fun.Zero[RunConfig](), errors.Wrap(err, "get absolute cwd", map[string]any{"cwd": relativeCwd})
 		}
 
 		return RunConfig{

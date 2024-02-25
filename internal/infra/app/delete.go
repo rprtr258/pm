@@ -1,22 +1,21 @@
 package app
 
 import (
-	"errors"
+	stdErrors "errors"
 	"io/fs"
 	"os"
 
-	"github.com/rprtr258/xerr"
-
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 func removeFile(name string) error {
 	if errRm := os.Remove(name); errRm != nil {
-		if errors.Is(errRm, fs.ErrNotExist) {
+		if stdErrors.Is(errRm, fs.ErrNotExist) {
 			return nil
 		}
 
-		return xerr.NewWM(errRm, "remove file")
+		return errors.Wrap(errRm, "remove file")
 	}
 
 	return nil
@@ -24,11 +23,11 @@ func removeFile(name string) error {
 
 func removeLogFiles(proc core.Proc) error {
 	if errRmStdout := removeFile(proc.StdoutFile); errRmStdout != nil {
-		return xerr.NewWM(errRmStdout, "remove stdout file", xerr.Fields{"stdout_file": proc.StdoutFile})
+		return errors.Wrap(errRmStdout, "remove stdout file %s", proc.StdoutFile)
 	}
 
 	if errRmStderr := removeFile(proc.StderrFile); errRmStderr != nil {
-		return xerr.NewWM(errRmStderr, "remove stderr file", xerr.Fields{"stderr_file": proc.StderrFile})
+		return errors.Wrap(errRmStderr, "remove stderr file: %s", proc.StderrFile)
 	}
 
 	return nil
@@ -37,11 +36,11 @@ func removeLogFiles(proc core.Proc) error {
 func (app App) delete(id core.PMID) error {
 	deletedProc, errDelete := app.db.Delete(id)
 	if errDelete != nil {
-		return xerr.NewWM(errDelete, "delete proc", xerr.Fields{"pmid": id})
+		return errors.Wrap(errDelete, "delete proc: %s", id)
 	}
 
 	if err := removeLogFiles(deletedProc); err != nil {
-		return xerr.NewWM(err, "delete proc", xerr.Fields{"pmid": id})
+		return errors.Wrap(err, "delete proc: %s", id)
 	}
 
 	return nil
@@ -50,7 +49,7 @@ func (app App) delete(id core.PMID) error {
 func (app App) Delete(ids ...core.PMID) error {
 	for _, id := range ids {
 		if err := app.delete(id); err != nil {
-			return xerr.NewWM(err, "server.delete", xerr.Fields{"pmid": id})
+			return errors.Wrap(err, "server.delete: %s", id)
 		}
 	}
 

@@ -4,7 +4,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/pm/internal/infra/errors"
+	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/internal/core"
 )
@@ -22,11 +23,7 @@ func (app App) Run(config core.RunConfig) (core.PMID, error) {
 
 		command, errLook = exec.LookPath(config.Command)
 		if errLook != nil {
-			return "", xerr.NewWM(
-				errLook,
-				"look for executable path",
-				xerr.Fields{"executable": config.Command},
-			)
+			return "", errors.Wrap(errLook, "look for executable path: %q", config.Command)
 		}
 	}
 
@@ -35,11 +32,7 @@ func (app App) Run(config core.RunConfig) (core.PMID, error) {
 		var errAbs error
 		command, errAbs = filepath.Abs(command)
 		if errAbs != nil {
-			xerr.AppendInto(&merr, xerr.NewWM(
-				errAbs,
-				"abs",
-				xerr.Fields{"command": command},
-			))
+			multierr.AppendInto(&merr, errors.Wrap(errAbs, "get absolute binary path: %q", command))
 		}
 	}
 
@@ -56,11 +49,7 @@ func (app App) Run(config core.RunConfig) (core.PMID, error) {
 	}
 	id, errCreate := app.Create(request)
 	if errCreate != nil {
-		return "", xerr.NewWM(
-			errCreate,
-			"server.create",
-			xerr.Fields{"process_options": request},
-		)
+		return "", errors.Wrap(errCreate, "server.create: %v", request)
 	}
 
 	app.startAgent(id)

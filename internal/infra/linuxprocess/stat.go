@@ -1,14 +1,14 @@
 package linuxprocess
 
 import (
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"io/fs"
 	"os"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 func StatPMID(pmid core.PMID, env string) (*os.Process, bool) {
@@ -79,16 +79,16 @@ type ProcessStat struct {
 	ExitCode            int64
 }
 
-var ErrStatFileNotFound = errors.New("stat file not found")
+var ErrStatFileNotFound = stdErrors.New("stat file not found")
 
 func ReadProcessStat(pid int) (ProcessStat, error) {
 	statFile, err := os.Open(fmt.Sprintf("/proc/%d/stat", pid))
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
+		if stdErrors.Is(err, fs.ErrNotExist) {
 			return fun.Zero[ProcessStat](), ErrStatFileNotFound
 		}
 
-		return fun.Zero[ProcessStat](), xerr.NewWM(err, "read proc stat file")
+		return fun.Zero[ProcessStat](), errors.Wrap(err, "read proc stat file")
 	}
 	defer statFile.Close()
 
@@ -149,7 +149,7 @@ func ReadProcessStat(pid int) (ProcessStat, error) {
 		&stat.EnvEnd,
 		&stat.ExitCode,
 	); err != nil {
-		return fun.Zero[ProcessStat](), xerr.NewWM(err, "read proc stat file")
+		return fun.Zero[ProcessStat](), errors.Wrap(err, "read proc stat file")
 	}
 
 	return stat, nil

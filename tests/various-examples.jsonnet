@@ -17,7 +17,7 @@ local env = {
   {
     name: "web",
     command: "sh",
-    args: ["-c", '"docker build . -t web && docker run web -p 5000:5000"'],
+    args: ["-c", '"docker build . -t web && exec docker run web -p 5000:5000"'],
   },
   {
     name: "tick",

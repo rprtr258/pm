@@ -1,10 +1,11 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/rprtr258/fun/iter"
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/pm/internal/infra/errors"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -20,10 +21,10 @@ type _cmdRestart struct {
 	configFlag
 }
 
-func (x *_cmdRestart) Execute(_ []string) error {
+func (x _cmdRestart) Execute(ctx context.Context) error {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
-		return xerr.NewWM(errNewApp, "new app")
+		return errors.Wrap(errNewApp, "new app")
 	}
 
 	list := app.List()
@@ -46,11 +47,11 @@ func (x *_cmdRestart) Execute(_ []string) error {
 		}
 
 		if err := app.Stop(procIDs...); err != nil {
-			return xerr.NewWM(err, "client.stop")
+			return errors.Wrap(err, "client.stop")
 		}
 
 		if errStart := app.Start(procIDs...); errStart != nil {
-			return xerr.NewWM(errStart, "client.start")
+			return errors.Wrap(errStart, "client.start")
 		}
 
 		return nil
@@ -60,9 +61,7 @@ func (x *_cmdRestart) Execute(_ []string) error {
 
 	configs, errLoadConfigs := core.LoadConfigs(configFile)
 	if errLoadConfigs != nil {
-		return xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{
-			"config": configFile,
-		})
+		return errors.Wrap(errLoadConfigs, "load configs from %s", configFile)
 	}
 
 	procIDs := iter.Map(app.
@@ -85,11 +84,11 @@ func (x *_cmdRestart) Execute(_ []string) error {
 	}
 
 	if errStop := app.Stop(procIDs...); errStop != nil {
-		return xerr.NewWM(errStop, "client.stop")
+		return errors.Wrap(errStop, "client.stop")
 	}
 
 	if errStart := app.Start(procIDs...); errStart != nil {
-		return xerr.NewWM(errStart, "client.start")
+		return errors.Wrap(errStart, "client.start")
 	}
 
 	return nil

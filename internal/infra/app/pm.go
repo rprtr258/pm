@@ -11,7 +11,7 @@ import (
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -84,7 +84,7 @@ func streamFile(
 ) error {
 	stat, errStat := os.Stat(logFile)
 	if errStat != nil {
-		return xerr.NewWM(errStat, "stat log file")
+		return errors.Wrap(errStat, "stat log file")
 	}
 
 	tailer := tail.File(logFile, tail.Config{
@@ -117,10 +117,7 @@ func streamFile(
 			logLinesCh <- ProcLine{
 				Line: "",
 				Type: logLineType,
-				Err: xerr.NewWM(err, "to tail log", xerr.Fields{
-					"procID": procID,
-					"file":   logFile,
-				}),
+				Err:  errors.Wrap(err, "to tail log, id=%s, file=%s", procID, logFile),
 			}
 			return
 		}

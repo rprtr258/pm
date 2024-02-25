@@ -1,15 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"syscall"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/xerr"
-
-	"github.com/rprtr258/pm/internal/infra/log"
+	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rs/zerolog/log"
 )
 
 type status struct {
@@ -37,42 +35,42 @@ type status struct {
 func getSelfStatus() (status, error) {
 	executable, err := os.Executable()
 	if err != nil {
-		return fun.Zero[status](), xerr.NewWM(err, "get executable")
+		return fun.Zero[status](), errors.Wrap(err, "get executable")
 	}
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return fun.Zero[status](), xerr.NewWM(err, "get cwd")
+		return fun.Zero[status](), errors.Wrap(err, "get cwd")
 	}
 
 	groups, err := os.Getgroups()
 	if err != nil {
-		return fun.Zero[status](), xerr.NewWM(err, "get groups")
+		return fun.Zero[status](), errors.Wrap(err, "get groups")
 	}
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		return fun.Zero[status](), xerr.NewWM(err, "get hostname")
+		return fun.Zero[status](), errors.Wrap(err, "get hostname")
 	}
 
 	userCacheDir, err := os.UserCacheDir()
 	if err != nil {
-		return fun.Zero[status](), xerr.NewWM(err, "get userCacheDir")
+		return fun.Zero[status](), errors.Wrap(err, "get userCacheDir")
 	}
 
 	userConfigDir, err := os.UserConfigDir()
 	if err != nil {
-		return fun.Zero[status](), xerr.NewWM(err, "get userConfigDir")
+		return fun.Zero[status](), errors.Wrap(err, "get userConfigDir")
 	}
 
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		return fun.Zero[status](), xerr.NewWM(err, "get userHomeDir")
+		return fun.Zero[status](), errors.Wrap(err, "get userHomeDir")
 	}
 
 	pgid, err := syscall.Getpgid(syscall.Getpid())
 	if err != nil {
-		return fun.Zero[status](), xerr.NewWM(err, "get pgid")
+		return fun.Zero[status](), errors.Wrap(err, "get pgid")
 	}
 
 	return status{
@@ -104,7 +102,7 @@ func getSelfStatus() (status, error) {
 func main() {
 	status, err := getSelfStatus()
 	if err != nil {
-		log.Fatal(fmt.Errorf("failed to get self status: %w", err))
+		log.Fatal().Err(err).Msg("failed to get self status")
 	}
 
 	log.Info().Any("status", status).Send()

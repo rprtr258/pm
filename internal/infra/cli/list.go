@@ -2,6 +2,7 @@ package cli
 
 import (
 	"cmp"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,11 +13,11 @@ import (
 
 	"github.com/aquasecurity/table"
 	"github.com/kballard/go-shellquote"
-	flags "github.com/rprtr258/cli/contrib"
+	"github.com/rprtr258/cli"
 	cmp2 "github.com/rprtr258/cmp"
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/scuf"
-	"github.com/rprtr258/xerr"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -151,7 +152,7 @@ func (f *flagListSort) UnmarshalFlag(value string) error {
 			}
 		})
 	default:
-		return xerr.NewM("unknown sort field", xerr.Fields{"field": sortField})
+		return errors.New("unknown sort field: %q", sortField)
 	}
 
 	switch sortOrder {
@@ -160,7 +161,7 @@ func (f *flagListSort) UnmarshalFlag(value string) error {
 		oldSortFunc := f.less
 		f.less = cmp2.Comparator[core.Proc](oldSortFunc).Reversed()
 	default:
-		return xerr.NewM("unknown sort order", xerr.Fields{"order": sortOrder})
+		return errors.New("unknown sort order: %q", sortOrder)
 	}
 
 	return nil
@@ -184,12 +185,12 @@ func (*flagListFormat) Usage() string {
 	})
 }
 
-func (f *flagListFormat) Complete(prefix string) []flags.Completion {
-	return fun.FilterMap[flags.Completion](
-		func(format string) (flags.Completion, bool) {
-			return flags.Completion{
+func (f *flagListFormat) Complete(prefix string) []cli.Completion {
+	return fun.FilterMap[cli.Completion](
+		func(format string) (cli.Completion, bool) {
+			return cli.Completion{
 				Item:        format,
-				Description: "",
+				Description: fun.Invalid[string](),
 			}, strings.HasPrefix(format, prefix)
 		},
 		_formatTable,
@@ -199,8 +200,8 @@ func (f *flagListFormat) Complete(prefix string) []flags.Completion {
 	)
 }
 
-func (f *flagListFormat) UnmarshalFlag(value string) error {
-	switch value {
+func (f *flagListFormat) UnmarshalFlag(format string) error {
+	switch format {
 	case _formatTable:
 		f.f = func(procsToShow []core.Proc) error {
 			renderTable(procsToShow, true)
@@ -215,7 +216,7 @@ func (f *flagListFormat) UnmarshalFlag(value string) error {
 		f.f = func(procsToShow []core.Proc) error {
 			jsonData, errMarshal := json.MarshalIndent(procsToShow, "", "  ")
 			if errMarshal != nil {
-				return xerr.NewWM(errMarshal, "marshal procs list to json")
+				return errors.Wrap(errMarshal, "marshal procs list to json")
 			}
 
 			fmt.Println(string(jsonData))
@@ -229,7 +230,7 @@ func (f *flagListFormat) UnmarshalFlag(value string) error {
 			return nil
 		}
 	default:
-		trimmedFormat := strings.Trim(value, " ")
+		trimmedFormat := strings.Trim(format, " ")
 		finalFormat := strings.
 			NewReplacer(
 				`\t`, "\t",
@@ -239,7 +240,7 @@ func (f *flagListFormat) UnmarshalFlag(value string) error {
 
 		tmpl, errParse := template.New("list").Parse(finalFormat)
 		if errParse != nil {
-			return xerr.NewWM(errParse, "parse template")
+			return errors.Wrap(errParse, "parse template")
 		}
 
 		f.f = func(procsToShow []core.Proc) error {
@@ -247,10 +248,7 @@ func (f *flagListFormat) UnmarshalFlag(value string) error {
 			for _, proc := range procsToShow {
 				errRender := tmpl.Execute(&sb, proc)
 				if errRender != nil {
-					return xerr.NewWM(errRender, "format proc line", xerr.Fields{
-						"format": value,
-						"proc":   proc,
-					})
+					return errors.Wrap(errRender, "format proc line, format=%q: %v", format, proc)
 				}
 
 				sb.WriteRune('\n')
@@ -264,20 +262,22 @@ func (f *flagListFormat) UnmarshalFlag(value string) error {
 }
 
 type _cmdList struct {
+	// cmd.FindOptionByLongName("format").Description = (*flagListFormat)(nil).Usage() // TODO: use as flag type method
 	Format flagListFormat `short:"f" long:"format" default:"table"`
-	Sort   flagListSort   `short:"s" long:"sort" default:"id:asc"`
-	Names  []flagProcName `long:"name" description:"name(s) of process(es) to list"`
-	Tags   []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
-	IDs    []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
-	Args   struct {
+	// cmd.FindOptionByLongName("sort").Description = (*flagListSort)(nil).Usage()     // TODO: use as flag type method
+	Sort  flagListSort   `short:"s" long:"sort" default:"id:asc"`
+	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
+	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
+	IDs   []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
+	Args  struct {
 		Rest []flagGenericSelector `positional-arg-name:"name|tag|id"`
 	} `positional-args:"yes"`
 }
 
-func (x *_cmdList) Execute(_ []string) error {
+func (x _cmdList) Execute(ctx context.Context) error {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
-		return xerr.NewWM(errNewApp, "new app")
+		return errors.Wrap(errNewApp, "new app")
 	}
 
 	procsToShow := app.

@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"strings"
 
-	flags "github.com/rprtr258/cli/contrib"
+	"github.com/rprtr258/cli"
+	"github.com/rprtr258/cli/flags"
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
-	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 func printIDs(ids ...core.PMID) {
@@ -29,7 +31,7 @@ type configFlag struct {
 
 type flagPMID core.PMID
 
-func (f *flagPMID) Complete(match string) []flags.Completion {
+func (f *flagPMID) Complete(match string) []cli.Completion {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
@@ -41,10 +43,10 @@ func (f *flagPMID) Complete(match string) []flags.Completion {
 		Filter(func(p core.Proc) bool {
 			return strings.HasPrefix(string(p.ID), match)
 		}),
-		func(proc core.Proc) flags.Completion {
-			return flags.Completion{
+		func(proc core.Proc) cli.Completion {
+			return cli.Completion{
 				Item:        proc.ID.String(),
-				Description: "name: " + proc.Name,
+				Description: fun.Valid("name: " + proc.Name),
 			}
 		}).
 		ToSlice()
@@ -52,7 +54,7 @@ func (f *flagPMID) Complete(match string) []flags.Completion {
 
 type flagProcName string
 
-func (f *flagProcName) Complete(match string) []flags.Completion {
+func (f *flagProcName) Complete(match string) []cli.Completion {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
@@ -64,10 +66,10 @@ func (f *flagProcName) Complete(match string) []flags.Completion {
 		Filter(func(p core.Proc) bool {
 			return strings.HasPrefix(p.Name, match)
 		}),
-		func(proc core.Proc) flags.Completion {
-			return flags.Completion{
+		func(proc core.Proc) cli.Completion {
+			return cli.Completion{
 				Item:        proc.Name,
-				Description: "status: " + proc.Status.Status.String(),
+				Description: fun.Valid("status: " + proc.Status.Status.String()),
 			}
 		}).
 		ToSlice()
@@ -75,7 +77,7 @@ func (f *flagProcName) Complete(match string) []flags.Completion {
 
 type flagProcTag string
 
-func (f *flagProcTag) Complete(match string) []flags.Completion {
+func (f *flagProcTag) Complete(match string) []cli.Completion {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
@@ -91,10 +93,10 @@ func (f *flagProcTag) Complete(match string) []flags.Completion {
 		Filter(func(tag string) bool {
 			return strings.HasPrefix(tag, match)
 		}),
-		func(tag string) flags.Completion {
-			return flags.Completion{
+		func(tag string) cli.Completion {
+			return cli.Completion{
 				Item:        tag,
-				Description: "",
+				Description: fun.Invalid[string](),
 			}
 		}).
 		ToSlice()
@@ -102,10 +104,10 @@ func (f *flagProcTag) Complete(match string) []flags.Completion {
 
 type flagGenericSelector string
 
-func (f *flagGenericSelector) Complete(match string) []flags.Completion {
+func (f *flagGenericSelector) Complete(match string) []cli.Completion {
 	var fName flagProcName
 	var fTag flagProcTag
-	return lo.Flatten([][]flags.Completion{
+	return lo.Flatten([][]cli.Completion{
 		fName.Complete(match),
 		fTag.Complete(match),
 	})

@@ -2,7 +2,7 @@ package app
 
 import (
 	"encoding/json"
-	"errors"
+	stdErrors "errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,25 +10,25 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
-	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 const CmdAgent = "agent"
 
-var ErrAlreadyRunning = errors.New("process is already running")
+var ErrAlreadyRunning = stdErrors.New("process is already running")
 
 func (app App) startAgentImpl(id core.PMID) error {
 	pmExecutable, err := os.Executable()
 	if err != nil {
-		return xerr.NewWM(err, "get pm executable")
+		return errors.Wrap(err, "get pm executable")
 	}
 
 	proc, ok := app.db.GetProc(id)
 	if !ok {
-		return xerr.NewM("not found proc to start", xerr.Fields{"pmid": id})
+		return errors.New("not found proc to start: %s", id)
 	}
 	if proc.Status.Status == core.StatusRunning {
 		return ErrAlreadyRunning
@@ -36,13 +36,13 @@ func (app App) startAgentImpl(id core.PMID) error {
 
 	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return xerr.NewWM(err, "open stdout file", xerr.Fields{"filename": proc.StdoutFile})
+		return errors.Wrap(err, "open stdout file: %q", proc.StdoutFile)
 	}
 	defer stdoutLogFile.Close()
 
 	stderrLogFile, err := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return xerr.NewWM(err, "open stderr file", xerr.Fields{"filename": proc.StderrFile})
+		return errors.Wrap(err, "open stderr file: %q", proc.StderrFile)
 	}
 	defer func() {
 		if errClose := stderrLogFile.Close(); errClose != nil {
@@ -62,7 +62,7 @@ func (app App) startAgentImpl(id core.PMID) error {
 
 	procDesc, err := json.Marshal(proc)
 	if err != nil {
-		return xerr.NewWM(err, "marshal proc")
+		return errors.Wrap(err, "marshal proc")
 	}
 
 	cmd := exec.Cmd{
@@ -80,7 +80,7 @@ func (app App) startAgentImpl(id core.PMID) error {
 
 	app.db.StatusSetRunning(id)
 	if err := cmd.Start(); err != nil {
-		return xerr.NewWM(err, "running failed", xerr.Fields{"procData": procFields(proc)})
+		return errors.Wrap(err, "running failed: %v", procFields(proc))
 	}
 
 	return nil

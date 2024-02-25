@@ -1,11 +1,12 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/pm/internal/infra/errors"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -39,10 +40,10 @@ type _cmdStop struct {
 	configFlag
 }
 
-func (x *_cmdStop) Execute(_ []string) error {
+func (x _cmdStop) Execute(ctx context.Context) error {
 	client, errList := app.New()
 	if errList != nil {
-		return xerr.NewWM(errList, "new grpc client")
+		return errors.Wrap(errList, "new grpc client")
 	}
 
 	list := client.List()
@@ -50,7 +51,7 @@ func (x *_cmdStop) Execute(_ []string) error {
 	if x.configFlag.Config != nil {
 		configs, errLoadConfigs := core.LoadConfigs(string(*x.configFlag.Config))
 		if errLoadConfigs != nil {
-			return xerr.NewWM(errLoadConfigs, "load configs")
+			return errors.Wrap(errLoadConfigs, "load configs")
 		}
 
 		names := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
@@ -81,7 +82,7 @@ func (x *_cmdStop) Execute(_ []string) error {
 	}
 
 	if err := client.Stop(procIDs...); err != nil {
-		return xerr.NewWM(err, "client.stop")
+		return errors.Wrap(err, "client.stop")
 	}
 
 	return nil

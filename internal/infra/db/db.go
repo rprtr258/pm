@@ -9,9 +9,9 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/log"
 )
 
 // status - db representation of core.Status

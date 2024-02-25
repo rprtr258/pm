@@ -5,17 +5,16 @@ import (
 	"os"
 	"time"
 
-	flags "github.com/rprtr258/cli/contrib"
+	"github.com/rprtr258/cli"
 	"github.com/rprtr258/scuf"
+	"github.com/rs/zerolog/log"
 )
 
-type App struct {
+type app struct {
 	Interval time.Duration `long:"interval" short:"i" description:"interval between ticks, e.g. 100ms, 5s" default:"1s"`
 }
 
-func (x *App) Execute([]string) error {
-	ctx := context.Background()
-
+func (x app) Execute(ctx context.Context) error {
 	ticker := time.NewTicker(x.Interval)
 	defer ticker.Stop()
 
@@ -36,12 +35,7 @@ func (x *App) Execute([]string) error {
 }
 
 func main() {
-	if _, err := flags.NewParser(&struct {
-		App App `command:"tick"` // TODO: unneeded subcommand, should be just root command
-	}{}, flags.Default).ParseArgs(os.Args[1:]...); err != nil {
-		if flagsErr, ok := err.(*flags.Error); ok && flagsErr.Kind == flags.ErrHelp {
-			return
-		}
-		os.Exit(1)
+	if err := cli.RunContext[app](context.Background(), os.Args...); err != nil {
+		log.Fatal().Err(err).Send()
 	}
 }
