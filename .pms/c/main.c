@@ -12,6 +12,39 @@ void list_processes();
 bool is_numeric(const char *str);
 int kill_process(const char *pid_str, int signal);
 
+void list_processes() {
+  DIR *proc_dir = opendir("/proc");
+  if (proc_dir == NULL) {
+    perror("Error opening /proc");
+    return;
+  }
+  struct dirent *entry;
+  while ((entry = readdir(proc_dir)) != NULL) {
+    if (is_numeric(entry->d_name)) {
+      printf("%s\n", entry->d_name);
+    }
+  }
+  closedir(proc_dir);
+}
+
+bool is_numeric(const char *str) {
+  for (int i = 0; str[i] != '\0'; i++) {
+    if (str[i] < '0' || str[i] > '9') {
+      return false;
+    }
+  }
+  return true;
+}
+
+int kill_process(const char *pid_str, int signal) {
+  pid_t pid = (pid_t)atoi(pid_str);
+  if (kill(pid, signal) == -1) {
+    perror("Error sending signal");
+    return errno;
+  }
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   if (argc < 2) {
     printf("Usage: %s <list|kill|help> [pid] [signal]\n", argv[0]);
@@ -46,37 +79,4 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
   return EXIT_SUCCESS;
-}
-
-void list_processes() {
-  DIR *proc_dir = opendir("/proc");
-  if (proc_dir == NULL) {
-    perror("Error opening /proc");
-    return;
-  }
-  struct dirent *entry;
-  while ((entry = readdir(proc_dir)) != NULL) {
-    if (is_numeric(entry->d_name)) {
-      printf("%s\n", entry->d_name);
-    }
-  }
-  closedir(proc_dir);
-}
-
-bool is_numeric(const char *str) {
-  for (int i = 0; str[i] != '\0'; i++) {
-    if (str[i] < '0' || str[i] > '9') {
-      return false;
-    }
-  }
-  return true;
-}
-
-int kill_process(const char *pid_str, int signal) {
-  pid_t pid = (pid_t)atoi(pid_str);
-  if (kill(pid, signal) == -1) {
-    perror("Error sending signal");
-    return errno;
-  }
-  return 0;
 }
