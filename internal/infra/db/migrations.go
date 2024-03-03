@@ -3,8 +3,8 @@ package db
 import (
 	"path/filepath"
 
-	"github.com/rprtr258/xerr"
-	"golang.org/x/exp/slog"
+	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/mod/semver"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -19,14 +19,8 @@ var Migrations = []migration{
 	{ // initial version
 		version: "0.0.1",
 		do: func() error {
-			handler, err := New(filepath.Join(core.DirHome, "db"))
-			if err != nil {
-				return xerr.NewWM(err, "create db handler")
-			}
-
-			errFlush := handler.procs.Flush()
-			if errFlush != nil {
-				return xerr.NewWM(errFlush, "flush procs")
+			if _, err := New(filepath.Join(core.DirHome, "db")); err != nil {
+				return errors.Wrap(err, "create db handler")
 			}
 
 			return nil
@@ -39,13 +33,13 @@ func Migrate(fromVersion, toVersion string) (string, error) {
 	for _, m := range Migrations {
 		if semver.Compare(fromVersion, m.version) == -1 &&
 			semver.Compare(m.version, toVersion) == -1 {
-			slog.Info("migrating...",
-				"from", lastVersion,
-				"to", m.version,
-			)
+			log.Info().
+				Str("from", lastVersion).
+				Str("to", m.version).
+				Msg("migrating...")
 
 			if err := m.do(); err != nil {
-				return lastVersion, xerr.NewWM(err, "migrate", xerr.Fields{
+				return lastVersion, errors.Wrap(err, "migrate", map[string]any{
 					"from": lastVersion,
 					"to":   m.version,
 				})

@@ -12,17 +12,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rprtr258/cli"
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/log"
-	"github.com/rprtr258/xerr"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/exp/slog"
+	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rs/zerolog/log"
 
-	"github.com/rprtr258/pm/api"
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/daemon"
-	pmcli "github.com/rprtr258/pm/internal/infra/cli"
-	pmclient "github.com/rprtr258/pm/pkg/client"
+	"github.com/rprtr258/pm/internal/infra/app"
+	mycli "github.com/rprtr258/pm/internal/infra/cli"
 )
 
 // tcpPortAvailable checks if a given TCP port is bound on the local network interface.
@@ -32,8 +29,7 @@ func tcpPortAvailable(port int) bool { //nolint:unparam // someday will receive 
 	if err != nil {
 		return true
 	}
-	defer conn.Close()
-
+	conn.Close()
 	return false
 }
 
@@ -41,37 +37,35 @@ func httpResponse(
 	ctx context.Context,
 	endpoint, expectedResponse string,
 ) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
-		return xerr.NewWM(err, "create request")
+		return errors.Wrap(err, "create request")
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return xerr.NewWM(err, "get response")
+		return errors.Wrap(err, "get response")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return xerr.NewM("bad status code", xerr.Fields{"status_code": resp.StatusCode})
+		return errors.New("bad status code: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return xerr.NewWM(err, "read response body")
+		return errors.Wrap(err, "read response body")
 	}
 
 	body = bytes.TrimSpace(body)
 	if string(body) != expectedResponse {
-		return xerr.NewM("unexpected response", xerr.Fields{"response": string(body)})
+		return errors.New("unexpected response: %s", string(body))
 	}
 
 	return nil
 }
 
-var client pmclient.Client
-
-type testHook func(ctx context.Context, client pmclient.Client) error
+type testHook func(ctx context.Context, client app.App) error
 
 type testcase struct {
 	beforeFunc testHook
@@ -87,30 +81,25 @@ const (
 
 var tests = map[string]testcase{
 	"hello-http-server": {
-		runConfigs: []core.RunConfig{{
+		runConfigs: []core.RunConfig{{ //nolint:exhaustruct // not needed
 			Name:    fun.Valid("http-hello-server"),
 			Command: "./tests/hello-http/main",
-			Args:    []string{},
 		}},
-		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
+		beforeFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
-				return xerr.NewM("port not available", xerr.Fields{"port": _helloHTTPServerPort})
+				return errors.New("port %d not available", _helloHTTPServerPort)
 			}
 
 			return nil
 		},
-		testFunc: func(ctx context.Context, client pmclient.Client) error {
+		testFunc: func(ctx context.Context, client app.App) error {
 			time.Sleep(time.Second)
 
-			if errHTTP := httpResponse(ctx, "http://localhost:8080/", "hello world"); errHTTP != nil {
-				return errHTTP
-			}
-
-			return nil
+			return httpResponse(ctx, "http://localhost:8080/", "hello world")
 		},
-		afterFunc: func(ctx context.Context, client pmclient.Client) error {
+		afterFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
-				return xerr.NewM("server not stopped", xerr.Fields{"port": _helloHTTPServerPort})
+				return errors.New("server not stopped, port=%d", _helloHTTPServerPort)
 			}
 
 			return nil
@@ -118,46 +107,46 @@ var tests = map[string]testcase{
 	},
 	"client-server-netcat": {
 		runConfigs: []core.RunConfig{
-			{
+			{ //nolint:exhaustruct // not needed
 				Name:    fun.Valid("nc-server"),
 				Command: "/usr/bin/nc",
 				Args:    []string{"-l", "-p", strconv.Itoa(_ncServerPort)},
 			},
-			{
+			{ //nolint:exhaustruct // not needed
 				Name:    fun.Valid("nc-client"),
 				Command: "/bin/sh",
 				Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(_ncServerPort)},
 			},
 		},
-		beforeFunc: func(ctx context.Context, client pmclient.Client) error {
+		beforeFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_ncServerPort) {
-				return xerr.NewM("port not available", xerr.Fields{"port": _ncServerPort})
+				return errors.New("port %d not available", _ncServerPort)
 			}
 
 			return nil
 		},
-		testFunc: func(ctx context.Context, client pmclient.Client) error {
+		testFunc: func(ctx context.Context, client app.App) error {
 			homeDir, errHome := os.UserHomeDir()
 			if errHome != nil {
-				return xerr.NewWM(errHome, "get home dir")
+				return errors.Wrap(errHome, "get home dir")
 			}
 
 			time.Sleep(time.Second)
 
-			d, err := os.ReadFile(filepath.Join(homeDir, ".pm/logs/1.stdout"))
+			d, err := os.ReadFile(filepath.Join(homeDir, ".pm", "logs", "1.stdout"))
 			if err != nil {
-				return xerr.NewWM(err, "read server stdout")
+				return errors.Wrap(err, "read server stdout")
 			}
 
 			if strings.TrimSpace(string(d)) != "123" {
-				return xerr.NewM("unexpected request", xerr.Fields{"request": string(d)})
+				return errors.New("unexpected request: %s", string(d))
 			}
 
 			return nil
 		},
-		afterFunc: func(ctx context.Context, client pmclient.Client) error {
+		afterFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_ncServerPort) {
-				return xerr.NewM("server not stopped", xerr.Fields{"port": _ncServerPort})
+				return errors.New("server not stopped, port=%d", _ncServerPort)
 			}
 
 			return nil
@@ -167,116 +156,93 @@ var tests = map[string]testcase{
 
 //nolint:nonamedreturns // required to check test result
 func runTest(ctx context.Context, name string, test testcase) (ererer error) { //nolint:funlen,gocognit,lll // no idea how to refactor right now
-	var errClient error
-	client, errClient = pmclient.NewGrpcClient()
+	client, errClient := app.New()
 	if errClient != nil {
-		return xerr.NewWM(errClient, "create client")
-	}
-
-	// START DAEMON
-	slog.Debug("starting daemon...")
-	_, errRestart := daemon.Restart(ctx)
-	if errRestart != nil {
-		return xerr.NewWM(errRestart, "restart daemon")
-	}
-
-	ticker := time.NewTicker(100 * time.Millisecond) //nolint:gomnd // arbitrary time
-	defer ticker.Stop()
-	for {
-		if client.HealthCheck(ctx) == nil {
-			break
-		}
-
-		select {
-		case <-ctx.Done():
-			return xerr.NewWM(ctx.Err(), "context done while waiting for daemon to start")
-		case <-ticker.C:
-		}
+		return errors.Wrap(errClient, "create client")
 	}
 
 	// DELETE ALL PROCS
-	list, errList := client.List(ctx)
-	if errList != nil {
-		return xerr.NewWM(errList, "list processes")
-	}
+	var err error
+	client.List()(func(proc core.Proc) bool {
+		if errStop := client.Stop(proc.ID); errStop != nil {
+			err = errors.Wrap(errStop, "stop all old processes")
+			return false
+		}
 
-	oldIDs := fun.Map(fun.Keys(list), func(id core.ProcID) uint64 {
-		return uint64(id)
+		if errDelete := client.Delete(proc.ID); errDelete != nil {
+			err = errors.Wrap(errDelete, "delete all old processes")
+			return false
+		}
+
+		return true
 	})
-
-	if _, errStop := client.Stop(ctx, oldIDs); errStop != nil {
-		return xerr.NewWM(errStop, "stop all old processes")
-	}
-
-	if errDelete := client.Delete(ctx, oldIDs); errDelete != nil {
-		return xerr.NewWM(errDelete, "delete all old processes")
+	if err != nil {
+		return err
 	}
 
 	// RUN TEST
 	if errTest := func() error {
-		l := slog.With("test", name)
+		l := log.With().Str("test", name).Logger()
 
-		l.Info("running test")
+		l.Info().Msg("running test")
 		defer func() {
 			if ererer == nil {
-				l.Info("test succeeded")
+				l.Info().Msg("test succeeded")
 			} else {
-				l.Error("test failed", "err", ererer.Error())
+				l.Error().Err(ererer).Msg("test failed")
 			}
 		}()
 
 		// RUN TEST BEFORE HOOK
 		if test.beforeFunc != nil {
 			if errTest := test.beforeFunc(ctx, client); errTest != nil {
-				return xerr.NewWM(errTest, "run test before hook")
+				return errors.Wrap(errTest, "run test before hook")
 			}
 		}
 
 		// START TEST PROCESSES
-		processesOptions := fun.Map(test.runConfigs, func(c core.RunConfig) *api.ProcessOptions {
-			return &api.ProcessOptions{
-				Name:    c.Name.Ptr(),
+		ids := []core.PMID{}
+		for _, c := range test.runConfigs {
+			id, errStart := client.Run(core.RunConfig{
+				Name:    c.Name,
 				Command: c.Command,
 				Args:    c.Args,
 				Cwd:     c.Cwd,
 				Tags:    c.Tags,
 				Env:     c.Env,
+			})
+			if errStart != nil {
+				return errors.Wrap(errStart, "start process: %s", id)
 			}
-		})
 
-		ids, errCreate := client.Create(ctx, processesOptions)
-		if errCreate != nil {
-			return xerr.NewWM(errCreate, "create process")
-		}
-
-		if len(ids) != len(test.runConfigs) {
-			return xerr.NewM("unexpected number of processes", xerr.Fields{"ids": ids})
-		}
-
-		if errStart := client.Start(ctx, ids); errStart != nil {
-			return xerr.NewWM(errStart, "start process", xerr.Fields{"ids": ids})
+			ids = append(ids, core.PMID(id))
 		}
 
 		// RUN TEST
 		if test.testFunc != nil {
 			if errTest := test.testFunc(ctx, client); errTest != nil {
-				return xerr.NewWM(errTest, "run test func")
+				return errors.Wrap(errTest, "run test func")
 			}
 		}
 
 		// STOP AND REMOVE TEST PROCESSES
-		if _, errStop := client.Stop(ctx, ids); errStop != nil {
-			return xerr.NewWM(errStop, "stop process", xerr.Fields{"ids": ids})
-		}
+		for _, id := range ids {
+			if errStop := client.Stop(id); errStop != nil {
+				return errors.Wrap(errStop, "stop process: %s", id)
+			}
 
-		if errDelete := client.Delete(ctx, ids); errDelete != nil {
-			return xerr.NewWM(errDelete, "delete process", xerr.Fields{"ids": ids})
+			// TODO: block on stop method instead, now it is async
+			time.Sleep(3 * time.Second)
+
+			if errDelete := client.Delete(id); errDelete != nil {
+				return errors.Wrap(errDelete, "delete process: %s", id)
+			}
 		}
 
 		// RUN TEST AFTER HOOK
 		if test.afterFunc != nil {
 			if errTest := test.afterFunc(ctx, client); errTest != nil {
-				return xerr.NewWM(errTest, "run test after hook")
+				return errors.Wrap(errTest, "run test after hook")
 			}
 		}
 
@@ -285,53 +251,40 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		return errTest
 	}
 
-	// KILL DAEMON
-	slog.Debug("killing daemon...")
-	if errKill := daemon.Kill(); errKill != nil {
-		return xerr.NewWM(errKill, "kill daemon")
-	}
-
-	if errHealth := client.HealthCheck(ctx); errHealth == nil {
-		return xerr.NewM("daemon is healthy but must not")
-	}
-
 	return nil
 }
 
-var (
-	_testsCmds = fun.ToSlice(tests, func(name string, test testcase) *cli.Command {
-		return &cli.Command{
-			Name: name,
-			Action: func(ctx *cli.Context) error {
-				return runTest(ctx.Context, name, test)
-			},
-		}
-	})
-	_testAllCmd = &cli.Command{
-		Name: "all",
-		Action: func(ctx *cli.Context) error {
-			for name, test := range tests {
-				if errTest := runTest(ctx.Context, name, test); errTest != nil {
-					return xerr.NewWM(errTest, "run test", xerr.Fields{"test": name})
-				}
-			}
+type cmdTest struct {
+	Args struct {
+		Test string `positional-arg-name:"TESTNAME"`
+	} `positional-args:"yes"`
+}
 
-			return nil
-		},
+func (x cmdTest) Execute(ctx context.Context) error {
+	if x.Args.Test == "all" {
+		for name, test := range tests {
+			if errTest := runTest(ctx, name, test); errTest != nil {
+				return errors.Wrap(errTest, "run test: %s", name)
+			}
+		}
+		return nil
 	}
-)
+
+	test, ok := tests[x.Args.Test]
+	if !ok {
+		return errors.New("unknown test: %q", x.Args.Test)
+	}
+
+	return runTest(ctx, x.Args.Test, test)
+}
+
+type App struct {
+	mycli.App
+	Test cmdTest `command:"test" description:"run e2e tests"`
+}
 
 func main() {
-	slog.SetDefault(slog.New(log.New()))
-
-	pmcli.App.Commands = append(pmcli.App.Commands, &cli.Command{
-		Name:        "test",
-		Usage:       "run e2e tests",
-		Subcommands: append(_testsCmds, _testAllCmd),
-	})
-
-	if err := pmcli.App.Run(os.Args); err != nil {
-		slog.Error(err.Error())
-		os.Exit(1)
+	if err := cli.RunContext[App](context.Background(), os.Args...); err != nil {
+		log.Fatal().Err(err).Send()
 	}
 }

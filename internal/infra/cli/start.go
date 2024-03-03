@@ -1,127 +1,88 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/samber/lo"
-	"github.com/urfave/cli/v2"
-
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/fun/iter"
+	"github.com/rprtr258/pm/internal/infra/errors"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/daemon"
-	"github.com/rprtr258/pm/internal/core/pm"
-	"github.com/rprtr258/pm/pkg/client"
+	"github.com/rprtr258/pm/internal/infra/app"
 )
 
-var _startCmd = &cli.Command{
-	Name:      "start",
-	ArgsUsage: "<name|tag|id|status>...",
-	Usage:     "start already added process",
-	Flags: []cli.Flag{
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to run",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to run",
-		},
-		&cli.Uint64SliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to run",
-		},
-		&cli.StringSliceFlag{
-			Name:  "status",
-			Usage: "status(es) of process(es) to run",
-		},
-		configFlag,
-	},
-	Action: func(ctx *cli.Context) error {
-		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
-			return xerr.NewWM(errDaemon, "ensure daemon is running")
-		}
+type _cmdStart struct {
+	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
+	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
+	IDs   []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
+	Args  struct {
+		Rest []flagGenericSelector `positional-arg-name:"name|tag|id"`
+	} `positional-args:"yes"`
+	configFlag
+}
 
-		names := ctx.StringSlice("name")
-		tags := ctx.StringSlice("tags")
-		statuses := ctx.StringSlice("status")
-		ids := ctx.Uint64Slice("id")
-		args := ctx.Args().Slice()
+func (x _cmdStart) Execute(ctx context.Context) error {
+	app, errNewApp := app.New()
+	if errNewApp != nil {
+		return errors.Wrap(errNewApp, "new app")
+	}
 
-		client, errList := client.NewGrpcClient()
-		if errList != nil {
-			return xerr.NewWM(errList, "new grpc client")
-		}
-		defer deferErr(client.Close)()
+	list := app.List()
 
-		app, errNewApp := pm.New(client)
-		if errNewApp != nil {
-			return xerr.NewWM(errNewApp, "new app")
-		}
-
-		list, errList := client.List(ctx.Context)
-		if errList != nil {
-			return xerr.NewWM(errList, "server.list")
-		}
-
-		if !ctx.IsSet("config") {
-			procIDs := core.FilterProcs[core.ProcID](
-				list,
-				core.WithGeneric(args),
-				core.WithIDs(ids),
-				core.WithNames(names),
-				core.WithStatuses(statuses),
-				core.WithTags(tags),
-			)
-
-			if len(procIDs) == 0 {
-				fmt.Println("nothing to start")
-				return nil
-			}
-
-			if err := app.Start(ctx.Context, procIDs...); err != nil {
-				return xerr.NewWM(err, "client.start")
-			}
-
-			return nil
-		}
-
-		configFile := ctx.String("config")
-
-		configs, errLoadConfigs := core.LoadConfigs(configFile)
-		if errLoadConfigs != nil {
-			return xerr.NewWM(errLoadConfigs, "load configs", xerr.Fields{
-				"config": configFile,
-			})
-		}
-
-		filteredList, err := app.ListByRunConfigs(ctx.Context, configs)
-		if err != nil {
-			return xerr.NewWM(err, "list procs by configs")
-		}
-
-		// TODO: reuse filter options
-		procIDs := core.FilterProcs[core.ProcID](
-			filteredList,
-			core.WithAllIfNoFilters,
-			core.WithGeneric(args),
-			core.WithIDs(ids),
-			core.WithNames(names),
-			core.WithStatuses(statuses),
-			core.WithTags(tags),
-		)
-
+	if x.configFlag.Config == nil {
+		procIDs := iter.Map(list.
+			Filter(core.FilterFunc(
+				core.WithGeneric(x.Args.Rest...),
+				core.WithIDs(x.IDs...),
+				core.WithNames(x.Names...),
+				core.WithTags(x.Tags...),
+			)),
+			func(proc core.Proc) core.PMID {
+				return proc.ID
+			}).
+			ToSlice()
 		if len(procIDs) == 0 {
 			fmt.Println("nothing to start")
 			return nil
 		}
 
-		if err := app.Start(ctx.Context, procIDs...); err != nil {
-			return xerr.NewWM(err, "client.start")
+		if err := app.Start(procIDs...); err != nil {
+			return errors.Wrap(err, "client.start")
 		}
 
-		fmt.Println(lo.ToAnySlice(procIDs)...)
+		printIDs(procIDs...)
 
 		return nil
-	},
+	}
+
+	configs, errLoadConfigs := core.LoadConfigs(string(*x.configFlag.Config))
+	if errLoadConfigs != nil {
+		return errors.Wrap(errLoadConfigs, "load configs: %s", string(*x.configFlag.Config))
+	}
+
+	procIDs := iter.Map(app.
+		ListByRunConfigs(configs).
+		Filter(core.FilterFunc(
+			core.WithGeneric(x.Args.Rest...),
+			core.WithIDs(x.IDs...),
+			core.WithNames(x.Names...),
+			core.WithTags(x.Tags...),
+			core.WithAllIfNoFilters,
+		)),
+		func(proc core.Proc) core.PMID {
+			return proc.ID
+		}).
+		ToSlice()
+	if len(procIDs) == 0 {
+		fmt.Println("nothing to start")
+		return nil
+	}
+
+	if err := app.Start(procIDs...); err != nil {
+		return errors.Wrap(err, "client.start")
+	}
+
+	printIDs(procIDs...)
+
+	return nil
 }

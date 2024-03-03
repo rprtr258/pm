@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/google/go-jsonnet"
@@ -12,17 +13,53 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/xerr"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slog"
+
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
+type Actions struct {
+	Healthcheck any // TODO: tcp port listen check/http check/command run
+	// Custom actions
+	Custom map[string]struct {
+		Command string
+		Args    []string
+	}
+}
+
+// RunConfig - configuration of process to manage
 type RunConfig struct {
-	Args    []string
-	Tags    []string
+	// Env - environment variables
+	Env map[string]string
+	// Actions to perform on process by name
+	Actions Actions
+	// Watch - regexp for files to watch and restart on changes
+	Watch fun.Option[*regexp.Regexp]
+	// Command - process command, full path
 	Command string
-	Cwd     string
-	Name    fun.Option[string]
-	Env     map[string]string
+	// Cwd - working directory
+	Cwd string
+	// StdoutFile - file to write stdout to
+	StdoutFile fun.Option[string]
+	// StderrFile - file to write stderr to
+	StderrFile fun.Option[string]
+	// Args - arguments for process, not including executable itself as first argument
+	Args []string
+	// Tags - process tags, excluding `all` tag
+	Tags []string
+	// Name of a process if defined, otherwise generated
+	Name fun.Option[string]
+	// KillTimeout - before sending SIGKILL after SIGINT
+	// TODO: use
+	KillTimeout time.Duration
+	// KillChildren - stop children processes on process stop
+	// TODO: use
+	KillChildren bool
+	// Autorestart - restart process automatically after its death
+	Autorestart bool
+	// MaxRestarts - maximum number of restarts, 0 means no limit
+	MaxRestarts uint
 }
 
 func isConfigFile(arg string) bool {
@@ -46,17 +83,19 @@ func newVM() *jsonnet.VM {
 
 			filename, ok := args[0].(string)
 			if !ok {
-				return nil, xerr.NewM("filename must be a string", xerr.Fields{"filename": args[0]})
+				return nil, errors.New("filename must be a string", map[string]any{"filename": args[0]})
 			}
+
+			// TODO: somehow relative to cwd
 
 			data, errRead := os.ReadFile(filename)
 			if errRead != nil {
-				return nil, xerr.NewWM(errRead, "read env file", xerr.Fields{"filename": filename})
+				return nil, errors.Wrap(errRead, "read env file", map[string]any{"filename": filename})
 			}
 
 			env, errUnmarshal := godotenv.UnmarshalBytes(data)
 			if errUnmarshal != nil {
-				return nil, xerr.NewWM(errUnmarshal, "parse env file", xerr.Fields{"filename": filename})
+				return nil, errors.Wrap(errUnmarshal, "parse env file", map[string]any{"filename": filename})
 			}
 
 			return lo.MapValues(env, func(v string, _ string) any {
@@ -68,18 +107,19 @@ func newVM() *jsonnet.VM {
 	return vm
 }
 
+//nolint:funlen // no
 func LoadConfigs(filename string) ([]RunConfig, error) {
 	if !isConfigFile(filename) {
-		return nil, xerr.NewM(
+		return nil, errors.New(
 			"invalid config file",
-			xerr.Fields{"configFilename": filename},
+			map[string]any{"configFilename": filename},
 			xerr.Stacktrace,
 		)
 	}
 
 	jsonText, err := newVM().EvaluateFile(filename)
 	if err != nil {
-		return nil, xerr.NewWM(err, "evaluate jsonnet file")
+		return nil, errors.Wrap(err, "evaluate jsonnet file")
 	}
 
 	type configScanDTO struct {
@@ -89,32 +129,49 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		Command string         `json:"command"`
 		Args    []any          `json:"args"`
 		Tags    []string       `json:"tags"`
+		Watch   *string        `json:"watch"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
-		return nil, xerr.NewWM(err, "unmarshal configs json")
+		return nil, errors.Wrap(err, "unmarshal configs json")
 	}
 
 	// validate configs
-	errValidation := xerr.Combine(lo.Map(scannedConfigs, func(config configScanDTO, _ int) error {
+	errValidation := xerr.Combine(fun.Map[error](func(config configScanDTO) error {
 		if config.Command == "" {
-			return xerr.NewM(
+			return errors.New(
 				"missing command",
-				xerr.Fields{"config": config},
+				map[string]any{"config": config},
 			)
 		}
 
 		return nil
-	})...)
+	}, scannedConfigs...)...)
 	if errValidation != nil {
 		return nil, errValidation
 	}
 
-	return lo.Map(scannedConfigs, func(config configScanDTO, _ int) RunConfig {
+	return fun.MapErr[RunConfig, configScanDTO, error](func(config configScanDTO) (RunConfig, error) {
+		watch := fun.Zero[fun.Option[*regexp.Regexp]]()
+		if config.Watch != nil {
+			re, err := regexp.Compile(*config.Watch)
+			if err != nil {
+				return fun.Zero[RunConfig](), errors.Wrap(err, "invalid watch pattern",
+					map[string]any{"pattern": *config.Watch})
+			}
+			watch = fun.Valid(re)
+		}
+
+		relativeCwd := filepath.Join(filepath.Dir(filename), fun.Deref(config.Cwd))
+		cwd, err := filepath.Abs(relativeCwd)
+		if err != nil {
+			return fun.Zero[RunConfig](), errors.Wrap(err, "get absolute cwd", map[string]any{"cwd": relativeCwd})
+		}
+
 		return RunConfig{
 			Name:    fun.FromPtr(config.Name),
 			Command: config.Command,
-			Args: lo.Map(config.Args, func(arg any, i int) string {
+			Args: fun.Map[string](func(arg any, i int) string {
 				switch a := arg.(type) {
 				case fmt.Stringer:
 					return a.String()
@@ -124,19 +181,17 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 					return fmt.Sprint(arg)
 				default:
 					argStr := fmt.Sprintf("%v", arg)
-					slog.Error("unknown arg type",
-						"arg", argStr,
-						"i", i,
-						"config", config,
-					)
+					log.Error().
+						Str("arg", argStr).
+						Int("i", i).
+						Any("config", config).
+						Msg("unknown arg type")
 
 					return argStr
 				}
-			}),
+			}, config.Args...),
 			Tags: config.Tags,
-			Cwd: lo.
-				If(config.Cwd == nil, filepath.Dir(filename)).
-				ElseF(func() string { return *config.Cwd }),
+			Cwd:  cwd,
 			Env: lo.MapValues(config.Env, func(value any, name string) string {
 				switch v := value.(type) {
 				case fmt.Stringer:
@@ -147,15 +202,26 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 					return fmt.Sprint(v)
 				default:
 					valStr := fmt.Sprintf("%v", v)
-					slog.Error("unknown env value type",
-						"value", valStr,
-						"name", name,
-						"config", config,
-					)
+					log.Error().
+						Str("value", valStr).
+						Str("name", name).
+						Any("config", config).
+						Msg("unknown env value type")
 
 					return valStr
 				}
 			}),
-		}
-	}), nil
+			Watch: watch,
+			Actions: Actions{
+				Healthcheck: nil,
+				Custom:      nil,
+			},
+			StdoutFile:   fun.Zero[fun.Option[string]](),
+			StderrFile:   fun.Zero[fun.Option[string]](),
+			KillTimeout:  0,
+			KillChildren: false,
+			Autorestart:  false,
+			MaxRestarts:  0,
+		}, nil
+	}, scannedConfigs...)
 }

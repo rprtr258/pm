@@ -1,27 +1,26 @@
 package cli
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
-	"strconv"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/aquasecurity/table"
-	"github.com/fatih/color"
 	"github.com/kballard/go-shellquote"
-	"github.com/rprtr258/xerr"
-	"github.com/urfave/cli/v2"
+	"github.com/rprtr258/cli"
+	cmp2 "github.com/rprtr258/cmp"
+	"github.com/rprtr258/fun"
+	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/scuf"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/daemon"
-	"github.com/rprtr258/pm/internal/core/fun"
-	"github.com/rprtr258/pm/internal/core/pm"
-	"github.com/rprtr258/pm/pkg/client"
+	"github.com/rprtr258/pm/internal/infra/app"
 )
 
 const (
@@ -31,253 +30,204 @@ const (
 	_formatShort   = "short"
 )
 
-var _listCmd = &cli.Command{
-	Name:    "list",
-	Aliases: []string{"l", "ls", "ps", "status"},
-	Usage:   "list processes",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "format",
-			Aliases: []string{"f"},
-			Usage: "Listing format: " + strings.Join([]string{
-				color.YellowString(_formatTable),
-				color.YellowString(_formatCompact),
-				color.YellowString(_formatJSON),
-				color.YellowString(_formatShort),
-			}, ", ") + ", any other string is rendred as Go template with " +
-				color.GreenString("core.ProcData") +
-				" struct",
-			Value: "table",
-		},
-		&cli.StringFlag{
-			Name:    "sort",
-			Aliases: []string{"s"},
-			Usage: "Sort order. Available sort fields: " + strings.Join([]string{
-				color.YellowString("id"),
-				color.YellowString("name"),
-				color.YellowString("status"),
-				color.YellowString("pid"),
-				color.YellowString("uptime"),
-			}, ", ") + ". Order can be changed by adding " +
-				color.RedString(":asc") + " or " + color.RedString(":desc"),
-			Value: "id:asc",
-		},
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to list",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to list",
-		},
-		&cli.Uint64SliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to list",
-		},
-		&cli.StringSliceFlag{
-			Name:  "status",
-			Usage: "status(es) of process(es) to list",
-		},
-	},
-	Action: func(ctx *cli.Context) error {
-		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
-			return xerr.NewWM(errDaemon, "ensure daemon is running")
-		}
+const _shortIDLength = 8
 
-		sortField := ctx.String("sort")
-		sortOrder := "asc"
-		if i := strings.IndexRune(sortField, ':'); i != -1 {
-			sortField, sortOrder = sortField[:i], sortField[i+1:]
-		}
-
-		var sortFunc func(a, b core.ProcData) bool
-		switch sortField {
-		case "id":
-			sortFunc = func(a, b core.ProcData) bool {
-				return a.ProcID < b.ProcID
-			}
-		case "name":
-			sortFunc = func(a, b core.ProcData) bool {
-				return a.Name < b.Name
-			}
-		case "status":
-			getOrder := func(p core.ProcData) int {
-				//nolint:gomnd // priority weights
-				switch p.Status.Status {
-				case core.StatusCreated:
-					return 0
-				case core.StatusRunning:
-					return 100
-				case core.StatusStopped:
-					return 200 + p.Status.ExitCode
-				case core.StatusInvalid:
-					return 300
-				default:
-					return 400
-				}
-			}
-			sortFunc = func(a, b core.ProcData) bool {
-				return getOrder(a) < getOrder(b)
-			}
-		case "pid":
-			sortFunc = func(a, b core.ProcData) bool {
-				if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
-					if a.Status.Status == core.StatusRunning {
-						return true
-					}
-
-					if b.Status.Status == core.StatusRunning {
-						return false
-					}
-
-					return a.ProcID < b.ProcID
-				}
-
-				return a.Status.Pid < b.Status.Pid
-			}
-		case "uptime":
-			now := time.Now()
-			sortFunc = func(a, b core.ProcData) bool {
-				if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
-					if a.Status.Status == core.StatusRunning {
-						return true
-					}
-
-					if b.Status.Status == core.StatusRunning {
-						return false
-					}
-
-					return a.ProcID < b.ProcID
-				}
-
-				return a.Status.StartTime.Sub(now) < b.Status.StartTime.Sub(now)
-			}
-		default:
-			return xerr.NewM("unknown sort field", xerr.Fields{"field": sortField})
-		}
-
-		switch sortOrder {
-		case "asc":
-		case "desc":
-			oldSortFunc := sortFunc
-			sortFunc = func(a, b core.ProcData) bool {
-				return !oldSortFunc(a, b)
-			}
-		default:
-			return xerr.NewM("unknown sort order", xerr.Fields{"order": sortOrder})
-		}
-
-		return list(
-			ctx.Context,
-			ctx.Args().Slice(),
-			ctx.StringSlice("name"),
-			ctx.StringSlice("tags"),
-			ctx.StringSlice("status"),
-			ctx.Uint64Slice("id"),
-			ctx.String("format"),
-			sortFunc,
-		)
-	},
-}
-
-func mapStatus(status core.Status) (string, *int, time.Duration) {
+func mapStatus(status core.Status) (string, time.Duration) {
 	switch status.Status {
 	case core.StatusCreated:
-		return color.YellowString("created"), nil, 0
+		return scuf.String("created", scuf.FgYellow), 0
 	case core.StatusRunning:
-		return color.GreenString("running"), &status.Pid, time.Since(status.StartTime)
+		// TODO: get back real pid
+		return scuf.String("running", scuf.FgGreen), time.Since(status.StartTime)
 	case core.StatusStopped:
-		if status.ExitCode == 0 {
-			return color.YellowString("exited"), nil, 0
-		}
-		return color.RedString("stopped(%d)", status.ExitCode), nil, 0
+		return scuf.String(fmt.Sprintf("stopped(%d)", status.ExitCode), scuf.FgRed), 0
 	case core.StatusInvalid:
-		return color.RedString("invalid(%T)", status), nil, 0
+		return scuf.String(fmt.Sprintf("invalid(%#v)", status.Status), scuf.FgRed), 0
 	default:
-		return color.RedString("BROKEN(%T)", status), nil, 0
+		return scuf.String(fmt.Sprintf("BROKEN(%T)", status), scuf.FgRed), 0
 	}
 }
 
-func renderTable(procs []core.ProcData, setRowLines bool) {
+func renderTable(procs []core.Proc, setRowLines bool) {
 	procsTable := table.New(os.Stdout)
 	procsTable.SetDividers(table.UnicodeRoundedDividers)
-	procsTable.SetHeaders("id", "name", "status", "pid", "uptime", "tags", "cpu", "memory", "cmd")
+	procsTable.SetHeaders("id", "name", "status", "uptime", "tags" /*"cpu", "memory",*/, "cmd")
 	procsTable.SetHeaderStyle(table.StyleBold)
 	procsTable.SetLineStyle(table.StyleDim)
 	procsTable.SetRowLines(setRowLines)
 	for _, proc := range procs {
 		// TODO: if errored/stopped show time since start instead of uptime (not in place of)
-		status, pid, uptime := mapStatus(proc.Status)
+		status, uptime := mapStatus(proc.Status)
 
 		procsTable.AddRow(
-			color.New(color.FgCyan, color.Bold).Sprint(proc.ProcID),
+			scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold),
 			proc.Name,
 			status,
-			strconv.Itoa(fun.Deref(pid)),
-			// TODO: check status instead for following parameters
-			fun.If(pid == nil, "").Else(uptime.Truncate(time.Second).String()),
-			fmt.Sprint(strings.Join(proc.Tags, "\n")),
-			fmt.Sprint(proc.Status.CPU),
-			fmt.Sprint(proc.Status.Memory),
+			fun.
+				If(proc.Status.Status != core.StatusRunning, "").
+				Else(uptime.Truncate(time.Second).String()),
+			strings.Join(proc.Tags, "\n"),
+			// fmt.Sprint(proc.Status.CPU),
+			// fmt.Sprint(proc.Status.Memory),
 			shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
 		)
 	}
 	procsTable.Render()
 }
 
-func list(
-	ctx context.Context,
-	genericFilters, nameFilters, tagFilters, statusFilters []string,
-	idFilters []uint64,
-	format string,
-	sortFunc func(a, b core.ProcData) bool,
-) error {
-	client, err := client.NewGrpcClient()
-	if err != nil {
-		return xerr.NewWM(err, "new grpc client")
-	}
-	defer deferErr(client.Close)()
+type flagListSort struct {
+	less func(a, b core.Proc) int
+}
 
-	app, errNewApp := pm.New(client)
-	if errNewApp != nil {
-		return xerr.NewWM(errNewApp, "new app")
-	}
-
-	list, err := app.List(ctx) // TODO: move in filters which are bit below
-	if err != nil {
-		return xerr.NewWM(err, "list server call")
-	}
-
-	procIDsToShow := core.FilterProcs[core.ProcID](
-		list,
-		core.WithAllIfNoFilters,
-		core.WithGeneric(genericFilters),
-		core.WithIDs(idFilters),
-		core.WithNames(nameFilters),
-		core.WithStatuses(statusFilters),
-		core.WithTags(tagFilters),
-	)
-
-	procsToShow := fun.MapDict(procIDsToShow, list)
-	sort.Slice(procsToShow, func(i, j int) bool {
-		return sortFunc(procsToShow[i], procsToShow[j])
+func (f *flagListSort) Usage() string {
+	return scuf.NewString(func(b scuf.Buffer) {
+		b.
+			String("Sort order. Available sort fields: ").
+			String("id", scuf.FgYellow).String(", ").
+			String("name", scuf.FgYellow).String(", ").
+			String("status", scuf.FgYellow).String(", ").
+			String("uptime", scuf.FgYellow).
+			String(". Order can be changed by adding ").
+			String(":asc", scuf.FgRed).
+			String(" or ").
+			String(":desc", scuf.FgRed)
 	})
+}
 
+func (f *flagListSort) UnmarshalFlag(value string) error {
+	sortField := value
+	sortOrder := "asc"
+	if i := strings.IndexRune(sortField, ':'); i != -1 {
+		sortField, sortOrder = sortField[:i], sortField[i+1:]
+	}
+
+	switch sortField {
+	case "id":
+		f.less = func(a, b core.Proc) int {
+			return cmp.Compare(a.ID, b.ID)
+		}
+	case "name":
+		f.less = func(a, b core.Proc) int {
+			return cmp.Compare(a.Name, b.Name)
+		}
+	case "status":
+		getOrder := func(p core.Proc) int {
+			// priority weights
+			switch p.Status.Status {
+			case core.StatusCreated:
+				return 0
+			case core.StatusRunning:
+				return 100
+			case core.StatusStopped:
+				return 200
+			case core.StatusInvalid:
+				return 300
+			default:
+				return 400
+			}
+		}
+		f.less = func(a, b core.Proc) int {
+			return cmp.Compare(getOrder(a), getOrder(b))
+		}
+	case "uptime":
+		f.less = cmp2.Comparator[core.Proc](func(a, b core.Proc) int {
+			if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
+				if a.Status.Status == core.StatusRunning {
+					return -1
+				}
+
+				if b.Status.Status == core.StatusRunning {
+					return 1
+				}
+			}
+			return 0
+		}).Then(func(a, b core.Proc) int {
+			switch {
+			case a.Status.StartTime.Before(b.Status.StartTime):
+				return -1
+			case b.Status.StartTime.Before(a.Status.StartTime):
+				return 1
+			default:
+				return 0
+			}
+		})
+	default:
+		return errors.New("unknown sort field: %q", sortField)
+	}
+
+	switch sortOrder {
+	case "asc":
+	case "desc":
+		oldSortFunc := f.less
+		f.less = cmp2.Comparator[core.Proc](oldSortFunc).Reversed()
+	default:
+		return errors.New("unknown sort order: %q", sortOrder)
+	}
+
+	return nil
+}
+
+type flagListFormat struct {
+	f func([]core.Proc) error
+}
+
+func (*flagListFormat) Usage() string {
+	return scuf.NewString(func(b scuf.Buffer) {
+		b.
+			String("Listing format: ").
+			String(_formatTable, scuf.FgYellow).String(", ").
+			String(_formatCompact, scuf.FgYellow).String(", ").
+			String(_formatJSON, scuf.FgYellow).String(", ").
+			String(_formatShort, scuf.FgYellow).
+			String(", any other string is rendred as Go template with ").
+			String("core.ProcData", scuf.FgGreen).
+			String(" struct")
+	})
+}
+
+func (f *flagListFormat) Complete(prefix string) []cli.Completion {
+	return fun.FilterMap[cli.Completion](
+		func(format string) (cli.Completion, bool) {
+			return cli.Completion{
+				Item:        format,
+				Description: fun.Invalid[string](),
+			}, strings.HasPrefix(format, prefix)
+		},
+		_formatTable,
+		_formatCompact,
+		_formatJSON,
+		_formatShort,
+	)
+}
+
+func (f *flagListFormat) UnmarshalFlag(format string) error {
 	switch format {
 	case _formatTable:
-		renderTable(procsToShow, true)
-	case _formatCompact:
-		renderTable(procsToShow, false)
-	case _formatJSON:
-		jsonData, errMarshal := json.MarshalIndent(procsToShow, "", "  ")
-		if errMarshal != nil {
-			return xerr.NewWM(errMarshal, "marshal procs list to json")
+		f.f = func(procsToShow []core.Proc) error {
+			renderTable(procsToShow, true)
+			return nil
 		}
+	case _formatCompact:
+		f.f = func(procsToShow []core.Proc) error {
+			renderTable(procsToShow, false)
+			return nil
+		}
+	case _formatJSON:
+		f.f = func(procsToShow []core.Proc) error {
+			jsonData, errMarshal := json.MarshalIndent(procsToShow, "", "  ")
+			if errMarshal != nil {
+				return errors.Wrap(errMarshal, "marshal procs list to json")
+			}
 
-		fmt.Println(string(jsonData))
+			fmt.Println(string(jsonData))
+			return nil
+		}
 	case _formatShort:
-		for _, proc := range procsToShow {
-			fmt.Println(proc.Name)
+		f.f = func(procsToShow []core.Proc) error {
+			for _, proc := range procsToShow {
+				fmt.Println(proc.Name)
+			}
+			return nil
 		}
 	default:
 		trimmedFormat := strings.Trim(format, " ")
@@ -290,24 +240,60 @@ func list(
 
 		tmpl, errParse := template.New("list").Parse(finalFormat)
 		if errParse != nil {
-			return xerr.NewWM(errParse, "parse template")
+			return errors.Wrap(errParse, "parse template")
 		}
 
-		var sb strings.Builder
-		for _, proc := range procsToShow {
-			errRender := tmpl.Execute(&sb, proc)
-			if errRender != nil {
-				return xerr.NewWM(errRender, "format proc line", xerr.Fields{
-					"format": format,
-					"proc":   proc,
-				})
+		f.f = func(procsToShow []core.Proc) error {
+			var sb strings.Builder
+			for _, proc := range procsToShow {
+				errRender := tmpl.Execute(&sb, proc)
+				if errRender != nil {
+					return errors.Wrap(errRender, "format proc line, format=%q: %v", format, proc)
+				}
+
+				sb.WriteRune('\n')
 			}
 
-			sb.WriteRune('\n')
+			fmt.Println(sb.String())
+			return nil
 		}
+	}
+	return nil
+}
 
-		fmt.Println(sb.String())
+type _cmdList struct {
+	// cmd.FindOptionByLongName("format").Description = (*flagListFormat)(nil).Usage() // TODO: use as flag type method
+	Format flagListFormat `short:"f" long:"format" default:"table"`
+	// cmd.FindOptionByLongName("sort").Description = (*flagListSort)(nil).Usage()     // TODO: use as flag type method
+	Sort  flagListSort   `short:"s" long:"sort" default:"id:asc"`
+	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
+	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
+	IDs   []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
+	Args  struct {
+		Rest []flagGenericSelector `positional-arg-name:"name|tag|id"`
+	} `positional-args:"yes"`
+}
+
+func (x _cmdList) Execute(ctx context.Context) error {
+	app, errNewApp := app.New()
+	if errNewApp != nil {
+		return errors.Wrap(errNewApp, "new app")
 	}
 
-	return nil
+	procsToShow := app.
+		List().
+		Filter(core.FilterFunc(
+			core.WithAllIfNoFilters,
+			core.WithGeneric(x.Args.Rest...),
+			core.WithIDs(x.IDs...),
+			core.WithNames(x.Names...),
+			core.WithTags(x.Tags...),
+		)).
+		ToSlice()
+
+	slices.SortFunc(procsToShow, func(i, j core.Proc) int {
+		return x.Sort.less(i, j)
+	})
+
+	return x.Format.f(procsToShow)
 }

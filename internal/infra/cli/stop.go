@@ -4,133 +4,85 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/samber/lo"
-	"github.com/urfave/cli/v2"
-
-	"github.com/rprtr258/xerr"
+	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
+	"github.com/rprtr258/pm/internal/infra/errors"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/daemon"
-	"github.com/rprtr258/pm/internal/core/pm"
-	"github.com/rprtr258/pm/pkg/client"
+	"github.com/rprtr258/pm/internal/infra/app"
 )
 
-var _stopCmd = &cli.Command{
-	Name:      "stop",
-	Usage:     "stop a process",
-	ArgsUsage: "<id|name|namespace|all|json>...",
-	Flags: []cli.Flag{
-		// &cli.BoolFlag{
-		// 	Name:  "watch",
-		// 	Usage: "stop watching for file changes",
-		// },
-		// &cli.BoolFlag{
-		// 	Name:  "kill",
-		// 	Usage: "kill process with SIGKILL instead of SIGINT",
-		// },
-		// &cli.DurationFlag{
-		// 	Name:    "kill-timeout",
-		// 	Aliases: []string{"k"},
-		// 	Usage:   "delay before sending final SIGKILL signal to process",
-		// },
-		// &cli.BoolFlag{
-		// 	Name:  "no-treekill",
-		// 	Usage: "Only kill the main process, not detached children",
-		// },
-		// TODO: -i/... to confirm which procs will be stopped
-		&cli.StringSliceFlag{
-			Name:  "name",
-			Usage: "name(s) of process(es) to stop",
-		},
-		&cli.StringSliceFlag{
-			Name:  "tag",
-			Usage: "tag(s) of process(es) to stop",
-		},
-		&cli.Uint64SliceFlag{
-			Name:  "id",
-			Usage: "id(s) of process(es) to stop",
-		},
-		configFlag,
-	},
-	Action: func(ctx *cli.Context) error {
-		if errDaemon := daemon.EnsureRunning(ctx.Context); errDaemon != nil {
-			return xerr.NewWM(errDaemon, "ensure daemon is running")
-		}
-
-		stopCmd := stopCmd{
-			names: ctx.StringSlice("name"),
-			tags:  ctx.StringSlice("tag"),
-			ids:   ctx.Uint64Slice("id"),
-			args:  ctx.Args().Slice(),
-		}
-
-		client, errList := client.NewGrpcClient()
-		if errList != nil {
-			return xerr.NewWM(errList, "new grpc client")
-		}
-		defer deferErr(client.Close)()
-
-		list, errList := client.List(ctx.Context)
-		if errList != nil {
-			return xerr.NewWM(errList, "server.list")
-		}
-
-		if !ctx.IsSet("config") {
-			return stopCmd.Run(ctx.Context, client, list)
-		}
-
-		configs, errLoadConfigs := core.LoadConfigs(ctx.String("config"))
-		if errLoadConfigs != nil {
-			return xerr.NewWM(errLoadConfigs, "load configs")
-		}
-
-		names := lo.FilterMap(configs, func(cfg core.RunConfig, _ int) (string, bool) {
-			return cfg.Name.Unpack()
-		})
-
-		configList := lo.PickBy(list, func(_ core.ProcID, procData core.ProcData) bool {
-			return lo.Contains(names, procData.Name)
-		})
-
-		return stopCmd.Run(ctx.Context, client, configList)
-	},
+type _cmdStop struct {
+	// &cli.BoolFlag{
+	// 	Name:  "watch",
+	// 	Usage: "stop watching for file changes",
+	// },
+	// &cli.BoolFlag{
+	// 	Name:  "kill",
+	// 	Usage: "kill process with SIGKILL instead of SIGINT",
+	// },
+	// &cli.DurationFlag{
+	// 	Name:    "kill-timeout",
+	// 	Aliases: []string{"k"},
+	// 	Usage:   "delay before sending final SIGKILL signal to process",
+	// },
+	// &cli.BoolFlag{
+	// 	Name:  "no-treekill",
+	// 	Usage: "Only kill the main process, not detached children",
+	// },
+	// TODO: -i/... to confirm which procs will be stopped
+	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
+	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
+	IDs   []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
+	Args  struct {
+		Rest []flagGenericSelector `positional-arg-name:"name|tag|id"`
+	} `positional-args:"yes"`
+	configFlag
 }
 
-type stopCmd struct {
-	names []string
-	tags  []string
-	ids   []uint64
-	args  []string
-}
-
-func (cmd *stopCmd) Run(
-	ctx context.Context,
-	client client.Client,
-	configList map[core.ProcID]core.ProcData,
-) error {
-	app, errNewApp := pm.New(client)
-	if errNewApp != nil {
-		return xerr.NewWM(errNewApp, "new app")
+func (x _cmdStop) Execute(ctx context.Context) error {
+	client, errList := app.New()
+	if errList != nil {
+		return errors.Wrap(errList, "new grpc client")
 	}
 
-	procIDs := core.FilterProcs[core.ProcID](
-		configList,
-		core.WithGeneric(cmd.args),
-		core.WithIDs(cmd.ids),
-		core.WithNames(cmd.names),
-		core.WithTags(cmd.tags),
-		core.WithAllIfNoFilters,
-	)
+	list := client.List()
 
+	if x.configFlag.Config != nil {
+		configs, errLoadConfigs := core.LoadConfigs(string(*x.configFlag.Config))
+		if errLoadConfigs != nil {
+			return errors.Wrap(errLoadConfigs, "load configs")
+		}
+
+		names := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
+			return cfg.Name
+		}, configs...)
+
+		list = list.
+			Filter(func(proc core.Proc) bool {
+				return fun.Contains(proc.Name, names...)
+			})
+	}
+
+	procIDs := iter.Map(list.
+		Filter(core.FilterFunc(
+			core.WithGeneric(x.Args.Rest...),
+			core.WithIDs(x.IDs...),
+			core.WithNames(x.Names...),
+			core.WithTags(x.Tags...),
+			core.WithAllIfNoFilters,
+		)),
+		func(proc core.Proc) core.PMID {
+			return proc.ID
+		}).
+		ToSlice()
 	if len(procIDs) == 0 {
 		fmt.Println("nothing to stop")
 		return nil
 	}
 
-	stoppedProcIDs, err := app.Stop(ctx, procIDs)
-	fmt.Println(lo.ToAnySlice(stoppedProcIDs)...)
-	if err != nil {
-		return xerr.NewWM(err, "client.stop")
+	if err := client.Stop(procIDs...); err != nil {
+		return errors.Wrap(err, "client.stop")
 	}
 
 	return nil

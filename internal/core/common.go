@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"golang.org/x/exp/slog"
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -16,9 +16,25 @@ var (
 func userHomeDir() string {
 	dir, err := os.UserHomeDir()
 	if err != nil {
-		slog.Error("can't get home dir", "err", err.Error())
+		log.Error().Err(err).Msg("can't get home dir")
 		os.Exit(1)
 	}
 
 	return dir
+}
+
+type LogType int
+
+const (
+	LogTypeUnspecified LogType = iota
+	LogTypeStdout
+	LogTypeStderr
+)
+
+type LogLine struct {
+	ProcID   PMID
+	ProcName string
+	Type     LogType
+	Line     string
+	Err      error
 }

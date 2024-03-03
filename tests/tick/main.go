@@ -1,42 +1,41 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"context"
 	"os"
 	"time"
 
-	"github.com/urfave/cli/v2"
+	"github.com/rprtr258/cli"
+	"github.com/rprtr258/scuf"
+	"github.com/rs/zerolog/log"
 )
 
+type app struct {
+	Interval time.Duration `long:"interval" short:"i" description:"interval between ticks, e.g. 100ms, 5s" default:"1s"`
+}
+
+func (x app) Execute(ctx context.Context) error {
+	ticker := time.NewTicker(x.Interval)
+	defer ticker.Stop()
+
+	for i := 0; ; i++ {
+		select {
+		case <-ctx.Done():
+			return nil
+		case now := <-ticker.C:
+			scuf.New(os.Stdout).
+				String(now.Format(time.RFC3339), scuf.ModFaint).
+				String(": tick").
+				Styled(func(b scuf.Buffer) {
+					b.Printf("%4d", i)
+				}, scuf.FgBlue).
+				NL()
+		}
+	}
+}
+
 func main() {
-	if err := (&cli.App{
-		Name: "tick",
-		Flags: []cli.Flag{&cli.DurationFlag{
-			Name:    "interval",
-			Aliases: []string{"i"},
-			Usage:   "interval between ticks, e.g. 100ms, 5s",
-			Value:   time.Second,
-		}},
-		Action: func(ctx *cli.Context) error {
-			ticker := time.NewTicker(ctx.Duration("interval"))
-			defer ticker.Stop()
-
-			i := 0
-			for {
-				i++
-				fmt.Printf("tick %d at %v\n", i, time.Now())
-
-				select {
-				case <-ctx.Context.Done():
-					return nil
-				default:
-				}
-
-				<-ticker.C
-			}
-		},
-	}).Run(os.Args); err != nil {
-		log.Fatal(err.Error())
+	if err := cli.RunContext[app](context.Background(), os.Args...); err != nil {
+		log.Fatal().Err(err).Send()
 	}
 }

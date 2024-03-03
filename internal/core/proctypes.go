@@ -1,9 +1,14 @@
 package core
 
 import (
+	rand2 "crypto/rand"
+	"encoding/hex"
 	"fmt"
-	"strconv"
+	"io"
+	"math/rand"
 	"time"
+
+	"github.com/rprtr258/fun"
 )
 
 type StatusType int
@@ -30,14 +35,35 @@ func (ps StatusType) String() string {
 	}
 }
 
+// PMID is a unique identifier for a process
+type PMID string
+
+func (pmid PMID) String() string {
+	return string(pmid)
+}
+
+func GenPMID() PMID {
+	b := make([]byte, 16)
+	if _, err := io.ReadFull(rand2.Reader, b); err != nil {
+		// fallback to random string
+		for i := range b {
+			b[i] = byte(rand.Intn(256)) //nolint:gosec // fuck you
+		}
+	}
+
+	return PMID(hex.EncodeToString(b))
+}
+
 type Status struct {
-	StartTime time.Time // StartTime, valid if running
-	StoppedAt time.Time // StoppedAt - time when the process stopped, valid if stopped
-	Status    StatusType
-	Pid       int    // PID, valid if running
-	CPU       uint64 // CPU usage percentage rounded to integer, valid if running
-	Memory    uint64 // Memory usage in bytes, valid if running
-	ExitCode  int    // ExitCode of the process, valid if stopped
+	Status StatusType
+
+	// running
+	StartTime time.Time // StartTime
+	CPU       uint64    // CPU usage percentage rounded to integer
+	Memory    uint64    // Memory usage in bytes
+
+	// stopped
+	ExitCode int
 }
 
 func NewStatusInvalid() Status {
@@ -52,11 +78,10 @@ func NewStatusCreated() Status {
 	}
 }
 
-func NewStatusRunning(startTime time.Time, pid int, cpu, memory uint64) Status {
+func NewStatusRunning(startTime time.Time, cpu, memory uint64) Status {
 	return Status{ //nolint:exhaustruct // not needed
 		Status:    StatusRunning,
 		StartTime: startTime,
-		Pid:       pid,
 		CPU:       cpu,
 		Memory:    memory,
 	}
@@ -64,34 +89,29 @@ func NewStatusRunning(startTime time.Time, pid int, cpu, memory uint64) Status {
 
 func NewStatusStopped(exitCode int) Status {
 	return Status{ //nolint:exhaustruct // not needed
-		Status:    StatusStopped,
-		ExitCode:  exitCode,
-		StoppedAt: time.Now(),
+		Status:   StatusStopped,
+		ExitCode: exitCode,
 	}
 }
 
-type ProcID uint64
+type Proc struct {
+	ID   PMID
+	Name string
+	Tags []string
 
-func (id ProcID) String() string {
-	return strconv.FormatUint(uint64(id), 10) //nolint:gomnd // decimal id
-}
+	Command    string            // Command - executable to run
+	Args       []string          // Args - arguments for executable, not including executable itself as first argument
+	Cwd        string            // Cwd - working directory, must be absolute
+	Env        map[string]string // Env - process environment
+	StdoutFile string
+	StderrFile string
 
-type ProcData struct {
-	// Command - executable to run
-	Command string
-	Cwd     string
-	Name    string
-	// Args - arguments for executable, not including executable itself as first argument
-	Args   []string
-	Tags   []string
-	Watch  []string
+	Watch  fun.Option[string]
 	Status Status
-	ProcID ProcID
 
-	// StdoutFile  string
-	// StderrFile  string
 	// RestartTries int
 	// RestartDelay    time.Duration
-	// Pid      int
 	// Respawns int
 }
+
+type Procs = map[PMID]Proc
