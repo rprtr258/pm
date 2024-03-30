@@ -1,95 +1,103 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 )
 
-type _cmdRestart struct {
-	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
-	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
-	IDs   []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
-	Args  struct {
-		Rest []flagGenericSelector `positional-arg-name:"name|tag|id"`
-	} `positional-args:"yes"`
-	configFlag
-}
+var _cmdRestart = func() *cobra.Command {
+	var names, ids, tags []string
+	var config string
+	cmd := &cobra.Command{
+		Use:               "restart [name|tag|id]...",
+		Short:             "restart already added process(es)",
+		GroupID:           "management",
+		ValidArgsFunction: completeArgGenericSelector,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-func (x _cmdRestart) Execute(ctx context.Context) error {
-	app, errNewApp := app.New()
-	if errNewApp != nil {
-		return errors.Wrap(errNewApp, "new app")
-	}
+			app, errNewApp := app.New()
+			if errNewApp != nil {
+				return errors.Wrap(errNewApp, "new app")
+			}
 
-	list := app.List()
+			list := app.List()
 
-	if x.configFlag.Config == nil {
-		procIDs := iter.Map(list.
-			Filter(core.FilterFunc(
-				core.WithGeneric(x.Args.Rest...),
-				core.WithIDs(x.IDs...),
-				core.WithNames(x.Names...),
-				core.WithTags(x.Tags...),
-			)),
-			func(proc core.Proc) core.PMID {
-				return proc.ID
-			}).
-			ToSlice()
-		if len(procIDs) == 0 {
-			fmt.Println("nothing to restart")
+			if config == nil {
+				procIDs := iter.Map(list.
+					Filter(core.FilterFunc(
+						core.WithGeneric(args...),
+						core.WithIDs(ids...),
+						core.WithNames(names...),
+						core.WithTags(tags...),
+					)),
+					func(proc core.Proc) core.PMID {
+						return proc.ID
+					}).
+					ToSlice()
+				if len(procIDs) == 0 {
+					fmt.Println("nothing to restart")
+					return nil
+				}
+
+				if err := app.Stop(procIDs...); err != nil {
+					return errors.Wrap(err, "client.stop")
+				}
+
+				if errStart := app.Start(procIDs...); errStart != nil {
+					return errors.Wrap(errStart, "client.start")
+				}
+
+				return nil
+			}
+
+			configFile := *config
+
+			configs, errLoadConfigs := core.LoadConfigs(configFile)
+			if errLoadConfigs != nil {
+				return errors.Wrap(errLoadConfigs, "load configs from %s", configFile)
+			}
+
+			procIDs := iter.Map(app.
+				ListByRunConfigs(configs).
+				Filter(core.FilterFunc(
+					core.WithGeneric(args...),
+					core.WithIDs(ids...),
+					core.WithNames(names...),
+					core.WithTags(tags...),
+					core.WithAllIfNoFilters,
+				)),
+				func(proc core.Proc) core.PMID {
+					return proc.ID
+				}).
+				ToSlice()
+
+			if len(procIDs) == 0 {
+				fmt.Println("nothing to start")
+				return nil
+			}
+
+			if errStop := app.Stop(procIDs...); errStop != nil {
+				return errors.Wrap(errStop, "client.stop")
+			}
+
+			if errStart := app.Start(procIDs...); errStart != nil {
+				return errors.Wrap(errStart, "client.start")
+			}
+
 			return nil
-		}
-
-		if err := app.Stop(procIDs...); err != nil {
-			return errors.Wrap(err, "client.stop")
-		}
-
-		if errStart := app.Start(procIDs...); errStart != nil {
-			return errors.Wrap(errStart, "client.start")
-		}
-
-		return nil
+		},
 	}
-
-	configFile := string(*x.configFlag.Config)
-
-	configs, errLoadConfigs := core.LoadConfigs(configFile)
-	if errLoadConfigs != nil {
-		return errors.Wrap(errLoadConfigs, "load configs from %s", configFile)
-	}
-
-	procIDs := iter.Map(app.
-		ListByRunConfigs(configs).
-		Filter(core.FilterFunc(
-			core.WithGeneric(x.Args.Rest...),
-			core.WithIDs(x.IDs...),
-			core.WithNames(x.Names...),
-			core.WithTags(x.Tags...),
-			core.WithAllIfNoFilters,
-		)),
-		func(proc core.Proc) core.PMID {
-			return proc.ID
-		}).
-		ToSlice()
-
-	if len(procIDs) == 0 {
-		fmt.Println("nothing to start")
-		return nil
-	}
-
-	if errStop := app.Stop(procIDs...); errStop != nil {
-		return errors.Wrap(errStop, "client.stop")
-	}
-
-	if errStart := app.Start(procIDs...); errStart != nil {
-		return errors.Wrap(errStart, "client.start")
-	}
-
-	return nil
-}
+	addFlagNames(cmd, &names)
+	addFlagTags(cmd, &tags)
+	addFlagIDs(cmd, &ids)
+	addFlagConfig(cmd, &config)
+	return cmd
+}()

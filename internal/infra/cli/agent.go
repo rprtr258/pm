@@ -1,45 +1,39 @@
 package cli
 
 import (
-	"context"
 	"encoding/json"
 	"time"
 
-	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
-type flagAgentConfig core.Proc
+var _cmdAgent = &cobra.Command{
+	Use:    "agent",
+	Args:   cobra.ExactArgs(1),
+	Hidden: true,
+	RunE: func(_ *cobra.Command, args []string) error {
+		var config core.Proc
+		if err := json.Unmarshal([]byte(args[0]), &config); err != nil {
+			return errors.Wrap(err, "unmarshal agent config: %s", args[0])
+		}
 
-func (f *flagAgentConfig) UnmarshalFlag(value string) error {
-	if err := json.Unmarshal([]byte(value), f); err != nil {
-		return errors.Wrap(err, "unmarshal agent config: %s", value)
-	}
+		// TODO: remove
+		// a little sleep to wait while calling process closes db file
+		time.Sleep(1 * time.Second)
 
-	return nil
-}
+		app, errNewApp := app.New()
+		if errNewApp != nil {
+			return errors.Wrap(errNewApp, "new app")
+		}
 
-type _cmdAgent struct {
-	Args struct {
-		Config flagAgentConfig `required:"true"`
-	} `positional-args:"yes"`
-}
+		if err := app.StartRaw(config); err != nil {
+			return errors.Wrap(err, "run: %v", config)
+		}
 
-func (x _cmdAgent) Execute(ctx context.Context) error {
-	// TODO: remove
-	// a little sleep to wait while calling process closes db file
-	time.Sleep(1 * time.Second)
-
-	app, errNewApp := app.New()
-	if errNewApp != nil {
-		return errors.Wrap(errNewApp, "new app")
-	}
-
-	if err := app.StartRaw(core.Proc(x.Args.Config)); err != nil {
-		return errors.Wrap(err, "run: %v", x.Args.Config)
-	}
-
-	return nil
+		return nil
+	},
 }

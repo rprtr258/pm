@@ -2,7 +2,6 @@ package cli
 
 import (
 	"cmp"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,11 +12,11 @@ import (
 
 	"github.com/aquasecurity/table"
 	"github.com/kballard/go-shellquote"
-	"github.com/rprtr258/cli"
 	cmp2 "github.com/rprtr258/cmp"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/scuf"
+	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -75,39 +74,34 @@ func renderTable(procs []core.Proc, setRowLines bool) {
 	procsTable.Render()
 }
 
-type flagListSort struct {
-	less func(a, b core.Proc) int
-}
+var _usageFlagSort = scuf.NewString(func(b scuf.Buffer) {
+	b.
+		String("Sort order. Available sort fields: ").
+		String("id", scuf.FgYellow).String(", ").
+		String("name", scuf.FgYellow).String(", ").
+		String("status", scuf.FgYellow).String(", ").
+		String("uptime", scuf.FgYellow).
+		String(". Order can be changed by adding ").
+		String(":asc", scuf.FgRed).
+		String(" or ").
+		String(":desc", scuf.FgRed)
+})
 
-func (f *flagListSort) Usage() string {
-	return scuf.NewString(func(b scuf.Buffer) {
-		b.
-			String("Sort order. Available sort fields: ").
-			String("id", scuf.FgYellow).String(", ").
-			String("name", scuf.FgYellow).String(", ").
-			String("status", scuf.FgYellow).String(", ").
-			String("uptime", scuf.FgYellow).
-			String(". Order can be changed by adding ").
-			String(":asc", scuf.FgRed).
-			String(" or ").
-			String(":desc", scuf.FgRed)
-	})
-}
-
-func (f *flagListSort) UnmarshalFlag(value string) error {
+func unmarshalFlagSort(value string) (func(a, b core.Proc) int, error) {
 	sortField := value
 	sortOrder := "asc"
 	if i := strings.IndexRune(sortField, ':'); i != -1 {
 		sortField, sortOrder = sortField[:i], sortField[i+1:]
 	}
 
+	var less func(a, b core.Proc) int
 	switch sortField {
 	case "id":
-		f.less = func(a, b core.Proc) int {
+		less = func(a, b core.Proc) int {
 			return cmp.Compare(a.ID, b.ID)
 		}
 	case "name":
-		f.less = func(a, b core.Proc) int {
+		less = func(a, b core.Proc) int {
 			return cmp.Compare(a.Name, b.Name)
 		}
 	case "status":
@@ -126,11 +120,11 @@ func (f *flagListSort) UnmarshalFlag(value string) error {
 				return 400
 			}
 		}
-		f.less = func(a, b core.Proc) int {
+		less = func(a, b core.Proc) int {
 			return cmp.Compare(getOrder(a), getOrder(b))
 		}
 	case "uptime":
-		f.less = cmp2.Comparator[core.Proc](func(a, b core.Proc) int {
+		less = cmp2.Comparator[core.Proc](func(a, b core.Proc) int {
 			if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
 				if a.Status.Status == core.StatusRunning {
 					return -1
@@ -152,68 +146,60 @@ func (f *flagListSort) UnmarshalFlag(value string) error {
 			}
 		})
 	default:
-		return errors.New("unknown sort field: %q", sortField)
+		return nil, errors.New("unknown sort field: %q", sortField)
 	}
 
 	switch sortOrder {
 	case "asc":
+		return less, nil
 	case "desc":
-		oldSortFunc := f.less
-		f.less = cmp2.Comparator[core.Proc](oldSortFunc).Reversed()
+		return cmp2.Comparator[core.Proc](less).Reversed(), nil
 	default:
-		return errors.New("unknown sort order: %q", sortOrder)
+		return nil, errors.New("unknown sort order: %q", sortOrder)
 	}
-
-	return nil
 }
 
-type flagListFormat struct {
-	f func([]core.Proc) error
-}
+var _usageFlagListFormat = scuf.NewString(func(b scuf.Buffer) {
+	b.
+		String("Listing format: ").
+		String(_formatTable, scuf.FgYellow).String(", ").
+		String(_formatCompact, scuf.FgYellow).String(", ").
+		String(_formatJSON, scuf.FgYellow).String(", ").
+		String(_formatShort, scuf.FgYellow).
+		String(", any other string is rendred as Go template with ").
+		String("core.ProcData", scuf.FgGreen).
+		String(" struct")
+})
 
-func (*flagListFormat) Usage() string {
-	return scuf.NewString(func(b scuf.Buffer) {
-		b.
-			String("Listing format: ").
-			String(_formatTable, scuf.FgYellow).String(", ").
-			String(_formatCompact, scuf.FgYellow).String(", ").
-			String(_formatJSON, scuf.FgYellow).String(", ").
-			String(_formatShort, scuf.FgYellow).
-			String(", any other string is rendred as Go template with ").
-			String("core.ProcData", scuf.FgGreen).
-			String(" struct")
-	})
-}
-
-func (f *flagListFormat) Complete(prefix string) []cli.Completion {
-	return fun.FilterMap[cli.Completion](
-		func(format string) (cli.Completion, bool) {
-			return cli.Completion{
-				Item:        format,
-				Description: fun.Invalid[string](),
-			}, strings.HasPrefix(format, prefix)
+func completeFlagListFormat(
+	_ *cobra.Command, _ []string,
+	prefix string,
+) ([]string, cobra.ShellCompDirective) {
+	return fun.FilterMap[string](
+		func(format string) (string, bool) {
+			return format, strings.HasPrefix(format, prefix)
 		},
 		_formatTable,
 		_formatCompact,
 		_formatJSON,
 		_formatShort,
-	)
+	), cobra.ShellCompDirectiveNoFileComp
 }
 
-func (f *flagListFormat) UnmarshalFlag(format string) error {
+func unmarshalFlagListFormat(format string) (func([]core.Proc) error, error) {
 	switch format {
 	case _formatTable:
-		f.f = func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.Proc) error {
 			renderTable(procsToShow, true)
 			return nil
-		}
+		}, nil
 	case _formatCompact:
-		f.f = func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.Proc) error {
 			renderTable(procsToShow, false)
 			return nil
-		}
+		}, nil
 	case _formatJSON:
-		f.f = func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.Proc) error {
 			jsonData, errMarshal := json.MarshalIndent(procsToShow, "", "  ")
 			if errMarshal != nil {
 				return errors.Wrap(errMarshal, "marshal procs list to json")
@@ -221,14 +207,14 @@ func (f *flagListFormat) UnmarshalFlag(format string) error {
 
 			fmt.Println(string(jsonData))
 			return nil
-		}
+		}, nil
 	case _formatShort:
-		f.f = func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.Proc) error {
 			for _, proc := range procsToShow {
 				fmt.Println(proc.Name)
 			}
 			return nil
-		}
+		}, nil
 	default:
 		trimmedFormat := strings.Trim(format, " ")
 		finalFormat := strings.
@@ -240,10 +226,10 @@ func (f *flagListFormat) UnmarshalFlag(format string) error {
 
 		tmpl, errParse := template.New("list").Parse(finalFormat)
 		if errParse != nil {
-			return errors.Wrap(errParse, "parse template")
+			return nil, errors.Wrap(errParse, "parse template")
 		}
 
-		f.f = func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.Proc) error {
 			var sb strings.Builder
 			for _, proc := range procsToShow {
 				errRender := tmpl.Execute(&sb, proc)
@@ -256,44 +242,57 @@ func (f *flagListFormat) UnmarshalFlag(format string) error {
 
 			fmt.Println(sb.String())
 			return nil
-		}
+		}, nil
 	}
-	return nil
 }
 
-type _cmdList struct {
-	// cmd.FindOptionByLongName("format").Description = (*flagListFormat)(nil).Usage() // TODO: use as flag type method
-	Format flagListFormat `short:"f" long:"format" default:"table"`
-	// cmd.FindOptionByLongName("sort").Description = (*flagListSort)(nil).Usage()     // TODO: use as flag type method
-	Sort  flagListSort   `short:"s" long:"sort" default:"id:asc"`
-	Names []flagProcName `long:"name" description:"name(s) of process(es) to list"`
-	Tags  []flagProcTag  `long:"tag" description:"tag(s) of process(es) to list"`
-	IDs   []flagPMID     `long:"id" description:"id(s) of process(es) to list"`
-	Args  struct {
-		Rest []flagGenericSelector `positional-arg-name:"name|tag|id"`
-	} `positional-args:"yes"`
-}
+var _cmdList = func() *cobra.Command {
+	var ids, names, tags []string
+	var listFormat, sort string
+	cmd := &cobra.Command{
+		Use:               "list [name|tag|id]...",
+		Short:             "list processes",
+		Aliases:           []string{"l", "ls", "ps", "status"},
+		GroupID:           "inspection",
+		ValidArgsFunction: completeArgGenericSelector,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rest := args
 
-func (x _cmdList) Execute(ctx context.Context) error {
-	app, errNewApp := app.New()
-	if errNewApp != nil {
-		return errors.Wrap(errNewApp, "new app")
+			less, err := unmarshalFlagSort(sort)
+			if err != nil {
+				return fmt.Errorf("unmarshal flag sort: %w", err)
+			}
+
+			format, err := unmarshalFlagListFormat(listFormat)
+			if err != nil {
+				return fmt.Errorf("unmarshal flag format: %w", err)
+			}
+
+			app, errNewApp := app.New()
+			if errNewApp != nil {
+				return errors.Wrap(errNewApp, "new app")
+			}
+
+			procsToShow := app.
+				List().
+				Filter(core.FilterFunc(
+					core.WithAllIfNoFilters,
+					core.WithGeneric(rest...),
+					core.WithIDs(ids...),
+					core.WithNames(names...),
+					core.WithTags(tags...),
+				)).
+				ToSlice()
+
+			slices.SortFunc(procsToShow, less)
+			return format(procsToShow)
+		},
 	}
-
-	procsToShow := app.
-		List().
-		Filter(core.FilterFunc(
-			core.WithAllIfNoFilters,
-			core.WithGeneric(x.Args.Rest...),
-			core.WithIDs(x.IDs...),
-			core.WithNames(x.Names...),
-			core.WithTags(x.Tags...),
-		)).
-		ToSlice()
-
-	slices.SortFunc(procsToShow, func(i, j core.Proc) int {
-		return x.Sort.less(i, j)
-	})
-
-	return x.Format.f(procsToShow)
-}
+	cmd.Flags().StringVarP(&listFormat, "format", "f", _formatTable, _usageFlagListFormat)
+	cmd.RegisterFlagCompletionFunc("format", completeFlagListFormat)
+	cmd.Flags().StringVarP(&sort, "sort", "s", "id:asc", _usageFlagSort)
+	addFlagNames(cmd, &names)
+	addFlagTags(cmd, &tags)
+	addFlagIDs(cmd, &ids)
+	return cmd
+}()

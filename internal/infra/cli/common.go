@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rprtr258/cli"
-	"github.com/rprtr258/cli/flags"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -25,92 +24,100 @@ func printIDs(ids ...core.PMID) {
 	fmt.Println()
 }
 
-type configFlag struct {
-	Config *flags.Filename `short:"f" long:"config" description:"config file to use"`
+func addFlagConfig(cmd *cobra.Command, config *string) {
+	cmd.Flags().StringVarP(config, "config", "f", "", "config file to use")
 }
 
-type flagPMID core.PMID
+func addFlagIDs(cmd *cobra.Command, ids *[]string) {
+	cmd.Flags().StringSliceVar(ids, "id", nil, "id(s) of process(es) to list")
+	cmd.RegisterFlagCompletionFunc("id", func(
+		_ *cobra.Command, _ []string,
+		prefix string,
+	) ([]string, cobra.ShellCompDirective) {
+		app, errNewApp := app.New()
+		if errNewApp != nil {
+			log.Error().Err(errNewApp).Msg("new app")
+			return nil, cobra.ShellCompDirectiveError
+		}
 
-func (f *flagPMID) Complete(match string) []cli.Completion {
+		return iter.Map(app.
+			List().
+			Filter(func(p core.Proc) bool {
+				return strings.HasPrefix(string(p.ID), prefix)
+			}),
+			func(proc core.Proc) string {
+				return proc.ID.String()
+				// Description: fun.Valid("name: " + proc.Name),
+			}).
+			ToSlice(), cobra.ShellCompDirectiveNoFileComp
+	})
+}
+
+func completeFlagName(
+	_ *cobra.Command, _ []string,
+	prefix string,
+) ([]string, cobra.ShellCompDirective) {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
-		return nil
+		return nil, cobra.ShellCompDirectiveError
 	}
 
 	return iter.Map(app.
 		List().
 		Filter(func(p core.Proc) bool {
-			return strings.HasPrefix(string(p.ID), match)
+			return strings.HasPrefix(p.Name, prefix)
 		}),
-		func(proc core.Proc) cli.Completion {
-			return cli.Completion{
-				Item:        proc.ID.String(),
-				Description: fun.Valid("name: " + proc.Name),
-			}
+		func(proc core.Proc) string {
+			return proc.Name
+			// Description: fun.Valid("status: " + proc.Status.Status.String()),
 		}).
-		ToSlice()
+		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
 
-type flagProcName string
+func addFlagNames(cmd *cobra.Command, names *[]string) {
+	cmd.Flags().StringSliceVar(names, "name", nil, "name(s) of process(es) to list")
+	cmd.RegisterFlagCompletionFunc("name", completeFlagName)
+}
 
-func (f *flagProcName) Complete(match string) []cli.Completion {
+func completeFlagTag(
+	_ *cobra.Command, _ []string,
+	prefix string,
+) ([]string, cobra.ShellCompDirective) {
 	app, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
-		return nil
+		return nil, cobra.ShellCompDirectiveError
 	}
 
-	return iter.Map(app.
-		List().
-		Filter(func(p core.Proc) bool {
-			return strings.HasPrefix(p.Name, match)
-		}),
-		func(proc core.Proc) cli.Completion {
-			return cli.Completion{
-				Item:        proc.Name,
-				Description: fun.Valid("status: " + proc.Status.Status.String()),
-			}
-		}).
-		ToSlice()
-}
-
-type flagProcTag string
-
-func (f *flagProcTag) Complete(match string) []cli.Completion {
-	app, errNewApp := app.New()
-	if errNewApp != nil {
-		log.Error().Err(errNewApp).Msg("new app")
-		return nil
-	}
-
-	return iter.Map(iter.Unique(iter.FlatMap(app.
+	// TODO: iter.Unique
+	res := iter.FlatMap(app.
 		List(),
 		func(proc core.Proc) iter.Seq[string] {
 			return iter.FromMany(proc.Tags...)
 		}).
-		Chain(iter.FromMany("all"))).
-		Filter(func(tag string) bool {
-			return strings.HasPrefix(tag, match)
-		}),
-		func(tag string) cli.Completion {
-			return cli.Completion{
-				Item:        tag,
-				Description: fun.Invalid[string](),
-			}
-		}).
+		Chain(iter.FromMany("all")).
 		ToSlice()
+	return fun.Filter[string](func(tag string) bool {
+		return strings.HasPrefix(tag, prefix)
+	}, fun.Uniq(res...)...), cobra.ShellCompDirectiveNoFileComp
 }
 
-type flagGenericSelector string
+func addFlagTags(cmd *cobra.Command, tags *[]string) {
+	cmd.Flags().StringSliceVar(tags, "tag", nil, "tag(s) of process(es) to list")
+	cmd.RegisterFlagCompletionFunc("tag", completeFlagTag)
+}
 
-func (f *flagGenericSelector) Complete(match string) []cli.Completion {
-	var fName flagProcName
-	var fTag flagProcTag
-	return lo.Flatten([][]cli.Completion{
-		fName.Complete(match),
-		fTag.Complete(match),
-	})
+func completeArgGenericSelector(
+	cmd *cobra.Command, args []string,
+	prefix string,
+) ([]string, cobra.ShellCompDirective) {
+	names, _ := completeFlagName(cmd, args, prefix)
+	tags, _ := completeFlagTag(cmd, args, prefix)
+	return lo.Flatten([][]string{
+		names,
+		tags,
+	}), cobra.ShellCompDirectiveNoFileComp
 }
 
 // { Name: "link enable", PM2 I/O

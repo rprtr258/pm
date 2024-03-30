@@ -22,6 +22,7 @@ require (
 	github.com/rprtr258/xerr v0.1.4
 	github.com/rs/zerolog v1.31.0
 	github.com/samber/lo v1.39.0
+	github.com/spf13/cobra v1.8.0
 	github.com/wissance/stringFormatter v1.2.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.15.0
@@ -30,10 +31,12 @@ require (
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/go-faster/errors v0.7.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/rivo/uniseg v0.4.6 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
 	golang.org/x/sys v0.17.0 // indirect

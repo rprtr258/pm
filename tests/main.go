@@ -12,14 +12,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rprtr258/cli"
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 	mycli "github.com/rprtr258/pm/internal/infra/cli"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 // tcpPortAvailable checks if a given TCP port is bound on the local network interface.
@@ -254,37 +254,40 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 	return nil
 }
 
-type cmdTest struct {
-	Args struct {
-		Test string `positional-arg-name:"TESTNAME"`
-	} `positional-args:"yes"`
-}
+var cmdTest = &cobra.Command{
+	Use:   "test TESTNAME|all",
+	Short: "run e2e tests",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := cmd.Context()
+		test := args[0]
 
-func (x cmdTest) Execute(ctx context.Context) error {
-	if x.Args.Test == "all" {
-		for name, test := range tests {
-			if errTest := runTest(ctx, name, test); errTest != nil {
-				return errors.Wrap(errTest, "run test: %s", name)
+		if test == "all" {
+			for name, test := range tests {
+				if errTest := runTest(ctx, name, test); errTest != nil {
+					return errors.Wrap(errTest, "run test: %s", name)
+				}
 			}
+			return nil
 		}
-		return nil
-	}
 
-	test, ok := tests[x.Args.Test]
-	if !ok {
-		return errors.New("unknown test: %q", x.Args.Test)
-	}
+		testF, ok := tests[test]
+		if !ok {
+			return errors.New("unknown test: %q", test)
+		}
 
-	return runTest(ctx, x.Args.Test, test)
+		return runTest(ctx, test, testF)
+	},
 }
 
-type App struct {
-	mycli.App
-	Test cmdTest `command:"test" description:"run e2e tests"`
-}
+var _app = func() *cobra.Command {
+	cmd := mycli.App
+	cmd.AddCommand(cmdTest)
+	return cmd
+}()
 
 func main() {
-	if err := cli.RunContext[App](context.Background(), os.Args...); err != nil {
+	if err := _app.Execute(); err != nil {
 		log.Fatal().Err(err).Send()
 	}
 }
