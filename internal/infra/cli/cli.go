@@ -2,21 +2,24 @@ package cli
 
 import (
 	stdErrors "errors"
+	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/scuf"
 )
 
 func ensureDir(dirname string) error {
-	_, errStat := os.Stat(dirname)
-	if errStat == nil {
+	if _, errStat := os.Stat(dirname); errStat == nil {
 		return nil
-	}
-	if !stdErrors.Is(errStat, fs.ErrNotExist) {
+	} else if !stdErrors.Is(errStat, fs.ErrNotExist) {
 		return errors.Wrap(errStat, "stat dir")
 	}
 
@@ -63,73 +66,62 @@ var App = func() *cobra.Command {
 }()
 
 func Run(argv []string) error {
-	// 	Before: func(c *flags.Context) error {
-	// 		if err := ensureDir(core.DirHome); err != nil {
-	// 			return errors.Wrap(err, "ensure home dir", map[string]any{"dir": core.DirHome})
-	// 		}
+	if err := ensureDir(core.DirHome); err != nil {
+		return errors.Wrap(err, "ensure home dir %s", core.DirHome)
+	}
 
-	// 		_dirProcsLogs := filepath.Join(core.DirHome, "logs")
-	// 		if err := ensureDir(_dirProcsLogs); err != nil {
-	// 			return errors.Wrap(err, "ensure logs dir", map[string]any{"dir": _dirProcsLogs})
-	// 		}
-
-	// 		return nil
-	// 	},
+	_dirProcsLogs := filepath.Join(core.DirHome, "logs")
+	if err := ensureDir(_dirProcsLogs); err != nil {
+		return errors.Wrap(err, "ensure logs dir %s", _dirProcsLogs)
+	}
 
 	//nolint:lll // setting template strings
-	// func Init() {
-	// 	flags.AppHelpTemplate = scuf.NewString(func(b scuf.Buffer) {
-	// 		b.
-	// 			String(`{{template "helpNameTemplate" .}}`, scuf.FgBlue).
-	// 			String(`
+	App.SetUsageFunc(func(cmd *cobra.Command) error {
+		scuf.New(os.Stdout).
+			NL().
+			String(`Usage:
+  pm COMMAND
+`).
+			Iter(func(yield func(func(scuf.Buffer)) bool) bool {
+				for _, group := range cmd.Groups() {
+					yield(func(b scuf.Buffer) {
+						b.NL().String(group.Title).NL()
+						for _, cmd := range cmd.Commands() {
+							if cmd.GroupID != group.ID {
+								continue
+							}
+							b.
+								String("  ").
+								String(cmd.Name(), scuf.FgCyan).
+								// String(strings.Join(cmd.Aliases, ", "), scuf.FgGreen).
+								String(strings.Repeat(" ", 12-len(cmd.Name()))).
+								String(cmd.Short).
+								NL()
+						}
+					})
+				}
+				return true
+			}).
+			String(`
+Additional Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  version     print pm version
 
-	// Usage:
-	// 	{{if .UsageText}}{{wrap .UsageText 3}}{{else}}{{.HelpName}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Description}}
+Flags:
+  -h, --help   help for pm
 
-	// Description:
-	//    {{template "descriptionTemplate" .}}{{end}}
-	// {{- if len .Authors}}
+Use "pm [command] --help" for more information about a command.`)
+		return nil
+	})
+	App.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
+		scuf.New(os.Stdout).
+			String(cmd.Short, scuf.FgBlue).
+			String(fmt.Sprintf(`
 
-	// Author{{template "authorsTemplate" .}}{{end}}{{if .VisibleCommands}}
-
-	// Commands:{{range .VisibleCategories}}{{if .Name}}
-	//    `).
-	// 			String(`{{.Name}}`, scuf.FgCyan).
-	// 			String(`:{{range .VisibleCommands}}
-	//      `).
-	// 			String(`{{join .Names ", "}}`, scuf.FgGreen).
-	// 			String(`{{"\t"}}`).
-	// 			String(`{{.Usage}}`, scuf.FgWhite).
-	// 			String(`{{end}}{{else}}{{ $cv := offsetCommands .VisibleCommands 5}}{{range .VisibleCommands}}
-	//    {{$s := join .Names ", "}}`).
-	// 			String(`{{$s}}`, scuf.FgGreen).
-	// 			String(`{{ $sp := subtract $cv (offset $s 3) }}{{ indent $sp ""}}`).
-	// 			String(`{{wrap .Usage $cv}}`, scuf.FgWhite).
-	// 			String(`{{end}}{{end}}{{end}}{{end}}
-	// `)
-	// 	})
-	// 	flags.CommandHelpTemplate = scuf.NewString(func(b scuf.Buffer) {
-	// 		b.
-	// 			String(`{{template "helpNameTemplate" .}}`, scuf.FgBlue).
-	// 			String(`
-
-	// Usage:
-	//    {{template "usageTemplate" .}}{{if .Description}}
-
-	// Description:
-	//    {{template "descriptionTemplate" .}}{{end}}{{if .VisibleFlagCategories}}
-
-	// Options:{{template "visibleFlagCategoryTemplate" .}}{{else if .VisibleFlags}}
-
-	// Options:{{range $i, $e := .VisibleFlags}}
-	//    `).
-	// 			// TODO: paint flags (before \t), dont paint description (after \t)
-	// 			String(`{{$e.String}}`, scuf.FgGreen).
-	// 			String(`{{end}}{{end}}
-	// `) // TODO: color flags similar to coloring commands in app help
-	// 		// TODO: fix coloring for `pm ls --help“
-	// 	})
-	// }
+%s`,
+				cmd.UsageString()))
+	})
 
 	App.SetArgs(argv[1:]) // TODO: govno ebanoe
 	return App.Execute()

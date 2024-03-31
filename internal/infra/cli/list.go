@@ -29,6 +29,13 @@ const (
 	_formatShort   = "short"
 )
 
+var _formats = []string{
+	_formatTable,
+	_formatCompact,
+	_formatJSON,
+	_formatShort,
+}
+
 const _shortIDLength = 8
 
 func mapStatus(status core.Status) (string, time.Duration) {
@@ -162,11 +169,15 @@ func unmarshalFlagSort(value string) (func(a, b core.Proc) int, error) {
 var _usageFlagListFormat = scuf.NewString(func(b scuf.Buffer) {
 	b.
 		String("Listing format: ").
-		String(_formatTable, scuf.FgYellow).String(", ").
-		String(_formatCompact, scuf.FgYellow).String(", ").
-		String(_formatJSON, scuf.FgYellow).String(", ").
-		String(_formatShort, scuf.FgYellow).
-		String(", any other string is rendred as Go template with ").
+		Iter(func(yield func(func(scuf.Buffer)) bool) bool {
+			for _, format := range _formats {
+				yield(func(b scuf.Buffer) {
+					b.String(format, scuf.FgYellow).String(", ")
+				})
+			}
+			return false
+		}).
+		String("any other string is rendred as Go template with ").
 		String("core.ProcData", scuf.FgGreen).
 		String(" struct")
 })
@@ -179,10 +190,7 @@ func completeFlagListFormat(
 		func(format string) (string, bool) {
 			return format, strings.HasPrefix(format, prefix)
 		},
-		_formatTable,
-		_formatCompact,
-		_formatJSON,
-		_formatShort,
+		_formats...,
 	), cobra.ShellCompDirectiveNoFileComp
 }
 
