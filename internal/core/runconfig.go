@@ -13,9 +13,9 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/rprtr258/fun"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 
 	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/lo"
 )
 
 type Actions struct {
@@ -183,7 +183,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			}, config.Args...),
 			Tags: config.Tags,
 			Cwd:  cwd,
-			Env: lo.MapValues(config.Env, func(value any, name string) string {
+			Env: lo.MapValues(config.Env, func(name string, value any) string {
 				switch v := value.(type) {
 				case fmt.Stringer:
 					return v.String()

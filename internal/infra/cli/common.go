@@ -7,11 +7,11 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/lo"
 )
 
 func printIDs(ids ...core.PMID) {
@@ -114,10 +114,7 @@ func completeArgGenericSelector(
 ) ([]string, cobra.ShellCompDirective) {
 	names, _ := completeFlagName(cmd, args, prefix)
 	tags, _ := completeFlagTag(cmd, args, prefix)
-	return lo.Flatten([][]string{
-		names,
-		tags,
-	}), cobra.ShellCompDirectiveNoFileComp
+	return lo.Flatten(names, tags), cobra.ShellCompDirectiveNoFileComp
 }
 
 // { Name: "link enable", PM2 I/O

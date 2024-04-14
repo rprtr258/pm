@@ -4,7 +4,8 @@ import (
 	"unsafe"
 
 	"github.com/rprtr258/fun"
-	"github.com/samber/lo"
+
+	"github.com/rprtr258/pm/internal/lo"
 )
 
 type filter struct {
@@ -80,7 +81,7 @@ func FilterFunc(opts ...FilterOption) func(Proc) bool {
 
 	return func(proc Proc) bool {
 		return fun.Contains(proc.Name, _filter.Names...) ||
-			lo.Some(_filter.Tags, proc.Tags) ||
+			lo.Some(proc.Tags, _filter.Tags...) ||
 			fun.Contains(proc.ID, _filter.IDs...)
 	}
 }
