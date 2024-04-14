@@ -20,9 +20,9 @@ func New() zerolog.Logger {
 			FormatLevel: func(i interface{}) string {
 				s := i.(string)
 				bg := fun.Switch(s, scuf.BgRed).
-					Case(zerolog.LevelInfoValue, scuf.BgBlue).
-					Case(zerolog.LevelWarnValue, scuf.BgGreen).
-					Case(zerolog.LevelErrorValue, scuf.BgYellow).
+					Case(scuf.BgBlue, zerolog.LevelInfoValue).
+					Case(scuf.BgGreen, zerolog.LevelWarnValue).
+					Case(scuf.BgYellow, zerolog.LevelErrorValue).
 					End()
 
 				return scuf.String(" "+strings.ToUpper(s)+" ", bg, scuf.FgBlack)

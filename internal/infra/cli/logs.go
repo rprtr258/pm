@@ -122,8 +122,8 @@ var _cmdLogs = func() *cobra.Command {
 					}
 
 					lineColor := fun.Switch(line.Type, scuf.FgRed).
-						Case(core.LogTypeStdout, scuf.FgHiWhite).
-						Case(core.LogTypeStderr, scuf.FgHiBlack).
+						Case(scuf.FgHiWhite, core.LogTypeStdout).
+						Case(scuf.FgHiBlack, core.LogTypeStderr).
 						End()
 
 					pad = max(pad, len(line.ProcName))

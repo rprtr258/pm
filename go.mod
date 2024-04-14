@@ -17,7 +17,7 @@ require (
 	github.com/rogpeppe/go-internal v1.12.0
 	github.com/rprtr258/cli v0.0.0-20231207015011-69288b6fbc48
 	github.com/rprtr258/cmp v0.0.2
-	github.com/rprtr258/fun v0.0.13
+	github.com/rprtr258/fun v0.0.15
 	github.com/rprtr258/scuf v0.0.6
 	github.com/rs/zerolog v1.31.0
 	github.com/samber/lo v1.39.0
