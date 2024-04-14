@@ -39,27 +39,27 @@ func httpResponse(
 ) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
-		return errors.Wrap(err, "create request")
+		return errors.Wrapf(err, "create request")
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "get response")
+		return errors.Wrapf(err, "get response")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("bad status code: %d", resp.StatusCode)
+		return errors.Newf("bad status code: %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return errors.Wrap(err, "read response body")
+		return errors.Wrapf(err, "read response body")
 	}
 
 	body = bytes.TrimSpace(body)
 	if string(body) != expectedResponse {
-		return errors.New("unexpected response: %s", string(body))
+		return errors.Newf("unexpected response: %s", string(body))
 	}
 
 	return nil
@@ -87,7 +87,7 @@ var tests = map[string]testcase{
 		}},
 		beforeFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
-				return errors.New("port %d not available", _helloHTTPServerPort)
+				return errors.Newf("port %d not available", _helloHTTPServerPort)
 			}
 
 			return nil
@@ -99,7 +99,7 @@ var tests = map[string]testcase{
 		},
 		afterFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_helloHTTPServerPort) {
-				return errors.New("server not stopped, port=%d", _helloHTTPServerPort)
+				return errors.Newf("server not stopped, port=%d", _helloHTTPServerPort)
 			}
 
 			return nil
@@ -120,7 +120,7 @@ var tests = map[string]testcase{
 		},
 		beforeFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_ncServerPort) {
-				return errors.New("port %d not available", _ncServerPort)
+				return errors.Newf("port %d not available", _ncServerPort)
 			}
 
 			return nil
@@ -128,25 +128,25 @@ var tests = map[string]testcase{
 		testFunc: func(ctx context.Context, client app.App) error {
 			homeDir, errHome := os.UserHomeDir()
 			if errHome != nil {
-				return errors.Wrap(errHome, "get home dir")
+				return errors.Wrapf(errHome, "get home dir")
 			}
 
 			time.Sleep(time.Second)
 
 			d, err := os.ReadFile(filepath.Join(homeDir, ".pm", "logs", "1.stdout"))
 			if err != nil {
-				return errors.Wrap(err, "read server stdout")
+				return errors.Wrapf(err, "read server stdout")
 			}
 
 			if strings.TrimSpace(string(d)) != "123" {
-				return errors.New("unexpected request: %s", string(d))
+				return errors.Newf("unexpected request: %s", string(d))
 			}
 
 			return nil
 		},
 		afterFunc: func(ctx context.Context, client app.App) error {
 			if !tcpPortAvailable(_ncServerPort) {
-				return errors.New("server not stopped, port=%d", _ncServerPort)
+				return errors.Newf("server not stopped, port=%d", _ncServerPort)
 			}
 
 			return nil
@@ -158,19 +158,19 @@ var tests = map[string]testcase{
 func runTest(ctx context.Context, name string, test testcase) (ererer error) { //nolint:funlen,gocognit,lll // no idea how to refactor right now
 	client, errClient := app.New()
 	if errClient != nil {
-		return errors.Wrap(errClient, "create client")
+		return errors.Wrapf(errClient, "create client")
 	}
 
 	// DELETE ALL PROCS
 	var err error
 	client.List()(func(proc core.Proc) bool {
 		if errStop := client.Stop(proc.ID); errStop != nil {
-			err = errors.Wrap(errStop, "stop all old processes")
+			err = errors.Wrapf(errStop, "stop all old processes")
 			return false
 		}
 
 		if errDelete := client.Delete(proc.ID); errDelete != nil {
-			err = errors.Wrap(errDelete, "delete all old processes")
+			err = errors.Wrapf(errDelete, "delete all old processes")
 			return false
 		}
 
@@ -196,7 +196,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		// RUN TEST BEFORE HOOK
 		if test.beforeFunc != nil {
 			if errTest := test.beforeFunc(ctx, client); errTest != nil {
-				return errors.Wrap(errTest, "run test before hook")
+				return errors.Wrapf(errTest, "run test before hook")
 			}
 		}
 
@@ -212,7 +212,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 				Env:     c.Env,
 			})
 			if errStart != nil {
-				return errors.Wrap(errStart, "start process: %s", id)
+				return errors.Wrapf(errStart, "start process: %s", id)
 			}
 
 			ids = append(ids, core.PMID(id))
@@ -221,28 +221,28 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		// RUN TEST
 		if test.testFunc != nil {
 			if errTest := test.testFunc(ctx, client); errTest != nil {
-				return errors.Wrap(errTest, "run test func")
+				return errors.Wrapf(errTest, "run test func")
 			}
 		}
 
 		// STOP AND REMOVE TEST PROCESSES
 		for _, id := range ids {
 			if errStop := client.Stop(id); errStop != nil {
-				return errors.Wrap(errStop, "stop process: %s", id)
+				return errors.Wrapf(errStop, "stop process: %s", id)
 			}
 
 			// TODO: block on stop method instead, now it is async
 			time.Sleep(3 * time.Second)
 
 			if errDelete := client.Delete(id); errDelete != nil {
-				return errors.Wrap(errDelete, "delete process: %s", id)
+				return errors.Wrapf(errDelete, "delete process: %s", id)
 			}
 		}
 
 		// RUN TEST AFTER HOOK
 		if test.afterFunc != nil {
 			if errTest := test.afterFunc(ctx, client); errTest != nil {
-				return errors.Wrap(errTest, "run test after hook")
+				return errors.Wrapf(errTest, "run test after hook")
 			}
 		}
 
@@ -265,7 +265,7 @@ var cmdTest = &cobra.Command{
 		if test == "all" {
 			for name, test := range tests {
 				if errTest := runTest(ctx, name, test); errTest != nil {
-					return errors.Wrap(errTest, "run test: %s", name)
+					return errors.Wrapf(errTest, "run test: %s", name)
 				}
 			}
 			return nil
@@ -273,7 +273,7 @@ var cmdTest = &cobra.Command{
 
 		testF, ok := tests[test]
 		if !ok {
-			return errors.New("unknown test: %q", test)
+			return errors.Newf("unknown test: %q", test)
 		}
 
 		return runTest(ctx, test, testF)

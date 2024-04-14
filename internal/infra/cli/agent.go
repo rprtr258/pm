@@ -18,7 +18,7 @@ var _cmdAgent = &cobra.Command{
 	RunE: func(_ *cobra.Command, args []string) error {
 		var config core.Proc
 		if err := json.Unmarshal([]byte(args[0]), &config); err != nil {
-			return errors.Wrap(err, "unmarshal agent config: %s", args[0])
+			return errors.Wrapf(err, "unmarshal agent config: %s", args[0])
 		}
 
 		// TODO: remove
@@ -27,11 +27,11 @@ var _cmdAgent = &cobra.Command{
 
 		app, errNewApp := app.New()
 		if errNewApp != nil {
-			return errors.Wrap(errNewApp, "new app")
+			return errors.Wrapf(errNewApp, "new app")
 		}
 
 		if err := app.StartRaw(config); err != nil {
-			return errors.Wrap(err, "run: %v", config)
+			return errors.Wrapf(err, "run: %v", config)
 		}
 
 		return nil

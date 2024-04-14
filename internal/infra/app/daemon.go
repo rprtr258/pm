@@ -21,13 +21,13 @@ func ReadPMConfig() (core.Config, error) {
 	config, errRead := core.ReadConfig()
 	if errRead != nil {
 		if errRead != core.ErrConfigNotExists {
-			return fun.Zero[core.Config](), errors.Wrap(errRead, "read config for migrate")
+			return fun.Zero[core.Config](), errors.Wrapf(errRead, "read config for migrate")
 		}
 
 		log.Info().Msg("writing initial config...")
 
 		if errWrite := core.WriteConfig(core.DefaultConfig); errWrite != nil {
-			return fun.Zero[core.Config](), errors.Wrap(errWrite, "write initial config")
+			return fun.Zero[core.Config](), errors.Wrapf(errWrite, "write initial config")
 		}
 
 		return core.DefaultConfig, nil
@@ -43,7 +43,7 @@ func MigrateConfig(config core.Config) error {
 
 	config.Version = core.Version
 	if errWrite := core.WriteConfig(config); errWrite != nil {
-		return errors.Wrap(errWrite, "write config for migrate, version=%s", core.Version)
+		return errors.Wrapf(errWrite, "write config for migrate, version=%s", core.Version)
 	}
 
 	return nil
@@ -67,7 +67,7 @@ func New() (App, error) {
 
 	dbHandle, errDB := db.New(_dirDB)
 	if errDB != nil {
-		return fun.Zero[App](), errors.Wrap(errDB, "new db, dir=%s", _dirDB)
+		return fun.Zero[App](), errors.Wrapf(errDB, "new db, dir=%s", _dirDB)
 	}
 
 	config, errConfig := core.ReadConfig()
@@ -81,7 +81,7 @@ func New() (App, error) {
 			}, nil
 		}
 
-		return fun.Zero[App](), errors.Wrap(errConfig, "read app config")
+		return fun.Zero[App](), errors.Wrapf(errConfig, "read app config")
 	}
 
 	return App{

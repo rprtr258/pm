@@ -7,7 +7,6 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
-	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -36,7 +35,7 @@ func run(app app.App, configs iter.Seq[core.RunConfig]) error {
 					Any("stderr_file", config.StderrFile),
 				).
 				Msg("failed to run proc")
-			merr = errors.New("failed to start some procs")
+			merr = errors.Newf("failed to start some procs")
 		} else {
 			fmt.Println(id)
 		}
@@ -61,12 +60,12 @@ var _cmdRun = func() *cobra.Command {
 
 			app, errNewApp := app.New()
 			if errNewApp != nil {
-				return errors.Wrap(errNewApp, "new app")
+				return errors.Wrapf(errNewApp, "new app")
 			}
 
 			if config == nil {
 				if len(args) == 0 {
-					return errors.New("neither command nor config specified")
+					return errors.Newf("neither command nor config specified")
 				}
 				command, args := args[0], args[1:]
 
@@ -74,7 +73,7 @@ var _cmdRun = func() *cobra.Command {
 				if cwd == nil {
 					cwd, err := os.Getwd()
 					if err != nil {
-						return errors.Wrap(err, "get cwd")
+						return errors.Wrapf(err, "get cwd")
 					}
 					workDir = cwd
 				} else {
@@ -85,7 +84,7 @@ var _cmdRun = func() *cobra.Command {
 				if pattern := watch; pattern != nil {
 					watchRE, errCompile := regexp.Compile(*pattern)
 					if errCompile != nil {
-						return errors.Wrap(errCompile, "compile watch regex: %q", *pattern)
+						return errors.Wrapf(errCompile, "compile watch regex: %q", *pattern)
 					}
 
 					watchOpt = fun.Valid(watchRE)
@@ -116,7 +115,7 @@ var _cmdRun = func() *cobra.Command {
 
 			configs, errLoadConfigs := core.LoadConfigs(*config)
 			if errLoadConfigs != nil {
-				return errors.Wrap(errLoadConfigs, "load run configs")
+				return errors.Wrapf(errLoadConfigs, "load run configs")
 			}
 
 			// TODO: if config is specified Args.Command and Args.Args are not required
@@ -136,9 +135,9 @@ var _cmdRun = func() *cobra.Command {
 				configsByName[name] = cfg
 			}
 
-			merr := xerr.Combine(fun.Map[error](func(name string) error {
+			merr := errors.Combine(fun.Map[error](func(name string) error {
 				if _, ok := configsByName[name]; !ok {
-					return errors.New("unknown proc name: %q", name)
+					return errors.Newf("unknown proc name: %q", name)
 				}
 
 				return nil

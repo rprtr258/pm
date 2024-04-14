@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -266,7 +265,7 @@ func (handle Handle) StatusSetRunning(id core.PMID) {
 func (handle Handle) StatusSetStopped(id core.PMID, exitCode int) {
 	dbStatus := core.NewStatusStopped(exitCode)
 	if err := handle.SetStatus(id, dbStatus); err != nil {
-		if _, ok := xerr.As[ProcNotFoundError](err); ok {
+		if _, ok := err.(ProcNotFoundError); ok {
 			log.Error().
 				Stringer("pmid", id).
 				Msg("proc not found while trying to set stopped status")

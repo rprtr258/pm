@@ -45,7 +45,7 @@ func (app App) create(
 	if name, ok := name.Unpack(); ok { //nolint:nestif // no idea how to simplify it now
 		procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
 		if err != nil {
-			return "", errors.Wrap(err, "get procs from db")
+			return "", errors.Wrapf(err, "get procs from db")
 		}
 
 		if procID, ok := fun.FindKeyBy(procs, func(_ core.PMID, procData core.Proc) bool {
@@ -77,7 +77,7 @@ func (app App) create(
 			}
 
 			if errUpdate := app.db.UpdateProc(procData); errUpdate != nil {
-				return "", errors.Wrap(errUpdate, "update proc: %v", procFields(procData))
+				return "", errors.Wrapf(errUpdate, "update proc: %v", procFields(procData))
 			}
 
 			return procID, nil
@@ -96,7 +96,7 @@ func (app App) create(
 		StderrFile: stderrFile,
 	}, app.logsDir)
 	if err != nil {
-		return "", errors.Wrap(err, "save proc")
+		return "", errors.Wrapf(err, "save proc")
 	}
 
 	return procID, nil
@@ -117,7 +117,7 @@ func (app App) Create(req core.RunConfig) (core.PMID, error) {
 		req.StderrFile,
 	)
 	if err != nil {
-		return "", errors.Wrap(err, "server.create")
+		return "", errors.Wrapf(err, "server.create")
 	}
 
 	return procID, nil

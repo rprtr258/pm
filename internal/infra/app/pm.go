@@ -84,7 +84,7 @@ func streamFile(
 ) error {
 	stat, errStat := os.Stat(logFile)
 	if errStat != nil {
-		return errors.Wrap(errStat, "stat log file")
+		return errors.Wrapf(errStat, "stat log file")
 	}
 
 	tailer := tail.File(logFile, tail.Config{
@@ -117,7 +117,7 @@ func streamFile(
 			logLinesCh <- ProcLine{
 				Line: "",
 				Type: logLineType,
-				Err:  errors.Wrap(err, "to tail log, id=%s, file=%s", procID, logFile),
+				Err:  errors.Wrapf(err, "to tail log, id=%s, file=%s", procID, logFile),
 			}
 			return
 		}

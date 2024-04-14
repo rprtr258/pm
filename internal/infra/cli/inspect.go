@@ -22,7 +22,7 @@ var _cmdInspect = func() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			appp, errNewApp := app.New()
 			if errNewApp != nil {
-				return errors.Wrap(errNewApp, "new app")
+				return errors.Wrapf(errNewApp, "new app")
 			}
 
 			procsToShow := appp.

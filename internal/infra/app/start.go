@@ -23,12 +23,12 @@ var ErrAlreadyRunning = stdErrors.New("process is already running")
 func (app App) startAgentImpl(id core.PMID) error {
 	pmExecutable, err := os.Executable()
 	if err != nil {
-		return errors.Wrap(err, "get pm executable")
+		return errors.Wrapf(err, "get pm executable")
 	}
 
 	proc, ok := app.db.GetProc(id)
 	if !ok {
-		return errors.New("not found proc to start: %s", id)
+		return errors.Newf("not found proc to start: %s", id)
 	}
 	if proc.Status.Status == core.StatusRunning {
 		return ErrAlreadyRunning
@@ -36,13 +36,13 @@ func (app App) startAgentImpl(id core.PMID) error {
 
 	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return errors.Wrap(err, "open stdout file: %q", proc.StdoutFile)
+		return errors.Wrapf(err, "open stdout file: %q", proc.StdoutFile)
 	}
 	defer stdoutLogFile.Close()
 
 	stderrLogFile, err := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return errors.Wrap(err, "open stderr file: %q", proc.StderrFile)
+		return errors.Wrapf(err, "open stderr file: %q", proc.StderrFile)
 	}
 	defer func() {
 		if errClose := stderrLogFile.Close(); errClose != nil {
@@ -62,7 +62,7 @@ func (app App) startAgentImpl(id core.PMID) error {
 
 	procDesc, err := json.Marshal(proc)
 	if err != nil {
-		return errors.Wrap(err, "marshal proc")
+		return errors.Wrapf(err, "marshal proc")
 	}
 
 	cmd := exec.Cmd{
@@ -80,7 +80,7 @@ func (app App) startAgentImpl(id core.PMID) error {
 
 	app.db.StatusSetRunning(id)
 	if err := cmd.Start(); err != nil {
-		return errors.Wrap(err, "running failed: %v", procFields(proc))
+		return errors.Wrapf(err, "running failed: %v", procFields(proc))
 	}
 
 	return nil

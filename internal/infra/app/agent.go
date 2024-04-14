@@ -19,13 +19,13 @@ import (
 func (app App) StartRaw(proc core.Proc) error {
 	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return errors.Wrap(err, "open stdout file %q", proc.StdoutFile)
+		return errors.Wrapf(err, "open stdout file %q", proc.StdoutFile)
 	}
 	defer stdoutLogFile.Close()
 
 	stderrLogFile, err := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if err != nil {
-		return errors.Wrap(err, "open stderr file %q", proc.StderrFile)
+		return errors.Wrapf(err, "open stderr file %q", proc.StderrFile)
 	}
 	defer func() {
 		if errClose := stderrLogFile.Close(); errClose != nil {
@@ -61,25 +61,25 @@ func (app App) StartRaw(proc core.Proc) error {
 		}
 
 		app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
-		return errors.Wrap(err, "run proc: %v", proc)
+		return errors.Wrapf(err, "run proc: %v", proc)
 	}
 
 	if watchRE, ok := proc.Watch.Unpack(); ok {
 		watcher, errWatcher := watcher.New(proc.Cwd, watchRE, func(ctx context.Context) error {
 			if errTerm := app.stop(proc.ID); errTerm != nil {
-				return errors.Wrap(errTerm, "failed to send SIGKILL to process on watch")
+				return errors.Wrapf(errTerm, "failed to send SIGKILL to process on watch")
 			}
 
 			cmd = newCmd() // TODO: awful kostyl
 
 			if errStart := cmd.Start(); errStart != nil {
-				return errors.Wrap(errStart, "failed to start process on watch")
+				return errors.Wrapf(errStart, "failed to start process on watch")
 			}
 
 			return nil
 		})
 		if errWatcher != nil {
-			return errors.Wrap(errWatcher, "create watcher")
+			return errors.Wrapf(errWatcher, "create watcher")
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -122,7 +122,7 @@ func (app App) StartRaw(proc core.Proc) error {
 		}
 
 		app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
-		return errors.Wrap(err, "wait process: %v", proc)
+		return errors.Wrapf(err, "wait process: %v", proc)
 	}
 
 	app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())

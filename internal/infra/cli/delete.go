@@ -26,7 +26,7 @@ var _cmdDelete = func() *cobra.Command {
 
 			app, errNewApp := app.New()
 			if errNewApp != nil {
-				return errors.Wrap(errNewApp, "new app")
+				return errors.Wrapf(errNewApp, "new app")
 			}
 
 			list := app.List()
@@ -49,11 +49,11 @@ var _cmdDelete = func() *cobra.Command {
 				}
 
 				if err := app.Stop(procIDs...); err != nil {
-					return errors.Wrap(err, "delete")
+					return errors.Wrapf(err, "delete")
 				}
 
 				if errDelete := app.Delete(procIDs...); errDelete != nil {
-					return errors.Wrap(errDelete, "delete")
+					return errors.Wrapf(errDelete, "delete")
 				}
 
 				return nil
@@ -61,7 +61,7 @@ var _cmdDelete = func() *cobra.Command {
 
 			configs, errLoadConfigs := core.LoadConfigs(*config)
 			if errLoadConfigs != nil {
-				return errors.Wrap(errLoadConfigs, "load configs: %s", *config)
+				return errors.Wrapf(errLoadConfigs, "load configs: %s", *config)
 			}
 
 			procIDs := iter.Map(app.
@@ -79,11 +79,11 @@ var _cmdDelete = func() *cobra.Command {
 				ToSlice()
 
 			if err := app.Stop(procIDs...); err != nil {
-				return errors.Wrap(err, "stop")
+				return errors.Wrapf(err, "stop")
 			}
 
 			if err := app.Delete(procIDs...); err != nil {
-				return errors.Wrap(err, "delete")
+				return errors.Wrapf(err, "delete")
 			}
 
 			return nil

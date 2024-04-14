@@ -37,7 +37,7 @@ func getProcs(
 
 	configs, errLoadConfigs := core.LoadConfigs(string(*config))
 	if errLoadConfigs != nil {
-		return nil, errors.Wrap(errLoadConfigs, "load configs: %v", *config)
+		return nil, errors.Wrapf(errLoadConfigs, "load configs: %v", *config)
 	}
 
 	return app.
@@ -60,12 +60,12 @@ var _cmdLogs = func() *cobra.Command {
 
 			app, errNewApp := app.New()
 			if errNewApp != nil {
-				return errors.Wrap(errNewApp, "new app")
+				return errors.Wrapf(errNewApp, "new app")
 			}
 
 			procs, err := getProcs(app, args, ids, names, tags, config)
 			if err != nil {
-				return errors.Wrap(err, "get proc ids")
+				return errors.Wrapf(err, "get proc ids")
 			}
 			if len(procs) == 0 {
 				fmt.Println("nothing to watch")
@@ -77,7 +77,7 @@ var _cmdLogs = func() *cobra.Command {
 			for _, proc := range procs {
 				logsCh, errLogs := app.Logs(ctx, proc)
 				if errLogs != nil {
-					return errors.Wrap(errLogs, "watch procs: %v", proc)
+					return errors.Wrapf(errLogs, "watch procs: %v", proc)
 				}
 
 				wg.Add(1)

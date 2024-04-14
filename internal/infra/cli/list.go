@@ -153,7 +153,7 @@ func unmarshalFlagSort(value string) (func(a, b core.Proc) int, error) {
 			}
 		})
 	default:
-		return nil, errors.New("unknown sort field: %q", sortField)
+		return nil, errors.Newf("unknown sort field: %q", sortField)
 	}
 
 	switch sortOrder {
@@ -162,7 +162,7 @@ func unmarshalFlagSort(value string) (func(a, b core.Proc) int, error) {
 	case "desc":
 		return cmp2.Comparator[core.Proc](less).Reversed(), nil
 	default:
-		return nil, errors.New("unknown sort order: %q", sortOrder)
+		return nil, errors.Newf("unknown sort order: %q", sortOrder)
 	}
 }
 
@@ -210,7 +210,7 @@ func unmarshalFlagListFormat(format string) (func([]core.Proc) error, error) {
 		return func(procsToShow []core.Proc) error {
 			jsonData, errMarshal := json.MarshalIndent(procsToShow, "", "  ")
 			if errMarshal != nil {
-				return errors.Wrap(errMarshal, "marshal procs list to json")
+				return errors.Wrapf(errMarshal, "marshal procs list to json")
 			}
 
 			fmt.Println(string(jsonData))
@@ -234,7 +234,7 @@ func unmarshalFlagListFormat(format string) (func([]core.Proc) error, error) {
 
 		tmpl, errParse := template.New("list").Parse(finalFormat)
 		if errParse != nil {
-			return nil, errors.Wrap(errParse, "parse template")
+			return nil, errors.Wrapf(errParse, "parse template")
 		}
 
 		return func(procsToShow []core.Proc) error {
@@ -242,7 +242,7 @@ func unmarshalFlagListFormat(format string) (func([]core.Proc) error, error) {
 			for _, proc := range procsToShow {
 				errRender := tmpl.Execute(&sb, proc)
 				if errRender != nil {
-					return errors.Wrap(errRender, "format proc line, format=%q: %v", format, proc)
+					return errors.Wrapf(errRender, "format proc line, format=%q: %v", format, proc)
 				}
 
 				sb.WriteRune('\n')
@@ -278,7 +278,7 @@ var _cmdList = func() *cobra.Command {
 
 			app, errNewApp := app.New()
 			if errNewApp != nil {
-				return errors.Wrap(errNewApp, "new app")
+				return errors.Wrapf(errNewApp, "new app")
 			}
 
 			procsToShow := app.

@@ -35,7 +35,7 @@ func (app App) signal(id core.PMID, signal syscall.Signal) {
 
 		proc, ok := linuxprocess.StatPMID(pmid, EnvPMID)
 		if !ok {
-			return errors.New("get process by pmid, id=%s signal=%s", pmid, signal.String())
+			return errors.Newf("get process by pmid, id=%s signal=%s", pmid, signal.String())
 		}
 
 		if errKill := syscall.Kill(-proc.Pid, signal); errKill != nil {
@@ -45,7 +45,7 @@ func (app App) signal(id core.PMID, signal syscall.Signal) {
 			case stdErrors.Is(errKill, syscall.ESRCH): // no such process
 				l.Warn().Msg("tried to send signal to process which doesn't exist")
 			default:
-				return errors.Wrap(errKill, "kill process, pid=%d", proc.Pid)
+				return errors.Wrapf(errKill, "kill process, pid=%d", proc.Pid)
 			}
 		}
 

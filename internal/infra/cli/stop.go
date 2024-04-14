@@ -26,7 +26,7 @@ var _cmdStop = func() *cobra.Command {
 
 			client, errList := app.New()
 			if errList != nil {
-				return errors.Wrap(errList, "new grpc client")
+				return errors.Wrapf(errList, "new grpc client")
 			}
 
 			list := client.List()
@@ -34,7 +34,7 @@ var _cmdStop = func() *cobra.Command {
 			if config != nil {
 				configs, errLoadConfigs := core.LoadConfigs(*config)
 				if errLoadConfigs != nil {
-					return errors.Wrap(errLoadConfigs, "load configs")
+					return errors.Wrapf(errLoadConfigs, "load configs")
 				}
 
 				names := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
@@ -65,7 +65,7 @@ var _cmdStop = func() *cobra.Command {
 			}
 
 			if err := client.Stop(procIDs...); err != nil {
-				return errors.Wrap(err, "client.stop")
+				return errors.Wrapf(err, "client.stop")
 			}
 
 			return nil

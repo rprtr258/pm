@@ -16,7 +16,7 @@ func (app App) stop(id core.PMID) error {
 	{
 		proc, ok := app.db.GetProc(id)
 		if !ok {
-			return errors.New("not found proc to stop")
+			return errors.Newf("not found proc to stop")
 		}
 
 		if proc.Status.Status != core.StatusRunning {
@@ -28,7 +28,7 @@ func (app App) stop(id core.PMID) error {
 
 	proc, ok := linuxprocess.StatPMID(id, EnvPMID)
 	if !ok {
-		return errors.New("find process")
+		return errors.Newf("find process")
 	}
 
 	if errKill := syscall.Kill(-proc.Pid, syscall.SIGTERM); errKill != nil {
@@ -38,7 +38,7 @@ func (app App) stop(id core.PMID) error {
 		case stdErrors.Is(errKill, syscall.ESRCH): // no such process
 			l.Warn().Msg("tried stop process which doesn't exist")
 		default:
-			return errors.Wrap(errKill, "kill process, pid=%d", proc.Pid)
+			return errors.Wrapf(errKill, "kill process, pid=%d", proc.Pid)
 		}
 	}
 

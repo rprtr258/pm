@@ -19,7 +19,6 @@ require (
 	github.com/rprtr258/cmp v0.0.2
 	github.com/rprtr258/fun v0.0.13
 	github.com/rprtr258/scuf v0.0.6
-	github.com/rprtr258/xerr v0.1.4
 	github.com/rs/zerolog v1.31.0
 	github.com/samber/lo v1.39.0
 	github.com/spf13/cobra v1.8.0

@@ -15,7 +15,7 @@ func removeFile(name string) error {
 			return nil
 		}
 
-		return errors.Wrap(errRm, "remove file")
+		return errors.Wrapf(errRm, "remove file")
 	}
 
 	return nil
@@ -23,11 +23,11 @@ func removeFile(name string) error {
 
 func removeLogFiles(proc core.Proc) error {
 	if errRmStdout := removeFile(proc.StdoutFile); errRmStdout != nil {
-		return errors.Wrap(errRmStdout, "remove stdout file %s", proc.StdoutFile)
+		return errors.Wrapf(errRmStdout, "remove stdout file %s", proc.StdoutFile)
 	}
 
 	if errRmStderr := removeFile(proc.StderrFile); errRmStderr != nil {
-		return errors.Wrap(errRmStderr, "remove stderr file: %s", proc.StderrFile)
+		return errors.Wrapf(errRmStderr, "remove stderr file: %s", proc.StderrFile)
 	}
 
 	return nil
@@ -36,11 +36,11 @@ func removeLogFiles(proc core.Proc) error {
 func (app App) delete(id core.PMID) error {
 	deletedProc, errDelete := app.db.Delete(id)
 	if errDelete != nil {
-		return errors.Wrap(errDelete, "delete proc: %s", id)
+		return errors.Wrapf(errDelete, "delete proc: %s", id)
 	}
 
 	if err := removeLogFiles(deletedProc); err != nil {
-		return errors.Wrap(err, "delete proc: %s", id)
+		return errors.Wrapf(err, "delete proc: %s", id)
 	}
 
 	return nil
@@ -49,7 +49,7 @@ func (app App) delete(id core.PMID) error {
 func (app App) Delete(ids ...core.PMID) error {
 	for _, id := range ids {
 		if err := app.delete(id); err != nil {
-			return errors.Wrap(err, "server.delete: %s", id)
+			return errors.Wrapf(err, "server.delete: %s", id)
 		}
 	}
 

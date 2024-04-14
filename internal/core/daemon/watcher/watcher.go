@@ -29,12 +29,12 @@ type Watcher struct {
 func New(dir, pattern string, callback func(context.Context) error) (Watcher, error) {
 	watcher, err := fsnotify.NewBatchedRecursiveWatcher(dir, "", time.Second)
 	if err != nil {
-		return fun.Zero[Watcher](), errors.Wrap(err, "create fsnotify watcher")
+		return fun.Zero[Watcher](), errors.Wrapf(err, "create fsnotify watcher")
 	}
 
 	re, errCompilePattern := regexp.Compile(pattern)
 	if errCompilePattern != nil {
-		return fun.Zero[Watcher](), errors.Wrap(errCompilePattern, "compile pattern")
+		return fun.Zero[Watcher](), errors.Wrapf(errCompilePattern, "compile pattern")
 	}
 
 	return Watcher{

@@ -25,7 +25,7 @@ var _cmdStart = func() *cobra.Command {
 
 			app, errNewApp := app.New()
 			if errNewApp != nil {
-				return errors.Wrap(errNewApp, "new app")
+				return errors.Wrapf(errNewApp, "new app")
 			}
 
 			list := app.List()
@@ -48,7 +48,7 @@ var _cmdStart = func() *cobra.Command {
 				}
 
 				if err := app.Start(procIDs...); err != nil {
-					return errors.Wrap(err, "client.start")
+					return errors.Wrapf(err, "client.start")
 				}
 
 				printIDs(procIDs...)
@@ -58,7 +58,7 @@ var _cmdStart = func() *cobra.Command {
 
 			configs, errLoadConfigs := core.LoadConfigs(*config)
 			if errLoadConfigs != nil {
-				return errors.Wrap(errLoadConfigs, "load configs: %s", *config)
+				return errors.Wrapf(errLoadConfigs, "load configs: %s", *config)
 			}
 
 			procIDs := iter.Map(app.
@@ -80,7 +80,7 @@ var _cmdStart = func() *cobra.Command {
 			}
 
 			if err := app.Start(procIDs...); err != nil {
-				return errors.Wrap(err, "client.start")
+				return errors.Wrapf(err, "client.start")
 			}
 
 			printIDs(procIDs...)

@@ -7,7 +7,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/pm/internal/infra/errors"
-	"github.com/rprtr258/xerr"
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -38,7 +37,7 @@ var _cmdSignal = func() *cobra.Command {
 			case "SIGINT", "2":
 				sig = syscall.SIGINT
 			default:
-				return xerr.NewF("unknown signal", map[string]any{"signal": signal})
+				return errors.Newf("unknown signal: %q", signal)
 			}
 
 			client, errList := app.New()
@@ -82,7 +81,7 @@ var _cmdSignal = func() *cobra.Command {
 			}
 
 			if err := client.Signal(sig, procIDs...); err != nil {
-				return errors.Wrap(err, "client.stop")
+				return errors.Wrapf(err, "client.stop")
 			}
 
 			return nil

@@ -16,7 +16,7 @@ import (
 const Version = "0.1.0"
 
 var (
-	ErrConfigNotExists = stdErrors.New("config file not exists")
+	ErrConfigNotExists = errors.New("config file not exists")
 
 	_configPath = filepath.Join(DirHome, "config.json")
 )
@@ -38,14 +38,12 @@ func ReadConfig() (Config, error) {
 			return Config{}, ErrConfigNotExists
 		}
 
-		return fun.Zero[Config](), errors.Wrap(errRead, "read config file", map[string]any{
-			"filename": _configPath,
-		})
+		return fun.Zero[Config](), errors.Wrapf(errRead, "read config file %q", _configPath)
 	}
 
 	var config Config
 	if errUnmarshal := json.Unmarshal(configBytes, &config); errUnmarshal != nil {
-		return fun.Zero[Config](), errors.Wrap(errUnmarshal, "parse config")
+		return fun.Zero[Config](), errors.Wrapf(errUnmarshal, "parse config")
 	}
 
 	return config, nil
@@ -54,13 +52,11 @@ func ReadConfig() (Config, error) {
 func WriteConfig(config Config) error {
 	configBytes, errMarshal := json.Marshal(config)
 	if errMarshal != nil {
-		return errors.Wrap(errMarshal, "marshal config")
+		return errors.Wrapf(errMarshal, "marshal config")
 	}
 
 	if errWrite := os.WriteFile(_configPath, configBytes, 0o644); errWrite != nil { //nolint:gosec // not unsafe i guess
-		return errors.Wrap(errWrite, "write config", map[string]any{
-			"filename": _configPath,
-		})
+		return errors.Wrapf(errWrite, "write config %q", _configPath)
 	}
 
 	return nil

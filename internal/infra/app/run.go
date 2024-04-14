@@ -23,7 +23,7 @@ func (app App) Run(config core.RunConfig) (core.PMID, error) {
 
 		command, errLook = exec.LookPath(config.Command)
 		if errLook != nil {
-			return "", errors.Wrap(errLook, "look for executable path: %q", config.Command)
+			return "", errors.Wrapf(errLook, "look for executable path: %q", config.Command)
 		}
 	}
 
@@ -32,7 +32,7 @@ func (app App) Run(config core.RunConfig) (core.PMID, error) {
 		var errAbs error
 		command, errAbs = filepath.Abs(command)
 		if errAbs != nil {
-			multierr.AppendInto(&merr, errors.Wrap(errAbs, "get absolute binary path: %q", command))
+			multierr.AppendInto(&merr, errors.Wrapf(errAbs, "get absolute binary path: %q", command))
 		}
 	}
 
@@ -49,7 +49,7 @@ func (app App) Run(config core.RunConfig) (core.PMID, error) {
 	}
 	id, errCreate := app.Create(request)
 	if errCreate != nil {
-		return "", errors.Wrap(errCreate, "server.create: %v", request)
+		return "", errors.Wrapf(errCreate, "server.create: %v", request)
 	}
 
 	app.startAgent(id)

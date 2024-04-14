@@ -12,7 +12,6 @@ import (
 	"github.com/google/go-jsonnet/ast"
 	"github.com/joho/godotenv"
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/xerr"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 
@@ -76,26 +75,26 @@ func newVM() *jsonnet.VM {
 	vm.ExtVar("now", time.Now().Format("15:04:05"))
 	vm.NativeFunction(&jsonnet.NativeFunction{
 		Name: "dotenv",
-		Func: func(args []interface{}) (interface{}, error) {
+		Func: func(args []any) (any, error) {
 			if len(args) != 1 {
 				return nil, fmt.Errorf("wrong number of arguments")
 			}
 
 			filename, ok := args[0].(string)
 			if !ok {
-				return nil, errors.New("filename must be a string", map[string]any{"filename": args[0]})
+				return nil, errors.Newf("filename must be a string, but was %q", args[0])
 			}
 
 			// TODO: somehow relative to cwd
 
 			data, errRead := os.ReadFile(filename)
 			if errRead != nil {
-				return nil, errors.Wrap(errRead, "read env file", map[string]any{"filename": filename})
+				return nil, errors.Wrapf(errRead, "read env file %q", filename)
 			}
 
 			env, errUnmarshal := godotenv.UnmarshalBytes(data)
 			if errUnmarshal != nil {
-				return nil, errors.Wrap(errUnmarshal, "parse env file", map[string]any{"filename": filename})
+				return nil, errors.Wrapf(errUnmarshal, "parse env file %q", filename)
 			}
 
 			return lo.MapValues(env, func(v string, _ string) any {
@@ -110,16 +109,12 @@ func newVM() *jsonnet.VM {
 //nolint:funlen // no
 func LoadConfigs(filename string) ([]RunConfig, error) {
 	if !isConfigFile(filename) {
-		return nil, errors.New(
-			"invalid config file",
-			map[string]any{"configFilename": filename},
-			xerr.Stacktrace,
-		)
+		return nil, errors.Newf("invalid config file %q", filename)
 	}
 
 	jsonText, err := newVM().EvaluateFile(filename)
 	if err != nil {
-		return nil, errors.Wrap(err, "evaluate jsonnet file")
+		return nil, errors.Wrapf(err, "evaluate jsonnet file")
 	}
 
 	type configScanDTO struct {
@@ -133,16 +128,13 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
-		return nil, errors.Wrap(err, "unmarshal configs json")
+		return nil, errors.Wrapf(err, "unmarshal configs json")
 	}
 
 	// validate configs
-	errValidation := xerr.Combine(fun.Map[error](func(config configScanDTO) error {
+	errValidation := errors.Combine(fun.Map[error](func(config configScanDTO) error {
 		if config.Command == "" {
-			return errors.New(
-				"missing command",
-				map[string]any{"config": config},
-			)
+			return errors.Newf("missing command in config %#v", config)
 		}
 
 		return nil
@@ -156,8 +148,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		if config.Watch != nil {
 			re, err := regexp.Compile(*config.Watch)
 			if err != nil {
-				return fun.Zero[RunConfig](), errors.Wrap(err, "invalid watch pattern",
-					map[string]any{"pattern": *config.Watch})
+				return fun.Zero[RunConfig](), errors.Wrapf(err, "invalid watch pattern %q", *config.Watch)
 			}
 			watch = fun.Valid(re)
 		}
@@ -165,7 +156,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		relativeCwd := filepath.Join(filepath.Dir(filename), fun.Deref(config.Cwd))
 		cwd, err := filepath.Abs(relativeCwd)
 		if err != nil {
-			return fun.Zero[RunConfig](), errors.Wrap(err, "get absolute cwd", map[string]any{"cwd": relativeCwd})
+			return fun.Zero[RunConfig](), errors.Wrapf(err, "get absolute cwd, relative is %q", relativeCwd)
 		}
 
 		return RunConfig{

@@ -25,7 +25,7 @@ var _cmdRestart = func() *cobra.Command {
 
 			app, errNewApp := app.New()
 			if errNewApp != nil {
-				return errors.Wrap(errNewApp, "new app")
+				return errors.Wrapf(errNewApp, "new app")
 			}
 
 			list := app.List()
@@ -48,11 +48,11 @@ var _cmdRestart = func() *cobra.Command {
 				}
 
 				if err := app.Stop(procIDs...); err != nil {
-					return errors.Wrap(err, "client.stop")
+					return errors.Wrapf(err, "client.stop")
 				}
 
 				if errStart := app.Start(procIDs...); errStart != nil {
-					return errors.Wrap(errStart, "client.start")
+					return errors.Wrapf(errStart, "client.start")
 				}
 
 				return nil
@@ -62,7 +62,7 @@ var _cmdRestart = func() *cobra.Command {
 
 			configs, errLoadConfigs := core.LoadConfigs(configFile)
 			if errLoadConfigs != nil {
-				return errors.Wrap(errLoadConfigs, "load configs from %s", configFile)
+				return errors.Wrapf(errLoadConfigs, "load configs from %s", configFile)
 			}
 
 			procIDs := iter.Map(app.
@@ -85,11 +85,11 @@ var _cmdRestart = func() *cobra.Command {
 			}
 
 			if errStop := app.Stop(procIDs...); errStop != nil {
-				return errors.Wrap(errStop, "client.stop")
+				return errors.Wrapf(errStop, "client.stop")
 			}
 
 			if errStart := app.Start(procIDs...); errStart != nil {
-				return errors.Wrap(errStart, "client.start")
+				return errors.Wrapf(errStart, "client.start")
 			}
 
 			return nil

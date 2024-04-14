@@ -88,7 +88,7 @@ func ReadProcessStat(pid int) (ProcessStat, error) {
 			return fun.Zero[ProcessStat](), ErrStatFileNotFound
 		}
 
-		return fun.Zero[ProcessStat](), errors.Wrap(err, "read proc stat file")
+		return fun.Zero[ProcessStat](), errors.Wrapf(err, "read proc stat file")
 	}
 	defer statFile.Close()
 
@@ -149,7 +149,7 @@ func ReadProcessStat(pid int) (ProcessStat, error) {
 		&stat.EnvEnd,
 		&stat.ExitCode,
 	); err != nil {
-		return fun.Zero[ProcessStat](), errors.Wrap(err, "read proc stat file")
+		return fun.Zero[ProcessStat](), errors.Wrapf(err, "read proc stat file")
 	}
 
 	return stat, nil
