@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -76,44 +75,44 @@ func Run(argv []string) error {
 	}
 
 	//nolint:lll // setting template strings
-	App.SetUsageFunc(func(cmd *cobra.Command) error {
-		scuf.New(os.Stdout).
-			NL().
-			String(`Usage:
-  pm COMMAND
-`).
-			Iter(func(yield func(func(scuf.Buffer)) bool) bool {
-				for _, group := range cmd.Groups() {
-					yield(func(b scuf.Buffer) {
-						b.NL().String(group.Title).NL()
-						for _, cmd := range cmd.Commands() {
-							if cmd.GroupID != group.ID {
-								continue
-							}
-							b.
-								String("  ").
-								String(cmd.Name(), scuf.FgCyan).
-								// String(strings.Join(cmd.Aliases, ", "), scuf.FgGreen).
-								String(strings.Repeat(" ", 12-len(cmd.Name()))).
-								String(cmd.Short).
-								NL()
-						}
-					})
-				}
-				return true
-			}).
-			String(`
-Additional Commands:
-  completion  Generate the autocompletion script for the specified shell
-  help        Help about any command
-  version     print pm version
+	// 	App.SetUsageFunc(func(cmd *cobra.Command) error {
+	// 		scuf.New(os.Stdout).
+	// 			NL().
+	// 			String(`Usage:
+	//   pm COMMAND
+	// `).
+	// 			Iter(func(yield func(func(scuf.Buffer)) bool) bool {
+	// 				for _, group := range cmd.Groups() {
+	// 					yield(func(b scuf.Buffer) {
+	// 						b.NL().String(group.Title).NL()
+	// 						for _, cmd := range cmd.Commands() {
+	// 							if cmd.GroupID != group.ID {
+	// 								continue
+	// 							}
+	// 							b.
+	// 								String("  ").
+	// 								String(cmd.Name(), scuf.FgCyan).
+	// 								// String(strings.Join(cmd.Aliases, ", "), scuf.FgGreen).
+	// 								String(strings.Repeat(" ", 12-len(cmd.Name()))).
+	// 								String(cmd.Short).
+	// 								NL()
+	// 						}
+	// 					})
+	// 				}
+	// 				return true
+	// 			}).
+	// 			String(`
+	// Additional Commands:
+	//   completion  Generate the autocompletion script for the specified shell
+	//   help        Help about any command
+	//   version     print pm version
 
-Flags:
-  -h, --help   help for pm
+	// Flags:
+	//   -h, --help   help for pm
 
-Use "pm [command] --help" for more information about a command.`)
-		return nil
-	})
+	// Use "pm [command] --help" for more information about a command.`)
+	// 		return nil
+	// 	})
 	App.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
 		scuf.New(os.Stdout).
 			String(cmd.Short, scuf.FgBlue).

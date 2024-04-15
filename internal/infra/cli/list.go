@@ -10,16 +10,17 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/aquasecurity/table"
 	"github.com/kballard/go-shellquote"
 	cmp2 "github.com/rprtr258/cmp"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/scuf"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/table"
 )
 
 const (
@@ -54,31 +55,33 @@ func mapStatus(status core.Status) (string, time.Duration) {
 	}
 }
 
-func renderTable(procs []core.Proc, setRowLines bool) {
-	procsTable := table.New(os.Stdout)
-	procsTable.SetDividers(table.UnicodeRoundedDividers)
-	procsTable.SetHeaders("id", "name", "status", "uptime", "tags" /*"cpu", "memory",*/, "cmd")
-	procsTable.SetHeaderStyle(table.StyleBold)
-	procsTable.SetLineStyle(table.StyleDim)
-	procsTable.SetRowLines(setRowLines)
-	for _, proc := range procs {
-		// TODO: if errored/stopped show time since start instead of uptime (not in place of)
-		status, uptime := mapStatus(proc.Status)
+func renderTable(procs []core.Proc, showRowDividers bool) {
+	t := table.Table{
+		Headers: fun.Map[string](func(col string) string {
+			return scuf.String(col, scuf.ModBold)
+		}, "id", "name", "status", "uptime", "tags" /*"cpu", "memory",*/, "cmd"),
+		Rows: fun.Map[[]string](func(proc core.Proc) []string {
+			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
+			status, uptime := mapStatus(proc.Status)
 
-		procsTable.AddRow(
-			scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold),
-			proc.Name,
-			status,
-			fun.
-				If(proc.Status.Status != core.StatusRunning, "").
-				Else(uptime.Truncate(time.Second).String()),
-			strings.Join(proc.Tags, "\n"),
-			// fmt.Sprint(proc.Status.CPU),
-			// fmt.Sprint(proc.Status.Memory),
-			shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
-		)
+			return []string{
+				scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold),
+				proc.Name,
+				status,
+				fun.
+					If(proc.Status.Status != core.StatusRunning, "").
+					Else(uptime.Truncate(time.Second).String()),
+				strings.Join(proc.Tags, " "),
+				// fmt.Sprint(proc.Status.CPU),
+				// fmt.Sprint(proc.Status.Memory),
+				shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
+			}
+		}, procs...),
+		HaveInnerRowsDividers: showRowDividers,
 	}
-	procsTable.Render()
+
+	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
+	fmt.Println(table.Render(t, width))
 }
 
 var _usageFlagSort = scuf.NewString(func(b scuf.Buffer) {
@@ -177,7 +180,7 @@ var _usageFlagListFormat = scuf.NewString(func(b scuf.Buffer) {
 			}
 			return false
 		}).
-		String("any other string is rendred as Go template with ").
+		String("any other string is rendered as Go template with ").
 		String("core.ProcData", scuf.FgGreen).
 		String(" struct")
 })
