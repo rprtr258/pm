@@ -40,8 +40,13 @@ func getProcs(
 		return nil, errors.Wrapf(errLoadConfigs, "load configs: %v", *config)
 	}
 
+	procNames := fun.FilterMap[string](func(cfg core.RunConfig) (string, bool) {
+		return cfg.Name.Unpack()
+	}, configs...)
+
 	return app.
-		ListByRunConfigs(configs).
+		List().
+		Filter(func(proc core.Proc) bool { return fun.Contains(proc.Name, procNames...) }).
 		Filter(filterFunc).
 		ToSlice(), nil
 }

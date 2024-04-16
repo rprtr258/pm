@@ -81,7 +81,7 @@ var _cmdSignal = func() *cobra.Command {
 			}
 
 			if err := client.Signal(sig, procIDs...); err != nil {
-				return errors.Wrapf(err, "client.stop")
+				return errors.Wrapf(err, "client.stop signal=%v", sig)
 			}
 
 			return nil

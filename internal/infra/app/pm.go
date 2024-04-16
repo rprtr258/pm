@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rs/zerolog/log"
 
@@ -19,18 +18,6 @@ import (
 )
 
 const EnvPMID = "PM_PMID"
-
-func (app App) ListByRunConfigs(runConfigs []core.RunConfig) iter.Seq[core.Proc] {
-	procNames := fun.FilterMap[string](func(cfg core.RunConfig) (string, bool) {
-		return cfg.Name.Unpack()
-	}, runConfigs...)
-
-	return app.
-		List().
-		Filter(func(proc core.Proc) bool {
-			return fun.Contains(proc.Name, procNames...)
-		})
-}
 
 func procFields(proc core.Proc) string {
 	return fmt.Sprintf(

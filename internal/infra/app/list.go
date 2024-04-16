@@ -3,12 +3,13 @@ package app
 import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
+	"github.com/rs/zerolog/log"
+
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
-	"github.com/rs/zerolog/log"
 )
 
-func (app App) List() iter.Seq[core.Proc] { // TODO: return iterator
+func (app App) List() iter.Seq[core.Proc] {
 	procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
 	if err != nil {
 		return iter.FromNothing[core.Proc]()

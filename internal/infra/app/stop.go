@@ -48,9 +48,7 @@ func (app App) stop(id core.PMID) error {
 func (app App) Stop(ids ...core.PMID) error {
 	errs := []error{}
 	for _, id := range ids {
-		if errStop := app.stop(id); errStop != nil {
-			errs = append(errs, errStop)
-		}
+		errs = append(errs, app.stop(id))
 	}
 	return errors.Combine(errs...)
 }

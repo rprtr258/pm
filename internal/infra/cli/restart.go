@@ -65,8 +65,13 @@ var _cmdRestart = func() *cobra.Command {
 				return errors.Wrapf(errLoadConfigs, "load configs from %s", configFile)
 			}
 
+			procNames := fun.FilterMap[string](func(cfg core.RunConfig) (string, bool) {
+				return cfg.Name.Unpack()
+			}, configs...)
+
 			procIDs := iter.Map(app.
-				ListByRunConfigs(configs).
+				List().
+				Filter(func(proc core.Proc) bool { return fun.Contains(proc.Name, procNames...) }).
 				Filter(core.FilterFunc(
 					core.WithGeneric(args...),
 					core.WithIDs(ids...),
