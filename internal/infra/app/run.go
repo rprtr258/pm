@@ -4,10 +4,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/rprtr258/pm/internal/infra/errors"
-	"go.uber.org/multierr"
-
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 // Run - create and start processes, returns ids of created processes.
@@ -27,12 +25,11 @@ func (app App) Run(config core.RunConfig) (core.PMID, error) {
 		}
 	}
 
-	var merr error
 	if command == config.Command { // command contains slash and might be relative
 		var errAbs error
 		command, errAbs = filepath.Abs(command)
 		if errAbs != nil {
-			multierr.AppendInto(&merr, errors.Wrapf(errAbs, "get absolute binary path: %q", command))
+			return "", errors.Wrapf(errAbs, "get absolute binary path: %q", command)
 		}
 	}
 
@@ -54,5 +51,5 @@ func (app App) Run(config core.RunConfig) (core.PMID, error) {
 
 	app.startAgent(id)
 
-	return core.PMID(id), merr
+	return core.PMID(id), nil
 }

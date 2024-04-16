@@ -2,20 +2,21 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
-	"github.com/rprtr258/cli"
 	"github.com/rprtr258/scuf"
 	"github.com/rs/zerolog/log"
 )
 
-type app struct {
-	Interval time.Duration `long:"interval" short:"i" description:"interval between ticks, e.g. 100ms, 5s" default:"1s"`
-}
+func run(ctx context.Context, intervalStr string) error {
+	interval, err := time.ParseDuration(intervalStr)
+	if err != nil {
+		return fmt.Errorf("parse interval %q: %w", intervalStr, err)
+	}
 
-func (x app) Execute(ctx context.Context) error {
-	ticker := time.NewTicker(x.Interval)
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for i := 0; ; i++ {
@@ -35,7 +36,11 @@ func (x app) Execute(ctx context.Context) error {
 }
 
 func main() {
-	if err := cli.RunContext[app](context.Background(), os.Args...); err != nil {
+	if len(os.Args) == 1 {
+		os.Args = append(os.Args, "1s")
+	}
+
+	if err := run(context.Background(), os.Args[1]); err != nil {
 		log.Fatal().Err(err).Send()
 	}
 }
