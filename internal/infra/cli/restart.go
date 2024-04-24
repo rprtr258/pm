@@ -6,31 +6,12 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
-	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
-
-func implRestart(app app.App, procIDs []core.PMID) error {
-	if len(procIDs) == 0 {
-		fmt.Println("nothing to restart")
-		return nil
-	}
-
-	if errStop := app.Stop(procIDs...); errStop != nil {
-		return errors.Wrapf(errStop, "client.stop")
-	}
-
-	time.Sleep(3 * time.Second) // TODO: wait for killing
-
-	if errStart := app.Start(procIDs...); errStart != nil {
-		return errors.Wrapf(errStart, "client.start")
-	}
-
-	return nil
-}
 
 var _cmdRestart = func() *cobra.Command {
 	var names, ids, tags []string
@@ -49,48 +30,56 @@ var _cmdRestart = func() *cobra.Command {
 			}
 
 			list := app.List()
+			if config != nil {
+				configs, errLoadConfigs := core.LoadConfigs(*config)
+				if errLoadConfigs != nil {
+					return errors.Wrapf(errLoadConfigs, "load configs from %s", *config)
+				}
 
-			if config == nil {
-				procIDs := iter.Map(list.
+				procNames := fun.FilterMap[string](func(cfg core.RunConfig) (string, bool) {
+					return cfg.Name.Unpack()
+				}, configs...)
+
+				list = list.
+					Filter(func(proc core.Proc) bool { return fun.Contains(proc.Name, procNames...) }).
 					Filter(core.FilterFunc(
 						core.WithGeneric(args...),
 						core.WithIDs(ids...),
 						core.WithNames(names...),
 						core.WithTags(tags...),
-					)),
-					func(proc core.Proc) core.PMID {
-						return proc.ID
-					}).
-					ToSlice()
-				return implRestart(app, procIDs)
+						core.WithAllIfNoFilters,
+					))
+			} else {
+				list = list.
+					Filter(core.FilterFunc(
+						core.WithGeneric(args...),
+						core.WithIDs(ids...),
+						core.WithNames(names...),
+						core.WithTags(tags...),
+					))
 			}
 
-			configFile := *config
-
-			configs, errLoadConfigs := core.LoadConfigs(configFile)
-			if errLoadConfigs != nil {
-				return errors.Wrapf(errLoadConfigs, "load configs from %s", configFile)
-			}
-
-			procNames := fun.FilterMap[string](func(cfg core.RunConfig) (string, bool) {
-				return cfg.Name.Unpack()
-			}, configs...)
-
-			procIDs := iter.Map(app.
-				List().
-				Filter(func(proc core.Proc) bool { return fun.Contains(proc.Name, procNames...) }).
-				Filter(core.FilterFunc(
-					core.WithGeneric(args...),
-					core.WithIDs(ids...),
-					core.WithNames(names...),
-					core.WithTags(tags...),
-					core.WithAllIfNoFilters,
-				)),
+			procIDs := iter.Map(list,
 				func(proc core.Proc) core.PMID {
 					return proc.ID
 				}).
 				ToSlice()
-			return implRestart(app, procIDs)
+			if len(procIDs) == 0 {
+				fmt.Println("nothing to restart")
+				return nil
+			}
+
+			if errStop := app.Stop(procIDs...); errStop != nil {
+				return errors.Wrapf(errStop, "client.stop")
+			}
+
+			time.Sleep(3 * time.Second) // TODO: wait for killing
+
+			if errStart := app.Start(procIDs...); errStart != nil {
+				return errors.Wrapf(errStart, "client.start")
+			}
+
+			return nil
 		},
 	}
 	addFlagNames(cmd, &names)
