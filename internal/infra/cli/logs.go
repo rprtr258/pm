@@ -51,6 +51,7 @@ func getProcs(
 		ToSlice(), nil
 }
 
+// TODO: cleanup logs files which are not bound to any existing process (in any status)
 var _cmdLogs = func() *cobra.Command {
 	var names, ids, tags []string
 	var config string

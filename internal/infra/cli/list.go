@@ -295,6 +295,11 @@ var _cmdList = func() *cobra.Command {
 				)).
 				ToSlice()
 
+			if len(procsToShow) == 0 {
+				fmt.Fprintln(os.Stderr, "no processes added")
+				return nil
+			}
+
 			slices.SortFunc(procsToShow, less)
 			return format(procsToShow)
 		},
