@@ -68,6 +68,8 @@ var _cmdStop = func() *cobra.Command {
 				return errors.Wrapf(err, "client.stop")
 			}
 
+			printIDs(procIDs...)
+
 			return nil
 		},
 	}

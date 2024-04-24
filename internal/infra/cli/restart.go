@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
@@ -11,6 +12,25 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 )
+
+func implRestart(app app.App, procIDs []core.PMID) error {
+	if len(procIDs) == 0 {
+		fmt.Println("nothing to restart")
+		return nil
+	}
+
+	if errStop := app.Stop(procIDs...); errStop != nil {
+		return errors.Wrapf(errStop, "client.stop")
+	}
+
+	time.Sleep(3 * time.Second) // TODO: wait for killing
+
+	if errStart := app.Start(procIDs...); errStart != nil {
+		return errors.Wrapf(errStart, "client.start")
+	}
+
+	return nil
+}
 
 var _cmdRestart = func() *cobra.Command {
 	var names, ids, tags []string
@@ -42,20 +62,7 @@ var _cmdRestart = func() *cobra.Command {
 						return proc.ID
 					}).
 					ToSlice()
-				if len(procIDs) == 0 {
-					fmt.Println("nothing to restart")
-					return nil
-				}
-
-				if err := app.Stop(procIDs...); err != nil {
-					return errors.Wrapf(err, "client.stop")
-				}
-
-				if errStart := app.Start(procIDs...); errStart != nil {
-					return errors.Wrapf(errStart, "client.start")
-				}
-
-				return nil
+				return implRestart(app, procIDs)
 			}
 
 			configFile := *config
@@ -83,21 +90,7 @@ var _cmdRestart = func() *cobra.Command {
 					return proc.ID
 				}).
 				ToSlice()
-
-			if len(procIDs) == 0 {
-				fmt.Println("nothing to start")
-				return nil
-			}
-
-			if errStop := app.Stop(procIDs...); errStop != nil {
-				return errors.Wrapf(errStop, "client.stop")
-			}
-
-			if errStart := app.Start(procIDs...); errStart != nil {
-				return errors.Wrapf(errStart, "client.start")
-			}
-
-			return nil
+			return implRestart(app, procIDs)
 		},
 	}
 	addFlagNames(cmd, &names)

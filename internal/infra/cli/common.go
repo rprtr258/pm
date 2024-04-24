@@ -15,13 +15,9 @@ import (
 )
 
 func printIDs(ids ...core.PMID) {
-	for i, id := range ids {
-		if i > 0 {
-			fmt.Print(" ")
-		}
-		fmt.Print(id)
+	for _, id := range ids {
+		fmt.Println(id)
 	}
-	fmt.Println()
 }
 
 func addFlagConfig(cmd *cobra.Command, config *string) {
