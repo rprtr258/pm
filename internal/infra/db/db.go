@@ -40,6 +40,8 @@ type procData struct {
 	Watch  *string `json:"watch"`
 	Status status  `json:"status"`
 
+	Startup bool `json:"startup"`
+
 	// RestartTries int
 	// RestartDelay    time.Duration
 	// Respawns int
@@ -68,6 +70,7 @@ func mapFromRepo(proc procData) core.Proc {
 		Env:        proc.Env,
 		StdoutFile: proc.StdoutFile,
 		StderrFile: proc.StderrFile,
+		Startup:    proc.Startup,
 	}
 }
 
@@ -180,6 +183,7 @@ func (handle Handle) UpdateProc(proc core.Proc) Error {
 		Env:        proc.Env,
 		StdoutFile: proc.StdoutFile,
 		StderrFile: proc.StderrFile,
+		Startup:    proc.Startup,
 	}); err != nil {
 		return FlushError{err}
 	}

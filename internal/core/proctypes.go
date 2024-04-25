@@ -109,6 +109,8 @@ type Proc struct {
 	Watch  fun.Option[string]
 	Status Status
 
+	Startup bool // Startup - run on OS startup
+
 	// RestartTries int
 	// RestartDelay    time.Duration
 	// Respawns int

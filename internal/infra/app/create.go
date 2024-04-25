@@ -40,6 +40,7 @@ func (app App) create(
 	watch fun.Option[string],
 	stdoutFile fun.Option[string],
 	stderrFile fun.Option[string],
+	startup bool,
 ) (core.PMID, error) {
 	// try to find by name and update
 	if name, ok := name.Unpack(); ok { //nolint:nestif // no idea how to simplify it now
@@ -63,6 +64,7 @@ func (app App) create(
 				Env:        env,
 				StdoutFile: stdoutFile.OrDefault(filepath.Join(app.logsDir, fmt.Sprintf("%v.stdout", procID))),
 				StderrFile: stderrFile.OrDefault(filepath.Join(app.logsDir, fmt.Sprintf("%v.stderr", procID))),
+				Startup:    startup,
 			}
 
 			proc := procs[procID]
@@ -115,6 +117,7 @@ func (app App) Create(req core.RunConfig) (core.PMID, error) {
 		}),
 		req.StdoutFile,
 		req.StderrFile,
+		req.Startup,
 	)
 	if err != nil {
 		return "", errors.Wrapf(err, "server.create")

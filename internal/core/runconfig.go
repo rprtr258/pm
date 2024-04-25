@@ -59,6 +59,8 @@ type RunConfig struct {
 	Autorestart bool
 	// MaxRestarts - maximum number of restarts, 0 means no limit
 	MaxRestarts uint
+	// Startup - run process on OS startup
+	Startup bool
 }
 
 func isConfigFile(arg string) bool {
@@ -125,6 +127,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		Args    []any          `json:"args"`
 		Tags    []string       `json:"tags"`
 		Watch   *string        `json:"watch"`
+		Startup bool           `json:"startup"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
@@ -213,6 +216,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			KillChildren: false,
 			Autorestart:  false,
 			MaxRestarts:  0,
+			Startup:      config.Startup,
 		}, nil
 	}, scannedConfigs...)
 }

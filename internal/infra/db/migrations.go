@@ -39,10 +39,7 @@ func Migrate(fromVersion, toVersion string) (string, error) {
 				Msg("migrating...")
 
 			if err := m.do(); err != nil {
-				return lastVersion, errors.Wrapf(err, "migrate", map[string]any{
-					"from": lastVersion,
-					"to":   m.version,
-				})
+				return lastVersion, errors.Wrapf(err, "migrate from=%s to=%s", lastVersion, m.version)
 			}
 
 			lastVersion = m.version
