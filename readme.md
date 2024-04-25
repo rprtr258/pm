@@ -6,6 +6,22 @@ PM is available only for linux due to heavy usage of linux mechanisms. For now o
 go install github.com/rprtr258/pm@latest
 ```
 
+### Systemd service
+To enable running processes on system startup
+- copy [`pm.service`](./pm.service) locally
+- change `User` field to your own username
+- move the file to `/etc/systemd/system/pm.service` and set root permissions on it:
+```sh
+sudo cp pm.service /etc/systemd/system/pm.service
+sudo chmod 644 /etc/systemd/system/pm.service
+sudo chown root:root /etc/systemd/system/pm.service
+sudo systemctl daemon-reload
+sudo systemctl enable pm
+sudo systemctl start pm
+```
+
+After that, processes with `startup: true` config option will be started on system startup.
+
 ## Configuration
 [jsonnet](https://jsonnet.org/) configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead.
 
