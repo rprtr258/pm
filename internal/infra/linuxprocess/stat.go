@@ -11,6 +11,7 @@ import (
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
+// TODO: this might be called in function, call batch once instead
 func StatPMID(pmid core.PMID, env string) (*os.Process, bool) {
 	procs := List()
 	for _, p := range procs {

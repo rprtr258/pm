@@ -13,13 +13,13 @@ import (
 	"github.com/kballard/go-shellquote"
 	cmp2 "github.com/rprtr258/cmp"
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/scuf"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/table"
 )
 

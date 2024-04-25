@@ -48,6 +48,7 @@ var App = func() *cobra.Command {
 
 	cmd.AddCommand(_cmdVersion)
 	cmd.AddCommand(_cmdAgent)
+	cmd.AddCommand(_cmdStartup)
 
 	cmd.AddGroup(&cobra.Group{ID: "inspection", Title: "Inspection"})
 	cmd.AddCommand(_cmdList)
