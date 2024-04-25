@@ -6,15 +6,97 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
+	"regexp"
 	"syscall"
 	"time"
 
-	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/fun"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/core/daemon/watcher"
+	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/infra/fsnotify"
 )
+
+type Entry struct {
+	RootDir     string
+	Pattern     *regexp.Regexp
+	LastModTime time.Time
+}
+
+type Watcher struct {
+	dir      string
+	re       *regexp.Regexp
+	watcher  *fsnotify.BatchedRecursiveWatcher
+	callback func(context.Context) error
+}
+
+func newWatcher(dir, pattern string, callback func(context.Context) error) (Watcher, error) {
+	watcher, err := fsnotify.NewBatchedRecursiveWatcher(dir, "", time.Second)
+	if err != nil {
+		return fun.Zero[Watcher](), errors.Wrapf(err, "create fsnotify watcher")
+	}
+
+	re, errCompilePattern := regexp.Compile(pattern)
+	if errCompilePattern != nil {
+		return fun.Zero[Watcher](), errors.Wrapf(errCompilePattern, "compile pattern")
+	}
+
+	return Watcher{
+		dir:      dir,
+		re:       re,
+		watcher:  watcher,
+		callback: callback,
+	}, nil
+}
+
+func (w Watcher) processEventBatch(ctx context.Context, events []fsnotify.Event) {
+	triggered := false
+	for _, event := range events {
+		filename, err := filepath.Rel(w.dir, event.Name)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Stringer("event", event).
+				Str("dir", w.dir).
+				Msg("get relative filename failed")
+			continue
+		}
+
+		if !w.re.MatchString(filename) {
+			continue
+		}
+
+		triggered = true
+		break
+	}
+
+	if triggered {
+		if err := w.callback(ctx); err != nil {
+			log.Error().
+				Err(err).
+				Msg("execute callback failed")
+		}
+	}
+}
+
+func (w Watcher) Start(ctx context.Context) {
+	defer w.watcher.Close()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case err := <-w.watcher.Errors():
+			log.Error().
+				Err(err).
+				Msg("fsnotify error")
+			return
+		case events := <-w.watcher.Events():
+			w.processEventBatch(ctx, events)
+		}
+	}
+}
 
 func (app App) StartRaw(proc core.Proc) error {
 	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
@@ -65,7 +147,7 @@ func (app App) StartRaw(proc core.Proc) error {
 	}
 
 	if watchRE, ok := proc.Watch.Unpack(); ok {
-		watcher, errWatcher := watcher.New(proc.Cwd, watchRE, func(ctx context.Context) error {
+		watcher, errWatcher := newWatcher(proc.Cwd, watchRE, func(ctx context.Context) error {
 			if errTerm := app.stop(proc.ID); errTerm != nil {
 				return errors.Wrapf(errTerm, "failed to send SIGKILL to process on watch")
 			}
