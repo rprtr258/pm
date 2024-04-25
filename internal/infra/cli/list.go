@@ -39,23 +39,30 @@ var _formats = []string{
 
 const _shortIDLength = 8
 
-func mapStatus(status core.Status) (string, time.Duration) {
+func mapStatus(status core.Status) string {
 	switch status.Status {
 	case core.StatusCreated:
-		return scuf.String("created", scuf.FgHiYellow), 0
+		return scuf.String("created", scuf.FgHiYellow)
 	case core.StatusRunning:
 		// TODO: get back real pid
-		return scuf.String("running", scuf.FgHiGreen), time.Since(status.StartTime)
+		return scuf.String("running", scuf.FgHiGreen)
 	case core.StatusStopped:
 		if status.ExitCode == 0 {
-			return scuf.String("exited", scuf.FgHiGreen, scuf.ModBold), 0
+			return scuf.String("exited", scuf.FgHiGreen, scuf.ModBold)
 		}
-		return scuf.String(fmt.Sprintf("stopped(%d)", status.ExitCode), scuf.FgRed, scuf.ModBold), 0
+		return scuf.String(fmt.Sprintf("stopped(%d)", status.ExitCode), scuf.FgRed, scuf.ModBold)
 	case core.StatusInvalid:
-		return scuf.String(fmt.Sprintf("invalid(%#v)", status.Status), scuf.FgRed), 0
+		return scuf.String(fmt.Sprintf("invalid(%#v)", status.Status), scuf.FgRed)
 	default:
-		return scuf.String(fmt.Sprintf("BROKEN(%T)", status), scuf.FgRed), 0
+		return scuf.String(fmt.Sprintf("BROKEN(%T)", status), scuf.FgRed)
 	}
+}
+
+func getUptime(status core.Status) time.Duration {
+	if status.Status == core.StatusRunning {
+		return time.Since(status.StartTime)
+	}
+	return 0
 }
 
 func renderTable(procs []core.Proc, showRowDividers bool) {
@@ -65,15 +72,13 @@ func renderTable(procs []core.Proc, showRowDividers bool) {
 		}, "id", "name", "status", "uptime", "tags" /*"cpu", "memory",*/, "cmd"),
 		Rows: fun.Map[[]string](func(proc core.Proc) []string {
 			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
-			status, uptime := mapStatus(proc.Status)
-
 			return []string{
 				scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold),
 				proc.Name,
-				status,
+				mapStatus(proc.Status),
 				fun.
 					If(proc.Status.Status != core.StatusRunning, "").
-					Else(uptime.Truncate(time.Second).String()),
+					Else(getUptime(proc.Status).Truncate(time.Second).String()),
 				strings.Join(proc.Tags, " "),
 				// fmt.Sprint(proc.Status.CPU),
 				// fmt.Sprint(proc.Status.Memory),
