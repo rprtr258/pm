@@ -58,7 +58,7 @@ func setup(e *testscript.Env) (err error) {
 
 	// Establish $HOME for a clean git configuration
 	homeDir := filepath.Join(e.Cd, ".home")
-	if err := os.Mkdir(homeDir, 0777); err != nil {
+	if err := os.Mkdir(homeDir, 0o777); err != nil {
 		return fmt.Errorf("failed to create HOME at %s: %w", homeDir, err)
 	}
 	e.Setenv("HOME", homeDir)

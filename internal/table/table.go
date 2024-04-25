@@ -191,10 +191,11 @@ func Render(t Table, w int) string {
 		totalPadding := col - ansi.PrintableRuneWidth(header)
 		line1[i] = strings.Repeat(" ", totalPadding/2) + header + strings.Repeat(" ", totalPadding-totalPadding/2)
 	}
-	lines := []string{}
-	lines = append(lines, borders[S|E]+strings.Join(line0, borders[S|W|E])+borders[S|W])
-	lines = append(lines, NS+strings.Join(line1, NS)+NS)
-	lines = append(lines, borders[N|S|E]+strings.Join(line0, NSWE)+borders[N|S|W])
+	lines := []string{
+		borders[S|E] + strings.Join(line0, borders[S|W|E]) + borders[S|W],
+		NS + strings.Join(line1, NS) + NS,
+		borders[N|S|E] + strings.Join(line0, NSWE) + borders[N|S|W],
+	}
 	for i, row := range t.Rows {
 		wraps := fun.Map[[]string](func(col, j int) []string {
 			return mywrap(col, row[j])

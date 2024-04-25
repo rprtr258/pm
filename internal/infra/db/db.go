@@ -119,11 +119,7 @@ func (handle Handle) writeProc(proc procData) error {
 	}
 	defer f.Close()
 
-	if err = json.NewEncoder(f).Encode(proc); err != nil {
-		return err
-	}
-
-	return nil
+	return json.NewEncoder(f).Encode(proc)
 }
 
 func (handle Handle) readProc(id core.PMID) (procData, error) {

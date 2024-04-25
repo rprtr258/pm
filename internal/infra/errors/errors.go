@@ -19,7 +19,7 @@ func Wrap(err error, msg string) error {
 
 func Wrapf(err error, msg string, a ...any) error {
 	if err == nil {
-		return err
+		return nil
 	}
 
 	return fmt.Errorf("%s: %w", fmt.Sprintf(msg, a...), err)
