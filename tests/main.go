@@ -156,20 +156,20 @@ var tests = map[string]testcase{
 
 //nolint:nonamedreturns // required to check test result
 func runTest(ctx context.Context, name string, test testcase) (ererer error) { //nolint:funlen,gocognit,lll // no idea how to refactor right now
-	client, errClient := app.New()
+	appp, errClient := app.New()
 	if errClient != nil {
 		return errors.Wrapf(errClient, "create client")
 	}
 
 	// DELETE ALL PROCS
 	var err error
-	client.List()(func(proc core.Proc) bool {
-		if errStop := client.Stop(proc.ID); errStop != nil {
+	appp.List()(func(proc core.Proc) bool {
+		if errStop := appp.Stop(proc.ID); errStop != nil {
 			err = errors.Wrapf(errStop, "stop all old processes")
 			return false
 		}
 
-		if errDelete := client.Delete(proc.ID); errDelete != nil {
+		if errDelete := app.Delete(appp, proc.ID); errDelete != nil {
 			err = errors.Wrapf(errDelete, "delete all old processes")
 			return false
 		}
@@ -195,7 +195,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 
 		// RUN TEST BEFORE HOOK
 		if test.beforeFunc != nil {
-			if errTest := test.beforeFunc(ctx, client); errTest != nil {
+			if errTest := test.beforeFunc(ctx, appp); errTest != nil {
 				return errors.Wrapf(errTest, "run test before hook")
 			}
 		}
@@ -203,7 +203,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		// START TEST PROCESSES
 		ids := []core.PMID{}
 		for _, c := range test.runConfigs {
-			id, errStart := client.Run(core.RunConfig{
+			id, errStart := appp.Run(core.RunConfig{
 				Name:    c.Name,
 				Command: c.Command,
 				Args:    c.Args,
@@ -220,28 +220,28 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 
 		// RUN TEST
 		if test.testFunc != nil {
-			if errTest := test.testFunc(ctx, client); errTest != nil {
+			if errTest := test.testFunc(ctx, appp); errTest != nil {
 				return errors.Wrapf(errTest, "run test func")
 			}
 		}
 
 		// STOP AND REMOVE TEST PROCESSES
 		for _, id := range ids {
-			if errStop := client.Stop(id); errStop != nil {
+			if errStop := appp.Stop(id); errStop != nil {
 				return errors.Wrapf(errStop, "stop process: %s", id)
 			}
 
 			// TODO: block on stop method instead, now it is async
 			time.Sleep(3 * time.Second)
 
-			if errDelete := client.Delete(id); errDelete != nil {
+			if errDelete := app.Delete(appp, id); errDelete != nil {
 				return errors.Wrapf(errDelete, "delete process: %s", id)
 			}
 		}
 
 		// RUN TEST AFTER HOOK
 		if test.afterFunc != nil {
-			if errTest := test.afterFunc(ctx, client); errTest != nil {
+			if errTest := test.afterFunc(ctx, appp); errTest != nil {
 				return errors.Wrapf(errTest, "run test after hook")
 			}
 		}
