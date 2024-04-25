@@ -37,9 +37,10 @@ func (app App) Get(id core.PMID) (core.Proc, bool) {
 		return fun.Zero[core.Proc](), false
 	}
 
-	if proc, ok := procs[id]; ok {
-		return proc, true
+	proc, ok := procs[id]
+	if !ok {
+		return fun.Zero[core.Proc](), false
 	}
 
-	return fun.Zero[core.Proc](), false
+	return proc, true
 }
