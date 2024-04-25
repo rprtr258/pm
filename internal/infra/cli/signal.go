@@ -24,7 +24,6 @@ func implSignal(
 ) error {
 	var merr error
 	for _, id := range ids {
-		// signal - send signal to process
 		if err := func() error {
 			proc, ok := appp.DB.GetProc(id)
 			if !ok {
