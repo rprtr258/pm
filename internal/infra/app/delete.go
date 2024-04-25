@@ -7,6 +7,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/errors"
+	"go.uber.org/multierr"
 )
 
 func removeFile(name string) error {
@@ -33,25 +34,23 @@ func removeLogFiles(proc core.Proc) error {
 	return nil
 }
 
-func (app App) delete(id core.PMID) error {
-	deletedProc, errDelete := app.DB.Delete(id)
-	if errDelete != nil {
-		return errors.Wrapf(errDelete, "delete proc: %s", id)
-	}
-
-	if err := removeLogFiles(deletedProc); err != nil {
-		return errors.Wrapf(err, "delete proc: %s", id)
-	}
-
-	return nil
-}
-
 func (app App) Delete(ids ...core.PMID) error {
+	var merr error
 	for _, id := range ids {
-		if err := app.delete(id); err != nil {
-			return errors.Wrapf(err, "server.delete: %s", id)
+		if err := func() error {
+			deletedProc, errDelete := app.DB.Delete(id)
+			if errDelete != nil {
+				return errors.Wrapf(errDelete, "delete proc: %s", id)
+			}
+
+			if err := removeLogFiles(deletedProc); err != nil {
+				return errors.Wrapf(err, "delete proc: %s", id)
+			}
+
+			return nil
+		}(); err != nil {
+			multierr.AppendInto(&merr, errors.Wrapf(err, "server.delete: pmid=%s", id))
 		}
 	}
-
-	return nil
+	return merr
 }
