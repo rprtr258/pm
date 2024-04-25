@@ -10,6 +10,7 @@ go install github.com/rprtr258/pm@latest
 To enable running processes on system startup
 - copy [`pm.service`](./pm.service) locally
 - change `User` field to your own username
+- change `ExecStart` to use `pm` binary installed
 - move the file to `/etc/systemd/system/pm.service` and set root permissions on it:
 ```sh
 sudo cp pm.service /etc/systemd/system/pm.service
