@@ -1,17 +1,63 @@
 package cli
 
 import (
+	stdErrors "errors"
 	"fmt"
+	"os"
 	"syscall"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
-	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/spf13/cobra"
+	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
+
+func implSignal(
+	appp app.App,
+	sig syscall.Signal,
+	ids ...core.PMID,
+) error {
+	var merr error
+	for _, id := range ids {
+		// signal - send signal to process
+		if err := func() error {
+			proc, ok := appp.DB.GetProc(id)
+			if !ok {
+				return errors.New("not found proc to stop")
+			}
+
+			if proc.Status.Status != core.StatusRunning {
+				return errors.New("proc is not running, can't send signal")
+			}
+
+			osProc, ok := linuxprocess.StatPMID(id, app.EnvPMID)
+			if !ok {
+				return errors.Newf("get process by pmid, id=%s signal=%s", id, sig.String())
+			}
+
+			if errKill := syscall.Kill(-osProc.Pid, sig); errKill != nil {
+				switch {
+				case stdErrors.Is(errKill, os.ErrProcessDone):
+					return errors.New("tried to send signal to process which is done")
+				case stdErrors.Is(errKill, syscall.ESRCH): // no such process
+					return errors.New("tried to send signal to process which doesn't exist")
+				default:
+					return errors.Wrapf(errKill, "kill process, pid=%d", osProc.Pid)
+				}
+			}
+
+			return nil
+		}(); err != nil {
+			multierr.AppendInto(&merr, errors.Wrapf(err, "pmid=%s", id))
+		}
+	}
+	return merr
+}
 
 var _cmdSignal = func() *cobra.Command {
 	var names, ids, tags []string
@@ -40,12 +86,12 @@ var _cmdSignal = func() *cobra.Command {
 				return errors.Newf("unknown signal: %q", signal)
 			}
 
-			client, errList := app.New()
+			appp, errList := app.New()
 			if errList != nil {
 				return errors.Wrap(errList, "new grpc client")
 			}
 
-			list := client.List()
+			list := appp.List()
 
 			if config != nil {
 				configs, errLoadConfigs := core.LoadConfigs(*config)
@@ -80,7 +126,7 @@ var _cmdSignal = func() *cobra.Command {
 				return nil
 			}
 
-			if err := client.Signal(sig, procIDs...); err != nil {
+			if err := implSignal(appp, sig, procIDs...); err != nil {
 				return errors.Wrapf(err, "client.stop signal=%v", sig)
 			}
 
