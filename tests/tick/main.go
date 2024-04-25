@@ -26,7 +26,7 @@ func run(ctx context.Context, intervalStr string) error {
 		case now := <-ticker.C:
 			scuf.New(os.Stdout).
 				String(now.Format(time.RFC3339), scuf.ModFaint).
-				String(": tick").
+				String(": ick").
 				Styled(func(b scuf.Buffer) {
 					b.Printf("%4d", i)
 				}, scuf.FgBlue).

@@ -64,10 +64,9 @@
     args: [
       "run",
       "tick/main.go",
-      "--interval",
       "%(dur)dms" % {dur: i * 10},
     ],
     tags: ["ticker"],
-    watch: ".*\\.go", 
+    watch: ".*\\.go",
   } for i in std.range(1, 10)
 ]

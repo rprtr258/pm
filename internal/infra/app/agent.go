@@ -98,16 +98,24 @@ func (w Watcher) Start(ctx context.Context) {
 	}
 }
 
+// execCmd start copy of given command. We cannot use cmd itself since
+// we need to start and stop it repeatedly, but cmd stores it's state and cannot
+// be reused, so we need to copy it over and over again.
+func execCmd(cmd exec.Cmd) (*exec.Cmd, error) {
+	c := cmd // NOTE: copy cmd
+	return &c, c.Start()
+}
+
 func (app App) StartRaw(proc core.Proc) error {
-	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
-	if err != nil {
-		return errors.Wrapf(err, "open stdout file %q", proc.StdoutFile)
+	stdoutLogFile, errRunFirst := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
+	if errRunFirst != nil {
+		return errors.Wrapf(errRunFirst, "open stdout file %q", proc.StdoutFile)
 	}
 	defer stdoutLogFile.Close()
 
-	stderrLogFile, err := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
-	if err != nil {
-		return errors.Wrapf(err, "open stderr file %q", proc.StderrFile)
+	stderrLogFile, errRunFirst := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
+	if errRunFirst != nil {
+		return errors.Wrapf(errRunFirst, "open stderr file %q", proc.StderrFile)
 	}
 	defer func() {
 		if errClose := stderrLogFile.Close(); errClose != nil {
@@ -120,40 +128,42 @@ func (app App) StartRaw(proc core.Proc) error {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	newCmd := func() exec.Cmd {
-		return exec.Cmd{
-			Path:   proc.Command,
-			Args:   append([]string{proc.Command}, proc.Args...),
-			Dir:    proc.Cwd,
-			Env:    env,
-			Stdin:  os.Stdin,
-			Stdout: stdoutLogFile,
-			Stderr: stderrLogFile,
-			SysProcAttr: &syscall.SysProcAttr{
-				Setpgid: true,
-			},
-		}
+	cmdShape := exec.Cmd{
+		Path:   proc.Command,
+		Args:   append([]string{proc.Command}, proc.Args...),
+		Dir:    proc.Cwd,
+		Env:    env,
+		Stdin:  os.Stdin,
+		Stdout: stdoutLogFile,
+		Stderr: stderrLogFile,
+		SysProcAttr: &syscall.SysProcAttr{
+			Setpgid: true,
+		},
 	}
 
-	cmd := newCmd()
-	if err = cmd.Start(); err != nil {
-		if err, ok := err.(*exec.ExitError); ok {
+	cmd, errRunFirst := execCmd(cmdShape)
+	if errRunFirst != nil {
+		if err, ok := errRunFirst.(*exec.ExitError); ok {
 			app.DB.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
 			return nil
 		}
 
 		app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
-		return errors.Wrapf(err, "run proc: %v", proc)
+		return errors.Wrapf(errRunFirst, "run proc: %v", proc)
 	}
 
 	if watchRE, ok := proc.Watch.Unpack(); ok {
 		watcher, errWatcher := newWatcher(proc.Cwd, watchRE, func(ctx context.Context) error {
+			log.Debug().
+				Msg("watch triggered")
+
 			if errTerm := app.stop(proc.ID); errTerm != nil {
 				return errors.Wrapf(errTerm, "failed to send SIGKILL to process on watch")
 			}
 
-			cmd = newCmd() // TODO: awful kostyl
-			if errStart := cmd.Start(); errStart != nil {
+			var errStart error
+			cmd, errStart = execCmd(cmdShape)
+			if errStart != nil {
 				return errors.Wrapf(errStart, "failed to start process on watch")
 			}
 
@@ -189,10 +199,10 @@ func (app App) StartRaw(proc core.Proc) error {
 		}
 	}()
 
-	err = cmd.Wait()
+	errRunFirst = cmd.Wait()
 	close(doneCh)
-	if err != nil {
-		if err, ok := err.(*exec.ExitError); ok {
+	if errRunFirst != nil {
+		if err, ok := errRunFirst.(*exec.ExitError); ok {
 			if !err.Exited() {
 				if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
 					log.Error().Err(errKill).Msg("failed to send SIGKILL to process")
@@ -203,7 +213,7 @@ func (app App) StartRaw(proc core.Proc) error {
 		}
 
 		app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
-		return errors.Wrapf(err, "wait process: %v", proc)
+		return errors.Wrapf(errRunFirst, "wait process: %v", proc)
 	}
 
 	app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())

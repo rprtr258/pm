@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 
 	"github.com/rprtr258/fun"
@@ -51,15 +52,14 @@ func (app App) startAgentImpl(id core.PMID) error {
 		}
 	}()
 
-	env := iter.
-		FromMany(os.Environ()...).
-		Chain(iter.Map(iter.
-			FromDict(proc.Env),
-			func(kv fun.Pair[string, string]) string {
-				return fmt.Sprintf("%s=%s", kv.K, kv.V)
-			})).
-		Chain(iter.FromMany(fmt.Sprintf("%s=%s", EnvPMID, proc.ID))).
-		ToSlice()
+	proc.Env[EnvPMID] = string(proc.ID)
+	for _, kv := range os.Environ() {
+		kvs := strings.SplitN(kv, "=", 2)
+		k, v := kvs[0], kvs[1]
+		if _, ok := proc.Env[k]; !ok {
+			proc.Env[k] = v
+		}
+	}
 
 	procDesc, err := json.Marshal(proc)
 	if err != nil {
@@ -75,10 +75,15 @@ func (app App) startAgentImpl(id core.PMID) error {
 		Msg("start new process")
 
 	cmd := exec.Cmd{
-		Path:   pmExecutable,
-		Args:   []string{pmExecutable, CmdAgent, string(procDesc)},
-		Dir:    proc.Cwd,
-		Env:    env,
+		Path: pmExecutable,
+		Args: []string{pmExecutable, CmdAgent, string(procDesc)},
+		Dir:  proc.Cwd,
+		Env: iter.Map(iter.
+			FromDict(proc.Env),
+			func(kv fun.Pair[string, string]) string {
+				return fmt.Sprintf("%s=%s", kv.K, kv.V)
+			}).
+			ToSlice(),
 		Stdin:  os.Stdin,
 		Stdout: stdoutLogFile,
 		Stderr: stderrLogFile,
