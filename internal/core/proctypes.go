@@ -115,5 +115,3 @@ type Proc struct {
 	// RestartDelay    time.Duration
 	// Respawns int
 }
-
-type Procs = map[PMID]Proc

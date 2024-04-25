@@ -200,13 +200,13 @@ func (handle Handle) GetProc(id core.PMID) (core.Proc, bool) {
 	return mapFromRepo(proc), true
 }
 
-func (handle Handle) GetProcs(filterOpts ...core.FilterOption) (core.Procs, error) {
+func (handle Handle) GetProcs(filterOpts ...core.FilterOption) (map[core.PMID]core.Proc, error) {
 	entries, err := os.ReadDir(handle.dir)
 	if err != nil {
 		return nil, err
 	}
 
-	procs := core.Procs{}
+	procs := map[core.PMID]core.Proc{}
 	for _, entry := range entries {
 		proc, err := handle.readProc(core.PMID(entry.Name()))
 		if err != nil {
