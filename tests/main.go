@@ -170,7 +170,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 			return false
 		}
 
-		if errDelete := app.Delete(appp, proc.ID); errDelete != nil {
+		if errDelete := cli.ImplDelete(appp, proc.ID); errDelete != nil {
 			err = errors.Wrapf(errDelete, "delete all old processes")
 			return false
 		}
@@ -235,7 +235,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 			// TODO: block on stop method instead, now it is async
 			time.Sleep(3 * time.Second)
 
-			if errDelete := app.Delete(appp, id); errDelete != nil {
+			if errDelete := cli.ImplDelete(appp, id); errDelete != nil {
 				return errors.Wrapf(errDelete, "delete process: %s", id)
 			}
 		}
