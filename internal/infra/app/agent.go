@@ -32,20 +32,15 @@ type Watcher struct {
 	callback func(context.Context) error
 }
 
-func newWatcher(dir, pattern string, callback func(context.Context) error) (Watcher, error) {
+func newWatcher(dir string, patternRE *regexp.Regexp, callback func(context.Context) error) (Watcher, error) {
 	watcher, err := fsnotify.NewBatchedRecursiveWatcher(dir, "", time.Second)
 	if err != nil {
 		return fun.Zero[Watcher](), errors.Wrapf(err, "create fsnotify watcher")
 	}
 
-	re, errCompilePattern := regexp.Compile(pattern)
-	if errCompilePattern != nil {
-		return fun.Zero[Watcher](), errors.Wrapf(errCompilePattern, "compile pattern")
-	}
-
 	return Watcher{
 		dir:      dir,
-		re:       re,
+		re:       patternRE,
 		watcher:  watcher,
 		callback: callback,
 	}, nil
@@ -170,7 +165,12 @@ func (app App) StartRaw(proc core.Proc) error {
 		return errors.Wrapf(errRunFirst, "run proc: %v", proc)
 	}
 
-	if watchRE, ok := proc.Watch.Unpack(); ok {
+	if watchPattern, ok := proc.Watch.Unpack(); ok {
+		watchRE, errCompilePattern := regexp.Compile(watchPattern)
+		if errCompilePattern != nil {
+			return errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
+		}
+
 		watcher, errWatcher := newWatcher(proc.Cwd, watchRE, func(ctx context.Context) error {
 			log.Debug().Msg("watch triggered")
 
