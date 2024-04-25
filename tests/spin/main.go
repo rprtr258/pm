@@ -3,12 +3,12 @@
 package main
 
 import (
-	"os"
 	"os/signal"
+	"syscall"
 )
 
 func main() {
-	signal.Ignore(os.Interrupt, os.Interrupt)
+	signal.Ignore(syscall.SIGINT, syscall.SIGTERM)
 	for { //nolint:revive,staticcheck // of course it will use 100% of cpu
 		// waste cpu here
 	}
