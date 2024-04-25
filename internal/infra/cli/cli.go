@@ -50,12 +50,12 @@ var App = func() *cobra.Command {
 	cmd.AddCommand(_cmdAgent)
 	cmd.AddCommand(_cmdStartup)
 
-	cmd.AddGroup(&cobra.Group{ID: "inspection", Title: "Inspection"})
+	cmd.AddGroup(&cobra.Group{ID: "inspection", Title: "Inspection:"})
 	cmd.AddCommand(_cmdList)
 	cmd.AddCommand(_cmdLogs)
 	cmd.AddCommand(_cmdInspect)
 
-	cmd.AddGroup(&cobra.Group{ID: "management", Title: "Management"})
+	cmd.AddGroup(&cobra.Group{ID: "management", Title: "Management:"})
 	cmd.AddCommand(_cmdRun)
 	cmd.AddCommand(_cmdStart)
 	cmd.AddCommand(_cmdRestart)
