@@ -10,7 +10,7 @@ import (
 )
 
 func (app App) List() iter.Seq[core.Proc] {
-	procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
+	procs, err := app.DB.GetProcs(core.WithAllIfNoFilters)
 	if err != nil {
 		return iter.FromNothing[core.Proc]()
 	}
@@ -22,7 +22,7 @@ func (app App) List() iter.Seq[core.Proc] {
 
 		if _, ok := linuxprocess.StatPMID(proc.ID, EnvPMID); !ok {
 			proc.Status = core.NewStatusStopped(-1)
-			if errSet := app.db.SetStatus(id, proc.Status); errSet != nil {
+			if errSet := app.DB.SetStatus(id, proc.Status); errSet != nil {
 				log.Error().Err(errSet).Msg("failed to update status to stopped")
 			}
 		}
@@ -32,7 +32,7 @@ func (app App) List() iter.Seq[core.Proc] {
 }
 
 func (app App) Get(id core.PMID) (core.Proc, bool) {
-	procs, err := app.db.GetProcs(core.WithIDs(id))
+	procs, err := app.DB.GetProcs(core.WithIDs(id))
 	if err != nil {
 		return fun.Zero[core.Proc](), false
 	}

@@ -26,7 +26,7 @@ func (app App) startAgentImpl(id core.PMID) error {
 		return errors.Wrapf(err, "get pm executable")
 	}
 
-	proc, ok := app.db.GetProc(id)
+	proc, ok := app.DB.GetProc(id)
 	if !ok {
 		return errors.Newf("not found proc to start: %s", id)
 	}
@@ -78,7 +78,7 @@ func (app App) startAgentImpl(id core.PMID) error {
 		},
 	}
 
-	app.db.StatusSetRunning(id)
+	app.DB.StatusSetRunning(id)
 	if err := cmd.Start(); err != nil {
 		return errors.Wrapf(err, "running failed: %v", procFields(proc))
 	}
@@ -94,7 +94,7 @@ func (app App) startAgent(id core.PMID) {
 
 	if errStart := app.startAgentImpl(id); errStart != nil {
 		if errStart != ErrAlreadyRunning {
-			if errSetStatus := app.db.SetStatus(id, core.NewStatusInvalid()); errSetStatus != nil {
+			if errSetStatus := app.DB.SetStatus(id, core.NewStatusInvalid()); errSetStatus != nil {
 				l.Error().Err(errSetStatus).Msg("failed to set proc status to invalid")
 			}
 			l.Error().Err(errStart).Msg("failed to start proc")

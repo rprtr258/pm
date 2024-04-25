@@ -14,7 +14,7 @@ import (
 
 func (app App) stop(id core.PMID) error {
 	{
-		proc, ok := app.db.GetProc(id)
+		proc, ok := app.DB.GetProc(id)
 		if !ok {
 			return errors.Newf("not found proc to stop")
 		}

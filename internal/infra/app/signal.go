@@ -12,7 +12,7 @@ import (
 
 // signal - send signal to process
 func (app App) signal(id core.PMID, signal syscall.Signal) error {
-	proc, ok := app.db.GetProc(id)
+	proc, ok := app.DB.GetProc(id)
 	if !ok {
 		return errors.New("not found proc to stop")
 	}

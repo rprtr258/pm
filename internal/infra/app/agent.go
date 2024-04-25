@@ -56,11 +56,11 @@ func (app App) StartRaw(proc core.Proc) error {
 
 	if err = cmd.Start(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
-			app.db.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
+			app.DB.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
 			return nil
 		}
 
-		app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
+		app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
 		return errors.Wrapf(err, "run proc: %v", proc)
 	}
 
@@ -117,14 +117,14 @@ func (app App) StartRaw(proc core.Proc) error {
 					log.Error().Err(errKill).Msg("failed to send SIGKILL to process")
 				}
 			}
-			app.db.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
+			app.DB.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
 			return nil
 		}
 
-		app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
+		app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
 		return errors.Wrapf(err, "wait process: %v", proc)
 	}
 
-	app.db.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
+	app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
 	return nil
 }

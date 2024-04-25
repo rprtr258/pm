@@ -34,7 +34,7 @@ func removeLogFiles(proc core.Proc) error {
 }
 
 func (app App) delete(id core.PMID) error {
-	deletedProc, errDelete := app.db.Delete(id)
+	deletedProc, errDelete := app.DB.Delete(id)
 	if errDelete != nil {
 		return errors.Wrapf(errDelete, "delete proc: %s", id)
 	}

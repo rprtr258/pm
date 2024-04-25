@@ -44,7 +44,7 @@ func (app App) create(
 ) (core.PMID, error) {
 	// try to find by name and update
 	if name, ok := name.Unpack(); ok { //nolint:nestif // no idea how to simplify it now
-		procs, err := app.db.GetProcs(core.WithAllIfNoFilters)
+		procs, err := app.DB.GetProcs(core.WithAllIfNoFilters)
 		if err != nil {
 			return "", errors.Wrapf(err, "get procs from db")
 		}
@@ -62,8 +62,8 @@ func (app App) create(
 				Args:       args,
 				Watch:      watch,
 				Env:        env,
-				StdoutFile: stdoutFile.OrDefault(filepath.Join(app.logsDir, fmt.Sprintf("%v.stdout", procID))),
-				StderrFile: stderrFile.OrDefault(filepath.Join(app.logsDir, fmt.Sprintf("%v.stderr", procID))),
+				StdoutFile: stdoutFile.OrDefault(filepath.Join(app.DirLos, fmt.Sprintf("%v.stdout", procID))),
+				StderrFile: stderrFile.OrDefault(filepath.Join(app.DirLos, fmt.Sprintf("%v.stderr", procID))),
 				Startup:    startup,
 			}
 
@@ -78,7 +78,7 @@ func (app App) create(
 				return procID, nil
 			}
 
-			if errUpdate := app.db.UpdateProc(procData); errUpdate != nil {
+			if errUpdate := app.DB.UpdateProc(procData); errUpdate != nil {
 				return "", errors.Wrapf(errUpdate, "update proc: %v", procFields(procData))
 			}
 
@@ -86,7 +86,7 @@ func (app App) create(
 		}
 	}
 
-	procID, err := app.db.AddProc(db.CreateQuery{
+	procID, err := app.DB.AddProc(db.CreateQuery{
 		Name:       name.OrDefault(namegen.New()),
 		Cwd:        cwd,
 		Tags:       fun.Uniq(append(tags, "all")...),
@@ -96,7 +96,7 @@ func (app App) create(
 		Env:        env,
 		StdoutFile: stdoutFile,
 		StderrFile: stderrFile,
-	}, app.logsDir)
+	}, app.DirLos)
 	if err != nil {
 		return "", errors.Wrapf(err, "save proc")
 	}

@@ -50,9 +50,9 @@ func MigrateConfig(config core.Config) error {
 }
 
 type App struct {
-	db               db.Handle
-	homeDir, logsDir string
-	config           core.Config
+	DB              db.Handle
+	DirHome, DirLos string
+	Config          core.Config
 }
 
 func New() (App, error) {
@@ -74,10 +74,10 @@ func New() (App, error) {
 	if errConfig != nil {
 		if errConfig == core.ErrConfigNotExists {
 			return App{
-				db:      dbHandle,
-				homeDir: core.DirHome,
-				logsDir: _dirProcsLogs,
-				config:  core.DefaultConfig,
+				DB:      dbHandle,
+				DirHome: core.DirHome,
+				DirLos:  _dirProcsLogs,
+				Config:  core.DefaultConfig,
 			}, nil
 		}
 
@@ -85,9 +85,9 @@ func New() (App, error) {
 	}
 
 	return App{
-		db:      dbHandle,
-		homeDir: core.DirHome,
-		logsDir: _dirProcsLogs,
-		config:  config,
+		DB:      dbHandle,
+		DirHome: core.DirHome,
+		DirLos:  _dirProcsLogs,
+		Config:  config,
 	}, nil
 }
