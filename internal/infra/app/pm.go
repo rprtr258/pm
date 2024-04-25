@@ -10,39 +10,51 @@ import (
 
 	"github.com/go-faster/tail"
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rs/zerolog/log"
+	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
-	// "github.com/rprtr258/pm/internal/infra/log"
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 const EnvPMID = "PM_PMID"
 
 func procFields(proc core.Proc) string {
-	return fmt.Sprintf(
-		`Proc[id=%s, command=%q, cwd=%q, name=%q, args=%q, tags=%q, watch=%q, status=%q, stdout_file=%q, stderr_file=%q]`,
-		proc.ID,
-		proc.Command,
-		proc.Cwd,
-		proc.Name,
-		proc.Args,
-		proc.Tags,
-		func(opt fun.Option[string]) string {
+	return fmt2.FormatComplex(`Proc[
+	id={id},
+	command={command},
+	cwd={cwd},
+	name={name},
+	args={args},
+	tags={tags},
+	watch={watch},
+	status={status},
+	stdout_file={stdout_file},
+	stderr_file={stderr_file},
+	startup={startup},
+]`, map[string]any{
+		"id":      proc.ID,
+		"command": proc.Command,
+		"cwd":     proc.Cwd,
+		"name":    proc.Name,
+		"args":    proc.Args,
+		"tags":    proc.Tags,
+		"watch": func(opt fun.Option[string]) string {
 			if !opt.Valid {
 				return "None"
 			}
 
 			return fmt.Sprintf("Some(%v)", opt.Value)
 		}(proc.Watch),
-		proc.Status,
-		proc.StdoutFile,
-		proc.StderrFile,
+		"status":      proc.Status,
+		"stdout_file": proc.StdoutFile,
+		"stderr_file": proc.StderrFile,
+		"startup":     proc.Startup,
 		// TODO: uncomment
 		// "restart_tries": proc.RestartTries,
 		// "restart_delay": proc.RestartDelay,
 		// "respawns":     proc.Respawns,
-	)
+	})
 }
 
 type fileSize int64
@@ -71,7 +83,7 @@ func streamFile(
 ) error {
 	stat, errStat := os.Stat(logFile)
 	if errStat != nil {
-		return errors.Wrapf(errStat, "stat log file")
+		return errors.Wrapf(errStat, "stat log file %s", logFile)
 	}
 
 	tailer := tail.File(logFile, tail.Config{
