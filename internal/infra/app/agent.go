@@ -106,6 +106,24 @@ func execCmd(cmd exec.Cmd) (*exec.Cmd, error) {
 	return &c, c.Start()
 }
 
+// TODO: use context.Context
+func killCmd(doneCh <-chan struct{}, cmd *exec.Cmd) error {
+	if errTerm := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM); errTerm != nil {
+		log.Error().Err(errTerm).Msg("failed to send SIGTERM to process")
+	}
+
+	select {
+	case <-doneCh:
+	case <-time.After(5 * time.Second):
+		log.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
+		if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
+			return errors.Wrap(errKill, "send SIGKILL to process")
+		}
+	}
+
+	return nil
+}
+
 func (app App) StartRaw(proc core.Proc) error {
 	stdoutLogFile, errRunFirst := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if errRunFirst != nil {
@@ -154,11 +172,10 @@ func (app App) StartRaw(proc core.Proc) error {
 
 	if watchRE, ok := proc.Watch.Unpack(); ok {
 		watcher, errWatcher := newWatcher(proc.Cwd, watchRE, func(ctx context.Context) error {
-			log.Debug().
-				Msg("watch triggered")
+			log.Debug().Msg("watch triggered")
 
-			if errTerm := app.stop(proc.ID); errTerm != nil {
-				return errors.Wrapf(errTerm, "failed to send SIGKILL to process on watch")
+			if errKill := killCmd(ctx.Done(), cmd); errKill != nil {
+				return errors.Wrapf(errKill, "kill process on watch, pid=%d", cmd.Process.Pid)
 			}
 
 			var errStart error
@@ -185,17 +202,11 @@ func (app App) StartRaw(proc core.Proc) error {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 
-		if errTerm := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM); errTerm != nil {
-			log.Error().Err(errTerm).Msg("failed to send SIGTERM to process")
-		}
-
-		select {
-		case <-doneCh:
-		case <-time.After(5 * time.Second):
-			log.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
-			if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
-				log.Error().Err(errKill).Msg("failed to send SIGKILL to process")
-			}
+		if errKill := killCmd(doneCh, cmd); errKill != nil {
+			log.Error().
+				Int("pid", cmd.Process.Pid).
+				Err(errKill).
+				Msg("failed to kill process")
 		}
 	}()
 
