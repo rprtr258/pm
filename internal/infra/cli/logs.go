@@ -156,7 +156,19 @@ func implLogs(_ app.App, ctx context.Context, proc core.Proc) (<-chan core.LogLi
 					log.Error().Err(err).Msg("failed to check proc status")
 				}
 
-				proc, _ := newApp.Get(proc.ID)
+				proc, _ := func() (core.Proc, bool) {
+					procs, err := newApp.DB.GetProcs(core.WithIDs(proc.ID))
+					if err != nil {
+						return fun.Zero[core.Proc](), false
+					}
+
+					proc, ok := procs[proc.ID]
+					if !ok {
+						return fun.Zero[core.Proc](), false
+					}
+
+					return proc, true
+				}()
 				if proc.Status.Status != core.StatusRunning {
 					return
 				}

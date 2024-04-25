@@ -1,7 +1,6 @@
 package app
 
 import (
-	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
 
@@ -29,18 +28,4 @@ func (app App) List() iter.Seq[core.Proc] {
 		procs[id] = proc
 	}
 	return iter.Values(iter.FromDict(procs))
-}
-
-func (app App) Get(id core.PMID) (core.Proc, bool) {
-	procs, err := app.DB.GetProcs(core.WithIDs(id))
-	if err != nil {
-		return fun.Zero[core.Proc](), false
-	}
-
-	proc, ok := procs[id]
-	if !ok {
-		return fun.Zero[core.Proc](), false
-	}
-
-	return proc, true
 }
