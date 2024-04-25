@@ -66,6 +66,14 @@ func (app App) startAgentImpl(id core.PMID) error {
 		return errors.Wrapf(err, "marshal proc")
 	}
 
+	app.DB.StatusSetRunning(id)
+
+	log.Debug().
+		Str("path", pmExecutable).
+		RawJSON("proc_desc", procDesc).
+		Str("dir", proc.Cwd).
+		Msg("start new process")
+
 	cmd := exec.Cmd{
 		Path:   pmExecutable,
 		Args:   []string{pmExecutable, CmdAgent, string(procDesc)},
@@ -78,8 +86,6 @@ func (app App) startAgentImpl(id core.PMID) error {
 			Setpgid: true,
 		},
 	}
-
-	app.DB.StatusSetRunning(id)
 	if err := cmd.Start(); err != nil {
 		return errors.Wrapf(err, "running failed: %v", proc)
 	}

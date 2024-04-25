@@ -134,8 +134,8 @@ func (app App) StartRaw(proc core.Proc) error {
 			},
 		}
 	}
-	cmd := newCmd()
 
+	cmd := newCmd()
 	if err = cmd.Start(); err != nil {
 		if err, ok := err.(*exec.ExitError); ok {
 			app.DB.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
@@ -153,7 +153,6 @@ func (app App) StartRaw(proc core.Proc) error {
 			}
 
 			cmd = newCmd() // TODO: awful kostyl
-
 			if errStart := cmd.Start(); errStart != nil {
 				return errors.Wrapf(errStart, "failed to start process on watch")
 			}
