@@ -42,12 +42,15 @@ const _shortIDLength = 8
 func mapStatus(status core.Status) (string, time.Duration) {
 	switch status.Status {
 	case core.StatusCreated:
-		return scuf.String("created", scuf.FgYellow), 0
+		return scuf.String("created", scuf.FgHiYellow), 0
 	case core.StatusRunning:
 		// TODO: get back real pid
-		return scuf.String("running", scuf.FgGreen), time.Since(status.StartTime)
+		return scuf.String("running", scuf.FgHiGreen), time.Since(status.StartTime)
 	case core.StatusStopped:
-		return scuf.String(fmt.Sprintf("stopped(%d)", status.ExitCode), scuf.FgRed), 0
+		if status.ExitCode == 0 {
+			return scuf.String("exited", scuf.FgHiGreen, scuf.ModBold), 0
+		}
+		return scuf.String(fmt.Sprintf("stopped(%d)", status.ExitCode), scuf.FgRed, scuf.ModBold), 0
 	case core.StatusInvalid:
 		return scuf.String(fmt.Sprintf("invalid(%#v)", status.Status), scuf.FgRed), 0
 	default:
