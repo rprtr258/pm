@@ -12,6 +12,8 @@ import (
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
+const EnvPMID = "PM_PMID"
+
 var (
 	_dirProcsLogs = filepath.Join(core.DirHome, "logs")
 	_dirDB        = filepath.Join(core.DirHome, "db")
