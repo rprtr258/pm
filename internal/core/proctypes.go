@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
+	fmt2 "github.com/wissance/stringFormatter"
 )
 
 type StatusType int
@@ -114,4 +115,42 @@ type Proc struct {
 	// RestartTries int
 	// RestartDelay    time.Duration
 	// Respawns int
+}
+
+func (p *Proc) String() string {
+	return fmt2.FormatComplex(`Proc[
+	id={id},
+	command={command},
+	cwd={cwd},
+	name={name},
+	args={args},
+	tags={tags},
+	watch={watch},
+	status={status},
+	stdout_file={stdout_file},
+	stderr_file={stderr_file},
+	startup={startup},
+]`, map[string]any{
+		"id":      p.ID,
+		"command": p.Command,
+		"cwd":     p.Cwd,
+		"name":    p.Name,
+		"args":    p.Args,
+		"tags":    p.Tags,
+		"watch": func(opt fun.Option[string]) string {
+			if !opt.Valid {
+				return "None"
+			}
+
+			return fmt.Sprintf("Some(%v)", opt.Value)
+		}(p.Watch),
+		"status":      p.Status,
+		"stdout_file": p.StdoutFile,
+		"stderr_file": p.StderrFile,
+		"startup":     p.Startup,
+		// TODO: uncomment
+		// "restart_tries": proc.RestartTries,
+		// "restart_delay": proc.RestartDelay,
+		// "respawns":     proc.Respawns,
+	})
 }

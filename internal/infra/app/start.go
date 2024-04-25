@@ -11,6 +11,7 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
+	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/errors"
@@ -80,34 +81,31 @@ func (app App) startAgentImpl(id core.PMID) error {
 
 	app.DB.StatusSetRunning(id)
 	if err := cmd.Start(); err != nil {
-		return errors.Wrapf(err, "running failed: %v", procFields(proc))
+		return errors.Wrapf(err, "running failed: %v", proc)
 	}
 
 	return nil
-}
-
-// startAgent - run processes by their ids in database
-func (app App) startAgent(id core.PMID) {
-	l := log.With().Stringer("pmid", id).Logger()
-
-	// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
-
-	if errStart := app.startAgentImpl(id); errStart != nil {
-		if errStart != ErrAlreadyRunning {
-			if errSetStatus := app.DB.SetStatus(id, core.NewStatusInvalid()); errSetStatus != nil {
-				l.Error().Err(errSetStatus).Msg("failed to set proc status to invalid")
-			}
-			l.Error().Err(errStart).Msg("failed to start proc")
-		}
-		l.Error().Msg("already running")
-	}
 }
 
 // Start already created processes
 func (app App) Start(ids ...core.PMID) error {
+	var merr error
 	for _, id := range ids {
-		app.startAgent(id)
-	}
+		multierr.AppendInto(&merr, errors.Wrapf(func() error {
+			// run processes by their ids in database
+			// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
+			if errStart := app.startAgentImpl(id); errStart != nil {
+				if errStart != ErrAlreadyRunning {
+					if errSetStatus := app.DB.SetStatus(id, core.NewStatusInvalid()); errSetStatus != nil {
+						return errors.Wrapf(errSetStatus, "failed to set proc status to invalid")
+					}
+					return errors.Wrapf(errStart, "failed to start proc")
+				}
+				return errors.New("already running")
+			}
 
-	return nil
+			return nil
+		}(), "start pmid=%s", id))
+	}
+	return merr
 }

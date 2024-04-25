@@ -18,6 +18,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/cli"
 	mycli "github.com/rprtr258/pm/internal/infra/cli"
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
@@ -203,7 +204,7 @@ func runTest(ctx context.Context, name string, test testcase) (ererer error) { /
 		// START TEST PROCESSES
 		ids := []core.PMID{}
 		for _, c := range test.runConfigs {
-			id, errStart := appp.Run(core.RunConfig{
+			id, errStart := cli.ImplRun(appp, core.RunConfig{
 				Name:    c.Name,
 				Command: c.Command,
 				Args:    c.Args,
