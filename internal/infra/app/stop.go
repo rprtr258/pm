@@ -5,7 +5,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/rs/zerolog/log"
+	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/errors"
@@ -24,8 +24,6 @@ func (app App) stop(id core.PMID) error {
 		}
 	}
 
-	l := log.With().Stringer("pmid", id).Logger()
-
 	proc, ok := linuxprocess.StatPMID(id, EnvPMID)
 	if !ok {
 		return errors.Newf("find process")
@@ -34,9 +32,9 @@ func (app App) stop(id core.PMID) error {
 	if errKill := syscall.Kill(-proc.Pid, syscall.SIGTERM); errKill != nil {
 		switch {
 		case stdErrors.Is(errKill, os.ErrProcessDone):
-			l.Warn().Msg("tried stop process which is done")
+			return errors.New("tried to stop process which is done")
 		case stdErrors.Is(errKill, syscall.ESRCH): // no such process
-			l.Warn().Msg("tried stop process which doesn't exist")
+			return errors.New("tried to stop process which doesn't exist")
 		default:
 			return errors.Wrapf(errKill, "kill process, pid=%d", proc.Pid)
 		}
@@ -46,9 +44,9 @@ func (app App) stop(id core.PMID) error {
 }
 
 func (app App) Stop(ids ...core.PMID) error {
-	errs := []error{}
+	var merr error
 	for _, id := range ids {
-		errs = append(errs, app.stop(id))
+		multierr.AppendInto(&merr, errors.Wrapf(app.stop(id), "stop pmid=%s", id))
 	}
-	return errors.Combine(errs...)
+	return merr
 }
