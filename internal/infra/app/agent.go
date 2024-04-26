@@ -101,19 +101,36 @@ func execCmd(cmd exec.Cmd) (*exec.Cmd, error) {
 	return &c, c.Start()
 }
 
-// TODO: use context.Context
-func killCmd(doneCh <-chan struct{}, cmd *exec.Cmd) error {
+func killCmd(cmd *exec.Cmd) error {
 	if errTerm := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM); errTerm != nil {
 		log.Error().Err(errTerm).Msg("failed to send SIGTERM to process")
 	}
 
-	select {
-	case <-doneCh:
-	case <-time.After(5 * time.Second):
-		log.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
-		if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
-			return errors.Wrap(errKill, "send SIGKILL to process")
+	const (
+		pollInterval       = 100 * time.Millisecond
+		durationBeforeKill = 5 * time.Second
+	)
+
+	timer := time.NewTimer(pollInterval)
+	defer timer.Stop()
+
+WAIT_FOR_DEATH:
+	for {
+		select {
+		case <-time.After(durationBeforeKill):
+			break WAIT_FOR_DEATH
+		case <-timer.C:
+			// check if process is still alive, if no, return
+			if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
+				return nil
+			}
 		}
+	}
+
+	// process is still alive, send SIGKILL
+	log.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
+	if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
+		return errors.Wrap(errKill, "send SIGKILL to process")
 	}
 
 	return nil
@@ -130,11 +147,7 @@ func (app App) StartRaw(proc core.Proc) error {
 	if errRunFirst != nil {
 		return errors.Wrapf(errRunFirst, "open stderr file %q", proc.StderrFile)
 	}
-	defer func() {
-		if errClose := stderrLogFile.Close(); errClose != nil {
-			log.Error().Err(errClose).Send()
-		}
-	}()
+	defer stderrLogFile.Close()
 
 	env := os.Environ()
 	for k, v := range proc.Env {
@@ -156,14 +169,21 @@ func (app App) StartRaw(proc core.Proc) error {
 
 	cmd, errRunFirst := execCmd(cmdShape)
 	if errRunFirst != nil {
-		if err, ok := errRunFirst.(*exec.ExitError); ok {
-			app.DB.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
-			return nil
-		}
-
 		app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
 		return errors.Wrapf(errRunFirst, "run proc: %v", proc)
 	}
+
+	waitCh := make(chan *exec.ExitError)
+	go func() {
+		for {
+			err := cmd.Wait()
+			if err, ok := err.(*exec.ExitError); ok && err.Exited() {
+				waitCh <- err
+				break
+			}
+		}
+		close(waitCh)
+	}()
 
 	if watchPattern, ok := proc.Watch.Unpack(); ok {
 		watchRE, errCompilePattern := regexp.Compile(watchPattern)
@@ -174,13 +194,15 @@ func (app App) StartRaw(proc core.Proc) error {
 		watcher, errWatcher := newWatcher(proc.Cwd, watchRE, func(ctx context.Context) error {
 			log.Debug().Msg("watch triggered")
 
-			if errKill := killCmd(ctx.Done(), cmd); errKill != nil {
+			if errKill := killCmd(cmd); errKill != nil {
+				log.Debug().Err(errKill).Msg("a")
 				return errors.Wrapf(errKill, "kill process on watch, pid=%d", cmd.Process.Pid)
 			}
 
 			var errStart error
 			cmd, errStart = execCmd(cmdShape)
 			if errStart != nil {
+				log.Debug().Err(errStart).Msg("b")
 				return errors.Wrapf(errStart, "failed to start process on watch")
 			}
 
@@ -196,37 +218,21 @@ func (app App) StartRaw(proc core.Proc) error {
 		go watcher.Start(ctx)
 	}
 
-	doneCh := make(chan struct{})
-	go func() {
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-		<-sigCh
-
-		if errKill := killCmd(doneCh, cmd); errKill != nil {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	select {
+	case <-sigCh:
+		if errKill := killCmd(cmd); errKill != nil {
 			log.Error().
 				Int("pid", cmd.Process.Pid).
 				Err(errKill).
 				Msg("failed to kill process")
 		}
-	}()
-
-	errRunFirst = cmd.Wait()
-	close(doneCh)
-	if errRunFirst != nil {
-		if err, ok := errRunFirst.(*exec.ExitError); ok {
-			if !err.Exited() {
-				if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
-					log.Error().Err(errKill).Msg("failed to send SIGKILL to process")
-				}
-			}
-			app.DB.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
-			return nil
-		}
-
-		app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
-		return errors.Wrapf(errRunFirst, "wait process: %v", proc)
+	// wait for process to exit by itself
+	// if killed by signal, ignore, since we kill it with signal on watch
+	case err := <-waitCh:
+		app.DB.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
 	}
 
-	app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
 	return nil
 }

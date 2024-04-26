@@ -52,6 +52,9 @@ func (app App) startAgentImpl(id core.PMID) error {
 		}
 	}()
 
+	if proc.Env == nil {
+		proc.Env = map[string]string{}
+	}
 	proc.Env[EnvPMID] = string(proc.ID)
 	for _, kv := range os.Environ() {
 		kvs := strings.SplitN(kv, "=", 2)
