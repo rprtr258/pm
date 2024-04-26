@@ -79,23 +79,6 @@ func (w Watcher) processEventBatch(ctx context.Context, events []fsnotify.Event)
 	}
 }
 
-func (w Watcher) Start(ctx context.Context) {
-	defer w.watcher.Close()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case err := <-w.watcher.Errors():
-			log.Error().
-				Err(err).
-				Msg("fsnotify error")
-			return
-		case events := <-w.watcher.Events():
-			w.processEventBatch(ctx, events)
-		}
-	}
-}
-
 // execCmd start copy of given command. We cannot use cmd itself since
 // we need to start and stop it repeatedly, but cmd stores it's state and cannot
 // be reused, so we need to copy it over and over again.
@@ -218,7 +201,22 @@ func implAgent(app app.App, proc core.Proc) error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		go watcher.Start(ctx)
+		go func() {
+			defer watcher.watcher.Close()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case err := <-watcher.watcher.Errors():
+					log.Error().
+						Err(err).
+						Msg("fsnotify error")
+					return
+				case events := <-watcher.watcher.Events():
+					watcher.processEventBatch(ctx, events)
+				}
+			}
+		}()
 	}
 
 	sigCh := make(chan os.Signal, 1)
