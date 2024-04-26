@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/spf13/cobra"
 
@@ -46,28 +45,29 @@ var _cmdStop = func() *cobra.Command {
 					})
 			}
 
-			procIDs := iter.Map(list.
+			procs := list.
 				Filter(core.FilterFunc(
 					core.WithGeneric(args...),
 					core.WithIDs(ids...),
 					core.WithNames(names...),
 					core.WithTags(tags...),
 					core.WithAllIfNoFilters,
-				)),
-				func(proc core.Proc) core.PMID {
-					return proc.ID
-				}).
+				)).
 				ToSlice()
-			if len(procIDs) == 0 {
+			if len(procs) == 0 {
 				fmt.Println("nothing to stop")
 				return nil
 			}
 
+			procIDs := fun.Map[core.PMID](
+				func(proc core.Proc) core.PMID {
+					return proc.ID
+				}, procs...)
 			if err := app.Stop(procIDs...); err != nil {
 				return errors.Wrapf(err, "client.stop")
 			}
 
-			printIDs(procIDs...)
+			printProcs(procs...)
 
 			return nil
 		},

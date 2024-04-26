@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -60,22 +59,21 @@ var _cmdStart = func() *cobra.Command {
 					))
 			}
 
-			procIDs := iter.Map(list,
-				func(proc core.Proc) core.PMID {
-					return proc.ID
-				}).
-				ToSlice()
-
-			if len(procIDs) == 0 {
+			procs := list.ToSlice()
+			if len(procs) == 0 {
 				fmt.Println("nothing to start")
 				return nil
 			}
 
+			procIDs := fun.Map[core.PMID](
+				func(proc core.Proc) core.PMID {
+					return proc.ID
+				}, procs...)
 			if err := app.Start(procIDs...); err != nil {
-				return errors.Wrapf(err, "client.start")
+				return err
 			}
 
-			printIDs(procIDs...)
+			printProcs(procs...)
 
 			return nil
 		},

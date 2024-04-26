@@ -14,9 +14,9 @@ import (
 	"github.com/rprtr258/pm/internal/lo"
 )
 
-func printIDs(ids ...core.PMID) {
-	for _, id := range ids {
-		fmt.Println(id)
+func printProcs(procs ...core.Proc) {
+	for _, proc := range procs {
+		fmt.Println(proc.Name)
 	}
 }
 

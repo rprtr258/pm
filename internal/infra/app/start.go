@@ -71,12 +71,6 @@ func (app App) startAgentImpl(id core.PMID) error {
 
 	app.DB.StatusSetRunning(id)
 
-	log.Debug().
-		Str("path", pmExecutable).
-		RawJSON("proc_desc", procDesc).
-		Str("dir", proc.Cwd).
-		Msg("start new process")
-
 	cmd := exec.Cmd{
 		Path: pmExecutable,
 		Args: []string{pmExecutable, CmdAgent, string(procDesc)},

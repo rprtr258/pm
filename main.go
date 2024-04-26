@@ -13,6 +13,6 @@ func main() {
 	log.Logger = mylog.New()
 
 	if err := cli.Run(os.Args); err != nil {
-		log.Fatal().Err(err).Send()
+		_ = err // NOTE: ignore, since cobra will print the error
 	}
 }

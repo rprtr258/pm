@@ -32,8 +32,9 @@ func ensureDir(dirname string) error {
 
 var App = func() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "pm",
-		Short: "manage running processes",
+		Use:          "pm",
+		Short:        "manage running processes",
+		SilenceUsage: true,
 	}
 	// If sets and script’s memory usage goes about the configured number, pm2 restarts the script.
 	// Uses human-friendly suffixes: ‘K’ for kilobytes, ‘M’ for megabytes, ‘G’ for gigabytes’, etc. Eg “150M”.
