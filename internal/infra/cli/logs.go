@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-faster/tail"
+	"github.com/nxadm/tail"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
 	"github.com/rs/zerolog/log"
@@ -27,8 +27,7 @@ const (
 	_byte     fileSize = 1
 	_kibibyte fileSize = 1024 * _byte
 
-	_procLogsBufferSize = 128 * _kibibyte
-	_defaultLogsOffset  = 1000 * _byte
+	_defaultLogsOffset = 1000 * _byte
 )
 
 type ProcLine struct {
@@ -50,39 +49,36 @@ func streamFile(
 		return errors.Wrapf(errStat, "stat log file %s", logFile)
 	}
 
-	tailer := tail.File(logFile, tail.Config{
+	tailer, err := tail.TailFile(logFile, tail.Config{
 		Follow:        true,
-		BufferSize:    int(_procLogsBufferSize),
-		NotifyTimeout: time.Minute,
-		Location: &tail.Location{
+		CompleteLines: true,
+		ReOpen:        true,
+		Location: &tail.SeekInfo{
 			Whence: io.SeekEnd,
 			Offset: -fun.Min(stat.Size(), int64(_defaultLogsOffset)),
 		},
-		Logger:  nil,
-		Tracker: nil,
+		Logger:    tail.DiscardingLogger,
+		MustExist: true,
 	})
+	if err != nil {
+		return errors.Wrapf(err, "tail log, id=%s, file=%s", procID, logFile)
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 
-		if err := tailer.Tail(ctx, func(ctx context.Context, l *tail.Line) error {
+		for {
 			select {
 			case <-ctx.Done():
-				return nil
-			case logLinesCh <- ProcLine{
-				Line: string(l.Data),
-				Type: logLineType,
-				Err:  nil,
-			}:
-				return nil
+				return
+			case line := <-tailer.Lines:
+				logLinesCh <- ProcLine{
+					Line: string(line.Text),
+					Type: logLineType,
+					Err:  line.Err,
+				}
 			}
-		}); err != nil {
-			logLinesCh <- ProcLine{
-				Line: "",
-				Type: logLineType,
-				Err:  errors.Wrapf(err, "to tail log, id=%s, file=%s", procID, logFile),
-			}
-			return
 		}
 	}()
 
