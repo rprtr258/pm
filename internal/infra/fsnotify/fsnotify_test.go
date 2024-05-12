@@ -52,7 +52,7 @@ func setup(e *testscript.Env) (err error) {
 
 	s := &setupCtx{
 		Env: e,
-		log: &watcherLog{log: bytes.NewBuffer(nil)},
+		log: &watcherLog{b: bytes.NewBuffer(nil)},
 	}
 	e.Values[setupContextKey] = s
 
@@ -295,7 +295,7 @@ func logCmd(ts *testscript.TestScript, neg bool, args []string) {
 
 	sf := filepath.Join(sc.rootdir, ".special")
 	if len(args) == 1 {
-		sf = ts.MkAbs(args[0])
+		sf = args[0]
 	}
 	sf = ts.MkAbs(sf)
 
@@ -370,19 +370,18 @@ func sleepCmd(ts *testscript.TestScript, neg bool, args []string) {
 // watcherLog is a mutex-guarded bytes.Buffer. Events are logged to this
 // buffer, and periodically the buffer is read by the log testscript builtin.
 type watcherLog struct {
-	logLock sync.Mutex
-	log     *bytes.Buffer
+	mu sync.Mutex
+	b  *bytes.Buffer
 }
 
 func (tw *watcherLog) logf(format string, args ...any) {
-	tw.logLock.Lock()
-	defer tw.logLock.Unlock()
-	fmt.Fprintf(tw.log, format, args...)
+	tw.mu.Lock()
+	defer tw.mu.Unlock()
+	fmt.Fprintf(tw.b, format, args...)
 }
 
 func (tw *watcherLog) snapshot() ([]byte, error) {
-	tw.logLock.Lock()
-	got, err := io.ReadAll(tw.log)
-	tw.logLock.Unlock()
-	return got, err
+	tw.mu.Lock()
+	defer tw.mu.Unlock()
+	return io.ReadAll(tw.b)
 }
