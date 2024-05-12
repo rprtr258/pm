@@ -47,7 +47,12 @@ func List() []ProcListItem {
 			}
 
 			sepAt := bytes.IndexByte(b, 0)
-			k, v := b[:eqAt], b[eqAt+1:sepAt]
+			if sepAt < eqAt {
+				break // TODO: ???
+			}
+
+			k := b[:eqAt]
+			v := b[eqAt+1 : sepAt]
 			environ[string(k)] = string(v)
 			if sepAt == len(b)-1 {
 				break
