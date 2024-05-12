@@ -133,6 +133,10 @@ projects:
   spm:
     url: https://github.com/bytegust/spm
 
+  process-compose:
+    tags: [go]
+    url: https://github.com/F1bonacc1/process-compose
+
 tasks:
   pull:
     desc: Pull the latest code

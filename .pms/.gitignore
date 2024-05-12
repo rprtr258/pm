@@ -1,4 +1,5 @@
 # mani #
+process-compose
 spm
 houseman
 crank
@@ -15,7 +16,7 @@ spinal
 qup
 goforever
 pmon2
-!tsusu
+tsusu
 supervisor
 supervisord
 runsit
@@ -34,7 +35,6 @@ exo
 cmd
 apm
 pm2
-tsusu
-zig
-odin
 # mani #
+zig/
+odin/
