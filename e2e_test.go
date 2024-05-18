@@ -182,12 +182,12 @@ func Test_ClientServerNetcat(t *testing.T) {
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()
 
-	//start server
-	serverName := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
+	// start server
+	must.EqOp(t, "nc-server", pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    fun.Valid("nc-server"),
 		Command: "/usr/bin/nc",
 		Args:    []string{"-l", "-p", strconv.Itoa(serverPort)},
-	})
+	}))
 
 	time.Sleep(3 * time.Second)
 	must.Wait(t, wait.InitialSuccess(
@@ -199,16 +199,16 @@ func Test_ClientServerNetcat(t *testing.T) {
 	), must.Sprint("check server started"))
 
 	// start client
-	clientName := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
+	must.EqOp(t, "nc-client", pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    fun.Valid("nc-client"),
 		Command: "/bin/sh",
 		Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(serverPort)},
-	})
+	}))
 
 	list := pm.List()
 
 	serverProc, _, ok := fun.Index(func(proc core.Proc) bool {
-		return proc.Name == serverName
+		return proc.Name == "nc-server"
 	}, list...)
 	must.True(t, ok)
 	serverID := serverProc.ID
@@ -223,7 +223,7 @@ func Test_ClientServerNetcat(t *testing.T) {
 	), must.Sprint("check server received payload"))
 
 	// stop test processes
-	pm.Stop(clientName, serverName)
+	pm.Stop("nc-client", "nc-server")
 
 	// check server stopped
 	must.True(t, isTCPPortAvailableForListen(serverPort))
