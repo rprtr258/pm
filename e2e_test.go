@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net"
@@ -54,36 +55,78 @@ func clearProcs(t *testing.T, appp app.App) {
 	})
 }
 
-func useApp(t *testing.T) app.App {
-	appp, err := app.New()
+type pM struct {
+	t *testing.T
+}
+
+// Run returns new proc name
+func (pm pM) Run(config core.RunConfig) string {
+	// TODO: run from temporary config
+	args := []string{}
+	if config.Name.Valid {
+		args = append(args, "--name", config.Name.Value)
+	}
+	args = append(args, append([]string{config.Command, "--"}, config.Args...)...)
+
+	var berr bytes.Buffer
+
+	cmd := exec.Command("./pm", append([]string{"run"}, args...)...)
+	cmd.Stderr = &berr
+	nameBytes, err := cmd.Output()
+	must.NoError(pm.t, err)
+
+	if berr.String() != "" {
+		pm.t.Fatal(berr.String())
+	}
+	must.NonZero(pm.t, len(nameBytes))
+
+	// cut newline
+	return string(nameBytes[:len(nameBytes)-1])
+}
+
+func (pm pM) Stop(selectors ...string) {
+	cmd := exec.Command("./pm", append([]string{"stop"}, selectors...)...)
+	must.NoError(pm.t, cmd.Run())
+}
+
+func (pm pM) List() []core.Proc {
+	logsBytes, err := exec.Command("./pm", "l", "-f", "json").Output()
+	must.NoError(pm.t, err)
+
+	var list []core.Proc
+	must.NoError(pm.t, json.Unmarshal(logsBytes, &list))
+
+	return list
+}
+
+func usePM(t *testing.T) pM {
+	app, err := app.New()
 	must.NoError(t, err)
 
-	clearProcs(t, appp)
+	clearProcs(t, app)
 	t.Cleanup(func() {
-		clearProcs(t, appp)
+		clearProcs(t, app)
 	})
 
-	return appp
+	return pM{t}
 }
 
 func Test_HelloHttpServer(t *testing.T) {
-	useApp(t)
+	pm := usePM(t)
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()
 
 	// TODO: build server binary beforehand
 
 	// start test processes
-	cmd := exec.Command("./pm", "run", "--name", "hello-http", "./tests/hello-http/main", ":"+strconv.Itoa(serverPort))
-	nameBytes, err := cmd.Output()
-	must.NoError(t, err)
-	must.EqOp(t, "hello-http\n", string(nameBytes))
+	name := pm.Run(core.RunConfig{
+		Name:    fun.Valid("hello-http"),
+		Command: "./tests/hello-http/main",
+		Args:    []string{":" + strconv.Itoa(serverPort)},
+	})
+	must.EqOp(t, "hello-http", name)
 
-	cmd3 := exec.Command("./pm", "l", "-f", "json")
-	logsBytes, err := cmd3.Output()
-	test.NoError(t, err)
-	var list []core.Proc
-	test.NoError(t, json.Unmarshal(logsBytes, &list))
+	list := pm.List()
 	test.SliceLen(t, 1, list)
 	test.EqOp(t, "hello-http", list[0].Name)
 	test.Eq(t, []string{"all"}, list[0].Tags)
@@ -113,25 +156,23 @@ func Test_HelloHttpServer(t *testing.T) {
 
 func Test_ClientServerNetcat(t *testing.T) {
 	t.Skip() // TODO: remove
-	app := useApp(t)
+	pm := usePM(t)
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()
 
 	//start server
-	idServer, _, errStart := cli.ImplRun(app, core.RunConfig{ //nolint:exhaustruct // not needed
+	nameServer := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    fun.Valid("nc-server"),
 		Command: "/usr/bin/nc",
 		Args:    []string{"-l", "-p", strconv.Itoa(serverPort)},
 	})
-	must.NoError(t, errStart)
 
 	// start client
-	idClient, _, errStart := cli.ImplRun(app, core.RunConfig{ //nolint:exhaustruct // not needed
+	nameClient := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    fun.Valid("nc-client"),
 		Command: "/bin/sh",
 		Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(serverPort)},
 	})
-	must.NoError(t, errStart)
 
 	homeDir, errHome := os.UserHomeDir()
 	must.NoError(t, errHome, must.Sprint("get home dir"))
@@ -144,13 +185,20 @@ func Test_ClientServerNetcat(t *testing.T) {
 		wait.Timeout(time.Second),
 	))
 
+	list := pm.List()
+
+	clientProc, _, ok := fun.Index(func(proc core.Proc) bool {
+		return proc.Name == nameClient
+	}, list...)
+	must.True(t, ok)
+	idClient := clientProc.ID
+
 	d, err := os.ReadFile(filepath.Join(homeDir, ".pm", "logs", string(idClient)+".stdout"))
 	must.NoError(t, err, must.Sprint("read server stdout"))
-
 	must.EqOp(t, "123", string(d))
 
 	// stop test processes
-	must.NoError(t, app.Stop(idServer))
+	pm.Stop(nameClient, nameServer)
 
 	// check server stopped
 	must.True(t, isTCPPortAvailable(serverPort))
