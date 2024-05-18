@@ -17,6 +17,7 @@ import (
 	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
 	"github.com/shoenig/test/portal"
+	"github.com/shoenig/test/skip"
 	"github.com/shoenig/test/wait"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -135,6 +136,8 @@ func usePM(t *testing.T) pM {
 }
 
 func Test_HelloHttpServer(t *testing.T) {
+	skip.CommandUnavailable(t, "./tests/hello-http/main")
+
 	pm := usePM(t)
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()
