@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -71,12 +72,18 @@ func Test_HelloHttpServer(t *testing.T) {
 	// TODO: build server binary beforehand
 
 	// start test processes
-	id, _, errStart := cli.ImplRun(app, core.RunConfig{ //nolint:exhaustruct // not needed
-		Name:    fun.Valid("http-hello-server"),
-		Command: "./hello-http/main",
-		Args:    []string{":" + strconv.Itoa(serverPort)},
+	cmd := exec.Command("./pm", "run", "--name", "hello-http", "./tests/hello-http/main", ":"+strconv.Itoa(serverPort))
+	nameBytes, err := cmd.Output()
+	must.NoError(t, err)
+	must.EqOp(t, "hello-http\n", string(nameBytes))
+
+	count := 0
+	app.List().All(func(p core.Proc) bool {
+		must.EqOp(t, "hello-http", p.Name)
+		count++
+		return true
 	})
-	must.NoError(t, errStart)
+	must.EqOp(t, 1, count)
 
 	must.Wait(t, wait.InitialSuccess(
 		wait.BoolFunc(func() bool {
@@ -92,7 +99,8 @@ func Test_HelloHttpServer(t *testing.T) {
 	must.EqOp(t, "hello world", body)
 
 	// stop test processes
-	must.NoError(t, app.Stop(id))
+	cmd2 := exec.Command("./pm", "stop", "--name", "hello-http")
+	must.NoError(t, cmd2.Run())
 
 	// check server stopped
 	must.True(t, isTCPPortAvailable(serverPort))
