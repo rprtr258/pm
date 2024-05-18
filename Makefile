@@ -88,8 +88,9 @@ test: # run tests
 
 test-e2e: # run integration tests
 	go build -o tests/hello-http tests/hello-http/main.go
-	@go run tests/main.go test all
+	@gotestsum --format dots-v2 e2e_test.go
 
+# TODO: not working
 test-e2e-docker: # run integration tests in docker
 	@docker build -t pm-e2e --file tests/Dockerfile .
 	@docker run pm-e2e
