@@ -1,13 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"os"
 
 	"github.com/rs/zerolog/log"
 )
-
-const _addr = ":8080"
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	dump, errDump := httputil.DumpRequest(r, true)
@@ -22,9 +22,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func main() {
-	log.Info().Str("addr", _addr).Msg("listening")
+func run() error {
+	if len(os.Args) != 2 {
+		return fmt.Errorf("usage: hello-http [addr]")
+	}
 
-	errListen := http.ListenAndServe(_addr, http.HandlerFunc(handler)) //nolint:gosec // acceptable for example
-	log.Fatal().Err(errListen).Send()
+	addr := os.Args[1]
+	log.Info().Str("addr", addr).Msg("listening")
+
+	return http.ListenAndServe(addr, http.HandlerFunc(handler))
+}
+
+func main() {
+	log.Fatal().Msg(run().Error())
 }

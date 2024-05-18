@@ -56,7 +56,7 @@ func compareArgs(first, second []string) bool {
 // Run - create and start processes, returns ids of created processes.
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
-func ImplRun(app app.App, config core.RunConfig) (string, error) {
+func ImplRun(app app.App, config core.RunConfig) (core.PMID, string, error) {
 	command, errLook := exec.LookPath(config.Command)
 	if errLook != nil {
 		// if command is relative and failed to look it up, add workdir first
@@ -66,7 +66,7 @@ func ImplRun(app app.App, config core.RunConfig) (string, error) {
 
 		command, errLook = exec.LookPath(config.Command)
 		if errLook != nil {
-			return "", errors.Wrapf(errLook, "look for executable path: %q", config.Command)
+			return "", "", errors.Wrapf(errLook, "look for executable path: %q", config.Command)
 		}
 	}
 
@@ -74,7 +74,7 @@ func ImplRun(app app.App, config core.RunConfig) (string, error) {
 		var errAbs error
 		command, errAbs = filepath.Abs(command)
 		if errAbs != nil {
-			return "", errors.Wrapf(errAbs, "get absolute binary path: %q", command)
+			return "", "", errors.Wrapf(errAbs, "get absolute binary path: %q", command)
 		}
 	}
 
@@ -146,18 +146,18 @@ func ImplRun(app app.App, config core.RunConfig) (string, error) {
 		return procID, nil
 	}()
 	if errCreate != nil {
-		return "", errors.Wrapf(errCreate, "server.create: %v", config)
+		return "", "", errors.Wrapf(errCreate, "server.create: %v", config)
 	}
 
 	app.Start(id)
 
-	return name, nil
+	return id, name, nil
 }
 
 func run(app app.App, configs ...core.RunConfig) error {
 	var merr error
 	for _, config := range configs {
-		name, errRun := ImplRun(app, config)
+		_, name, errRun := ImplRun(app, config)
 		if errRun != nil {
 			multierr.AppendInto(&merr, errors.Newf("start proc %v", config))
 		} else {
