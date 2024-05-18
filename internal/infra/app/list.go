@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
-	"github.com/shirou/gopsutil/v3/process"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
@@ -28,21 +27,8 @@ func (app App) List() iter.Seq[core.Proc] {
 			}
 		}
 
-		if p, err := process.NewProcess(int32(stat.Pid)); err == nil {
-			totalMemory := uint64(0)
-			totalCPU := float64(0)
-			children, _ := p.Children()
-			for _, child := range children {
-				if mem, err := child.MemoryInfo(); err == nil {
-					totalMemory += mem.RSS
-				}
-				if cpu, err := child.CPUPercent(); err == nil {
-					totalCPU = cpu
-				}
-			}
-			proc.Status.Memory = totalMemory
-			proc.Status.CPU = uint64(totalCPU)
-		}
+		proc.Status.Memory = stat.Memory
+		proc.Status.CPU = uint64(stat.CPU)
 
 		procs[id] = proc
 	}

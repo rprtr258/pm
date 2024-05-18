@@ -1,14 +1,16 @@
 package linuxprocess
 
 import (
-	"bytes"
-	"fmt"
 	"os"
 	"strconv"
+	"strings"
+
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 type ProcListItem struct {
 	Handle  *os.Process
+	P       *process.Process
 	Environ map[string]string
 }
 
@@ -34,34 +36,30 @@ func List() []ProcListItem {
 			continue
 		}
 
-		b, err := os.ReadFile(fmt.Sprintf("/proc/%d/environ", pid))
+		pp, err := process.NewProcess(int32(proc.Pid))
+		if err != nil {
+			continue
+		}
+
+		environKVs, err := pp.Environ()
 		if err != nil {
 			continue
 		}
 
 		environ := map[string]string{}
-		for len(b) > 0 {
-			eqAt := bytes.IndexByte(b, '=')
-			if eqAt == -1 {
-				break // TODO: ???
+		for _, kv := range environKVs {
+			kv := strings.SplitN(kv, "=", 2)
+			if len(kv) != 2 {
+				// NOTE: for some fucking reason there might be empty key-value line
+				continue
 			}
 
-			sepAt := bytes.IndexByte(b, 0)
-			if sepAt < eqAt {
-				break // TODO: ???
-			}
-
-			k := b[:eqAt]
-			v := b[eqAt+1 : sepAt]
-			environ[string(k)] = string(v)
-			if sepAt == len(b)-1 {
-				break
-			}
-			b = b[sepAt+1:]
+			environ[kv[0]] = kv[1]
 		}
 
 		procs = append(procs, ProcListItem{
 			Handle:  proc,
+			P:       pp,
 			Environ: environ,
 		})
 	}

@@ -12,15 +12,37 @@ import (
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
+type Stat struct {
+	Pid    int
+	Memory uint64  // bytes
+	CPU    float64 // percent
+}
+
 // TODO: this might be called in function, call batch once instead
-func StatPMID(pmid core.PMID, env string) (*os.Process, bool) {
-	procs := List()
-	for _, p := range procs {
-		if p.Environ[env] == string(pmid) {
-			return p.Handle, true
+func StatPMID(pmid core.PMID, env string) (Stat, bool) {
+	for _, p := range List() {
+		if p.Environ[env] != string(pmid) {
+			continue
 		}
+
+		totalMemory := uint64(0)
+		totalCPU := float64(0)
+		children, _ := p.P.Children()
+		for _, child := range children {
+			if mem, err := child.MemoryInfo(); err == nil {
+				totalMemory += mem.RSS
+			}
+			if cpu, err := child.CPUPercent(); err == nil {
+				totalCPU = cpu
+			}
+		}
+		return Stat{
+			Pid:    p.Handle.Pid,
+			Memory: totalMemory,
+			CPU:    totalCPU,
+		}, true
 	}
-	return nil, false
+	return Stat{}, false
 }
 
 // Status information about the process.
