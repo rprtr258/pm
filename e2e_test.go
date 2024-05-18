@@ -189,15 +189,14 @@ func Test_ClientServerNetcat(t *testing.T) {
 		Args:    []string{"-l", "-p", strconv.Itoa(serverPort)},
 	})
 
-	time.Sleep(4 * time.Second)
+	time.Sleep(3 * time.Second)
 	must.Wait(t, wait.InitialSuccess(
 		wait.BoolFunc(func() bool {
-			// check server started
 			return !isTCPPortAvailableForListen(serverPort)
 		}),
 		wait.Timeout(time.Second*10),
 		wait.Gap(3*time.Second),
-	))
+	), must.Sprint("check server started"))
 
 	// start client
 	clientName := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
@@ -206,7 +205,6 @@ func Test_ClientServerNetcat(t *testing.T) {
 		Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(serverPort)},
 	})
 
-	time.Sleep(4 * time.Second)
 	list := pm.List()
 
 	serverProc, _, ok := fun.Index(func(proc core.Proc) bool {
@@ -215,9 +213,14 @@ func Test_ClientServerNetcat(t *testing.T) {
 	must.True(t, ok)
 	serverID := serverProc.ID
 
-	d, err := os.ReadFile(filepath.Join(homeDir, ".pm", "logs", string(serverID)+".stdout"))
-	test.NoError(t, err, test.Sprint("read server stdout"))
-	test.EqOp(t, "123\n", string(d))
+	must.Wait(t, wait.InitialSuccess(
+		wait.BoolFunc(func() bool {
+			d, err := os.ReadFile(filepath.Join(homeDir, ".pm", "logs", string(serverID)+".stdout"))
+			test.NoError(t, err, test.Sprint("read server stdout"))
+			return string(d) == "123\n"
+		}),
+		wait.Timeout(time.Second*10),
+	), must.Sprint("check server received payload"))
 
 	// stop test processes
 	pm.Stop(clientName, serverName)
