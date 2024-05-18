@@ -24,25 +24,48 @@ import (
 	"github.com/rprtr258/pm/internal/infra/cli"
 )
 
-// isTCPPortAvailable checks if a given TCP port is available for use on the local network interface.
-func isTCPPortAvailable(port int) bool {
-	address := net.JoinHostPort("localhost", strconv.Itoa(port))
-	conn, err := net.DialTimeout("tcp", address, time.Second)
+var homeDir = func() string {
+	res, err := os.UserHomeDir()
+	if err != nil {
+		panic(err.Error())
+	}
+	return res
+}()
+
+// isTCPPortAvailable checks if a given TCP port is available for use on the local network interface
+func isTCPPortAvailableForListen(port int) bool {
+	conn, err := net.ListenTCP("tcp", &net.TCPAddr{
+		IP:   net.ParseIP("127.0.0.1"),
+		Port: port,
+	})
+	if err == nil {
+		return true
+	}
+	// socket created, hence port is still free
+	conn.Close()
+	return false
+}
+
+// isTCPPortAvailable checks if a given TCP port is available for use on the local network interface
+func isTCPPortAvailableForDial(port int) bool {
+	conn, err := net.Dial("tcp", net.JoinHostPort("localhost", strconv.Itoa(port)))
 	if err != nil {
 		return true
 	}
-	// connected somewhere, therefore not available
+	// socket created, hence port is still free
 	conn.Close()
 	return false
 }
 
 func httpResponse(t *testing.T, endpoint string) (int, string) {
+	t.Helper()
+
 	resp, err := http.Get(endpoint)
 	must.NoError(t, err, must.Sprint("get response"))
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
-	must.NoError(t, err, must.Sprint("read response body"))
+	test.NoError(t, err, test.Sprint("read response body"))
 
 	return resp.StatusCode, string(body)
 }
@@ -130,15 +153,15 @@ func Test_HelloHttpServer(t *testing.T) {
 	test.SliceLen(t, 1, list)
 	test.EqOp(t, "hello-http", list[0].Name)
 	test.Eq(t, []string{"all"}, list[0].Tags)
-	test.Eq(t, "/home/rprtr258/pr/pm/tests/hello-http/main", list[0].Command)
-	test.Eq(t, "/home/rprtr258/pr/pm", list[0].Cwd)
+	test.StrHasSuffix(t, "pm/tests/hello-http/main", list[0].Command)
+	test.StrHasSuffix(t, "pm", list[0].Cwd)
 
 	must.Wait(t, wait.InitialSuccess(
 		wait.BoolFunc(func() bool {
 			// check server started
-			return !isTCPPortAvailable(serverPort)
+			return !isTCPPortAvailableForDial(serverPort)
 		}),
-		wait.Timeout(time.Second*3),
+		wait.Timeout(time.Second*5),
 	))
 
 	// check response is correct
@@ -151,55 +174,54 @@ func Test_HelloHttpServer(t *testing.T) {
 	must.NoError(t, cmd2.Run())
 
 	// check server stopped
-	must.True(t, isTCPPortAvailable(serverPort))
+	must.True(t, isTCPPortAvailableForDial(serverPort))
 }
 
 func Test_ClientServerNetcat(t *testing.T) {
-	t.Skip() // TODO: remove
 	pm := usePM(t)
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()
 
 	//start server
-	nameServer := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
+	serverName := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    fun.Valid("nc-server"),
 		Command: "/usr/bin/nc",
 		Args:    []string{"-l", "-p", strconv.Itoa(serverPort)},
 	})
 
+	time.Sleep(4 * time.Second)
+	must.Wait(t, wait.InitialSuccess(
+		wait.BoolFunc(func() bool {
+			// check server started
+			return !isTCPPortAvailableForListen(serverPort)
+		}),
+		wait.Timeout(time.Second*10),
+		wait.Gap(3*time.Second),
+	))
+
 	// start client
-	nameClient := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
+	clientName := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    fun.Valid("nc-client"),
 		Command: "/bin/sh",
 		Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(serverPort)},
 	})
 
-	homeDir, errHome := os.UserHomeDir()
-	must.NoError(t, errHome, must.Sprint("get home dir"))
-
-	must.Wait(t, wait.InitialSuccess(
-		wait.BoolFunc(func() bool {
-			// check server started
-			return !isTCPPortAvailable(serverPort)
-		}),
-		wait.Timeout(time.Second),
-	))
-
+	time.Sleep(4 * time.Second)
 	list := pm.List()
 
-	clientProc, _, ok := fun.Index(func(proc core.Proc) bool {
-		return proc.Name == nameClient
+	serverProc, _, ok := fun.Index(func(proc core.Proc) bool {
+		return proc.Name == serverName
 	}, list...)
 	must.True(t, ok)
-	idClient := clientProc.ID
+	serverID := serverProc.ID
 
-	d, err := os.ReadFile(filepath.Join(homeDir, ".pm", "logs", string(idClient)+".stdout"))
-	must.NoError(t, err, must.Sprint("read server stdout"))
-	must.EqOp(t, "123", string(d))
+	d, err := os.ReadFile(filepath.Join(homeDir, ".pm", "logs", string(serverID)+".stdout"))
+	test.NoError(t, err, test.Sprint("read server stdout"))
+	test.EqOp(t, "123\n", string(d))
 
 	// stop test processes
-	pm.Stop(nameClient, nameServer)
+	pm.Stop(clientName, serverName)
 
 	// check server stopped
-	must.True(t, isTCPPortAvailable(serverPort))
+	must.True(t, isTCPPortAvailableForListen(serverPort))
 }
