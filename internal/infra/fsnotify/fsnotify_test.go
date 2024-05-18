@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/rogpeppe/go-internal/testscript"
+
 	"github.com/rprtr258/pm/internal/infra/fsnotify"
 )
 
@@ -92,6 +93,8 @@ func setup(e *testscript.Env) (err error) {
 			return fmt.Errorf("failed to parse time.Duration from contents of %s: %w", batchedFn, err)
 		}
 		h, herr = s.batchedWatcher(d)
+	} else {
+		h, herr = s.watcher()
 	}
 	s.handler = h
 	return herr
@@ -148,8 +151,29 @@ Walk:
 	return nil
 }
 
+func debugOpt() fsnotify.Option {
+	if *fDebug {
+		return fsnotify.Debug(os.Stderr)
+	}
+	return nil
+}
+
+func (s *setupCtx) watcher() (specialHandler, error) {
+	w, err := fsnotify.NewRecursiveWatcher(s.rootdir, debugOpt())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
+	}
+	s.Defer(func() {
+		w.Close()
+	})
+	bwh := newBatchedWatcherHandler[fsnotify.Event](s, w, handleEvent)
+	s.handler = bwh
+	go bwh.run()
+	return bwh, nil
+}
+
 func (s *setupCtx) batchedWatcher(d time.Duration) (specialHandler, error) {
-	bw, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d)
+	bw, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d, debugOpt())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
@@ -267,7 +291,6 @@ func (s *setupCtx) run(dir, cmd string, args ...string) {
 	c.Dir = dir
 	c.Env = s.Vars
 	byts, err := c.CombinedOutput()
-
 	if err != nil {
 		panic(cmdError{fmt.Errorf("failed to run %v: %w\n%s", c, err, byts)})
 	}
@@ -295,7 +318,7 @@ func logCmd(ts *testscript.TestScript, neg bool, args []string) {
 
 	sf := filepath.Join(sc.rootdir, ".special")
 	if len(args) == 1 {
-		sf = args[0]
+		sf = ts.MkAbs(args[0])
 	}
 	sf = ts.MkAbs(sf)
 
@@ -382,6 +405,7 @@ func (tw *watcherLog) logf(format string, args ...any) {
 
 func (tw *watcherLog) snapshot() ([]byte, error) {
 	tw.mu.Lock()
-	defer tw.mu.Unlock()
-	return io.ReadAll(tw.b)
+	got, err := io.ReadAll(tw.b)
+	tw.mu.Unlock()
+	return got, err
 }

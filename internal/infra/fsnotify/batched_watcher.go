@@ -53,15 +53,11 @@ var _ Watcher[[]fsnotify.Event] = (*BatchedRecursiveWatcher)(nil)
 // batchWindow when a git operation starts before a time window expires. It can
 // also mean that a batch captures events over a time period greater than
 // batchWindow, when a git operation exceeds this duration.
-func NewBatchedRecursiveWatcher(
-	dir, gittoplevel string,
-	batchWindow time.Duration,
-) (*BatchedRecursiveWatcher, error) {
-	w, err := newRecursiveWatcher(dir, gittoplevel)
+func NewBatchedRecursiveWatcher(dir, gittoplevel string, batchWindow time.Duration, opts ...Option) (*BatchedRecursiveWatcher, error) {
+	w, _, err := newRecursiveWatcher(dir, gittoplevel, opts...)
 	if err != nil {
 		return nil, err
 	}
-
 	res := &BatchedRecursiveWatcher{
 		w:           w,
 		events:      make(chan []fsnotify.Event),
@@ -88,7 +84,6 @@ func (bw *BatchedRecursiveWatcher) Close() error {
 	if err := bw.w.Close(); err != nil {
 		return fmt.Errorf("failed to shutdown underlying Watcher: %w", err)
 	}
-
 	<-bw.doneClose
 	return nil
 }
@@ -117,9 +112,11 @@ LOOP:
 				startOfGitOp = !bw.inGitOperation && ev.Op == fsnotify.Create
 				endOfGitOp = bw.inGitOperation && (ev.Op == fsnotify.Rename || ev.Op == fsnotify.Remove)
 				if startOfGitOp {
+					bw.w.debugf("git: operation: start")
 					bw.inGitOperation = true
 				}
 				if endOfGitOp {
+					bw.w.debugf("git: operation: end")
 					bw.inGitOperation = false
 				}
 				// We don't care about other events on the lock file during a git
@@ -139,6 +136,10 @@ LOOP:
 				bw.ticker = time.NewTicker(bw.batchWindow)
 			}
 
+			if bw.send != nil {
+				// We have a slow consumer
+				bw.w.debugf("slow consumer; adding %s (%v) to existing batch", ev.Name, ev.Op)
+			}
 			bw.buffer = append(bw.buffer, ev)
 
 			// Again we only flush if we are not already waiting to send. There is no
@@ -169,12 +170,9 @@ func (bw *BatchedRecursiveWatcher) flush() {
 	if bw.ticker != nil {
 		bw.ticker.Stop()
 	}
-
 	bw.ticker = nil
-
 	if len(bw.buffer) == 0 {
 		return
 	}
-
 	bw.send = bw.events
 }

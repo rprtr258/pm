@@ -2,6 +2,7 @@ package fsnotify
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -50,6 +51,17 @@ type RecursiveWatcher struct {
 	// doneClose indicates that we are done handling the close from the
 	// underlying fsnotify
 	doneClose chan struct{}
+
+	// debug can be set to an io.Writer in order to log debug-level information
+	debug io.Writer
+}
+
+var _ Watcher[fsnotify.Event] = (*RecursiveWatcher)(nil)
+
+// NewRecursiveWatcher creates a new recursive watcher rooted at directory rootDir.
+func NewRecursiveWatcher(rootDir string, opts ...Option) (*RecursiveWatcher, error) {
+	rw, _, err := newRecursiveWatcher(rootDir, "", opts...)
+	return rw, err
 }
 
 // newRecursiveWatcher creates a new recursive watcher rooted at directory
@@ -61,20 +73,18 @@ type RecursiveWatcher struct {
 // empty, the Events channel would contain events for
 // $gittoplevel/.git/index.lock and dir/**/* (including directories).  If
 // gittoplevel is supplied, dir must be a subdirectory of gittoplevel.
-func newRecursiveWatcher(rootDir, gittoplevel string) (*RecursiveWatcher, error) {
+func newRecursiveWatcher(rootDir, gittoplevel string, opts ...Option) (*RecursiveWatcher, *options, error) {
 	if rootDir != gittoplevel && !strings.HasPrefix(rootDir, gittoplevel+string(os.PathSeparator)) {
-		return nil, fmt.Errorf("%s is not a subdirectory of %s", rootDir, gittoplevel)
+		return nil, nil, fmt.Errorf("%s is not a subdirectory of %s", rootDir, gittoplevel)
 	}
-
 	var gitDir, gitLockfile string
 	if gittoplevel != "" {
 		gitDir = filepath.Join(gittoplevel, ".git")
 		gitLockfile = filepath.Join(gitDir, "index.lock")
 	}
-
 	uw, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create fsnotify watcher: %w", err)
+		return nil, nil, fmt.Errorf("failed to create fsnotify watcher: %w", err)
 	}
 
 	res := &RecursiveWatcher{
@@ -88,12 +98,21 @@ func newRecursiveWatcher(rootDir, gittoplevel string) (*RecursiveWatcher, error)
 		doneClose:   make(chan struct{}),
 	}
 
+	theOpts := new(options)
+	for _, v := range opts {
+		if v == nil {
+			continue
+		}
+		v(theOpts)
+	}
+	res.debug = theOpts.debug
+
 	// Recursively add rootDir. Because we are not yet in the main event loop,
 	// we can be more aggressive in reporting errors.
 	if err := res.addDir(rootDir, false); err != nil {
 		// Best-efforts close of underlying fsnotify
 		res.w.Close()
-		return nil, err
+		return nil, nil, err
 	}
 
 	// If we are configured to watch for git events, add a watch on the git
@@ -102,13 +121,21 @@ func newRecursiveWatcher(rootDir, gittoplevel string) (*RecursiveWatcher, error)
 		if err := res.w.Add(gitDir); err != nil {
 			// Best-efforts close of underlying fsnotify
 			res.w.Close()
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	go res.runEventLoop()
 
-	return res, nil
+	return res, theOpts, nil
+}
+
+func (w *RecursiveWatcher) Events() <-chan fsnotify.Event {
+	return w.events
+}
+
+func (w *RecursiveWatcher) Errors() <-chan error {
+	return w.errors
 }
 
 // Close shuts down the watcher, by removing all watches and closing the Events
@@ -117,7 +144,6 @@ func (w *RecursiveWatcher) Close() error {
 	if err := w.w.Close(); err != nil {
 		return fmt.Errorf("failed to shutdown underlying fsnotify watcher: %w", err)
 	}
-
 	<-w.doneClose
 	return nil
 }
@@ -133,8 +159,8 @@ func (w *RecursiveWatcher) runEventLoop() {
 	for {
 		select {
 		case ev, ok := <-w.w.Events:
-			// TODO: handle event with respect to adding more watchers etc,
-			// i.e. when a new directory is added
+			// TODO handle event with respect to adding more watchers etc, i.e.
+			// when a new directory is added
 			if !ok {
 				// Pass on the close
 				close(w.events)
@@ -149,7 +175,11 @@ func (w *RecursiveWatcher) runEventLoop() {
 				continue
 			}
 
-			w.handleEvent(ev)
+			w.debugf("event: path: %v, op: %v\n", ev.Name, ev.Op)
+
+			if err := w.handleEvent(ev); err != nil {
+				w.errors <- err
+			}
 
 			// Finally relay the event, regardless of whether our processing
 			// encountered an error. If the event comes from w.gitDir, only
@@ -167,7 +197,7 @@ func (w *RecursiveWatcher) runEventLoop() {
 // Everything is on a best-efforts basis, but the state of w.watches
 // must remain intact. i.e. we only have entries in w.watches iff we
 // successfully added a watcher.
-func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
+func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) error {
 	// Remember, everything we do here could be racey.
 
 	// If the event is a remove and we have a watcher against that
@@ -180,7 +210,7 @@ func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
 		// watcher path and all watchers that have a directory prefix of the path
 		// we just removed.
 		if _, ok := w.watchers[ev.Name]; !ok {
-			return
+			return nil
 		}
 		// In case it matters, remove the directory watches breadth first.
 		var toRemove []string
@@ -194,8 +224,8 @@ func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
 			lhs, rhs := toRemove[i], toRemove[j]
 			lhsSeps := strings.Count(lhs, string(os.PathSeparator))
 			rhsSeps := strings.Count(rhs, string(os.PathSeparator))
-			if lhsSeps != rhsSeps {
-				return lhsSeps < rhsSeps
+			if diff := lhsSeps - rhsSeps; diff != 0 {
+				return diff < 0
 			}
 			return lhs < rhs
 		})
@@ -204,13 +234,15 @@ func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
 			delete(w.watchers, v)
 		}
 	case fsnotify.Create:
-		// Best efforts walk if this is a directory
-		// (if it is not it will be an error which we will ignore)
-		_ = w.addDir(ev.Name, true)
+		// Best efforts walk if this is a directory (if it is not it will be an
+		// error which we will ignore)
+		w.addDir(ev.Name, true)
 	case fsnotify.Rename:
 		// nothing to do; the watcher remains entact per underlying fsnotify docs.
 		// for fsnotify.Watcher.Add.
 	}
+
+	return nil
 }
 
 // addDir recursively adds watches on dir, ignoring errors if ignoreErrors is
@@ -234,17 +266,26 @@ func (w *RecursiveWatcher) addDir(dir string, ignoreErrors bool) error {
 		if _, ok := w.watchers[path]; ok {
 			return nil
 		}
-
+		w.debugf("add: %v\n", path)
 		// Try to create a watcher. Only add an entry in w.watches if we succeed
 		err = w.w.Add(path)
 		if !ignoreErrors && err != nil {
 			return err
 		}
-
 		if err == nil {
 			w.watchers[path] = struct{}{}
 		}
-
 		return nil
 	})
+}
+
+// debugf debug-level logs the fmt formatted format and args to w.debug if it
+// is non-nil.
+func (w *RecursiveWatcher) debugf(format string, args ...any) {
+	if format == "" || format[len(format)-1] != '\n' {
+		format += "\n"
+	}
+	if w.debug != nil {
+		fmt.Fprintf(w.debug, format, args...)
+	}
 }
