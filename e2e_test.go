@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
+	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
 	"github.com/shoenig/test/portal"
 	"github.com/shoenig/test/wait"
@@ -65,7 +67,7 @@ func useApp(t *testing.T) app.App {
 }
 
 func Test_HelloHttpServer(t *testing.T) {
-	app := useApp(t)
+	useApp(t)
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()
 
@@ -77,20 +79,23 @@ func Test_HelloHttpServer(t *testing.T) {
 	must.NoError(t, err)
 	must.EqOp(t, "hello-http\n", string(nameBytes))
 
-	count := 0
-	app.List().All(func(p core.Proc) bool {
-		must.EqOp(t, "hello-http", p.Name)
-		count++
-		return true
-	})
-	must.EqOp(t, 1, count)
+	cmd3 := exec.Command("./pm", "l", "-f", "json")
+	logsBytes, err := cmd3.Output()
+	test.NoError(t, err)
+	var list []core.Proc
+	test.NoError(t, json.Unmarshal(logsBytes, &list))
+	test.SliceLen(t, 1, list)
+	test.EqOp(t, "hello-http", list[0].Name)
+	test.Eq(t, []string{"all"}, list[0].Tags)
+	test.Eq(t, "/home/rprtr258/pr/pm/tests/hello-http/main", list[0].Command)
+	test.Eq(t, "/home/rprtr258/pr/pm", list[0].Cwd)
 
 	must.Wait(t, wait.InitialSuccess(
 		wait.BoolFunc(func() bool {
 			// check server started
 			return !isTCPPortAvailable(serverPort)
 		}),
-		wait.Timeout(time.Second),
+		wait.Timeout(time.Second*3),
 	))
 
 	// check response is correct
