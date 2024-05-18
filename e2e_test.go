@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
+	"github.com/rs/zerolog/log"
 	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
 	"github.com/shoenig/test/portal"
@@ -21,8 +22,6 @@ import (
 	"github.com/shoenig/test/wait"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
-	"github.com/rprtr258/pm/internal/infra/cli"
 )
 
 var homeDir = func() string {
@@ -71,14 +70,6 @@ func httpResponse(t *testing.T, endpoint string) (int, string) {
 	return resp.StatusCode, string(body)
 }
 
-func clearProcs(t *testing.T, appp app.App) {
-	appp.List()(func(proc core.Proc) bool {
-		must.NoError(t, appp.Stop(proc.ID))
-		must.NoError(t, cli.ImplDelete(appp, proc.ID))
-		return true
-	})
-}
-
 type pM struct {
 	t *testing.T
 }
@@ -113,6 +104,14 @@ func (pm pM) Stop(selectors ...string) {
 	must.NoError(pm.t, cmd.Run())
 }
 
+func (pM) delete(selectors ...string) error {
+	return exec.Command("./pm", append([]string{"rm"}, selectors...)...).Run()
+}
+
+func (pm pM) Delete(selectors ...string) {
+	must.NoError(pm.t, pm.delete(selectors...))
+}
+
 func (pm pM) List() []core.Proc {
 	logsBytes, err := exec.Command("./pm", "l", "-f", "json").Output()
 	must.NoError(pm.t, err)
@@ -123,16 +122,28 @@ func (pm pM) List() []core.Proc {
 	return list
 }
 
-func usePM(t *testing.T) pM {
-	app, err := app.New()
-	must.NoError(t, err)
+func TestMain(m *testing.M) {
+	pm := pM{}
+	// TODO: backup old pm state
+	if err := pm.delete("all"); err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	code := m.Run()
+	// TODO: restore old pm state
+	if err := pm.delete("all"); err != nil {
+		log.Fatal().Err(err).Send()
+	}
+	os.Exit(code)
+}
 
-	clearProcs(t, app)
+func usePM(t *testing.T) pM {
+	pm := pM{t}
+
 	t.Cleanup(func() {
-		clearProcs(t, app)
+		pm.Delete("all")
 	})
 
-	return pM{t}
+	return pm
 }
 
 func Test_HelloHttpServer(t *testing.T) {

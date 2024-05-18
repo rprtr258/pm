@@ -65,11 +65,24 @@ func getUptime(status core.Status) time.Duration {
 	return 0
 }
 
+func formatMemory(m uint64) string {
+	switch {
+	case m < 1024:
+		return fmt.Sprintf("%.2f B", float64(m))
+	case m < 1024*1024:
+		return fmt.Sprintf("%.2f KB", float64(m)/1024)
+	case m < 1024*1024*1024:
+		return fmt.Sprintf("%.2f MB", float64(m)/1024/1024)
+	default:
+		return fmt.Sprintf("%.2f GB", float64(m)/1024/1024/1024)
+	}
+}
+
 func renderTable(procs []core.Proc, showRowDividers bool) {
 	t := table.Table{
 		Headers: fun.Map[string](func(col string) string {
 			return scuf.String(col, scuf.ModBold)
-		}, "id", "name", "status", "uptime", "tags" /*"cpu", "memory",*/, "cmd"),
+		}, "id", "name", "status", "uptime", "tags", "cpu", "memory", "cmd"),
 		Rows: fun.Map[[]string](func(proc core.Proc) []string {
 			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
 			return []string{
@@ -80,8 +93,8 @@ func renderTable(procs []core.Proc, showRowDividers bool) {
 					If(proc.Status.Status != core.StatusRunning, "").
 					Else(getUptime(proc.Status).Truncate(time.Second).String()),
 				strings.Join(proc.Tags, " "),
-				// fmt.Sprint(proc.Status.CPU),
-				// fmt.Sprint(proc.Status.Memory),
+				fmt.Sprint(proc.Status.CPU) + "%",
+				formatMemory(proc.Status.Memory),
 				shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
 			}
 		}, procs...),
