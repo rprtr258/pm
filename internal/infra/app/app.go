@@ -67,10 +67,12 @@ func New() (App, error) {
 		return fun.Zero[App](), fmt.Errorf("migrate: %w", errMigrate)
 	}
 
-	dbHandle, errDB := db.New(_dirDB)
+	dbFs, errDB := db.InitRealDir(_dirDB)
 	if errDB != nil {
 		return fun.Zero[App](), errors.Wrapf(errDB, "new db, dir=%s", _dirDB)
 	}
+
+	dbHandle := db.New(dbFs)
 
 	config, errConfig := core.ReadConfig()
 	if errConfig != nil {

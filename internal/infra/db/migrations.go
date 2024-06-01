@@ -19,8 +19,10 @@ var Migrations = []migration{
 	{ // initial version
 		version: "0.0.1",
 		do: func() error {
-			if _, err := New(filepath.Join(core.DirHome, "db")); err != nil {
-				return errors.Wrapf(err, "create db handler")
+			dbDir := filepath.Join(core.DirHome, "db")
+
+			if _, errDB := InitRealDir(dbDir); errDB != nil {
+				return errors.Wrapf(errDB, "new db, dir=%s", dbDir)
 			}
 
 			return nil

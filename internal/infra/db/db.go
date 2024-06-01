@@ -9,6 +9,7 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/afero"
 
 	"github.com/rprtr258/pm/internal/core"
 )
@@ -74,24 +75,28 @@ func mapFromRepo(proc procData) core.Proc {
 	}
 }
 
-type Handle struct {
-	dir string
-}
-
-func New(dir string) (Handle, error) {
+func InitRealDir(dir string) (afero.Fs, error) {
 	if _, err := os.Stat(dir); err != nil {
 		if !os.IsNotExist(err) {
-			return Handle{}, fmt.Errorf("check directory: %w", err)
+			return nil, fmt.Errorf("check directory %q: %w", dir, err)
 		}
 
 		if err := os.Mkdir(dir, 0o755); err != nil {
-			return Handle{}, fmt.Errorf("create directory: %w", err)
+			return nil, fmt.Errorf("create directory %q: %w", dir, err)
 		}
 	}
 
+	return afero.NewBasePathFs(afero.NewOsFs(), dir), nil
+}
+
+type Handle struct {
+	dir afero.Fs
+}
+
+func New(dir afero.Fs) Handle {
 	return Handle{
 		dir: dir,
-	}, nil
+	}
 }
 
 type CreateQuery struct {
@@ -112,8 +117,8 @@ type CreateQuery struct {
 	// Respawns int
 }
 
-func (handle Handle) writeProc(proc procData) error {
-	f, err := os.OpenFile(filepath.Join(handle.dir, proc.ProcID.String()), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+func (h Handle) writeProc(proc procData) error {
+	f, err := h.dir.OpenFile(proc.ProcID.String(), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}
@@ -122,11 +127,12 @@ func (handle Handle) writeProc(proc procData) error {
 	return json.NewEncoder(f).Encode(proc)
 }
 
-func (handle Handle) readProc(id core.PMID) (procData, error) {
-	f, err := os.Open(filepath.Join(handle.dir, id.String()))
+func (h Handle) readProc(id core.PMID) (procData, error) {
+	f, err := h.dir.Open(id.String())
 	if err != nil {
 		return procData{}, err
 	}
+	defer f.Close()
 
 	var proc procData
 	if err := json.NewDecoder(f).Decode(&proc); err != nil {
@@ -136,10 +142,10 @@ func (handle Handle) readProc(id core.PMID) (procData, error) {
 	return proc, nil
 }
 
-func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
+func (h Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 	id := core.GenPMID()
 
-	if err := handle.writeProc(procData{
+	if err := h.writeProc(procData{
 		ProcID:  id,
 		Command: query.Command,
 		Cwd:     query.Cwd,
@@ -162,8 +168,8 @@ func (handle Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, erro
 	return id, nil
 }
 
-func (handle Handle) UpdateProc(proc core.Proc) Error {
-	if err := handle.writeProc(procData{
+func (h Handle) UpdateProc(proc core.Proc) Error {
+	if err := h.writeProc(procData{
 		ProcID: proc.ID,
 		Status: status{
 			StartTime: proc.Status.StartTime,
@@ -187,8 +193,8 @@ func (handle Handle) UpdateProc(proc core.Proc) Error {
 	return nil
 }
 
-func (handle Handle) GetProc(id core.PMID) (core.Proc, bool) {
-	proc, err := handle.readProc(id)
+func (h Handle) GetProc(id core.PMID) (core.Proc, bool) {
+	proc, err := h.readProc(id)
 	if err != nil {
 		return fun.Zero[core.Proc](), false
 	}
@@ -196,15 +202,15 @@ func (handle Handle) GetProc(id core.PMID) (core.Proc, bool) {
 	return mapFromRepo(proc), true
 }
 
-func (handle Handle) GetProcs(filterOpts ...core.FilterOption) (map[core.PMID]core.Proc, error) {
-	entries, err := os.ReadDir(handle.dir)
+func (h Handle) GetProcs(filterOpts ...core.FilterOption) (map[core.PMID]core.Proc, error) {
+	entries, err := afero.ReadDir(h.dir, ".")
 	if err != nil {
 		return nil, err
 	}
 
 	procs := map[core.PMID]core.Proc{}
 	for _, entry := range entries {
-		proc, err := handle.readProc(core.PMID(entry.Name()))
+		proc, err := h.readProc(core.PMID(entry.Name()))
 		if err != nil {
 			return nil, err
 		}
@@ -219,8 +225,8 @@ func (handle Handle) GetProcs(filterOpts ...core.FilterOption) (map[core.PMID]co
 		core.FilterProcMap(procs, filterOpts...)...), nil
 }
 
-func (handle Handle) SetStatus(id core.PMID, newStatus core.Status) Error {
-	proc, err := handle.readProc(id)
+func (h Handle) SetStatus(id core.PMID, newStatus core.Status) Error {
+	proc, err := h.readProc(id)
 	if err != nil {
 		return ProcNotFoundError{id}
 	}
@@ -231,30 +237,30 @@ func (handle Handle) SetStatus(id core.PMID, newStatus core.Status) Error {
 		ExitCode:  newStatus.ExitCode,
 	}
 
-	if err := handle.writeProc(proc); err != nil {
+	if err := h.writeProc(proc); err != nil {
 		return FlushError{err}
 	}
 
 	return nil
 }
 
-func (handle Handle) Delete(id core.PMID) (core.Proc, Error) {
-	proc, err := handle.readProc(id)
+func (h Handle) Delete(id core.PMID) (core.Proc, Error) {
+	proc, err := h.readProc(id)
 	if err != nil {
 		return fun.Zero[core.Proc](), ProcNotFoundError{id}
 	}
 
-	if err := os.Remove(filepath.Join(handle.dir, id.String())); err != nil {
+	if err := h.dir.Remove(id.String()); err != nil {
 		return fun.Zero[core.Proc](), FlushError{err}
 	}
 
 	return mapFromRepo(proc), nil
 }
 
-func (handle Handle) StatusSetRunning(id core.PMID) {
+func (h Handle) StatusSetRunning(id core.PMID) {
 	// TODO: fill/remove cpu, memory
 	runningStatus := core.NewStatusRunning(time.Now(), 0, 0)
-	if err := handle.SetStatus(id, runningStatus); err != nil {
+	if err := h.SetStatus(id, runningStatus); err != nil {
 		log.Error().
 			Stringer("pmid", id).
 			Any("new_status", runningStatus).
@@ -262,9 +268,9 @@ func (handle Handle) StatusSetRunning(id core.PMID) {
 	}
 }
 
-func (handle Handle) StatusSetStopped(id core.PMID, exitCode int) {
+func (h Handle) StatusSetStopped(id core.PMID, exitCode int) {
 	dbStatus := core.NewStatusStopped(exitCode)
-	if err := handle.SetStatus(id, dbStatus); err != nil {
+	if err := h.SetStatus(id, dbStatus); err != nil {
 		if _, ok := err.(ProcNotFoundError); ok {
 			log.Error().
 				Stringer("pmid", id).
