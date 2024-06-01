@@ -45,6 +45,7 @@ func ImplDelete(app app.App, ids ...core.PMID) error {
 				return err
 			}
 
+			fmt.Println(proc.Name)
 			return nil
 		}(); err != nil {
 			multierr.AppendInto(&merr, errors.Wrapf(err, "server.delete: pmid=%s", id))
