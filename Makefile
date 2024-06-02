@@ -84,6 +84,7 @@ docs: # generate docs
 ## Test
 
 test: # run tests
+	@go build .
 	@go run gotest.tools/gotestsum@latest --format dots-v2 ./...
 
 test-e2e: # run integration tests
