@@ -47,12 +47,12 @@ pm list
 
 ### Start processes that already has been added
 ```sh
-pm start <id or name or tag...>
+pm start [ID/NAME/TAG]...
 ```
 
 ### Stop processes
 ```sh
-pm stop <id or name or tag...>
+pm stop [ID/NAME/TAG]...
 
 # e.g. stop all added processes (all processes has tag `all` by default)
 pm stop all
@@ -61,7 +61,7 @@ pm stop all
 ### Delete processes
 When deleting process, they are first stopped, then removed from `pm`.
 ```sh
-pm delete <id or name or tag...>
+pm delete [ID/NAME/TAG]...
 
 # e.g. delete all processes
 pm delete all
@@ -103,15 +103,12 @@ flowchart TB
 
 ```sh
 $HOME/.pm/
-├── config.json # pm config file
-├── rpc.sock    # socket used to rpc daemon
-├── pm.log      # daemon logs
-├── pm.pid      # daemon pid
-├── db/ # database tables
-│   └── procs.json # processes table
-└── logs/ # processes logs
-    ├── <ID>.stdout # stdout of process with id ID
-    └── <ID>.stderr # stderr of process with id ID
+├──config.json # pm config file
+├──db/ # database tables
+│   └──procs.json # processes table
+└──logs/ # processes logs
+    ├──<ID>.stdout # stdout of process with id ID
+    └──<ID>.stderr # stderr of process with id ID
 ```
 
 ### Differences from [pm2](https://github.com/Unitech/pm2)
