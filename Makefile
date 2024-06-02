@@ -84,7 +84,7 @@ docs: # generate docs
 ## Test
 
 test: # run tests
-	@GOEXPERIMENT=rangefunc go run gotest.tools/gotestsum@latest --format dots-v2 ./...
+	@go run gotest.tools/gotestsum@latest --format dots-v2 ./...
 
 test-e2e: # run integration tests
 	go build -o tests/hello-http tests/hello-http/main.go
@@ -94,4 +94,3 @@ test-e2e: # run integration tests
 test-e2e-docker: # run integration tests in docker
 	@docker build -t pm-e2e --file tests/Dockerfile .
 	@docker run pm-e2e
-
