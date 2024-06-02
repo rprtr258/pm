@@ -163,7 +163,10 @@ func implAgent(app app.App, proc core.Proc) error {
 	go func() {
 		for {
 			err := cmd.Wait()
-			if err, ok := err.(*exec.ExitError); ok && err.Exited() {
+			if err == nil {
+				waitCh <- nil
+				break
+			} else if err, ok := err.(*exec.ExitError); ok && err.Exited() {
 				waitCh <- err
 				break
 			}
@@ -232,7 +235,11 @@ func implAgent(app app.App, proc core.Proc) error {
 	// wait for process to exit by itself
 	// if killed by signal, ignore, since we kill it with signal on watch
 	case err := <-waitCh:
-		app.DB.StatusSetStopped(proc.ID, err.ProcessState.ExitCode())
+		exitCode := 0
+		if err != nil {
+			exitCode = err.ProcessState.ExitCode()
+		}
+		app.DB.StatusSetStopped(proc.ID, exitCode)
 	}
 
 	return nil
