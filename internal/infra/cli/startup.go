@@ -2,8 +2,8 @@ package cli
 
 import (
 	"github.com/spf13/cobra"
-	"go.uber.org/multierr"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
@@ -27,10 +27,8 @@ var _cmdStartup = &cobra.Command{
 			}).
 			ToSlice()
 
-		var merr error
-		for _, proc := range procsToStart {
-			multierr.AppendInto(&merr, app.Start(proc.ID))
-		}
-		return merr
+		return errors.Combine(fun.Map[error](func(proc core.Proc) error {
+			return app.Start(proc.ID)
+		}, procsToStart...)...)
 	},
 }

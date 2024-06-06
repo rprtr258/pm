@@ -5,8 +5,7 @@ import (
 	"os"
 	"syscall"
 
-	"go.uber.org/multierr"
-
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
@@ -18,9 +17,8 @@ func (app App) Stop(ids ...core.PMID) error {
 		return errors.Wrapf(err, "get procs")
 	}
 
-	var merr error
-	for _, id := range ids {
-		multierr.AppendInto(&merr, errors.Wrapf(func() error {
+	return errors.Combine(fun.Map[error](func(id core.PMID) error {
+		return errors.Wrapf(func() error {
 			{
 				proc, ok := procs[id]
 				if !ok {
@@ -53,7 +51,7 @@ func (app App) Stop(ids ...core.PMID) error {
 			// TODO: here we can wait for killing
 
 			return nil
-		}(), "stop pmid=%s", id))
-	}
-	return merr
+		}(), "stop pmid=%s", id)
+
+	}, ids...)...)
 }

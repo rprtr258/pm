@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	stdErrors "errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,7 +11,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
-	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/errors"
@@ -20,7 +18,7 @@ import (
 
 const CmdShim = "shim"
 
-var ErrAlreadyRunning = stdErrors.New("process is already running")
+var ErrAlreadyRunning = errors.New("process is already running")
 
 func (app App) startShimImpl(id core.PMID) error {
 	pmExecutable, err := os.Executable()
@@ -95,9 +93,8 @@ func (app App) startShimImpl(id core.PMID) error {
 
 // Start already created processes
 func (app App) Start(ids ...core.PMID) error {
-	var merr error
-	for _, id := range ids {
-		multierr.AppendInto(&merr, errors.Wrapf(func() error {
+	return errors.Combine(fun.Map[error](func(id core.PMID) error {
+		return errors.Wrapf(func() error {
 			// run processes by their ids in database
 			// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 			if errStart := app.startShimImpl(id); errStart != nil {
@@ -111,7 +108,6 @@ func (app App) Start(ids ...core.PMID) error {
 			}
 
 			return nil
-		}(), "start pmid=%s", id))
-	}
-	return merr
+		}(), "start pmid=%s", id)
+	}, ids...)...)
 }

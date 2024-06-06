@@ -10,7 +10,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/set"
 	"github.com/spf13/cobra"
-	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/namegen"
@@ -153,15 +152,15 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 }
 
 func run(appp app.App, configs ...core.RunConfig) error {
-	var merr error
+	var merr []error
 	for _, config := range configs {
 		if _, name, errRun := ImplRun(appp, config); errRun != nil {
-			multierr.AppendInto(&merr, errors.Newf("start proc %v", config))
+			merr = append(merr, errors.Wrapf(errRun, "start proc %v", config))
 		} else {
 			fmt.Println(name)
 		}
 	}
-	return merr
+	return errors.Combine(merr...)
 }
 
 var _cmdRun = func() *cobra.Command {

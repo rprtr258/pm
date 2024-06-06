@@ -9,7 +9,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/spf13/cobra"
-	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -22,9 +21,8 @@ func implSignal(
 	sig syscall.Signal,
 	ids ...core.PMID,
 ) error {
-	var merr error
-	for _, id := range ids {
-		if err := func() error {
+	return errors.Combine(fun.Map[error](func(id core.PMID) error {
+		return errors.Wrapf(func() error {
 			proc, ok := appp.DB.GetProc(id)
 			if !ok {
 				return errors.New("not found proc to stop")
@@ -51,11 +49,8 @@ func implSignal(
 			}
 
 			return nil
-		}(); err != nil {
-			multierr.AppendInto(&merr, errors.Wrapf(err, "pmid=%s", id))
-		}
-	}
-	return merr
+		}(), "pmid=%s", id)
+	}, ids...)...)
 }
 
 var _cmdSignal = func() *cobra.Command {

@@ -23,7 +23,6 @@ require (
 	github.com/spf13/afero v1.11.0
 	github.com/spf13/cobra v1.8.0
 	github.com/wissance/stringFormatter v1.2.0
-	go.uber.org/multierr v1.11.0
 	golang.org/x/mod v0.17.0
 	golang.org/x/term v0.20.0
 )

@@ -9,7 +9,6 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/spf13/cobra"
-	"go.uber.org/multierr"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -29,29 +28,22 @@ func removeFile(name string) error {
 }
 
 func ImplDelete(appp app.App, ids ...core.PMID) error {
-	var merr error
-	for _, id := range ids {
-		if err := func() error {
+	return errors.Combine(fun.Map[error](func(id core.PMID) error {
+		return errors.Wrapf(func() error {
 			proc, errDelete := appp.DB.Delete(id)
 			if errDelete != nil {
 				return errors.Wrapf(errDelete, "delete proc: %s", id)
 			}
 
+			fmt.Println(proc.Name)
+
 			// remove log files
-			if err := multierr.Combine(
+			return errors.Combine(
 				errors.Wrapf(removeFile(proc.StdoutFile), "remove stdout file %s", proc.StdoutFile),
 				errors.Wrapf(removeFile(proc.StderrFile), "remove stderr file: %s", proc.StderrFile),
-			); err != nil {
-				return err
-			}
-
-			fmt.Println(proc.Name)
-			return nil
-		}(); err != nil {
-			multierr.AppendInto(&merr, errors.Wrapf(err, "server.delete: pmid=%s", id))
-		}
-	}
-	return merr
+			)
+		}(), "server.delete: pmid=%s", id)
+	}, ids...)...)
 }
 
 var _cmdDelete = func() *cobra.Command {
