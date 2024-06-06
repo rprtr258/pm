@@ -69,8 +69,6 @@ func (app App) startShimImpl(id core.PMID) error {
 		return errors.Wrapf(err, "marshal proc")
 	}
 
-	app.DB.StatusSetRunning(id)
-
 	cmd := exec.Cmd{
 		Path: pmExecutable,
 		Args: []string{pmExecutable, CmdShim, string(procDesc)},

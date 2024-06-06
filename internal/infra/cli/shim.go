@@ -29,54 +29,22 @@ type Entry struct {
 }
 
 type Watcher struct {
-	dir      string
-	re       *regexp.Regexp
-	watcher  *fsnotify.BatchedRecursiveWatcher
-	callback func(context.Context) error
+	dir     string
+	re      *regexp.Regexp
+	watcher *fsnotify.BatchedRecursiveWatcher
 }
 
-func newWatcher(dir string, patternRE *regexp.Regexp, callback func(context.Context) error) (Watcher, error) {
+func newWatcher(dir string, patternRE *regexp.Regexp) (Watcher, error) {
 	watcher, err := fsnotify.NewBatchedRecursiveWatcher(dir, "", time.Second)
 	if err != nil {
 		return fun.Zero[Watcher](), errors.Wrapf(err, "create fsnotify watcher")
 	}
 
 	return Watcher{
-		dir:      dir,
-		re:       patternRE,
-		watcher:  watcher,
-		callback: callback,
+		dir:     dir,
+		re:      patternRE,
+		watcher: watcher,
 	}, nil
-}
-
-func (w Watcher) processEventBatch(ctx context.Context, events []fsnotify.Event) {
-	triggered := false
-	for _, event := range events {
-		filename, err := filepath.Rel(w.dir, event.Name)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Stringer("event", event).
-				Str("dir", w.dir).
-				Msg("get relative filename failed")
-			continue
-		}
-
-		if !w.re.MatchString(filename) {
-			continue
-		}
-
-		triggered = true
-		break
-	}
-
-	if triggered {
-		if err := w.callback(ctx); err != nil {
-			log.Error().
-				Err(err).
-				Msg("execute callback failed")
-		}
-	}
 }
 
 // execCmd start copy of given command. We cannot use cmd itself since
@@ -87,7 +55,7 @@ func execCmd(cmd exec.Cmd) (*exec.Cmd, error) {
 	return &c, c.Start()
 }
 
-func killCmd(cmd *exec.Cmd) error {
+func killCmd(cmd *exec.Cmd) {
 	if errTerm := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM); errTerm != nil {
 		log.Error().Err(errTerm).Msg("failed to send SIGTERM to process")
 	}
@@ -108,7 +76,7 @@ WAIT_FOR_DEATH:
 		case <-timer.C:
 			// check if process is still alive, if no, return
 			if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
-				return nil
+				return
 			}
 		}
 	}
@@ -116,10 +84,10 @@ WAIT_FOR_DEATH:
 	// process is still alive, send SIGKILL
 	log.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
 	if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
-		return errors.Wrap(errKill, "send SIGKILL to process")
+		log.Error().Int("pid", cmd.Process.Pid).Err(errKill).Msg("failed to send SIGKILL to process")
 	}
 
-	return nil
+	// TODO: set status=stopped
 }
 
 func implShim(app app.App, proc core.Proc) error {
@@ -153,59 +121,24 @@ func implShim(app app.App, proc core.Proc) error {
 		},
 	}
 
-	cmd, errRunFirst := execCmd(cmdShape)
-	if errRunFirst != nil {
-		app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
-		return errors.Wrapf(errRunFirst, "run proc: %v", proc)
-	}
-
-	waitCh := make(chan *exec.ExitError)
-	go func() {
-		for {
-			err := cmd.Wait()
-			if err == nil {
-				waitCh <- nil
-				break
-			} else if err, ok := err.(*exec.ExitError); ok && err.Exited() {
-				waitCh <- err
-				break
-			}
-		}
-		close(waitCh)
-	}()
-
+	watchCh := make(chan []fsnotify.Event)
+	defer close(watchCh)
 	if watchPattern, ok := proc.Watch.Unpack(); ok {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		watchRE, errCompilePattern := regexp.Compile(watchPattern)
 		if errCompilePattern != nil {
 			return errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
 		}
 
-		watcher, errWatcher := newWatcher(proc.Cwd, watchRE, func(ctx context.Context) error {
-			log.Debug().Msg("watch triggered")
-
-			if errKill := killCmd(cmd); errKill != nil {
-				log.Debug().Err(errKill).Msg("a")
-				return errors.Wrapf(errKill, "kill process on watch, pid=%d", cmd.Process.Pid)
-			}
-
-			var errStart error
-			cmd, errStart = execCmd(cmdShape)
-			if errStart != nil {
-				log.Debug().Err(errStart).Msg("b")
-				return errors.Wrapf(errStart, "failed to start process on watch")
-			}
-
-			return nil
-		})
+		watcher, errWatcher := newWatcher(proc.Cwd, watchRE)
 		if errWatcher != nil {
 			return errors.Wrapf(errWatcher, "create watcher")
 		}
-
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		defer watcher.watcher.Close()
 
 		go func() {
-			defer watcher.watcher.Close()
 			for {
 				select {
 				case <-ctx.Done():
@@ -216,33 +149,81 @@ func implShim(app app.App, proc core.Proc) error {
 						Msg("fsnotify error")
 					return
 				case events := <-watcher.watcher.Events():
-					watcher.processEventBatch(ctx, events)
+					triggered := false
+					for _, event := range events {
+						filename, err := filepath.Rel(watcher.dir, event.Name)
+						if err != nil {
+							log.Error().
+								Err(err).
+								Stringer("event", event).
+								Str("dir", watcher.dir).
+								Msg("get relative filename failed")
+							continue
+						}
+
+						if !watcher.re.MatchString(filename) {
+							continue
+						}
+
+						triggered = true
+						break
+					}
+
+					if triggered {
+						watchCh <- events
+					}
 				}
 			}
 		}()
 	}
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	select {
-	case <-sigCh:
-		if errKill := killCmd(cmd); errKill != nil {
-			log.Error().
-				Int("pid", cmd.Process.Pid).
-				Err(errKill).
-				Msg("failed to kill process")
-		}
-	// wait for process to exit by itself
-	// if killed by signal, ignore, since we kill it with signal on watch
-	case err := <-waitCh:
-		exitCode := 0
-		if err != nil {
-			exitCode = err.ProcessState.ExitCode()
-		}
-		app.DB.StatusSetStopped(proc.ID, exitCode)
-	}
+	terminateCh := make(chan os.Signal, 1)
+	signal.Notify(terminateCh, syscall.SIGINT, syscall.SIGTERM)
+	defer close(terminateCh)
 
-	return nil
+	for {
+		app.DB.StatusSetRunning(proc.ID)
+
+		cmd, errRunFirst := execCmd(cmdShape)
+		if errRunFirst != nil {
+			app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
+			return errors.Wrapf(errRunFirst, "run proc: %v", proc)
+		}
+
+		waitCh := make(chan error)
+		go func() {
+			waitCh <- cmd.Wait()
+		}()
+
+		select {
+		// TODO: pass other signals
+		case <-terminateCh:
+			// NOTE: Terminate child completely.
+			// Stop is done by sending SIGTERM.
+			// Manual restart is done by restarting whole shim and child by cli.
+			killCmd(cmd)
+			return nil
+		case events := <-watchCh:
+			log.Debug().Any("events", events).Msg("watch triggered")
+			killCmd(cmd)
+		case err := <-waitCh:
+			// TODO: check NOTE
+			// NOTE: wait for process to exit by itself
+			// if killed by signal, ignore, since we kill it with signal on watch
+			exitCode := 0
+			if err != nil {
+				if errExit, ok := err.(*exec.ExitError); ok && errExit.Exited() {
+					exitCode = errExit.ProcessState.ExitCode()
+				} else {
+					exitCode = -1
+				}
+			}
+			// TODO: if autorestart: continue
+			app.DB.StatusSetStopped(proc.ID, exitCode)
+			return nil
+		}
+		close(waitCh)
+	}
 }
 
 var _cmdShim = &cobra.Command{
