@@ -52,6 +52,5 @@ func (app App) Stop(ids ...core.PMID) error {
 
 			return nil
 		}(), "stop pmid=%s", id)
-
 	}, ids...)...)
 }
