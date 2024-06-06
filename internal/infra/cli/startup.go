@@ -12,8 +12,9 @@ import (
 var _cmdStartup = &cobra.Command{
 	Use:    "startup",
 	Short:  "run startup processes",
+	Args:   cobra.NoArgs,
 	Hidden: true,
-	RunE: func(cmd *cobra.Command, _ []string) error {
+	RunE: func(*cobra.Command, []string) error {
 		app, errNewApp := app.New()
 		if errNewApp != nil {
 			return errors.Wrapf(errNewApp, "new app")

@@ -72,7 +72,7 @@ linters-settings:
   gocognit:
     # Minimal code complexity to report.
     # Default: 30 (but we recommend 10-20)
-    min-complexity: 20
+    min-complexity: 40
 
   gocritic:
     # Settings passed to gocritic.
@@ -169,7 +169,6 @@ linters:
     - dupl # tool for code clone detection
     - durationcheck # checks for two durations multiplied together
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
-    - execinquery # checks query string in Query function which reads your Go src files and warning it finds
     - exhaustive # checks exhaustiveness of enum switch statements
     - exportloopref # checks for pointers to enclosing loop variables
     - funlen # tool for detection of long functions
@@ -206,11 +205,11 @@ linters:
     - whitespace # detects leading and trailing whitespace
     - decorder # checks declaration order and count of types, constants, variables and functions
     - exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
-    - godox # detects FIXME, TODO and other comment keywords
+    # - godox # TODO: get back # detects FIXME, TODO and other comment keywords
     - goheader # checks is file header matches to pattern
     - interfacebloat # checks the number of methods inside an interface
     - prealloc # [premature optimization, but can be used in some cases] finds slice declarations that could potentially be preallocated
-    - wrapcheck # checks that errors returned from external packages are wrapped
+    # - wrapcheck # TODO: get back # checks that errors returned from external packages are wrapped
     - containedctx # detects struct contained context.Context field
     - contextcheck # [too many false positives] checks the function whether use a non-inherited context
     # - depguard # [replaced by gomodguard] checks if package imports are in a list of acceptable packages

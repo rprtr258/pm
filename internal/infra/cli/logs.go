@@ -57,8 +57,12 @@ func streamFile(
 			Whence: io.SeekEnd,
 			Offset: -fun.Min(stat.Size(), int64(_defaultLogsOffset)),
 		},
-		Logger:    tail.DiscardingLogger,
-		MustExist: true,
+		Logger:      tail.DiscardingLogger,
+		MustExist:   true,
+		Poll:        false,
+		Pipe:        false,
+		MaxLineSize: 0,
+		RateLimiter: nil,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "tail log, id=%s, file=%s", procID, logFile)
@@ -74,7 +78,7 @@ func streamFile(
 				return
 			case line := <-tailer.Lines:
 				logLinesCh <- ProcLine{
-					Line: string(line.Text),
+					Line: line.Text,
 					Type: logLineType,
 					Err:  line.Err,
 				}
@@ -125,7 +129,7 @@ func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
 
 // implLogs - watch for processes logs
 // TODO: use app
-func implLogs(_ app.App, ctx context.Context, proc core.Proc) (<-chan core.LogLine, error) {
+func implLogs(ctx context.Context, proc core.Proc) <-chan core.LogLine {
 	ctx, cancel := context.WithCancel(ctx)
 	if proc.Status.Status != core.StatusRunning {
 		ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
@@ -152,20 +156,11 @@ func implLogs(_ app.App, ctx context.Context, proc core.Proc) (<-chan core.LogLi
 					log.Error().Err(err).Msg("failed to check proc status")
 				}
 
-				proc, _ := func() (core.Proc, bool) {
-					procs, err := newApp.DB.GetProcs(core.WithIDs(proc.ID))
-					if err != nil {
-						return fun.Zero[core.Proc](), false
-					}
-
-					proc, ok := procs[proc.ID]
-					if !ok {
-						return fun.Zero[core.Proc](), false
-					}
-
-					return proc, true
+				procActual := func() core.Proc {
+					procs, _ := newApp.DB.GetProcs(core.WithIDs(proc.ID))
+					return procs[proc.ID]
 				}()
-				if proc.Status.Status != core.StatusRunning {
+				if procActual.Status.Status != core.StatusRunning {
 					return
 				}
 			case line, ok := <-logsCh:
@@ -187,11 +182,11 @@ func implLogs(_ app.App, ctx context.Context, proc core.Proc) (<-chan core.LogLi
 			}
 		}
 	}()
-	return res, nil
+	return res
 }
 
 func getProcs(
-	app app.App,
+	appp app.App,
 	rest, ids, names, tags []string,
 	config *string,
 ) ([]core.Proc, error) {
@@ -204,13 +199,13 @@ func getProcs(
 	)
 
 	if config == nil {
-		return app.
+		return appp.
 			List().
 			Filter(filterFunc).
 			ToSlice(), nil
 	}
 
-	configs, errLoadConfigs := core.LoadConfigs(string(*config))
+	configs, errLoadConfigs := core.LoadConfigs(*config)
 	if errLoadConfigs != nil {
 		return nil, errors.Wrapf(errLoadConfigs, "load configs: %v", *config)
 	}
@@ -219,7 +214,7 @@ func getProcs(
 		return cfg.Name.Unpack()
 	}, configs...)
 
-	return app.
+	return appp.
 		List().
 		Filter(func(proc core.Proc) bool { return fun.Contains(proc.Name, procNames...) }).
 		Filter(filterFunc).
@@ -239,12 +234,12 @@ var _cmdLogs = func() *cobra.Command {
 			ctx := cmd.Context()
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			app, errNewApp := app.New()
+			appp, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
 
-			procs, err := getProcs(app, args, ids, names, tags, config)
+			procs, err := getProcs(appp, args, ids, names, tags, config)
 			if err != nil {
 				return errors.Wrapf(err, "get proc ids")
 			}
@@ -256,10 +251,7 @@ var _cmdLogs = func() *cobra.Command {
 			var wg sync.WaitGroup
 			mergedLogsCh := make(chan core.LogLine)
 			for _, proc := range procs {
-				logsCh, errLogs := implLogs(app, ctx, proc)
-				if errLogs != nil {
-					return errors.Wrapf(errLogs, "watch procs: %v", proc)
-				}
+				logsCh := implLogs(ctx, proc)
 
 				wg.Add(1)
 				ch := logsCh

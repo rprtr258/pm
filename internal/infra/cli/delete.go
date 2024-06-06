@@ -28,11 +28,11 @@ func removeFile(name string) error {
 	return nil
 }
 
-func ImplDelete(app app.App, ids ...core.PMID) error {
+func ImplDelete(appp app.App, ids ...core.PMID) error {
 	var merr error
 	for _, id := range ids {
 		if err := func() error {
-			proc, errDelete := app.DB.Delete(id)
+			proc, errDelete := appp.DB.Delete(id)
 			if errDelete != nil {
 				return errors.Wrapf(errDelete, "delete proc: %s", id)
 			}

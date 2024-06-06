@@ -30,7 +30,7 @@ func run() error {
 	addr := os.Args[1]
 	log.Info().Str("addr", addr).Msg("listening")
 
-	return http.ListenAndServe(addr, http.HandlerFunc(handler))
+	return http.ListenAndServe(addr, http.HandlerFunc(handler)) //nolint:gosec // NOTE: pohuy
 }
 
 func main() {

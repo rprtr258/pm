@@ -90,7 +90,70 @@ WAIT_FOR_DEATH:
 	// TODO: set status=stopped
 }
 
-func implShim(app app.App, proc core.Proc) error {
+func initWatchChannel(
+	ctx context.Context,
+	ch chan []fsnotify.Event,
+	cwd string,
+	pattern fun.Option[string],
+) error {
+	watchPattern, ok := pattern.Unpack()
+	if !ok {
+		return nil
+	}
+
+	watchRE, errCompilePattern := regexp.Compile(watchPattern)
+	if errCompilePattern != nil {
+		return errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
+	}
+
+	watcher, errWatcher := newWatcher(cwd, watchRE)
+	if errWatcher != nil {
+		return errors.Wrapf(errWatcher, "create watcher")
+	}
+	// TODO: close in outer scope
+	// defer watcher.watcher.Close()
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case err := <-watcher.watcher.Errors():
+				log.Error().
+					Err(err).
+					Msg("fsnotify error")
+				return
+			case events := <-watcher.watcher.Events():
+				triggered := false
+				for _, event := range events {
+					filename, err := filepath.Rel(watcher.dir, event.Name)
+					if err != nil {
+						log.Error().
+							Err(err).
+							Stringer("event", event).
+							Str("dir", watcher.dir).
+							Msg("get relative filename failed")
+						continue
+					}
+
+					if !watcher.re.MatchString(filename) {
+						continue
+					}
+
+					triggered = true
+					break
+				}
+
+				if triggered {
+					ch <- events
+				}
+			}
+		}
+	}()
+	return nil
+}
+
+func implShim(appp app.App, proc core.Proc) error {
 	stdoutLogFile, errRunFirst := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if errRunFirst != nil {
 		return errors.Wrapf(errRunFirst, "open stdout file %q", proc.StdoutFile)
@@ -121,72 +184,25 @@ func implShim(app app.App, proc core.Proc) error {
 		},
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	watchCh := make(chan []fsnotify.Event)
-	defer close(watchCh)
-	if watchPattern, ok := proc.Watch.Unpack(); ok {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		watchRE, errCompilePattern := regexp.Compile(watchPattern)
-		if errCompilePattern != nil {
-			return errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
-		}
-
-		watcher, errWatcher := newWatcher(proc.Cwd, watchRE)
-		if errWatcher != nil {
-			return errors.Wrapf(errWatcher, "create watcher")
-		}
-		defer watcher.watcher.Close()
-
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case err := <-watcher.watcher.Errors():
-					log.Error().
-						Err(err).
-						Msg("fsnotify error")
-					return
-				case events := <-watcher.watcher.Events():
-					triggered := false
-					for _, event := range events {
-						filename, err := filepath.Rel(watcher.dir, event.Name)
-						if err != nil {
-							log.Error().
-								Err(err).
-								Stringer("event", event).
-								Str("dir", watcher.dir).
-								Msg("get relative filename failed")
-							continue
-						}
-
-						if !watcher.re.MatchString(filename) {
-							continue
-						}
-
-						triggered = true
-						break
-					}
-
-					if triggered {
-						watchCh <- events
-					}
-				}
-			}
-		}()
+	if err := initWatchChannel(ctx, watchCh, proc.Cwd, proc.Watch); err != nil {
+		return errors.Wrapf(err, "init watch channel")
 	}
+	defer close(watchCh)
 
 	terminateCh := make(chan os.Signal, 1)
 	signal.Notify(terminateCh, syscall.SIGINT, syscall.SIGTERM)
 	defer close(terminateCh)
 
 	for {
-		app.DB.StatusSetRunning(proc.ID)
+		appp.DB.StatusSetRunning(proc.ID)
 
 		cmd, errRunFirst := execCmd(cmdShape)
 		if errRunFirst != nil {
-			app.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
+			appp.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
 			return errors.Wrapf(errRunFirst, "run proc: %v", proc)
 		}
 
@@ -219,7 +235,7 @@ func implShim(app app.App, proc core.Proc) error {
 				}
 			}
 			// TODO: if autorestart: continue
-			app.DB.StatusSetStopped(proc.ID, exitCode)
+			appp.DB.StatusSetStopped(proc.ID, exitCode)
 			return nil
 		}
 		close(waitCh)
@@ -240,12 +256,12 @@ var _cmdShim = &cobra.Command{
 		// a little sleep to wait while calling process closes db file
 		time.Sleep(1 * time.Second)
 
-		app, errNewApp := app.New()
+		appp, errNewApp := app.New()
 		if errNewApp != nil {
 			return errors.Wrapf(errNewApp, "new app")
 		}
 
-		if err := implShim(app, config); err != nil {
+		if err := implShim(appp, config); err != nil {
 			return errors.Wrapf(err, "run: %v", config)
 		}
 

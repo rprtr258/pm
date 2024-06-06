@@ -12,7 +12,7 @@ PM := go run main.go
 CURDIR=$(shell pwd)
 BINDIR=${CURDIR}/bin
 
-GOLANGCILINTVER=1.53.2
+GOLANGCILINTVER=1.58.1
 GOLANGCILINTBIN=${BINDIR}/golangci-lint_${GOLANGCILINTVER}
 
 
@@ -72,7 +72,7 @@ install-linter: bindir
 lint-go: install-linter # run go linter
 	@${GOLANGCILINTBIN} run ./...
 	gocritic check -enableAll -disable='rangeValCopy,hugeParam,unnamedResult' ./...
-	deadcode .
+	# deadcode . # false positives
 
 lint: lint-go # run all linters
 

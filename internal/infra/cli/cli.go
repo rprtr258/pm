@@ -38,14 +38,14 @@ var App = func() *cobra.Command {
 	}
 	// If sets and script’s memory usage goes about the configured number, pm2 restarts the script.
 	// Uses human-friendly suffixes: ‘K’ for kilobytes, ‘M’ for megabytes, ‘G’ for gigabytes’, etc. Eg “150M”.
-	// &cli.IntFlag{Name: "max-memory-restart", Usage: "Restart the app if an amount of memory is exceeded (in bytes)"},
-	// &cli.BoolFlag{Name:        "attach", Usage: "attach logging after your start/restart/stop/reload"},
-	// &cli.DurationFlag{Name:    "listen-timeout", Usage: "listen timeout on application reload"},
-	// &cli.BoolFlag{Name:        "no-daemon", Usage: "run pm2 daemon in the foreground if it doesn\t exist already"},
-	// &cli.BoolFlag{Name:        "no-vizion", Usage: "start an app without vizion feature (versioning control)"},
-	// &cli.IntFlag{Name:         "parallel", Usage: "number of parallel actions (for restart/reload)"},
-	// &cli.BoolFlag{Name:        "silent", Aliases: []string{"s"}, Usage: "hide all messages", Value: false},
-	// &cli.BoolFlag{Name:        "wait-ip", Usage: "override systemd script to wait for full internet connectivity to launch pm2"},
+	// "max-memory-restart": {Int, "Restart the app if an amount of memory is exceeded (in bytes)"},
+	// "attach":             {Bool, "attach logging after your start/restart/stop/reload"},
+	// "listen-timeout":     {Duration, "listen timeout on application reload"},
+	// "no-daemon":          {Bool, "run pm2 daemon in the foreground if it doesn\t exist already"},
+	// "no-vizion":          {Bool, "start an app without vizion feature (versioning control)"},
+	// "parallel":           {Int, "number of parallel actions (for restart/reload)"},
+	// "silent":             {Bool, "hide all messages"}.Aliases("s"),
+	// "wait-ip":            {Bool, "override systemd script to wait for full internet connectivity to launch pm2"},
 
 	cmd.AddCommand(_cmdVersion)
 	cmd.AddCommand(_cmdShim)
@@ -76,7 +76,7 @@ func Run(argv []string) error {
 		return errors.Wrapf(err, "ensure logs dir %s", _dirProcsLogs)
 	}
 
-	//nolint:lll // setting template strings
+	// setting template strings
 	// 	App.SetUsageFunc(func(cmd *cobra.Command) error {
 	// 		scuf.New(os.Stdout).
 	// 			NL().

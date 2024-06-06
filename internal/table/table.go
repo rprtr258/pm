@@ -79,16 +79,16 @@ HARD:
 	wrapper := wrap.NewWriter(w)
 	wrapper.KeepNewlines = true
 	wrapper.PreserveSpace = false
-	wrapper.Write([]byte(s))
+	_, _ = wrapper.Write([]byte(s))
 	return strings.Split(wrapper.String(), "\n")
 }
 
 // determine columns widths
 // TODO: rewrite into something smarter
 func cols(t Table, w int) []int {
-	const N = 5
+	const _n = 5
 	res := make([]int, len(t.Headers))
-	for n := range [N]struct{}{} {
+	for n := range [_n]struct{}{} {
 		for i, h := range t.Headers {
 			if res[i] != 0 {
 				continue
@@ -113,7 +113,7 @@ func cols(t Table, w int) []int {
 			}, res...)
 		}
 
-		if n == N-1 {
+		if n == _n-1 {
 			return res
 		}
 
@@ -146,9 +146,10 @@ func renderShort(t Table, w int) string {
 	for _, row := range t.Rows {
 		res = append(res, strings.Join(fun.Map[string](func(r string, i int) string {
 			header := t.Headers[i]
-
-			if headerLen, rLen := ansi.PrintableRuneWidth(header), ansi.PrintableRuneWidth(r); headerLen+rLen <= w { // single line
-				return header + strings.Repeat(" ", w-headerLen-rLen) + r
+			subLen := ansi.PrintableRuneWidth(header) +
+				ansi.PrintableRuneWidth(r)
+			if subLen <= w { // single line
+				return header + strings.Repeat(" ", w-subLen) + r
 			}
 			return t.Headers[i] + " " + r
 		}, row...), "\n"))
@@ -176,7 +177,7 @@ func Render(t Table, w int) string {
 
 	cols := cols(t, w)
 
-	WE, NS, NSWE := borders[W|E], borders[N|S], borders[N|S|W|E]
+	_we, _ns, _nswe := borders[W|E], borders[N|S], borders[N|S|W|E]
 
 	line0 := make([]string, len(cols))
 	line1 := make([]string, len(cols))
@@ -185,7 +186,7 @@ func Render(t Table, w int) string {
 			continue
 		}
 
-		line0[i] = strings.Repeat(WE, col)
+		line0[i] = strings.Repeat(_we, col)
 
 		header := mywrap(col, t.Headers[i])[0] // TODO: wrap rest
 		totalPadding := col - ansi.PrintableRuneWidth(header)
@@ -193,8 +194,8 @@ func Render(t Table, w int) string {
 	}
 	lines := []string{
 		borders[S|E] + strings.Join(line0, borders[S|W|E]) + borders[S|W],
-		NS + strings.Join(line1, NS) + NS,
-		borders[N|S|E] + strings.Join(line0, NSWE) + borders[N|S|W],
+		_ns + strings.Join(line1, _ns) + _ns,
+		borders[N|S|E] + strings.Join(line0, _nswe) + borders[N|S|W],
 	}
 	for i, row := range t.Rows {
 		wraps := fun.Map[[]string](func(col, j int) []string {
@@ -216,11 +217,11 @@ func Render(t Table, w int) string {
 				totalPadding := col - ansi.PrintableRuneWidth(part)
 				return part + strings.Repeat(" ", totalPadding)
 			}, cols...)
-			lines = append(lines, NS+strings.Join(line, NS)+NS)
+			lines = append(lines, _ns+strings.Join(line, _ns)+_ns)
 		}
 
 		if i < len(t.Rows)-1 && t.HaveInnerRowsDividers {
-			lines = append(lines, borders[N|S|E]+strings.Join(line0, NSWE)+borders[N|S|W])
+			lines = append(lines, borders[N|S|E]+strings.Join(line0, _nswe)+borders[N|S|W])
 		}
 	}
 	lines = append(lines, borders[N|E]+strings.Join(line0, borders[N|W|E])+borders[N|W])

@@ -56,7 +56,7 @@ func compareArgs(first, second []string) bool {
 // Run - create and start processes, returns ids of created processes.
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
-func ImplRun(app app.App, config core.RunConfig) (core.PMID, string, error) {
+func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 	command, errLook := exec.LookPath(config.Command)
 	if errLook != nil {
 		// if command is relative and failed to look it up, add workdir first
@@ -85,50 +85,48 @@ func ImplRun(app app.App, config core.RunConfig) (core.PMID, string, error) {
 			return r.String()
 		})
 		// try to find by name and update
-		if name, ok := config.Name.Unpack(); ok { //nolint:nestif // no idea how to simplify it now
-			procs, err := app.DB.GetProcs(core.WithAllIfNoFilters)
-			if err != nil {
-				return "", errors.Wrapf(err, "get procs from db")
-			}
-
-			if procID, ok := fun.FindKeyBy(procs, func(_ core.PMID, procData core.Proc) bool {
-				return procData.Name == name
-			}); ok {
-				procData := core.Proc{
-					ID:         procID,
-					Status:     core.NewStatusCreated(),
-					Name:       name,
-					Cwd:        config.Cwd,
-					Tags:       fun.Uniq(append(config.Tags, "all")...),
-					Command:    command,
-					Args:       config.Args,
-					Watch:      watch,
-					Env:        config.Env,
-					StdoutFile: config.StdoutFile.OrDefault(filepath.Join(app.DirLos, fmt.Sprintf("%v.stdout", procID))),
-					StderrFile: config.StderrFile.OrDefault(filepath.Join(app.DirLos, fmt.Sprintf("%v.stderr", procID))),
-					Startup:    config.Startup,
-				}
-
-				proc := procs[procID]
-				if proc.Status.Status != core.StatusRunning ||
-					proc.Cwd == procData.Cwd &&
-						compareTags(proc.Tags, procData.Tags) &&
-						proc.Command == procData.Command &&
-						compareArgs(proc.Args, procData.Args) &&
-						proc.Watch == procData.Watch {
-					// not updated, do nothing
-					return procID, nil
-				}
-
-				if errUpdate := app.DB.UpdateProc(procData); errUpdate != nil {
-					return "", errors.Wrapf(errUpdate, "update proc: %v", procData)
-				}
-
-				return procID, nil
-			}
+		procs, err := appp.DB.GetProcs(core.WithAllIfNoFilters)
+		if err != nil {
+			return "", errors.Wrapf(err, "get procs from db")
 		}
 
-		procID, err := app.DB.AddProc(db.CreateQuery{
+		if procID, ok := fun.FindKeyBy(procs, func(_ core.PMID, procData core.Proc) bool {
+			return procData.Name == name
+		}); ok {
+			procData := core.Proc{
+				ID:         procID,
+				Status:     core.NewStatusCreated(),
+				Name:       name,
+				Cwd:        config.Cwd,
+				Tags:       fun.Uniq(append(config.Tags, "all")...),
+				Command:    command,
+				Args:       config.Args,
+				Watch:      watch,
+				Env:        config.Env,
+				StdoutFile: config.StdoutFile.OrDefault(filepath.Join(appp.DirLos, fmt.Sprintf("%v.stdout", procID))),
+				StderrFile: config.StderrFile.OrDefault(filepath.Join(appp.DirLos, fmt.Sprintf("%v.stderr", procID))),
+				Startup:    config.Startup,
+			}
+
+			proc := procs[procID]
+			if proc.Status.Status != core.StatusRunning ||
+				proc.Cwd == procData.Cwd &&
+					compareTags(proc.Tags, procData.Tags) &&
+					proc.Command == procData.Command &&
+					compareArgs(proc.Args, procData.Args) &&
+					proc.Watch == procData.Watch {
+				// not updated, do nothing
+				return procID, nil
+			}
+
+			if errUpdate := appp.DB.UpdateProc(procData); errUpdate != nil {
+				return "", errors.Wrapf(errUpdate, "update proc: %v", procData)
+			}
+
+			return procID, nil
+		}
+
+		procID, err := appp.DB.AddProc(db.CreateQuery{
 			Name:       name,
 			Cwd:        config.Cwd,
 			Tags:       fun.Uniq(append(config.Tags, "all")...),
@@ -138,7 +136,8 @@ func ImplRun(app app.App, config core.RunConfig) (core.PMID, string, error) {
 			Env:        config.Env,
 			StdoutFile: config.StdoutFile,
 			StderrFile: config.StderrFile,
-		}, app.DirLos)
+			Startup:    config.Startup,
+		}, appp.DirLos)
 		if err != nil {
 			return "", errors.Wrapf(err, "save proc")
 		}
@@ -149,16 +148,14 @@ func ImplRun(app app.App, config core.RunConfig) (core.PMID, string, error) {
 		return "", "", errors.Wrapf(errCreate, "server.create: %v", config)
 	}
 
-	app.Start(id)
-
-	return id, name, nil
+	err := appp.Start(id)
+	return id, name, err
 }
 
-func run(app app.App, configs ...core.RunConfig) error {
+func run(appp app.App, configs ...core.RunConfig) error {
 	var merr error
 	for _, config := range configs {
-		_, name, errRun := ImplRun(app, config)
-		if errRun != nil {
+		if _, name, errRun := ImplRun(appp, config); errRun != nil {
 			multierr.AppendInto(&merr, errors.Newf("start proc %v", config))
 		} else {
 			fmt.Println(name)
@@ -174,7 +171,7 @@ var _cmdRun = func() *cobra.Command {
 		Use:     "run",
 		Short:   "create and run new process",
 		GroupID: "management",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			name := fun.IF(cmd.Flags().Lookup("name").Changed, &name, nil)
 			cwd := fun.IF(cmd.Flags().Lookup("cwd").Changed, &cwd, nil)
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
@@ -186,10 +183,10 @@ var _cmdRun = func() *cobra.Command {
 			}
 
 			if config == nil {
-				if len(args) == 0 {
+				if len(posArgs) == 0 {
 					return errors.Newf("neither command nor config specified")
 				}
-				command, args := args[0], args[1:]
+				command, args := posArgs[0], posArgs[1:]
 
 				var workDir string
 				if cwd == nil {
@@ -230,6 +227,7 @@ var _cmdRun = func() *cobra.Command {
 					KillChildren: false,
 					Autorestart:  false,
 					MaxRestarts:  0,
+					Startup:      false,
 				}
 
 				return run(app, runConfig)
@@ -241,7 +239,7 @@ var _cmdRun = func() *cobra.Command {
 			}
 
 			// TODO: if config is specified Args.Command and Args.Args are not required
-			names := args
+			names := posArgs
 			if len(names) == 0 {
 				// no filtering by names, run all processes
 				return run(app, configs...)

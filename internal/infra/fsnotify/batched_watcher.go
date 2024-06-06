@@ -53,12 +53,16 @@ var _ Watcher[[]fsnotify.Event] = (*BatchedRecursiveWatcher)(nil)
 // batchWindow when a git operation starts before a time window expires. It can
 // also mean that a batch captures events over a time period greater than
 // batchWindow, when a git operation exceeds this duration.
-func NewBatchedRecursiveWatcher(dir, gittoplevel string, batchWindow time.Duration, opts ...Option) (*BatchedRecursiveWatcher, error) {
-	w, _, err := newRecursiveWatcher(dir, gittoplevel, opts...)
+func NewBatchedRecursiveWatcher(
+	dir, gittoplevel string,
+	batchWindow time.Duration,
+	opts ...Option,
+) (*BatchedRecursiveWatcher, error) {
+	w, err := newRecursiveWatcher(dir, gittoplevel, opts...)
 	if err != nil {
 		return nil, err
 	}
-	res := &BatchedRecursiveWatcher{
+	res := &BatchedRecursiveWatcher{ //nolint:exhaustruct // not needed
 		w:           w,
 		events:      make(chan []fsnotify.Event),
 		errors:      w.errors,
@@ -90,6 +94,8 @@ func (bw *BatchedRecursiveWatcher) Close() error {
 
 // runEventLoop is the main event loop of a BatchedWatcher.
 // It is responsible for batching events from the underlying Watcher.
+//
+//nolint:gocognit // Sadge
 func (bw *BatchedRecursiveWatcher) runEventLoop() {
 	gitDir := bw.w.gitDir
 	lockFile := bw.w.gitLockFile

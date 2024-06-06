@@ -24,19 +24,33 @@ func addFlagConfig(cmd *cobra.Command, config *string) {
 	cmd.Flags().StringVarP(config, "config", "f", "", "config file to use")
 }
 
+func registerFlagCompletionFunc(
+	c *cobra.Command,
+	flagName string,
+	f func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective),
+) {
+	if err := c.RegisterFlagCompletionFunc(flagName, f); err != nil {
+		log.Fatal().
+			Err(err).
+			Str("flagName", flagName).
+			Str("command", c.Name()).
+			Msg("failed to register flag completion func")
+	}
+}
+
 func addFlagIDs(cmd *cobra.Command, ids *[]string) {
 	cmd.Flags().StringSliceVar(ids, "id", nil, "id(s) of process(es) to list")
-	cmd.RegisterFlagCompletionFunc("id", func(
+	registerFlagCompletionFunc(cmd, "id", func(
 		_ *cobra.Command, _ []string,
 		prefix string,
 	) ([]string, cobra.ShellCompDirective) {
-		app, errNewApp := app.New()
+		appp, errNewApp := app.New()
 		if errNewApp != nil {
 			log.Error().Err(errNewApp).Msg("new app")
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		return iter.Map(app.
+		return iter.Map(appp.
 			List().
 			Filter(func(p core.Proc) bool {
 				return strings.HasPrefix(string(p.ID), prefix)
@@ -53,13 +67,13 @@ func completeFlagName(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	app, errNewApp := app.New()
+	appp, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	return iter.Map(app.
+	return iter.Map(appp.
 		List().
 		Filter(func(p core.Proc) bool {
 			return strings.HasPrefix(p.Name, prefix)
@@ -73,21 +87,21 @@ func completeFlagName(
 
 func addFlagNames(cmd *cobra.Command, names *[]string) {
 	cmd.Flags().StringSliceVar(names, "name", nil, "name(s) of process(es) to list")
-	cmd.RegisterFlagCompletionFunc("name", completeFlagName)
+	registerFlagCompletionFunc(cmd, "name", completeFlagName)
 }
 
 func completeFlagTag(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	app, errNewApp := app.New()
+	appp, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
 		return nil, cobra.ShellCompDirectiveError
 	}
 
 	// TODO: iter.Unique
-	res := iter.FlatMap(app.
+	res := iter.FlatMap(appp.
 		List(),
 		func(proc core.Proc) iter.Seq[string] {
 			return iter.FromMany(proc.Tags...)
@@ -101,7 +115,7 @@ func completeFlagTag(
 
 func addFlagTags(cmd *cobra.Command, tags *[]string) {
 	cmd.Flags().StringSliceVar(tags, "tag", nil, "tag(s) of process(es) to list")
-	cmd.RegisterFlagCompletionFunc("tag", completeFlagTag)
+	registerFlagCompletionFunc(cmd, "tag", completeFlagTag)
 }
 
 func completeArgGenericSelector(

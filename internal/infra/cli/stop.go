@@ -35,13 +35,13 @@ var _cmdStop = func() *cobra.Command {
 					return errors.Wrapf(errLoadConfigs, "load configs")
 				}
 
-				names := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
+				namesFilter := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
 					return cfg.Name
 				}, configs...)
 
 				list = list.
 					Filter(func(proc core.Proc) bool {
-						return fun.Contains(proc.Name, names...)
+						return fun.Contains(proc.Name, namesFilter...)
 					})
 			}
 

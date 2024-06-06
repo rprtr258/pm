@@ -287,9 +287,7 @@ var _cmdList = func() *cobra.Command {
 		Aliases:           []string{"l", "ls", "ps", "status"},
 		GroupID:           "inspection",
 		ValidArgsFunction: completeArgGenericSelector,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			rest := args
-
+		RunE: func(_ *cobra.Command, args []string) error {
 			less, err := unmarshalFlagSort(sort)
 			if err != nil {
 				return fmt.Errorf("unmarshal flag sort: %w", err)
@@ -309,7 +307,7 @@ var _cmdList = func() *cobra.Command {
 				List().
 				Filter(core.FilterFunc(
 					core.WithAllIfNoFilters,
-					core.WithGeneric(rest...),
+					core.WithGeneric(args...),
 					core.WithIDs(ids...),
 					core.WithNames(names...),
 					core.WithTags(tags...),
@@ -326,7 +324,7 @@ var _cmdList = func() *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVarP(&listFormat, "format", "f", _formatTable, _usageFlagListFormat)
-	cmd.RegisterFlagCompletionFunc("format", completeFlagListFormat)
+	registerFlagCompletionFunc(cmd, "format", completeFlagListFormat)
 	cmd.Flags().StringVarP(&sort, "sort", "s", "id:asc", _usageFlagSort)
 	addFlagNames(cmd, &names)
 	addFlagTags(cmd, &tags)

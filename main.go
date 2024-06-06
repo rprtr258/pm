@@ -5,11 +5,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/infra/cli"
 )
 
@@ -18,10 +18,10 @@ func newLogger() zerolog.Logger {
 		Timestamp().
 		Caller().
 		Logger().
-		Output(zerolog.ConsoleWriter{
+		Output(zerolog.ConsoleWriter{ //nolint:exhaustruct // not needed
 			Out: os.Stderr,
 			FormatLevel: func(i interface{}) string {
-				s := i.(string)
+				s, _ := i.(string)
 				bg := fun.Switch(s, scuf.BgRed).
 					Case(scuf.BgBlue, zerolog.LevelInfoValue).
 					Case(scuf.BgGreen, zerolog.LevelWarnValue).
@@ -31,7 +31,7 @@ func newLogger() zerolog.Logger {
 				return scuf.String(" "+strings.ToUpper(s)+" ", bg, scuf.FgBlack)
 			},
 			FormatTimestamp: func(i interface{}) string {
-				s := i.(string)
+				s, _ := i.(string)
 				t, err := time.Parse(zerolog.TimeFieldFormat, s)
 				if err != nil {
 					return s

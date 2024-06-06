@@ -37,6 +37,7 @@ func isTCPPortAvailableForListen(port int) bool {
 	conn, err := net.ListenTCP("tcp", &net.TCPAddr{
 		IP:   net.ParseIP("127.0.0.1"),
 		Port: port,
+		Zone: "",
 	})
 	if err == nil {
 		return true
@@ -123,7 +124,7 @@ func (pm pM) List() []core.Proc {
 }
 
 func TestMain(m *testing.M) {
-	pm := pM{}
+	pm := pM{t: nil}
 	// TODO: backup old pm state
 	if err := pm.delete("all"); err != nil {
 		log.Fatal().Err(err).Send()
@@ -137,16 +138,16 @@ func TestMain(m *testing.M) {
 }
 
 func usePM(t *testing.T) pM {
-	pm := pM{t}
+	t.Helper()
 
+	pm := pM{t}
 	t.Cleanup(func() {
 		pm.Delete("all")
 	})
-
 	return pm
 }
 
-func Test_HelloHttpServer(t *testing.T) {
+func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 	skip.CommandUnavailable(t, "./tests/hello-http/main")
 
 	pm := usePM(t)
@@ -156,7 +157,7 @@ func Test_HelloHttpServer(t *testing.T) {
 	// TODO: build server binary beforehand
 
 	// start test processes
-	name := pm.Run(core.RunConfig{
+	name := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    fun.Valid("hello-http"),
 		Command: "./tests/hello-http/main",
 		Args:    []string{":" + strconv.Itoa(serverPort)},
@@ -191,7 +192,7 @@ func Test_HelloHttpServer(t *testing.T) {
 	must.True(t, isTCPPortAvailableForDial(serverPort))
 }
 
-func Test_ClientServerNetcat(t *testing.T) {
+func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parallel
 	pm := usePM(t)
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()

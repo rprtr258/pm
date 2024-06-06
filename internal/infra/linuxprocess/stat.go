@@ -42,7 +42,7 @@ func StatPMID(pmid core.PMID, env string) (Stat, bool) {
 			CPU:    totalCPU,
 		}, true
 	}
-	return Stat{}, false
+	return fun.Zero[Stat](), false
 }
 
 // Status information about the process.

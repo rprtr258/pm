@@ -30,6 +30,7 @@ var Migrations = []migration{
 	},
 }
 
+// TODO: unused
 func Migrate(fromVersion, toVersion string) (string, error) {
 	lastVersion := fromVersion
 	for _, m := range Migrations {

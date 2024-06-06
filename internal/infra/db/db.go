@@ -112,6 +112,8 @@ type CreateQuery struct {
 
 	Watch fun.Option[string] // Watch - regex pattern for file watching
 
+	Startup bool // Startup - should process be started on startup
+
 	// RestartTries int
 	// RestartDelay    time.Duration
 	// Respawns int
@@ -161,6 +163,7 @@ func (h Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stdout", id))),
 		StderrFile: query.StderrFile.
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stderr", id))),
+		Startup: query.Startup,
 	}); err != nil {
 		return "", err
 	}

@@ -27,7 +27,8 @@ const (
 )
 
 func TestScripts(t *testing.T) {
-	testscript.Run(t, testscript.Params{
+	t.Parallel()
+	testscript.Run(t, testscript.Params{ //nolint:exhaustruct // not needed
 		UpdateScripts: os.Getenv("CUE_UPDATE") != "",
 		Dir:           "testdata",
 		Setup:         setup,
@@ -51,9 +52,9 @@ func setup(e *testscript.Env) (err error) {
 		}
 	}()
 
-	s := &setupCtx{
+	s := &setupCtx{ //nolint:exhaustruct // not needed
 		Env: e,
-		log: &watcherLog{b: bytes.NewBuffer(nil)},
+		log: &watcherLog{b: bytes.NewBuffer(nil), mu: sync.Mutex{}},
 	}
 	e.Values[setupContextKey] = s
 
@@ -190,7 +191,11 @@ type specialHandler interface {
 	SpecialWait() chan struct{}
 }
 
-func newBatchedWatcherHandler[T any](s *setupCtx, w fsnotify.Watcher[T], handler eventHandler[T]) *batchedWatcherHandler[T] {
+func newBatchedWatcherHandler[T any](
+	s *setupCtx,
+	w fsnotify.Watcher[T],
+	handler eventHandler[T],
+) *batchedWatcherHandler[T] {
 	return &batchedWatcherHandler[T]{
 		s:            s,
 		w:            w,
