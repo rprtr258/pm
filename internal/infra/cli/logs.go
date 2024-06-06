@@ -14,7 +14,6 @@ import (
 	"github.com/rprtr258/scuf"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	fmt2 "github.com/wissance/stringFormatter"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -300,15 +299,12 @@ var _cmdLogs = func() *cobra.Command {
 						End()
 
 					pad = max(pad, len(line.ProcName))
-					fmt.Println(fmt2.FormatComplex(
-						"{proc} {pad}{sep} {line}",
-						map[string]any{
-							"proc": scuf.String(line.ProcName, colorByID(line.ProcID)),
-							"sep":  scuf.String("|", scuf.FgGreen),
-							"line": scuf.String(line.Line, lineColor),
-							"pad":  strings.Repeat(" ", pad-len(line.ProcName)+1),
-						},
-					))
+					// {proc} {pad}{sep} {line}
+					fmt.Println(
+						scuf.String(line.ProcName, colorByID(line.ProcID)),
+						strings.Repeat(" ", pad-len(line.ProcName)+1)+scuf.String("|", scuf.FgGreen),
+						scuf.String(line.Line, lineColor),
+					)
 				}
 			}
 		},
