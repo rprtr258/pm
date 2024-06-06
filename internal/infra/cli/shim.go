@@ -122,7 +122,7 @@ WAIT_FOR_DEATH:
 	return nil
 }
 
-func implAgent(app app.App, proc core.Proc) error {
+func implShim(app app.App, proc core.Proc) error {
 	stdoutLogFile, errRunFirst := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if errRunFirst != nil {
 		return errors.Wrapf(errRunFirst, "open stdout file %q", proc.StdoutFile)
@@ -245,14 +245,14 @@ func implAgent(app app.App, proc core.Proc) error {
 	return nil
 }
 
-var _cmdAgent = &cobra.Command{
-	Use:    "agent",
+var _cmdShim = &cobra.Command{
+	Use:    app.CmdShim,
 	Args:   cobra.ExactArgs(1),
 	Hidden: true,
 	RunE: func(_ *cobra.Command, args []string) error {
 		var config core.Proc
 		if err := json.Unmarshal([]byte(args[0]), &config); err != nil {
-			return errors.Wrapf(err, "unmarshal agent config: %s", args[0])
+			return errors.Wrapf(err, "unmarshal shim config: %s", args[0])
 		}
 
 		// TODO: remove
@@ -264,7 +264,7 @@ var _cmdAgent = &cobra.Command{
 			return errors.Wrapf(errNewApp, "new app")
 		}
 
-		if err := implAgent(app, config); err != nil {
+		if err := implShim(app, config); err != nil {
 			return errors.Wrapf(err, "run: %v", config)
 		}
 

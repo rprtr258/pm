@@ -48,7 +48,7 @@ var App = func() *cobra.Command {
 	// &cli.BoolFlag{Name:        "wait-ip", Usage: "override systemd script to wait for full internet connectivity to launch pm2"},
 
 	cmd.AddCommand(_cmdVersion)
-	cmd.AddCommand(_cmdAgent)
+	cmd.AddCommand(_cmdShim)
 	cmd.AddCommand(_cmdStartup)
 
 	cmd.AddGroup(&cobra.Group{ID: "inspection", Title: "Inspection:"})

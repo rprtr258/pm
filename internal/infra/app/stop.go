@@ -37,7 +37,7 @@ func (app App) Stop(ids ...core.PMID) error {
 				return errors.Newf("find process")
 			}
 
-			// NOTE: since we are running the process behind the agent(shim), we don't
+			// NOTE: since we are running the process behind the shim, we don't
 			// need to send SIGKILL to it, shim will handle everything for us
 			if errKill := syscall.Kill(-proc.Pid, syscall.SIGTERM); errKill != nil {
 				switch {

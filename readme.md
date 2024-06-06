@@ -95,8 +95,8 @@ flowchart TB
 
 ### Architecture
 `pm` consists of two parts:
-- cli client - requests server, launches/stops agent processes
-- agent - monitors and restarts processes, handle signals and shutdowns
+- cli client - requests server, launches/stops shim processes
+- shim - monitors and restarts processes, handle watches, signals and shutdowns
 
 ### PM directory structure
 `pm` uses directory `$HOME/.pm` to store data. Layout is following:

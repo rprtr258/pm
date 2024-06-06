@@ -73,20 +73,20 @@ Status:
 					proc.Status.ExitCode,
 				)
 
-				var agentPid int
+				var shimPid int
 				for _, p := range procs {
 					if p.Environ[app.EnvPMID] == string(proc.ID) {
-						agentPid = p.Handle.Pid
-						fmt.Println("AGENT_PID:", agentPid)
+						shimPid = p.Handle.Pid
+						fmt.Println("SHIM_PID:", shimPid)
 						break
 					}
 				}
-				if agentPid != 0 {
+				if shimPid != 0 {
 					for _, p := range procs {
 						if stat, err := linuxprocess.ReadProcessStat(p.Handle.Pid); err == nil {
-							if stat.Ppid == agentPid {
-								agentPid = p.Handle.Pid
-								fmt.Println("PID:", agentPid)
+							if stat.Ppid == shimPid {
+								shimPid = p.Handle.Pid
+								fmt.Println("PID:", shimPid)
 								fmt.Println("PROCESS_ENV:")
 								for k, v := range p.Environ {
 									fmt.Printf("    %s: %q\n", k, v)
