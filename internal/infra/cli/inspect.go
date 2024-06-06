@@ -2,14 +2,40 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"text/template"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
-	"github.com/spf13/cobra"
 )
+
+var _procInspectTemplate = template.Must(template.New("proc").
+	Funcs(template.FuncMap{
+		"formatTime": func(t time.Time) string {
+			return t.Format(time.DateTime)
+		},
+	}).
+	Parse(`ID: {{.ID}}
+Name: {{.Name}}
+Tags: {{.Tags}}
+Command: {{.Command}}
+Args: {{.Args}}
+Cwd: {{.Cwd}}
+Env: {{.Env}}
+StdoutFile: {{.StdoutFile}}
+StderrFile: {{.StderrFile}}
+Watch: {{.Watch}}
+Status:
+  Type: {{.Status.Status}}
+  StartTime: {{formatTime .Status.StartTime}}
+  CPU: {{.Status.CPU}}
+  Memory: {{.Status.Memory}}
+  ExitCode: {{.Status.ExitCode}}`))
 
 var _cmdInspect = func() *cobra.Command {
 	var names, ids, tags []string
@@ -39,39 +65,7 @@ var _cmdInspect = func() *cobra.Command {
 			procs := linuxprocess.List()
 
 			for _, proc := range procsToShow {
-				fmt.Printf(`ID: %s
-Name: %s
-Tags: %v
-Command: %s
-Args: %v
-Cwd: %s
-Env: %v
-StdoutFile: %s
-StderrFile: %s
-Watch: %v
-Status:
-    Type: %s
-    StartTime: %s
-    CPU: %d
-    Memory: %d
-    ExitCode: %d
-`,
-					proc.ID,
-					proc.Name,
-					proc.Tags,
-					proc.Command,
-					proc.Args,
-					proc.Cwd,
-					proc.Env,
-					proc.StdoutFile,
-					proc.StderrFile,
-					proc.Watch,
-					proc.Status.Status.String(),
-					proc.Status.StartTime.Format(time.DateTime),
-					proc.Status.CPU,
-					proc.Status.Memory,
-					proc.Status.ExitCode,
-				)
+				_ = _procInspectTemplate.Execute(os.Stdout, proc)
 
 				var shimPid int
 				for _, p := range procs {
