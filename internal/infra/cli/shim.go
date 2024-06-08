@@ -213,6 +213,7 @@ func implShim(appp app.App, proc core.Proc) error {
 	*/
 	isFirstRun := true
 	for {
+		appp.DB.StatusSet(proc.ID, core.NewStatusCreated())
 		switch {
 		case isFirstRun:
 			isFirstRun = false

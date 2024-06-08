@@ -228,7 +228,7 @@ func (h Handle) GetProcs(filterOpts ...core.FilterOption) (map[core.PMID]core.Pr
 		core.FilterProcMap(procs, filterOpts...)...), nil
 }
 
-func (h Handle) SetStatus(id core.PMID, newStatus core.Status) Error {
+func (h Handle) StatusSet(id core.PMID, newStatus core.Status) Error {
 	proc, err := h.readProc(id)
 	if err != nil {
 		return ProcNotFoundError{id}
@@ -263,7 +263,7 @@ func (h Handle) Delete(id core.PMID) (core.Proc, Error) {
 func (h Handle) StatusSetRunning(id core.PMID) {
 	// TODO: fill/remove cpu, memory
 	runningStatus := core.NewStatusRunning(time.Now(), 0, 0)
-	if err := h.SetStatus(id, runningStatus); err != nil {
+	if err := h.StatusSet(id, runningStatus); err != nil {
 		log.Error().
 			Stringer("pmid", id).
 			Any("new_status", runningStatus).
@@ -273,16 +273,10 @@ func (h Handle) StatusSetRunning(id core.PMID) {
 
 func (h Handle) StatusSetStopped(id core.PMID, exitCode int) {
 	dbStatus := core.NewStatusStopped(exitCode)
-	if err := h.SetStatus(id, dbStatus); err != nil {
-		if _, ok := err.(ProcNotFoundError); ok {
-			log.Error().
-				Stringer("pmid", id).
-				Msg("proc not found while trying to set stopped status")
-		} else {
-			log.Error().
-				Stringer("pmid", id).
-				Any("new_status", dbStatus).
-				Msg("set proc status to stopped")
-		}
+	if err := h.StatusSet(id, dbStatus); err != nil {
+		log.Error().
+			Stringer("pmid", id).
+			Any("new_status", dbStatus).
+			Msg("set proc status to stopped")
 	}
 }

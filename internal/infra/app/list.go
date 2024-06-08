@@ -22,7 +22,7 @@ func (app App) List() iter.Seq[core.Proc] {
 		stat, ok := linuxprocess.StatPMID(proc.ID, EnvPMID)
 		if !ok {
 			proc.Status = core.NewStatusStopped(-1)
-			if errSet := app.DB.SetStatus(id, proc.Status); errSet != nil {
+			if errSet := app.DB.StatusSet(id, proc.Status); errSet != nil {
 				log.Error().Err(errSet).Msg("failed to update status to stopped")
 			}
 		}

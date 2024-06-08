@@ -31,11 +31,11 @@ StdoutFile: {{.StdoutFile}}
 StderrFile: {{.StderrFile}}
 Watch: {{.Watch}}
 Status:
-  Status: {{.Status.Status}}{{if eq (print .Status.Status) "stopped"}}
-  ExitCode: {{.Status.ExitCode}}{{else}}
+  Status: {{.Status.Status}}{{if eq (print .Status.Status) "running"}}
   StartTime: {{formatTime .Status.StartTime}}
   CPU: {{.Status.CPU}}
-  Memory: {{.Status.Memory}}{{end}}
+  Memory: {{.Status.Memory}}{{else}}
+  ExitCode: {{.Status.ExitCode}}{{end}}
 `))
 
 var _cmdInspect = func() *cobra.Command {
