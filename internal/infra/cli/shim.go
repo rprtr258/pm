@@ -201,9 +201,13 @@ func implShim(appp app.App, proc core.Proc) error {
 	for {
 		if isFirstRun {
 			isFirstRun = false
+		} else if false { // TODO: await autorestart if configured
+			// TODO: autorestart
+		} else if proc.Watch.Valid { // watch defined, waiting for it
+			events := <-watchCh
+			log.Debug().Any("events", events).Msg("watch triggered")
 		} else {
-			// TODO: await autorestart if configured or watch
-			// else exit, as no need to loop
+			return nil
 		}
 
 		appp.DB.StatusSetRunning(proc.ID)
@@ -244,7 +248,6 @@ func implShim(appp app.App, proc core.Proc) error {
 			}
 			// TODO: if autorestart: continue
 			appp.DB.StatusSetStopped(proc.ID, exitCode)
-			return nil
 		}
 		close(waitCh)
 	}
