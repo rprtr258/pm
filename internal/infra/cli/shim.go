@@ -197,6 +197,19 @@ func implShim(appp app.App, proc core.Proc) error {
 	signal.Notify(terminateCh, syscall.SIGINT, syscall.SIGTERM)
 	defer close(terminateCh)
 
+	/*
+		Very important shit happens here in loop aka zaloopa.
+		Each iteration is single proc life:
+		- first, we wait for when we can start process. Three cases here:
+			- very first launch, just launch then
+			- process exited or failed, autorestart enabled, wait for autorestart // TODO: not implemented for now
+			- same case, but no autorestart, but watch enabled, wait for it
+		- then, launch proc. Setup waitCh with exit status
+		- listen for event leading to process death:
+			- terminate signal received, kill proc and exit
+			- process died, loop
+			- watch triggered, kill process, then loop
+	*/
 	isFirstRun := true
 	for {
 		if isFirstRun {
@@ -234,7 +247,7 @@ func implShim(appp app.App, proc core.Proc) error {
 		case events := <-watchCh:
 			log.Debug().Any("events", events).Msg("watch triggered")
 			killCmd(cmd)
-		case err := <-waitCh:
+		case err := <-waitCh: // TODO: we might be leaking waitCh if watch is triggered many times
 			// TODO: check NOTE
 			// NOTE: wait for process to exit by itself
 			// if killed by signal, ignore, since we kill it with signal on watch
