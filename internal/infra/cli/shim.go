@@ -153,6 +153,7 @@ func initWatchChannel(
 	return nil
 }
 
+//nolint:funlen // very important function, must be verbose here, done my best for now
 func implShim(appp app.App, proc core.Proc) error {
 	stdoutLogFile, errRunFirst := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if errRunFirst != nil {
@@ -212,14 +213,15 @@ func implShim(appp app.App, proc core.Proc) error {
 	*/
 	isFirstRun := true
 	for {
-		if isFirstRun {
+		switch {
+		case isFirstRun:
 			isFirstRun = false
-		} else if false { // TODO: await autorestart if configured
+		case false: // TODO: await autorestart if configured
 			// TODO: autorestart
-		} else if proc.Watch.Valid { // watch defined, waiting for it
+		case proc.Watch.Valid: // watch defined, waiting for it
 			events := <-watchCh
 			log.Debug().Any("events", events).Msg("watch triggered")
-		} else {
+		default:
 			return nil
 		}
 
