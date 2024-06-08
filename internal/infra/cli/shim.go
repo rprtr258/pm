@@ -55,7 +55,7 @@ func execCmd(cmd exec.Cmd) (*exec.Cmd, error) {
 	return &c, c.Start()
 }
 
-func killCmd(cmd *exec.Cmd) {
+func killCmd(cmd *exec.Cmd, appp app.App, id core.PMID) {
 	if errTerm := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM); errTerm != nil {
 		log.Error().Err(errTerm).Msg("failed to send SIGTERM to process")
 	}
@@ -87,7 +87,7 @@ WAIT_FOR_DEATH:
 		log.Error().Int("pid", cmd.Process.Pid).Err(errKill).Msg("failed to send SIGKILL to process")
 	}
 
-	// TODO: set status=stopped
+	appp.DB.StatusSetStopped(id, -1) // NOTE: incorrect exit code since we not waiting here for child to die
 }
 
 func initWatchChannel(
@@ -213,13 +213,13 @@ func implShim(appp app.App, proc core.Proc) error {
 	*/
 	isFirstRun := true
 	for {
-		appp.DB.StatusSet(proc.ID, core.NewStatusCreated())
 		switch {
 		case isFirstRun:
 			isFirstRun = false
 		case false: // TODO: await autorestart if configured
 			// TODO: autorestart
 		case proc.Watch.Valid: // watch defined, waiting for it
+			appp.DB.StatusSet(proc.ID, core.NewStatusCreated())
 			events := <-watchCh
 			log.Debug().Any("events", events).Msg("watch triggered")
 		default:
@@ -245,11 +245,11 @@ func implShim(appp app.App, proc core.Proc) error {
 			// NOTE: Terminate child completely.
 			// Stop is done by sending SIGTERM.
 			// Manual restart is done by restarting whole shim and child by cli.
-			killCmd(cmd)
+			killCmd(cmd, appp, proc.ID)
 			return nil
 		case events := <-watchCh:
 			log.Debug().Any("events", events).Msg("watch triggered")
-			killCmd(cmd)
+			killCmd(cmd, appp, proc.ID)
 		case err := <-waitCh: // TODO: we might be leaking waitCh if watch is triggered many times
 			// TODO: check NOTE
 			// NOTE: wait for process to exit by itself
