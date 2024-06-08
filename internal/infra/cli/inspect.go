@@ -31,11 +31,12 @@ StdoutFile: {{.StdoutFile}}
 StderrFile: {{.StderrFile}}
 Watch: {{.Watch}}
 Status:
-  Type: {{.Status.Status}}
+  Status: {{.Status.Status}}{{if eq (print .Status.Status) "stopped"}}
+  ExitCode: {{.Status.ExitCode}}{{else}}
   StartTime: {{formatTime .Status.StartTime}}
   CPU: {{.Status.CPU}}
-  Memory: {{.Status.Memory}}
-  ExitCode: {{.Status.ExitCode}}`))
+  Memory: {{.Status.Memory}}{{end}}
+`))
 
 var _cmdInspect = func() *cobra.Command {
 	var names, ids, tags []string

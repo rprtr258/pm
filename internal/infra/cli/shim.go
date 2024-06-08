@@ -197,7 +197,15 @@ func implShim(appp app.App, proc core.Proc) error {
 	signal.Notify(terminateCh, syscall.SIGINT, syscall.SIGTERM)
 	defer close(terminateCh)
 
+	isFirstRun := true
 	for {
+		if isFirstRun {
+			isFirstRun = false
+		} else {
+			// TODO: await autorestart if configured or watch
+			// else exit, as no need to loop
+		}
+
 		appp.DB.StatusSetRunning(proc.ID)
 
 		cmd, errRunFirst := execCmd(cmdShape)
