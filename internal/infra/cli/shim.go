@@ -87,7 +87,8 @@ WAIT_FOR_DEATH:
 		log.Error().Int("pid", cmd.Process.Pid).Err(errKill).Msg("failed to send SIGKILL to process")
 	}
 
-	appp.DB.StatusSetStopped(id, -1) // NOTE: incorrect exit code since we not waiting here for child to die
+	// NOTE: incorrect exit code since we not waiting here for child to die
+	appp.DB.StatusSetSafe(id, core.NewStatusStopped(-1))
 }
 
 func initWatchChannel(
@@ -219,18 +220,18 @@ func implShim(appp app.App, proc core.Proc) error {
 		case false: // TODO: await autorestart if configured
 			// TODO: autorestart
 		case proc.Watch.Valid: // watch defined, waiting for it
-			appp.DB.StatusSet(proc.ID, core.NewStatusCreated())
+			appp.DB.StatusSetSafe(proc.ID, core.NewStatusCreated())
 			events := <-watchCh
 			log.Debug().Any("events", events).Msg("watch triggered")
 		default:
 			return nil
 		}
 
-		appp.DB.StatusSetRunning(proc.ID)
+		appp.DB.StatusSetSafe(proc.ID, core.NewStatusRunning())
 
 		cmd, errRunFirst := execCmd(cmdShape)
 		if errRunFirst != nil {
-			appp.DB.StatusSetStopped(proc.ID, cmd.ProcessState.ExitCode())
+			appp.DB.StatusSetSafe(proc.ID, core.NewStatusStopped(cmd.ProcessState.ExitCode()))
 			return errors.Wrapf(errRunFirst, "run proc: %v", proc)
 		}
 
@@ -263,7 +264,7 @@ func implShim(appp app.App, proc core.Proc) error {
 				}
 			}
 			// TODO: if autorestart: continue
-			appp.DB.StatusSetStopped(proc.ID, exitCode)
+			appp.DB.StatusSetSafe(proc.ID, core.NewStatusStopped(exitCode))
 		}
 		close(waitCh)
 	}

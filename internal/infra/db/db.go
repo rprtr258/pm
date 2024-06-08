@@ -247,6 +247,15 @@ func (h Handle) StatusSet(id core.PMID, newStatus core.Status) Error {
 	return nil
 }
 
+func (h Handle) StatusSetSafe(id core.PMID, newStatus core.Status) {
+	if err := h.StatusSet(id, newStatus); err != nil {
+		log.Error().
+			Stringer("pmid", id).
+			Any("new_status", newStatus).
+			Msg("set proc status to running")
+	}
+}
+
 func (h Handle) Delete(id core.PMID) (core.Proc, Error) {
 	proc, err := h.readProc(id)
 	if err != nil {
@@ -258,25 +267,4 @@ func (h Handle) Delete(id core.PMID) (core.Proc, Error) {
 	}
 
 	return mapFromRepo(proc), nil
-}
-
-func (h Handle) StatusSetRunning(id core.PMID) {
-	// TODO: fill/remove cpu, memory
-	runningStatus := core.NewStatusRunning(time.Now(), 0, 0)
-	if err := h.StatusSet(id, runningStatus); err != nil {
-		log.Error().
-			Stringer("pmid", id).
-			Any("new_status", runningStatus).
-			Msg("set proc status to running")
-	}
-}
-
-func (h Handle) StatusSetStopped(id core.PMID, exitCode int) {
-	dbStatus := core.NewStatusStopped(exitCode)
-	if err := h.StatusSet(id, dbStatus); err != nil {
-		log.Error().
-			Stringer("pmid", id).
-			Any("new_status", dbStatus).
-			Msg("set proc status to stopped")
-	}
 }

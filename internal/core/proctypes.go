@@ -61,8 +61,9 @@ type Status struct {
 
 	// running
 	StartTime time.Time // StartTime
-	CPU       uint64    // CPU usage percentage rounded to integer
-	Memory    uint64    // Memory usage in bytes
+	// TODO: remove
+	CPU    uint64 // CPU usage percentage rounded to integer
+	Memory uint64 // Memory usage in bytes
 
 	// stopped
 	ExitCode int
@@ -80,12 +81,12 @@ func NewStatusCreated() Status {
 	}
 }
 
-func NewStatusRunning(startTime time.Time, cpu, memory uint64) Status {
+func NewStatusRunning() Status {
 	return Status{ //nolint:exhaustruct // not needed
 		Status:    StatusRunning,
-		StartTime: startTime,
-		CPU:       cpu,
-		Memory:    memory,
+		StartTime: time.Now(),
+		CPU:       0,
+		Memory:    0,
 	}
 }
 
