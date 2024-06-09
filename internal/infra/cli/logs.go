@@ -220,6 +220,11 @@ func getProcs(
 		ToSlice(), nil
 }
 
+var (
+	_barStdout = scuf.String("|", scuf.FgGreen)
+	_barStderr = scuf.String("|", scuf.FgRed)
+)
+
 // TODO: cleanup logs files which are not bound to any existing process (in any status)
 var _cmdLogs = func() *cobra.Command {
 	var names, ids, tags []string
@@ -298,11 +303,13 @@ var _cmdLogs = func() *cobra.Command {
 						Case(scuf.FgHiBlack, core.LogTypeStderr).
 						End()
 
+					barColor := fun.IF(line.Type == core.LogTypeStdout, _barStdout, _barStderr)
+
 					pad = max(pad, len(line.ProcName))
 					// {proc} {pad}{sep} {line}
 					fmt.Println(
 						scuf.String(line.ProcName, colorByID(line.ProcID)),
-						strings.Repeat(" ", pad-len(line.ProcName)+1)+scuf.String("|", fun.IF(line.Type == core.LogTypeStdout, scuf.FgGreen, scuf.FgRed)),
+						strings.Repeat(" ", pad-len(line.ProcName)+1)+barColor,
 						scuf.String(line.Line, lineColor),
 					)
 				}

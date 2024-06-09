@@ -95,13 +95,8 @@ func initWatchChannel(
 	ctx context.Context,
 	ch chan<- []fsnotify.Event,
 	cwd string,
-	pattern fun.Option[string],
+	watchPattern string,
 ) (func() error, error) {
-	watchPattern, ok := pattern.Unpack()
-	if !ok {
-		return nil, nil
-	}
-
 	watchRE, errCompilePattern := regexp.Compile(watchPattern)
 	if errCompilePattern != nil {
 		return nil, errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
@@ -190,12 +185,14 @@ func implShim(appp app.App, proc core.Proc) error {
 	watchCh := make(chan []fsnotify.Event)
 	defer close(watchCh)
 
-	watchChClose, err := initWatchChannel(ctx, watchCh, proc.Cwd, proc.Watch)
-	if watchChClose != nil {
-		defer watchChClose()
-	}
-	if err != nil {
-		return errors.Wrapf(err, "init watch channel")
+	if watchPattern, ok := proc.Watch.Unpack(); ok {
+		watchChClose, err := initWatchChannel(ctx, watchCh, proc.Cwd, watchPattern)
+		if err != nil {
+			return errors.Wrapf(err, "init watch channel")
+		}
+		defer func() {
+			_ = watchChClose()
+		}()
 	}
 
 	terminateCh := make(chan os.Signal, 1)

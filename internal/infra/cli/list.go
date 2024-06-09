@@ -111,7 +111,6 @@ func shortIDs(procs []core.Proc) []string {
 			prefix = max(prefix, commonPrefixLength(id, ids[i-1])+1)
 		}
 		res[idx[id]] = id.String()[:prefix]
-
 	}
 	return res
 }
