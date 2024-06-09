@@ -27,7 +27,7 @@ var _cmdStart = func() *cobra.Command {
 				return errors.Wrapf(errNewApp, "new app")
 			}
 
-			list := app.List()
+			var filterFunc func(core.Proc) bool
 			if config != nil {
 				configs, errLoadConfigs := core.LoadConfigs(*config)
 				if errLoadConfigs != nil {
@@ -38,30 +38,29 @@ var _cmdStart = func() *cobra.Command {
 					return cfg.Name.Unpack()
 				}, configs...)
 
-				filterFunc := core.FilterFunc(
+				ff := core.FilterFunc(
 					core.WithGeneric(args...),
 					core.WithIDs(ids...),
 					core.WithNames(names...),
 					core.WithTags(tags...),
 					core.WithAllIfNoFilters,
 				)
-				list = list.
-					Filter(func(proc core.ProcStat) bool {
-						return fun.Contains(proc.Name, procNames...)
-					}).
-					Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) })
+				filterFunc = func(proc core.Proc) bool {
+					return fun.Contains(proc.Name, procNames...) && ff(proc)
+				}
 			} else {
-				filterFunc := core.FilterFunc(
+				filterFunc = core.FilterFunc(
 					core.WithGeneric(args...),
 					core.WithIDs(ids...),
 					core.WithNames(names...),
 					core.WithTags(tags...),
 				)
-				list = list.
-					Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) })
 			}
 
-			procs := list.ToSlice()
+			procs := app.
+				List().
+				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
+				ToSlice()
 			if len(procs) == 0 {
 				fmt.Println("nothing to start")
 				return nil
