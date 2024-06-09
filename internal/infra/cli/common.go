@@ -14,7 +14,7 @@ import (
 	"github.com/rprtr258/pm/internal/lo"
 )
 
-func printProcs(procs ...core.Proc) {
+func printProcs(procs ...core.ProcStat) {
 	for _, proc := range procs {
 		fmt.Println(proc.Name)
 	}
@@ -52,10 +52,10 @@ func addFlagIDs(cmd *cobra.Command, ids *[]string) {
 
 		return iter.Map(appp.
 			List().
-			Filter(func(p core.Proc) bool {
+			Filter(func(p core.ProcStat) bool {
 				return strings.HasPrefix(string(p.ID), prefix)
 			}),
-			func(proc core.Proc) string {
+			func(proc core.ProcStat) string {
 				return proc.ID.String()
 				// Description: fun.Valid("name: " + proc.Name),
 			}).
@@ -75,12 +75,12 @@ func completeFlagName(
 
 	return iter.Map(appp.
 		List().
-		Filter(func(p core.Proc) bool {
+		Filter(func(p core.ProcStat) bool {
 			return strings.HasPrefix(p.Name, prefix)
 		}),
-		func(proc core.Proc) string {
+		func(proc core.ProcStat) string {
 			return proc.Name
-			// Description: fun.Valid("status: " + proc.Status.Status.String()),
+			// Description: fun.Valid("status: " + proc.Status.String()),
 		}).
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
@@ -103,7 +103,7 @@ func completeFlagTag(
 	// TODO: iter.Unique
 	res := iter.FlatMap(appp.
 		List(),
-		func(proc core.Proc) iter.Seq[string] {
+		func(proc core.ProcStat) iter.Seq[string] {
 			return iter.FromMany(proc.Tags...)
 		}).
 		Chain(iter.FromMany("all")).

@@ -38,25 +38,27 @@ var _cmdStart = func() *cobra.Command {
 					return cfg.Name.Unpack()
 				}, configs...)
 
+				filterFunc := core.FilterFunc(
+					core.WithGeneric(args...),
+					core.WithIDs(ids...),
+					core.WithNames(names...),
+					core.WithTags(tags...),
+					core.WithAllIfNoFilters,
+				)
 				list = list.
-					Filter(func(proc core.Proc) bool {
+					Filter(func(proc core.ProcStat) bool {
 						return fun.Contains(proc.Name, procNames...)
 					}).
-					Filter(core.FilterFunc(
-						core.WithGeneric(args...),
-						core.WithIDs(ids...),
-						core.WithNames(names...),
-						core.WithTags(tags...),
-						core.WithAllIfNoFilters,
-					))
+					Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) })
 			} else {
+				filterFunc := core.FilterFunc(
+					core.WithGeneric(args...),
+					core.WithIDs(ids...),
+					core.WithNames(names...),
+					core.WithTags(tags...),
+				)
 				list = list.
-					Filter(core.FilterFunc(
-						core.WithGeneric(args...),
-						core.WithIDs(ids...),
-						core.WithNames(names...),
-						core.WithTags(tags...),
-					))
+					Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) })
 			}
 
 			procs := list.ToSlice()
@@ -66,7 +68,7 @@ var _cmdStart = func() *cobra.Command {
 			}
 
 			procIDs := fun.Map[core.PMID](
-				func(proc core.Proc) core.PMID {
+				func(proc core.ProcStat) core.PMID {
 					return proc.ID
 				}, procs...)
 			if err := app.Start(procIDs...); err != nil {

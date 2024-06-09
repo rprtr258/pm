@@ -40,27 +40,29 @@ var _cmdRestart = func() *cobra.Command {
 					return cfg.Name.Unpack()
 				}, configs...)
 
+				filterFunc := core.FilterFunc(
+					core.WithGeneric(args...),
+					core.WithIDs(ids...),
+					core.WithNames(names...),
+					core.WithTags(tags...),
+					core.WithAllIfNoFilters,
+				)
 				list = list.
-					Filter(func(proc core.Proc) bool { return fun.Contains(proc.Name, procNames...) }).
-					Filter(core.FilterFunc(
-						core.WithGeneric(args...),
-						core.WithIDs(ids...),
-						core.WithNames(names...),
-						core.WithTags(tags...),
-						core.WithAllIfNoFilters,
-					))
+					Filter(func(proc core.ProcStat) bool { return fun.Contains(proc.Name, procNames...) }).
+					Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) })
 			} else {
+				filterFunc := core.FilterFunc(
+					core.WithGeneric(args...),
+					core.WithIDs(ids...),
+					core.WithNames(names...),
+					core.WithTags(tags...),
+				)
 				list = list.
-					Filter(core.FilterFunc(
-						core.WithGeneric(args...),
-						core.WithIDs(ids...),
-						core.WithNames(names...),
-						core.WithTags(tags...),
-					))
+					Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) })
 			}
 
 			procIDs := iter.Map(list,
-				func(proc core.Proc) core.PMID {
+				func(proc core.ProcStat) core.PMID {
 					return proc.ID
 				}).
 				ToSlice()

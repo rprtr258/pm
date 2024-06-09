@@ -94,7 +94,6 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 		}); ok {
 			procData := core.Proc{
 				ID:         procID,
-				Status:     core.NewStatusCreated(),
 				Name:       name,
 				Cwd:        config.Cwd,
 				Tags:       fun.Uniq(append(config.Tags, "all")...),
@@ -108,12 +107,11 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 			}
 
 			proc := procs[procID]
-			if proc.Status.Status != core.StatusRunning ||
-				proc.Cwd == procData.Cwd &&
-					compareTags(proc.Tags, procData.Tags) &&
-					proc.Command == procData.Command &&
-					compareArgs(proc.Args, procData.Args) &&
-					proc.Watch == procData.Watch {
+			if proc.Cwd == procData.Cwd &&
+				compareTags(proc.Tags, procData.Tags) &&
+				proc.Command == procData.Command &&
+				compareArgs(proc.Args, procData.Args) &&
+				proc.Watch == procData.Watch {
 				// not updated, do nothing
 				return procID, nil
 			}

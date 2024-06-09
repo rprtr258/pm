@@ -7,17 +7,10 @@ import (
 	"path/filepath"
 
 	"github.com/rprtr258/fun"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/afero"
 
 	"github.com/rprtr258/pm/internal/core"
 )
-
-// status - db representation of core.Status
-type status struct {
-	Status   int `json:"type"`
-	ExitCode int `json:"exit_code,omitempty"`
-}
 
 // procData - db representation of core.ProcData
 type procData struct {
@@ -36,8 +29,7 @@ type procData struct {
 	StdoutFile string            `json:"stdout_file"`
 	StderrFile string            `json:"stderr_file"`
 
-	Watch  *string `json:"watch"`
-	Status status  `json:"status"`
+	Watch *string `json:"watch"`
 
 	Startup bool `json:"startup"`
 
@@ -52,19 +44,13 @@ func (p procData) ID() string {
 
 func mapFromRepo(proc procData) core.Proc {
 	return core.Proc{
-		ID:      proc.ProcID,
-		Command: proc.Command,
-		Cwd:     proc.Cwd,
-		Name:    proc.Name,
-		Args:    proc.Args,
-		Tags:    proc.Tags,
-		Watch:   fun.FromPtr(proc.Watch),
-		Status: core.Status{
-			Status:   core.StatusType(proc.Status.Status),
-			CPU:      0,
-			Memory:   0,
-			ExitCode: proc.Status.ExitCode,
-		},
+		ID:         proc.ProcID,
+		Command:    proc.Command,
+		Cwd:        proc.Cwd,
+		Name:       proc.Name,
+		Args:       proc.Args,
+		Tags:       proc.Tags,
+		Watch:      fun.FromPtr(proc.Watch),
 		Env:        proc.Env,
 		StdoutFile: proc.StdoutFile,
 		StderrFile: proc.StderrFile,
@@ -152,10 +138,7 @@ func (h Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 		Args:    query.Args,
 		Tags:    query.Tags,
 		Watch:   query.Watch.Ptr(),
-		Status: status{ //nolint:exhaustruct // not needed
-			Status: int(core.StatusCreated),
-		},
-		Env: query.Env,
+		Env:     query.Env,
 		StdoutFile: query.StdoutFile.
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stdout", id))),
 		StderrFile: query.StderrFile.
@@ -170,11 +153,7 @@ func (h Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 
 func (h Handle) UpdateProc(proc core.Proc) Error {
 	if err := h.writeProc(procData{
-		ProcID: proc.ID,
-		Status: status{
-			Status:   int(proc.Status.Status),
-			ExitCode: proc.Status.ExitCode,
-		},
+		ProcID:     proc.ID,
 		Command:    proc.Command,
 		Cwd:        proc.Cwd,
 		Name:       proc.Name,
@@ -222,33 +201,6 @@ func (h Handle) GetProcs(filterOpts ...core.FilterOption) (map[core.PMID]core.Pr
 			return id, procs[id]
 		},
 		core.FilterProcMap(procs, filterOpts...)...), nil
-}
-
-func (h Handle) statusSet(id core.PMID, newStatus core.Status) Error {
-	proc, err := h.readProc(id)
-	if err != nil {
-		return ProcNotFoundError{id}
-	}
-
-	proc.Status = status{
-		Status:   int(newStatus.Status),
-		ExitCode: newStatus.ExitCode,
-	}
-
-	if err := h.writeProc(proc); err != nil {
-		return FlushError{err}
-	}
-
-	return nil
-}
-
-func (h Handle) StatusSet(id core.PMID, newStatus core.Status) {
-	if err := h.statusSet(id, newStatus); err != nil {
-		log.Error().
-			Stringer("pmid", id).
-			Any("new_status", newStatus).
-			Msg("set proc status to running")
-	}
 }
 
 func (h Handle) Delete(id core.PMID) (core.Proc, Error) {

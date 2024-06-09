@@ -17,21 +17,11 @@ import (
 )
 
 func implSignal(
-	appp app.App,
 	sig syscall.Signal,
 	ids ...core.PMID,
 ) error {
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
-			proc, ok := appp.DB.GetProc(id)
-			if !ok {
-				return errors.New("not found proc to stop")
-			}
-
-			if proc.Status.Status != core.StatusRunning {
-				return errors.New("proc is not running, can't send signal")
-			}
-
 			osProc, ok := linuxprocess.StatPMID(id, app.EnvPMID)
 			if !ok {
 				return errors.Newf("get process by pmid, id=%s signal=%s", id, sig.String())
@@ -98,20 +88,21 @@ var _cmdSignal = func() *cobra.Command {
 				}, configs...)
 
 				list = list.
-					Filter(func(proc core.Proc) bool {
+					Filter(func(proc core.ProcStat) bool {
 						return fun.Contains(proc.Name, namesFilter...)
 					})
 			}
 
+			filterFunc := core.FilterFunc(
+				core.WithGeneric(args...),
+				core.WithIDs(ids...),
+				core.WithNames(names...),
+				core.WithTags(tags...),
+				core.WithAllIfNoFilters,
+			)
 			procIDs := iter.Map(list.
-				Filter(core.FilterFunc(
-					core.WithGeneric(args...),
-					core.WithIDs(ids...),
-					core.WithNames(names...),
-					core.WithTags(tags...),
-					core.WithAllIfNoFilters,
-				)),
-				func(proc core.Proc) core.PMID {
+				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }),
+				func(proc core.ProcStat) core.PMID {
 					return proc.ID
 				}).
 				ToSlice()
@@ -120,7 +111,7 @@ var _cmdSignal = func() *cobra.Command {
 				return nil
 			}
 
-			if err := implSignal(appp, sig, procIDs...); err != nil {
+			if err := implSignal(sig, procIDs...); err != nil {
 				return errors.Wrapf(err, "client.stop signal=%v", sig)
 			}
 

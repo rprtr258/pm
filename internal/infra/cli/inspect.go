@@ -6,6 +6,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -32,7 +33,7 @@ StderrFile: {{.StderrFile}}
 Watch: {{.Watch}}
 Status:
   Status: {{.Status.Status}}{{if eq (print .Status.Status) "running"}}
-  StartTime: {{formatTime .Status.StartTime}}
+  StartTime: {{formatTime .uptime}}
   CPU: {{.Status.CPU}}
   Memory: {{.Status.Memory}}{{else}}
   ExitCode: {{.Status.ExitCode}}{{end}}
@@ -52,21 +53,27 @@ var _cmdInspect = func() *cobra.Command {
 				return errors.Wrapf(errNewApp, "new app")
 			}
 
+			filterFunc := core.FilterFunc(
+				core.WithAllIfNoFilters,
+				core.WithGeneric(args...),
+				core.WithIDs(ids...),
+				core.WithNames(names...),
+				core.WithTags(tags...),
+			)
 			procsToShow := appp.
 				List().
-				Filter(core.FilterFunc(
-					core.WithAllIfNoFilters,
-					core.WithGeneric(args...),
-					core.WithIDs(ids...),
-					core.WithNames(names...),
-					core.WithTags(tags...),
-				)).
+				Filter(func(ps core.ProcStat) bool {
+					return filterFunc(ps.Proc)
+				}).
 				ToSlice()
 
+			// TODO: remove, it is not needed
 			procs := linuxprocess.List()
 
 			for _, proc := range procsToShow {
-				_ = _procInspectTemplate.Execute(os.Stdout, proc)
+				if err := _procInspectTemplate.Execute(os.Stdout, proc); err != nil {
+					log.Error().Err(err).Msg("render inspect template")
+				}
 
 				var shimPid int
 				for _, p := range procs {

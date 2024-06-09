@@ -40,19 +40,20 @@ var _cmdStop = func() *cobra.Command {
 				}, configs...)
 
 				list = list.
-					Filter(func(proc core.Proc) bool {
+					Filter(func(proc core.ProcStat) bool {
 						return fun.Contains(proc.Name, namesFilter...)
 					})
 			}
 
+			filterFunc := core.FilterFunc(
+				core.WithGeneric(args...),
+				core.WithIDs(ids...),
+				core.WithNames(names...),
+				core.WithTags(tags...),
+				core.WithAllIfNoFilters,
+			)
 			procs := list.
-				Filter(core.FilterFunc(
-					core.WithGeneric(args...),
-					core.WithIDs(ids...),
-					core.WithNames(names...),
-					core.WithTags(tags...),
-					core.WithAllIfNoFilters,
-				)).
+				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				ToSlice()
 			if len(procs) == 0 {
 				fmt.Println("nothing to stop")
@@ -60,7 +61,7 @@ var _cmdStop = func() *cobra.Command {
 			}
 
 			procIDs := fun.Map[core.PMID](
-				func(proc core.Proc) core.PMID {
+				func(proc core.ProcStat) core.PMID {
 					return proc.ID
 				}, procs...)
 			if err := app.Stop(procIDs...); err != nil {

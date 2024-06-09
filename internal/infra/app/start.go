@@ -14,6 +14,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
 const CmdShim = "shim"
@@ -29,9 +30,6 @@ func (app App) startShimImpl(id core.PMID) error {
 	proc, ok := app.DB.GetProc(id)
 	if !ok {
 		return errors.Newf("not found proc to start: %s", id)
-	}
-	if proc.Status.Status == core.StatusRunning {
-		return ErrAlreadyRunning
 	}
 
 	stdoutLogFile, err := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
@@ -96,16 +94,14 @@ func (app App) Start(ids ...core.PMID) error {
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
 			// run processes by their ids in database
-			// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
+			if _, ok := linuxprocess.StatPMID(id, EnvPMID); ok {
+				// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
+				log.Info().Stringer("id", id).Msg("already running")
+				return nil
+			}
+
 			if errStart := app.startShimImpl(id); errStart != nil {
-				if errStart == ErrAlreadyRunning {
-					log.Info().Stringer("id", id).Msg("already running")
-					return nil
-				}
-
-				app.DB.StatusSet(id, core.NewStatusInvalid())
-
-				return errors.Wrapf(errStart, "failed to start proc")
+				return errors.Wrapf(errStart, "start proc")
 			}
 
 			return nil

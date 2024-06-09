@@ -38,22 +38,16 @@ var _formats = []string{
 }
 
 func mapStatus(status core.Status) string {
-	switch status.Status {
+	var color scuf.Modifier
+	switch status {
 	case core.StatusCreated:
-		return scuf.String("created", scuf.FgHiYellow)
+		color = scuf.FgHiYellow
 	case core.StatusRunning:
-		// TODO: get back real pid
-		return scuf.String("running", scuf.FgHiGreen)
+		color = scuf.FgHiGreen
 	case core.StatusStopped:
-		if status.ExitCode == 0 {
-			return scuf.String("exited", scuf.FgHiGreen, scuf.ModBold)
-		}
-		return scuf.String(fmt.Sprintf("stopped(%d)", status.ExitCode), scuf.FgRed, scuf.ModBold)
-	case core.StatusInvalid:
-		return scuf.String(fmt.Sprintf("invalid(%#v)", status.Status), scuf.FgRed)
-	default:
-		return scuf.String(fmt.Sprintf("BROKEN(%T)", status), scuf.FgRed)
+		color = scuf.Combine(scuf.FgRed, scuf.ModBold)
 	}
+	return scuf.String(status.String(), color)
 }
 
 func formatMemory(m uint64) string {
@@ -80,7 +74,7 @@ func commonPrefixLength(s, t core.PMID) int {
 	return res
 }
 
-func shortIDs(procs []core.Proc) []string {
+func shortIDs(procs []core.ProcStat) []string {
 	if len(procs) == 0 {
 		return nil
 	}
@@ -88,11 +82,11 @@ func shortIDs(procs []core.Proc) []string {
 		return []string{string(procs[0].ID.String()[0])}
 	}
 
-	idx := fun.SliceToMap[core.PMID, int](func(proc core.Proc, i int) (core.PMID, int) {
+	idx := fun.SliceToMap[core.PMID, int](func(proc core.ProcStat, i int) (core.PMID, int) {
 		return proc.ID, i
 	}, procs...)
 
-	ids := fun.Map[core.PMID](func(proc core.Proc) core.PMID { return proc.ID }, procs...)
+	ids := fun.Map[core.PMID](func(proc core.ProcStat) core.PMID { return proc.ID }, procs...)
 	slices.Sort(ids)
 
 	res := make([]string, len(procs))
@@ -109,13 +103,13 @@ func shortIDs(procs []core.Proc) []string {
 	return res
 }
 
-func renderTable(procs []core.Proc, showRowDividers bool) {
+func renderTable(procs []core.ProcStat, showRowDividers bool) {
 	ids := shortIDs(procs)
 	t := table.Table{
 		Headers: fun.Map[string](func(col string) string {
 			return scuf.String(col, scuf.ModBold)
 		}, "id", "name", "status", "uptime", "tags", "cpu", "memory"),
-		Rows: fun.Map[[]string](func(proc core.Proc, i int) []string {
+		Rows: fun.Map[[]string](func(proc core.ProcStat, i int) []string {
 			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
 			uptime := time.Duration(0)
 			if stat, ok := linuxprocess.StatPMID(proc.ID, app.EnvPMID); ok {
@@ -127,11 +121,11 @@ func renderTable(procs []core.Proc, showRowDividers bool) {
 				proc.Name,
 				mapStatus(proc.Status),
 				fun.
-					If(proc.Status.Status != core.StatusRunning, "").
+					If(proc.Status != core.StatusRunning, "").
 					Else(uptime.Truncate(time.Second).String()),
 				strings.Join(proc.Tags, " "),
-				fmt.Sprint(proc.Status.CPU) + "%",
-				formatMemory(proc.Status.Memory),
+				fmt.Sprint(proc.CPU) + "%",
+				formatMemory(proc.Memory),
 			}
 		}, procs...),
 		HaveInnerRowsDividers: showRowDividers,
@@ -154,61 +148,58 @@ var _usageFlagSort = scuf.NewString(func(b scuf.Buffer) {
 		String(":desc", scuf.FgRed)
 })
 
-func unmarshalFlagSort(value string) (func(a, b core.Proc) int, error) {
+func unmarshalFlagSort(value string) (func(a, b core.ProcStat) int, error) {
 	sortField := value
 	sortOrder := "asc"
 	if i := strings.IndexRune(sortField, ':'); i != -1 {
 		sortField, sortOrder = sortField[:i], sortField[i+1:]
 	}
 
-	var less func(a, b core.Proc) int
+	var less func(a, b core.ProcStat) int
 	switch sortField {
 	case "id":
-		less = func(a, b core.Proc) int {
+		less = func(a, b core.ProcStat) int {
 			return cmp.Compare(a.ID, b.ID)
 		}
 	case "name":
-		less = func(a, b core.Proc) int {
+		less = func(a, b core.ProcStat) int {
 			return cmp.Compare(a.Name, b.Name)
 		}
 	case "status":
-		getOrder := func(p core.Proc) int {
+		getOrder := func(p core.ProcStat) int {
 			// priority weights
-			switch p.Status.Status {
+			switch p.Status {
 			case core.StatusCreated:
 				return 0
 			case core.StatusRunning:
 				return 100
 			case core.StatusStopped:
 				return 200
-			case core.StatusInvalid:
-				return 300
 			default:
 				return 400
 			}
 		}
-		less = func(a, b core.Proc) int {
+		less = func(a, b core.ProcStat) int {
 			return cmp.Compare(getOrder(a), getOrder(b))
 		}
 	case "uptime":
-		less = cmp2.Comparator[core.Proc](func(a, b core.Proc) int {
-			if a.Status.Status != core.StatusRunning || b.Status.Status != core.StatusRunning {
-				if a.Status.Status == core.StatusRunning {
+		less = cmp2.Comparator[core.ProcStat](func(a, b core.ProcStat) int {
+			if a.Status != core.StatusRunning || b.Status != core.StatusRunning {
+				if a.Status == core.StatusRunning {
 					return -1
 				}
 
-				if b.Status.Status == core.StatusRunning {
+				if b.Status == core.StatusRunning {
 					return 1
 				}
 			}
 			return 0
-		}).Then(func(a, b core.Proc) int {
+		}).Then(func(a, b core.ProcStat) int {
 			switch {
-			// TODO: pair core.Proc with Stat and use stat here
-			// case a.StartTime.Before(b.StartTime):
-			// 	return -1
-			// case b.StartTime.Before(a.StartTime):
-			// 	return 1
+			case a.StartTime.Before(b.StartTime):
+				return -1
+			case b.StartTime.Before(a.StartTime):
+				return 1
 			default:
 				return 0
 			}
@@ -221,7 +212,7 @@ func unmarshalFlagSort(value string) (func(a, b core.Proc) int, error) {
 	case "asc":
 		return less, nil
 	case "desc":
-		return cmp2.Comparator[core.Proc](less).Reversed(), nil
+		return cmp2.Comparator[core.ProcStat](less).Reversed(), nil
 	default:
 		return nil, errors.Newf("unknown sort order: %q", sortOrder)
 	}
@@ -255,20 +246,20 @@ func completeFlagListFormat(
 	), cobra.ShellCompDirectiveNoFileComp
 }
 
-func unmarshalFlagListFormat(format string) (func([]core.Proc) error, error) {
+func unmarshalFlagListFormat(format string) (func([]core.ProcStat) error, error) {
 	switch format {
 	case _formatTable:
-		return func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.ProcStat) error {
 			renderTable(procsToShow, true)
 			return nil
 		}, nil
 	case _formatCompact:
-		return func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.ProcStat) error {
 			renderTable(procsToShow, false)
 			return nil
 		}, nil
 	case _formatJSON:
-		return func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.ProcStat) error {
 			jsonData, errMarshal := json.MarshalIndent(procsToShow, "", "  ")
 			if errMarshal != nil {
 				return errors.Wrapf(errMarshal, "marshal procs list to json")
@@ -278,7 +269,7 @@ func unmarshalFlagListFormat(format string) (func([]core.Proc) error, error) {
 			return nil
 		}, nil
 	case _formatShort:
-		return func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.ProcStat) error {
 			for _, proc := range procsToShow {
 				fmt.Println(proc.Name)
 			}
@@ -298,7 +289,7 @@ func unmarshalFlagListFormat(format string) (func([]core.Proc) error, error) {
 			return nil, errors.Wrapf(errParse, "parse template")
 		}
 
-		return func(procsToShow []core.Proc) error {
+		return func(procsToShow []core.ProcStat) error {
 			var sb strings.Builder
 			for _, proc := range procsToShow {
 				errRender := tmpl.Execute(&sb, proc)
@@ -340,15 +331,18 @@ var _cmdList = func() *cobra.Command {
 				return errors.Wrapf(errNewApp, "new app")
 			}
 
+			filterFunc := core.FilterFunc(
+				core.WithAllIfNoFilters,
+				core.WithGeneric(args...),
+				core.WithIDs(ids...),
+				core.WithNames(names...),
+				core.WithTags(tags...),
+			)
 			procsToShow := app.
 				List().
-				Filter(core.FilterFunc(
-					core.WithAllIfNoFilters,
-					core.WithGeneric(args...),
-					core.WithIDs(ids...),
-					core.WithNames(names...),
-					core.WithTags(tags...),
-				)).
+				Filter(func(ps core.ProcStat) bool {
+					return filterFunc(ps.Proc)
+				}).
 				ToSlice()
 
 			if len(procsToShow) == 0 {

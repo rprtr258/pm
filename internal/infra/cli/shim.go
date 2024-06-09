@@ -55,7 +55,7 @@ func execCmd(cmd exec.Cmd) (*exec.Cmd, error) {
 	return &c, c.Start()
 }
 
-func killCmd(cmd *exec.Cmd, appp app.App, id core.PMID) {
+func killCmd(cmd *exec.Cmd) {
 	if errTerm := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM); errTerm != nil {
 		log.Error().Err(errTerm).Msg("failed to send SIGTERM to process")
 	}
@@ -86,9 +86,6 @@ WAIT_FOR_DEATH:
 	if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
 		log.Error().Int("pid", cmd.Process.Pid).Err(errKill).Msg("failed to send SIGKILL to process")
 	}
-
-	// NOTE: incorrect exit code since we not waiting here for child to die
-	appp.DB.StatusSet(id, core.NewStatusStopped(-1))
 }
 
 func initWatchChannel(
@@ -148,7 +145,7 @@ func initWatchChannel(
 }
 
 //nolint:funlen // very important function, must be verbose here, done my best for now
-func implShim(appp app.App, proc core.Proc) error {
+func implShim(proc core.Proc) error {
 	stdoutLogFile, errRunFirst := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
 	if errRunFirst != nil {
 		return errors.Wrapf(errRunFirst, "open stdout file %q", proc.StdoutFile)
@@ -221,12 +218,10 @@ func implShim(appp app.App, proc core.Proc) error {
 		case false: // TODO: await autorestart if configured
 			// TODO: autorestart
 		case proc.Watch.Valid: // watch defined, waiting for it
-			appp.DB.StatusSet(proc.ID, core.NewStatusCreated())
 			select {
 			case events := <-watchCh:
 				log.Debug().Any("events", events).Msg("watch triggered")
 			case <-terminateCh:
-				appp.DB.StatusSet(proc.ID, core.NewStatusStopped(-1))
 				log.Debug().Msg("terminate signal received awaiting for watch")
 				return nil
 			}
@@ -234,11 +229,8 @@ func implShim(appp app.App, proc core.Proc) error {
 			return nil
 		}
 
-		appp.DB.StatusSet(proc.ID, core.NewStatusRunning())
-
 		cmd, errRunFirst := execCmd(cmdShape)
 		if errRunFirst != nil {
-			appp.DB.StatusSet(proc.ID, core.NewStatusStopped(cmd.ProcessState.ExitCode()))
 			return errors.Wrapf(errRunFirst, "run proc: %v", proc)
 		}
 
@@ -254,25 +246,12 @@ func implShim(appp app.App, proc core.Proc) error {
 			// Stop is done by sending SIGTERM.
 			// Manual restart is done by restarting whole shim and child by cli.
 			log.Debug().Msg("terminate signal received")
-			killCmd(cmd, appp, proc.ID)
+			killCmd(cmd)
 			return nil
 		case events := <-watchCh:
 			log.Debug().Any("events", events).Msg("watch triggered")
-			killCmd(cmd, appp, proc.ID)
-		case err := <-waitCh: // TODO: we might be leaking waitCh if watch is triggered many times
-			// TODO: check NOTE
-			// NOTE: wait for process to exit by itself
-			// if killed by signal, ignore, since we kill it with signal on watch
-			exitCode := 0
-			if err != nil {
-				if errExit, ok := err.(*exec.ExitError); ok && errExit.Exited() {
-					exitCode = errExit.ProcessState.ExitCode()
-				} else {
-					exitCode = -1
-				}
-			}
-			// TODO: if autorestart: continue
-			appp.DB.StatusSet(proc.ID, core.NewStatusStopped(exitCode))
+			killCmd(cmd)
+		case <-waitCh: // TODO: we might be leaking waitCh if watch is triggered many times
 		}
 		close(waitCh)
 	}
@@ -292,12 +271,7 @@ var _cmdShim = &cobra.Command{
 		// a little sleep to wait while calling process closes db file
 		time.Sleep(1 * time.Second)
 
-		appp, errNewApp := app.New()
-		if errNewApp != nil {
-			return errors.Wrapf(errNewApp, "new app")
-		}
-
-		if err := implShim(appp, config); err != nil {
+		if err := implShim(config); err != nil {
 			return errors.Wrapf(err, "run: %v", config)
 		}
 

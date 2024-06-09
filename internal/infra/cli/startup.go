@@ -22,12 +22,12 @@ var _cmdStartup = &cobra.Command{
 
 		procsToStart := app.
 			List().
-			Filter(func(p core.Proc) bool {
-				return p.Startup && p.Status.Status != core.StatusRunning
+			Filter(func(p core.ProcStat) bool {
+				return p.Startup && p.Status != core.StatusRunning
 			}).
 			ToSlice()
 
-		return errors.Combine(fun.Map[error](func(proc core.Proc) error {
+		return errors.Combine(fun.Map[error](func(proc core.ProcStat) error {
 			return app.Start(proc.ID)
 		}, procsToStart...)...)
 	},

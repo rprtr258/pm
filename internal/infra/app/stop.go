@@ -19,20 +19,14 @@ func (app App) Stop(ids ...core.PMID) error {
 
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
-			{
-				proc, ok := procs[id]
-				if !ok {
-					return errors.Newf("not found proc to stop")
-				}
-
-				if proc.Status.Status == core.StatusStopped || proc.Status.Status == core.StatusInvalid {
-					return nil
-				}
+			if _, ok := procs[id]; !ok {
+				return errors.Newf("not found proc to stop")
 			}
 
 			proc, ok := linuxprocess.StatPMID(id, EnvPMID)
 			if !ok {
-				return errors.Newf("find process")
+				// already stopped or not started yet
+				return nil
 			}
 
 			// NOTE: since we are running the process behind the shim, we don't

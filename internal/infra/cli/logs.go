@@ -18,6 +18,7 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
 type fileSize int64
@@ -88,7 +89,7 @@ func streamFile(
 	return nil
 }
 
-func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
+func streamProcLogs(ctx context.Context, proc core.ProcStat) <-chan ProcLine {
 	logLinesCh := make(chan ProcLine)
 	go func() {
 		var wg sync.WaitGroup
@@ -128,9 +129,9 @@ func streamProcLogs(ctx context.Context, proc core.Proc) <-chan ProcLine {
 
 // implLogs - watch for processes logs
 // TODO: use app
-func implLogs(ctx context.Context, proc core.Proc) <-chan core.LogLine {
+func implLogs(ctx context.Context, proc core.ProcStat) <-chan core.LogLine {
 	ctx, cancel := context.WithCancel(ctx)
-	if proc.Status.Status != core.StatusRunning {
+	if proc.Status != core.StatusRunning {
 		ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
 	}
 
@@ -149,17 +150,7 @@ func implLogs(ctx context.Context, proc core.Proc) <-chan core.LogLine {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				// TODO: reread database without recreating whole app
-				newApp, err := app.New()
-				if err != nil {
-					log.Error().Err(err).Msg("failed to check proc status")
-				}
-
-				procActual := func() core.Proc {
-					procs, _ := newApp.DB.GetProcs(core.WithIDs(proc.ID))
-					return procs[proc.ID]
-				}()
-				if procActual.Status.Status != core.StatusRunning {
+				if _, ok := linuxprocess.StatPMID(proc.ID, app.EnvPMID); !ok {
 					return
 				}
 			case line, ok := <-logsCh:
@@ -188,7 +179,7 @@ func getProcs(
 	appp app.App,
 	rest, ids, names, tags []string,
 	config *string,
-) ([]core.Proc, error) {
+) ([]core.ProcStat, error) {
 	filterFunc := core.FilterFunc(
 		core.WithGeneric(rest...),
 		core.WithIDs(ids...),
@@ -200,7 +191,7 @@ func getProcs(
 	if config == nil {
 		return appp.
 			List().
-			Filter(filterFunc).
+			Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 			ToSlice(), nil
 	}
 
@@ -215,8 +206,8 @@ func getProcs(
 
 	return appp.
 		List().
-		Filter(func(proc core.Proc) bool { return fun.Contains(proc.Name, procNames...) }).
-		Filter(filterFunc).
+		Filter(func(proc core.ProcStat) bool { return fun.Contains(proc.Name, procNames...) }).
+		Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 		ToSlice(), nil
 }
 

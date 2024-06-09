@@ -8,33 +8,10 @@ import (
 	"io"
 	"math/rand"
 	"text/template"
+	"time"
 
 	"github.com/rprtr258/fun"
 )
-
-type StatusType int
-
-const (
-	StatusInvalid StatusType = iota
-	StatusCreated
-	StatusRunning
-	StatusStopped
-)
-
-func (ps StatusType) String() string {
-	switch ps {
-	case StatusInvalid:
-		return "invalid"
-	case StatusCreated:
-		return "created"
-	case StatusRunning:
-		return "running"
-	case StatusStopped:
-		return "stopped"
-	default:
-		return fmt.Sprintf("UNKNOWN(%d)", ps)
-	}
-}
 
 // PMID is a unique identifier for a process
 type PMID string
@@ -55,44 +32,6 @@ func GenPMID() PMID {
 	return PMID(hex.EncodeToString(b))
 }
 
-type Status struct {
-	Status StatusType
-
-	// TODO: remove
-	CPU    uint64 // CPU usage percentage rounded to integer
-	Memory uint64 // Memory usage in bytes
-
-	// stopped
-	ExitCode int
-}
-
-func NewStatusInvalid() Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusInvalid,
-	}
-}
-
-func NewStatusCreated() Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusCreated,
-	}
-}
-
-func NewStatusRunning() Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusRunning,
-		CPU:    0,
-		Memory: 0,
-	}
-}
-
-func NewStatusStopped(exitCode int) Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status:   StatusStopped,
-		ExitCode: exitCode,
-	}
-}
-
 type Proc struct {
 	ID   PMID
 	Name string
@@ -105,14 +44,44 @@ type Proc struct {
 	StdoutFile string
 	StderrFile string
 
-	Watch  fun.Option[string]
-	Status Status
+	Watch fun.Option[string]
 
 	Startup bool // Startup - run on OS startup
 
 	// RestartTries int
 	// RestartDelay    time.Duration
 	// Respawns int
+}
+
+type Status int
+
+const (
+	StatusCreated Status = iota
+	StatusRunning
+	StatusStopped
+)
+
+func (ps Status) String() string {
+	switch ps {
+	case StatusCreated:
+		return "created"
+	case StatusRunning:
+		return "running"
+	case StatusStopped:
+		return "stopped"
+	default:
+		return fmt.Sprintf("UNKNOWN(%d)", ps)
+	}
+}
+
+// ProcStat is Proc with Stat!
+// Stat means current status.
+type ProcStat struct {
+	Proc
+	Status    Status
+	StartTime time.Time
+	CPU       float64
+	Memory    uint64
 }
 
 var _procStringTemplate = template.Must(template.New("proc").
