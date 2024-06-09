@@ -99,7 +99,8 @@ func (app App) Start(ids ...core.PMID) error {
 			// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 			if errStart := app.startShimImpl(id); errStart != nil {
 				if errStart == ErrAlreadyRunning {
-					return errors.New("already running")
+					log.Info().Stringer("id", id).Msg("already running")
+					return nil
 				}
 
 				app.DB.StatusSet(id, core.NewStatusInvalid())
