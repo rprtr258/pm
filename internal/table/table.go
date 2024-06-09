@@ -24,17 +24,17 @@ const (
 
 // NSWE
 var borders = [1 << 4]string{
-	N | S | W | E: scuf.String("┼", scuf.FgWhite),
-	N | S | E:     scuf.String("├", scuf.FgWhite),
-	N | S | W:     scuf.String("┤", scuf.FgWhite),
-	N | W | E:     scuf.String("┴", scuf.FgWhite),
-	S | W | E:     scuf.String("┬", scuf.FgWhite),
-	N | E:         scuf.String("╰", scuf.FgWhite),
-	N | W:         scuf.String("╯", scuf.FgWhite),
-	S | W:         scuf.String("╮", scuf.FgWhite),
-	S | E:         scuf.String("╭", scuf.FgWhite),
-	W | E:         scuf.String("─", scuf.FgWhite),
-	N | S:         scuf.String("│", scuf.FgWhite),
+	N | S | W | E: scuf.String("┼", scuf.FgBlack),
+	N | S | E:     scuf.String("├", scuf.FgBlack),
+	N | S | W:     scuf.String("┤", scuf.FgBlack),
+	N | W | E:     scuf.String("┴", scuf.FgBlack),
+	S | W | E:     scuf.String("┬", scuf.FgBlack),
+	N | E:         scuf.String("╰", scuf.FgBlack),
+	N | W:         scuf.String("╯", scuf.FgBlack),
+	S | W:         scuf.String("╮", scuf.FgBlack),
+	S | E:         scuf.String("╭", scuf.FgBlack),
+	W | E:         scuf.String("─", scuf.FgBlack),
+	N | S:         scuf.String("│", scuf.FgBlack),
 }
 
 func mywordwrap(w int, s string) []string {
@@ -197,7 +197,7 @@ func Render(t Table, w int) string {
 		_ns + strings.Join(line1, _ns) + _ns,
 		borders[N|S|E] + strings.Join(line0, _nswe) + borders[N|S|W],
 	}
-	for i, row := range t.Rows {
+	for _, row := range t.Rows {
 		wraps := fun.Map[[]string](func(col, j int) []string {
 			return mywrap(col, row[j])
 		}, cols...)
@@ -218,10 +218,6 @@ func Render(t Table, w int) string {
 				return part + strings.Repeat(" ", totalPadding)
 			}, cols...)
 			lines = append(lines, _ns+strings.Join(line, _ns)+_ns)
-		}
-
-		if i < len(t.Rows)-1 && t.HaveInnerRowsDividers {
-			lines = append(lines, borders[N|S|E]+strings.Join(line0, _nswe)+borders[N|S|W])
 		}
 	}
 	lines = append(lines, borders[N|E]+strings.Join(line0, borders[N|W|E])+borders[N|W])

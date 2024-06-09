@@ -10,7 +10,6 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/kballard/go-shellquote"
 	cmp2 "github.com/rprtr258/cmp"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
@@ -82,27 +81,24 @@ func renderTable(procs []core.Proc, showRowDividers bool) {
 	t := table.Table{
 		Headers: fun.Map[string](func(col string) string {
 			return scuf.String(col, scuf.ModBold)
-		}, "id", "name", "status", "uptime", "tags", "cpu", "memory", "cmd"),
+		}, "id", "name", "status", "uptime", "tags", "cpu", "memory"),
 		Rows: fun.Map[[]string](func(proc core.Proc) []string {
 			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
 			return []string{
-				scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold),
-				proc.Name,
-				mapStatus(proc.Status),
-				fun.
-					If(proc.Status.Status != core.StatusRunning, "").
-					Else(getUptime(proc.Status).Truncate(time.Second).String()),
-				strings.Join(proc.Tags, " "),
-				fmt.Sprint(proc.Status.CPU) + "%",
-				formatMemory(proc.Status.Memory),
-				shellquote.Join(append([]string{proc.Command}, proc.Args...)...),
+				">" + scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold) + " ",
+				">" + proc.Name + " ",
+				">" + mapStatus(proc.Status) + " ",
+				">" + fun.If(proc.Status.Status != core.StatusRunning, "").Else(getUptime(proc.Status).Truncate(time.Second).String()) + " ",
+				">" + strings.Join(proc.Tags, " ") + " ",
+				">" + fmt.Sprint(proc.Status.CPU) + "%" + " ",
+				">" + formatMemory(proc.Status.Memory) + " ",
 			}
 		}, procs...),
 		HaveInnerRowsDividers: showRowDividers,
 	}
 
 	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
-	fmt.Println(table.Render(t, width))
+	fmt.Println(strings.ReplaceAll(table.Render(t, width), ">", " "))
 }
 
 var _usageFlagSort = scuf.NewString(func(b scuf.Buffer) {
