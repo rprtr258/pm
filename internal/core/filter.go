@@ -1,6 +1,7 @@
 package core
 
 import (
+	"strings"
 	"unsafe"
 
 	"github.com/rprtr258/fun"
@@ -11,7 +12,7 @@ import (
 type filter struct {
 	Names          []string
 	Tags           []string
-	IDs            []PMID
+	IDs            []string
 	AllIfNoFilters bool
 }
 
@@ -28,12 +29,11 @@ func reinterpretSlice[R, T any](slice []T) []R {
 }
 
 func WithGeneric[S ~string](args ...S) FilterOption {
-	ids := fun.FilterMap[PMID](func(id S, _ int) (PMID, bool) {
-		isHex := true
-		for _, c := range id {
-			isHex = isHex && ('0' <= c && c <= '9' || 'a' <= c && c <= 'f')
-		}
-		return PMID(id), isHex && len(id) == 16*2
+	ids := fun.FilterMap[string](func(id S, _ int) (string, bool) {
+		isHex := fun.All(func(c byte) bool {
+			return '0' <= c && c <= '9' || 'a' <= c && c <= 'f'
+		}, []byte(id)...)
+		return string(id), isHex && len(id) <= 16
 	}, args...)
 
 	return func(cfg *filter) {
@@ -58,7 +58,7 @@ func WithTags[S ~string](tags ...S) FilterOption {
 func WithIDs[S ~string](ids ...S) FilterOption {
 	return func(cfg *filter) {
 		for _, id := range ids {
-			cfg.IDs = append(cfg.IDs, PMID(id))
+			cfg.IDs = append(cfg.IDs, string(id))
 		}
 	}
 }
@@ -82,7 +82,9 @@ func FilterFunc(opts ...FilterOption) func(Proc) bool {
 	return func(proc Proc) bool {
 		return fun.Contains(proc.Name, _filter.Names...) ||
 			lo.Some(proc.Tags, _filter.Tags...) ||
-			fun.Contains(proc.ID, _filter.IDs...)
+			fun.Any(func(idPrefix string) bool {
+				return strings.HasPrefix(proc.ID.String(), idPrefix)
+			}, _filter.IDs...)
 	}
 }
 

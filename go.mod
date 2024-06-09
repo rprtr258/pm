@@ -9,7 +9,6 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/go-jsonnet v0.20.0
 	github.com/joho/godotenv v1.5.1
-	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6
 	github.com/muesli/reflow v0.3.0
 	github.com/nxadm/tail v1.4.11

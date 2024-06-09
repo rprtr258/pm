@@ -36,8 +36,6 @@ var _formats = []string{
 	_formatShort,
 }
 
-const _shortIDLength = 8
-
 func mapStatus(status core.Status) string {
 	switch status.Status {
 	case core.StatusCreated:
@@ -77,15 +75,57 @@ func formatMemory(m uint64) string {
 	}
 }
 
+func commonPrefixLength(s, t core.PMID) int {
+	res := 0
+	for i := 0; i < len(s) && i < len(t); i++ {
+		if s[i] != t[i] {
+			break
+		}
+		res++
+	}
+	return res
+}
+
+func shortIDs(procs []core.Proc) []string {
+	if len(procs) == 0 {
+		return nil
+	}
+	if len(procs) == 1 {
+		return []string{string(procs[0].ID.String()[0])}
+	}
+
+	idx := fun.SliceToMap[core.PMID, int](func(proc core.Proc, i int) (core.PMID, int) {
+		return proc.ID, i
+	}, procs...)
+
+	ids := fun.Map[core.PMID](func(proc core.Proc) core.PMID { return proc.ID }, procs...)
+	slices.Sort(ids)
+
+	res := make([]string, len(procs))
+	for i, id := range ids {
+		var prefix int
+		if i < len(ids)-1 {
+			prefix = commonPrefixLength(id, ids[i+1]) + 1
+		}
+		if i > 0 {
+			prefix = max(prefix, commonPrefixLength(id, ids[i-1])+1)
+		}
+		res[idx[id]] = id.String()[:prefix]
+
+	}
+	return res
+}
+
 func renderTable(procs []core.Proc, showRowDividers bool) {
+	ids := shortIDs(procs)
 	t := table.Table{
 		Headers: fun.Map[string](func(col string) string {
 			return scuf.String(col, scuf.ModBold)
 		}, "id", "name", "status", "uptime", "tags", "cpu", "memory"),
-		Rows: fun.Map[[]string](func(proc core.Proc) []string {
+		Rows: fun.Map[[]string](func(proc core.Proc, i int) []string {
 			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
 			return []string{
-				scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold),
+				scuf.String(ids[i], scuf.FgCyan, scuf.ModBold),
 				proc.Name,
 				mapStatus(proc.Status),
 				fun.
