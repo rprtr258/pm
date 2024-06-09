@@ -123,7 +123,7 @@ func renderTable(procs []core.ProcStat, showRowDividers bool) {
 					If(proc.Status != core.StatusRunning, "").
 					Else(uptime.Truncate(time.Second).String()),
 				strings.Join(proc.Tags, " "),
-				fmt.Sprint(proc.CPU) + "%",
+				fmt.Sprintf("%.2f", proc.CPU) + "%",
 				formatMemory(proc.Memory),
 			}
 		}, procs...),

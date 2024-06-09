@@ -41,10 +41,7 @@ func List() []ProcListItem {
 			continue
 		}
 
-		environKVs, err := pp.Environ()
-		if err != nil {
-			continue
-		}
+		environKVs, _ := pp.Environ()
 
 		environ := map[string]string{}
 		for _, kv := range environKVs {

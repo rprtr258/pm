@@ -29,14 +29,13 @@ Args: {{.Args}}
 Cwd: {{.Cwd}}
 Env: {{.Env}}
 StdoutFile: {{.StdoutFile}}
-StderrFile: {{.StderrFile}}
-Watch: {{.Watch}}
+StderrFile: {{.StderrFile}}{{if .Watch.Valid}}
+Watch: {{.Watch.Value}}{{end}}
 Status:
-  Status: {{.Status.Status}}{{if eq (print .Status.Status) "running"}}
-  StartTime: {{formatTime .uptime}}
-  CPU: {{.Status.CPU}}
-  Memory: {{.Status.Memory}}{{else}}
-  ExitCode: {{.Status.ExitCode}}{{end}}
+  Status: {{.Status}}{{if eq (print .Status) "running"}}
+  StartTime: {{formatTime .StartTime}}
+  CPU: {{.CPU}}
+  Memory: {{.Memory}}{{end}}
 `))
 
 var _cmdInspect = func() *cobra.Command {
@@ -75,6 +74,7 @@ var _cmdInspect = func() *cobra.Command {
 					log.Error().Err(err).Msg("render inspect template")
 				}
 
+				// TODO: rewrite
 				var shimPid int
 				for _, p := range procs {
 					if p.Environ[app.EnvPMID] == string(proc.ID) {

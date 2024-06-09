@@ -22,51 +22,51 @@ type Stat struct {
 }
 
 func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
-	for _, p := range list {
-		if p.Environ[env] != string(pmid) {
-			continue
-		}
+	shim, _, ok := fun.Index(func(p ProcListItem) bool {
+		return p.Environ[env] == string(pmid)
+	}, list...)
+	if !ok {
+		return fun.Zero[Stat](), false
+	}
 
-		children := fun.Filter(func(p ProcListItem) bool {
-			ppid, _ := p.P.Ppid()
-			return ppid == p.P.Pid
-		}, list...)
-		if len(children) == 0 {
-			// no children, no stats
-			return Stat{
-				ShimPID:        p.Handle.Pid,
-				Memory:         0,
-				CPU:            0,
-				ChildStartTime: time.Time{},
-			}, true
-		}
-
-		// TODO: traverse while tree, not just direct childs
-		// TODO: do as well in killing in shim
-		totalMemory := uint64(0)
-		totalCPU := float64(0)
-		startTimeUnix := int64(math.MaxInt64)
-		for _, child := range children {
-			if mem, err := child.P.MemoryInfo(); err == nil {
-				totalMemory += mem.RSS
-			}
-			if cpu, err := child.P.CPUPercent(); err == nil {
-				totalCPU = cpu
-			}
-
-			// find oldest child process
-			if startUnix, err := child.P.CreateTime(); err == nil && startUnix < startTimeUnix {
-				startTimeUnix = startUnix
-			}
-		}
+	children := fun.Filter(func(p ProcListItem) bool {
+		ppid, _ := p.P.Ppid()
+		return ppid == shim.P.Pid
+	}, list...)
+	if len(children) == 0 {
+		// no children, no stats
 		return Stat{
-			ShimPID:        p.Handle.Pid,
-			Memory:         totalMemory,
-			CPU:            totalCPU,
-			ChildStartTime: time.Unix(0, startTimeUnix*time.Millisecond.Nanoseconds()),
+			ShimPID:        shim.Handle.Pid,
+			Memory:         0,
+			CPU:            0,
+			ChildStartTime: time.Time{},
 		}, true
 	}
-	return fun.Zero[Stat](), false
+
+	// TODO: traverse while tree, not just direct childs
+	// TODO: do as well in killing in shim
+	totalMemory := uint64(0)
+	totalCPU := float64(0)
+	startTimeUnix := int64(math.MaxInt64)
+	for _, child := range children {
+		if mem, err := child.P.MemoryInfo(); err == nil {
+			totalMemory += mem.RSS
+		}
+		if cpu, err := child.P.CPUPercent(); err == nil {
+			totalCPU = cpu
+		}
+
+		// find oldest child process
+		if startUnix, err := child.P.CreateTime(); err == nil && startUnix < startTimeUnix {
+			startTimeUnix = startUnix
+		}
+	}
+	return Stat{
+		ShimPID:        shim.Handle.Pid,
+		Memory:         totalMemory,
+		CPU:            totalCPU,
+		ChildStartTime: time.Unix(0, startTimeUnix*time.Millisecond.Nanoseconds()),
+	}, true
 }
 
 // Status information about the process.
