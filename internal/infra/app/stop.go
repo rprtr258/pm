@@ -25,7 +25,7 @@ func (app App) Stop(ids ...core.PMID) error {
 					return errors.Newf("not found proc to stop")
 				}
 
-				if proc.Status.Status != core.StatusRunning {
+				if proc.Status.Status == core.StatusStopped || proc.Status.Status == core.StatusInvalid {
 					return nil
 				}
 			}

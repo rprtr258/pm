@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/rprtr258/fun"
-	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/errors"
@@ -30,9 +29,14 @@ func StatPMID(pmid core.PMID, env string) (Stat, bool) {
 		totalCPU := float64(0)
 		children, err := p.P.Children()
 		if err != nil {
-			log.Error().Err(err).Int("pid", p.Handle.Pid).Msg("failed to get children for process")
-			return fun.Zero[Stat](), false
+			// no children, no stats
+			return Stat{
+				Pid:    p.Handle.Pid,
+				Memory: 0,
+				CPU:    0,
+			}, true
 		}
+
 		for _, child := range children {
 			if mem, err := child.MemoryInfo(); err == nil {
 				totalMemory += mem.RSS

@@ -118,9 +118,9 @@ func initWatchChannel(
 			case <-ctx.Done():
 				return
 			case err := <-watcher.watcher.Errors():
-				log.Error().
-					Err(err).
-					Msg("fsnotify error")
+				if err != nil {
+					log.Error().Err(err).Msg("fsnotify error")
+				}
 				return
 			case events := <-watcher.watcher.Events():
 				triggered := false
@@ -229,6 +229,7 @@ func implShim(appp app.App, proc core.Proc) error {
 			case events := <-watchCh:
 				log.Debug().Any("events", events).Msg("watch triggered")
 			case <-terminateCh:
+				appp.DB.StatusSet(proc.ID, core.NewStatusStopped(-1))
 				log.Debug().Msg("terminate signal received awaiting for watch")
 				return nil
 			}
