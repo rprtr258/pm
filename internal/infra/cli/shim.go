@@ -57,7 +57,7 @@ func execCmd(cmd exec.Cmd) (*exec.Cmd, error) {
 }
 
 func killCmd(cmd *exec.Cmd) {
-	children := map[int]struct{}{}
+	children := map[int]struct{}{cmd.Process.Pid: {}}
 	for _, child := range linuxprocess.Children(linuxprocess.List(), cmd.Process.Pid) {
 		children[child.Handle.Pid] = struct{}{}
 	}

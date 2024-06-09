@@ -74,7 +74,7 @@ var _cmdInspect = func() *cobra.Command {
 					fmt.Println("SHIM_PID:", proc.ShimPID)
 				}
 				if proc.Status == core.StatusRunning {
-					fmt.Println("PID:", proc.ChildPID)
+					fmt.Println("PID:", proc.ChildPID.Value)
 				}
 			}
 
