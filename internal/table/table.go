@@ -84,60 +84,32 @@ HARD:
 }
 
 // determine columns widths
-// TODO: rewrite into something smarter
 func cols(t Table, w int) []int {
-	const _n = 5
 	res := make([]int, len(t.Headers))
-	for n := range [_n]struct{}{} {
-		for i, h := range t.Headers {
-			if res[i] != 0 {
-				continue
-			}
-
-			res[i] = ansi.PrintableRuneWidth(h)
-			for _, row := range t.Rows {
-				for _, line := range strings.Split(row[i], "\n") {
-					res[i] = max(res[i], ansi.PrintableRuneWidth(line))
-				}
-			}
-		}
-
-		colsTotal := 0
-		for _, c := range res {
-			colsTotal += c
-		}
-
-		if wContent := w - (len(t.Headers)*1 + 1); colsTotal > wContent {
-			res = fun.Map[int](func(col int) int {
-				return col * wContent / colsTotal
-			}, res...)
-		}
-
-		if n == _n-1 {
-			return res
-		}
-
-		stabilized := true
-		for i, col := range res {
-			if ansi.PrintableRuneWidth(t.Headers[i]) == col {
-				goto RETRY
-			}
-			for _, row := range t.Rows {
-				for _, chunk := range mywrap(col, row[i]) {
-					if ansi.PrintableRuneWidth(chunk) == col {
-						goto RETRY
-					}
-				}
-			}
+	for i, h := range t.Headers {
+		if res[i] != 0 {
 			continue
-		RETRY:
-			res[i] = 0
-			stabilized = false
 		}
-		if stabilized {
-			return res
+
+		res[i] = ansi.PrintableRuneWidth(h) + 2
+		for _, row := range t.Rows {
+			for _, line := range strings.Split(row[i], "\n") {
+				res[i] = max(res[i], ansi.PrintableRuneWidth(line)+2)
+			}
 		}
 	}
+
+	colsTotal := 0
+	for _, c := range res {
+		colsTotal += c
+	}
+
+	if wContent := w - (len(t.Headers)*1 + 1); colsTotal > wContent {
+		res = fun.Map[int](func(col int) int {
+			return col * wContent / colsTotal
+		}, res...)
+	}
+
 	return res
 }
 
@@ -214,8 +186,8 @@ func Render(t Table, w int) string {
 					part = wraps[j][k]
 				}
 
-				totalPadding := col - ansi.PrintableRuneWidth(part)
-				return part + strings.Repeat(" ", totalPadding)
+				totalPadding := col - ansi.PrintableRuneWidth(part) - 1
+				return " " + part + strings.Repeat(" ", totalPadding)
 			}, cols...)
 			lines = append(lines, _ns+strings.Join(line, _ns)+_ns)
 		}

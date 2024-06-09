@@ -85,20 +85,22 @@ func renderTable(procs []core.Proc, showRowDividers bool) {
 		Rows: fun.Map[[]string](func(proc core.Proc) []string {
 			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
 			return []string{
-				">" + scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold) + " ",
-				">" + proc.Name + " ",
-				">" + mapStatus(proc.Status) + " ",
-				">" + fun.If(proc.Status.Status != core.StatusRunning, "").Else(getUptime(proc.Status).Truncate(time.Second).String()) + " ",
-				">" + strings.Join(proc.Tags, " ") + " ",
-				">" + fmt.Sprint(proc.Status.CPU) + "%" + " ",
-				">" + formatMemory(proc.Status.Memory) + " ",
+				scuf.String(proc.ID.String()[:_shortIDLength], scuf.FgCyan, scuf.ModBold),
+				proc.Name,
+				mapStatus(proc.Status),
+				fun.
+					If(proc.Status.Status != core.StatusRunning, "").
+					Else(getUptime(proc.Status).Truncate(time.Second).String()),
+				strings.Join(proc.Tags, " "),
+				fmt.Sprint(proc.Status.CPU) + "%",
+				formatMemory(proc.Status.Memory),
 			}
 		}, procs...),
 		HaveInnerRowsDividers: showRowDividers,
 	}
 
 	width, _, _ := term.GetSize(int(os.Stdout.Fd()))
-	fmt.Println(strings.ReplaceAll(table.Render(t, width), ">", " "))
+	fmt.Println(table.Render(t, width))
 }
 
 var _usageFlagSort = scuf.NewString(func(b scuf.Buffer) {
