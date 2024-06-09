@@ -98,13 +98,13 @@ func (app App) Start(ids ...core.PMID) error {
 			// run processes by their ids in database
 			// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 			if errStart := app.startShimImpl(id); errStart != nil {
-				if errStart != ErrAlreadyRunning {
-					if errSetStatus := app.DB.StatusSet(id, core.NewStatusInvalid()); errSetStatus != nil {
-						return errors.Wrapf(errSetStatus, "failed to set proc status to invalid")
-					}
-					return errors.Wrapf(errStart, "failed to start proc")
+				if errStart == ErrAlreadyRunning {
+					return errors.New("already running")
 				}
-				return errors.New("already running")
+
+				app.DB.StatusSet(id, core.NewStatusInvalid())
+
+				return errors.Wrapf(errStart, "failed to start proc")
 			}
 
 			return nil

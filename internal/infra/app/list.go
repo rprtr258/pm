@@ -2,7 +2,6 @@ package app
 
 import (
 	"github.com/rprtr258/fun/iter"
-	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
@@ -22,9 +21,7 @@ func (app App) List() iter.Seq[core.Proc] {
 		stat, ok := linuxprocess.StatPMID(proc.ID, EnvPMID)
 		if !ok {
 			proc.Status = core.NewStatusStopped(-1)
-			if errSet := app.DB.StatusSet(id, proc.Status); errSet != nil {
-				log.Error().Err(errSet).Msg("failed to update status to stopped")
-			}
+			app.DB.StatusSet(id, proc.Status)
 		}
 
 		proc.Status.Memory = stat.Memory

@@ -228,7 +228,7 @@ func (h Handle) GetProcs(filterOpts ...core.FilterOption) (map[core.PMID]core.Pr
 		core.FilterProcMap(procs, filterOpts...)...), nil
 }
 
-func (h Handle) StatusSet(id core.PMID, newStatus core.Status) Error {
+func (h Handle) statusSet(id core.PMID, newStatus core.Status) Error {
 	proc, err := h.readProc(id)
 	if err != nil {
 		return ProcNotFoundError{id}
@@ -247,8 +247,8 @@ func (h Handle) StatusSet(id core.PMID, newStatus core.Status) Error {
 	return nil
 }
 
-func (h Handle) StatusSetSafe(id core.PMID, newStatus core.Status) {
-	if err := h.StatusSet(id, newStatus); err != nil {
+func (h Handle) StatusSet(id core.PMID, newStatus core.Status) {
+	if err := h.statusSet(id, newStatus); err != nil {
 		log.Error().
 			Stringer("pmid", id).
 			Any("new_status", newStatus).
