@@ -37,14 +37,14 @@ func (app App) Stop(ids ...core.PMID) error {
 
 			// NOTE: since we are running the process behind the shim, we don't
 			// need to send SIGKILL to it, shim will handle everything for us
-			if errKill := syscall.Kill(-proc.Pid, syscall.SIGTERM); errKill != nil {
+			if errKill := syscall.Kill(-proc.ShimPID, syscall.SIGTERM); errKill != nil {
 				switch {
 				case stdErrors.Is(errKill, os.ErrProcessDone):
 					return errors.New("tried to stop process which is done")
 				case stdErrors.Is(errKill, syscall.ESRCH): // no such process
 					return errors.New("tried to stop process which doesn't exist")
 				default:
-					return errors.Wrapf(errKill, "kill process, pid=%d", proc.Pid)
+					return errors.Wrapf(errKill, "kill process, pid=%d", proc.ShimPID)
 				}
 			}
 

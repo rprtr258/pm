@@ -37,14 +37,14 @@ func implSignal(
 				return errors.Newf("get process by pmid, id=%s signal=%s", id, sig.String())
 			}
 
-			if errKill := syscall.Kill(-osProc.Pid, sig); errKill != nil {
+			if errKill := syscall.Kill(-osProc.ShimPID, sig); errKill != nil {
 				switch {
 				case stdErrors.Is(errKill, os.ErrProcessDone):
 					return errors.New("tried to send signal to process which is done")
 				case stdErrors.Is(errKill, syscall.ESRCH): // no such process
 					return errors.New("tried to send signal to process which doesn't exist")
 				default:
-					return errors.Wrapf(errKill, "kill process, pid=%d", osProc.Pid)
+					return errors.Wrapf(errKill, "kill process, pid=%d", osProc.ShimPID)
 				}
 			}
 

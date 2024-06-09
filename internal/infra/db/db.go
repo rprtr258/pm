@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/rprtr258/fun"
 	"github.com/rs/zerolog/log"
@@ -16,9 +15,8 @@ import (
 
 // status - db representation of core.Status
 type status struct {
-	StartTime time.Time `json:"start_time"` // StartTime, valid if running
-	Status    int       `json:"type"`
-	ExitCode  int       `json:"exit_code,omitempty"`
+	Status   int `json:"type"`
+	ExitCode int `json:"exit_code,omitempty"`
 }
 
 // procData - db representation of core.ProcData
@@ -62,11 +60,10 @@ func mapFromRepo(proc procData) core.Proc {
 		Tags:    proc.Tags,
 		Watch:   fun.FromPtr(proc.Watch),
 		Status: core.Status{
-			StartTime: proc.Status.StartTime,
-			Status:    core.StatusType(proc.Status.Status),
-			CPU:       0,
-			Memory:    0,
-			ExitCode:  proc.Status.ExitCode,
+			Status:   core.StatusType(proc.Status.Status),
+			CPU:      0,
+			Memory:   0,
+			ExitCode: proc.Status.ExitCode,
 		},
 		Env:        proc.Env,
 		StdoutFile: proc.StdoutFile,
@@ -175,9 +172,8 @@ func (h Handle) UpdateProc(proc core.Proc) Error {
 	if err := h.writeProc(procData{
 		ProcID: proc.ID,
 		Status: status{
-			StartTime: proc.Status.StartTime,
-			Status:    int(proc.Status.Status),
-			ExitCode:  proc.Status.ExitCode,
+			Status:   int(proc.Status.Status),
+			ExitCode: proc.Status.ExitCode,
 		},
 		Command:    proc.Command,
 		Cwd:        proc.Cwd,
@@ -235,9 +231,8 @@ func (h Handle) statusSet(id core.PMID, newStatus core.Status) Error {
 	}
 
 	proc.Status = status{
-		StartTime: newStatus.StartTime,
-		Status:    int(newStatus.Status),
-		ExitCode:  newStatus.ExitCode,
+		Status:   int(newStatus.Status),
+		ExitCode: newStatus.ExitCode,
 	}
 
 	if err := h.writeProc(proc); err != nil {

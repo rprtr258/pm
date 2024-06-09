@@ -19,6 +19,7 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 	"github.com/rprtr258/pm/internal/table"
 )
 
@@ -53,13 +54,6 @@ func mapStatus(status core.Status) string {
 	default:
 		return scuf.String(fmt.Sprintf("BROKEN(%T)", status), scuf.FgRed)
 	}
-}
-
-func getUptime(status core.Status) time.Duration {
-	if status.Status == core.StatusRunning {
-		return time.Since(status.StartTime)
-	}
-	return 0
 }
 
 func formatMemory(m uint64) string {
@@ -123,13 +117,18 @@ func renderTable(procs []core.Proc, showRowDividers bool) {
 		}, "id", "name", "status", "uptime", "tags", "cpu", "memory"),
 		Rows: fun.Map[[]string](func(proc core.Proc, i int) []string {
 			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
+			uptime := time.Duration(0)
+			if stat, ok := linuxprocess.StatPMID(proc.ID, app.EnvPMID); ok {
+				uptime = time.Since(stat.ChildStartTime)
+			}
+
 			return []string{
 				scuf.String(ids[i], scuf.FgCyan, scuf.ModBold),
 				proc.Name,
 				mapStatus(proc.Status),
 				fun.
 					If(proc.Status.Status != core.StatusRunning, "").
-					Else(getUptime(proc.Status).Truncate(time.Second).String()),
+					Else(uptime.Truncate(time.Second).String()),
 				strings.Join(proc.Tags, " "),
 				fmt.Sprint(proc.Status.CPU) + "%",
 				formatMemory(proc.Status.Memory),
@@ -205,10 +204,11 @@ func unmarshalFlagSort(value string) (func(a, b core.Proc) int, error) {
 			return 0
 		}).Then(func(a, b core.Proc) int {
 			switch {
-			case a.Status.StartTime.Before(b.Status.StartTime):
-				return -1
-			case b.Status.StartTime.Before(a.Status.StartTime):
-				return 1
+			// TODO: pair core.Proc with Stat and use stat here
+			// case a.StartTime.Before(b.StartTime):
+			// 	return -1
+			// case b.StartTime.Before(a.StartTime):
+			// 	return 1
 			default:
 				return 0
 			}

@@ -4,7 +4,9 @@ import (
 	stdErrors "errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
+	"time"
 
 	"github.com/rprtr258/fun"
 
@@ -13,12 +15,14 @@ import (
 )
 
 type Stat struct {
-	Pid    int
-	Memory uint64  // bytes
-	CPU    float64 // percent
+	ShimPID        int
+	Memory         uint64  // bytes
+	CPU            float64 // percent
+	ChildStartTime time.Time
 }
 
 // TODO: this might be called in function, call batch once instead
+// TODO: this is called many times and results are not reused where they might be reused
 func StatPMID(pmid core.PMID, env string) (Stat, bool) {
 	for _, p := range List() {
 		if p.Environ[env] != string(pmid) {
@@ -31,12 +35,14 @@ func StatPMID(pmid core.PMID, env string) (Stat, bool) {
 		if err != nil {
 			// no children, no stats
 			return Stat{
-				Pid:    p.Handle.Pid,
-				Memory: 0,
-				CPU:    0,
+				ShimPID:        p.Handle.Pid,
+				Memory:         0,
+				CPU:            0,
+				ChildStartTime: time.Time{},
 			}, true
 		}
 
+		startTimeUnix := int64(math.MaxInt64)
 		for _, child := range children {
 			if mem, err := child.MemoryInfo(); err == nil {
 				totalMemory += mem.RSS
@@ -44,11 +50,17 @@ func StatPMID(pmid core.PMID, env string) (Stat, bool) {
 			if cpu, err := child.CPUPercent(); err == nil {
 				totalCPU = cpu
 			}
+
+			// find oldest child process
+			if startUnix, err := child.CreateTime(); err == nil && startUnix < startTimeUnix {
+				startTimeUnix = startUnix
+			}
 		}
 		return Stat{
-			Pid:    p.Handle.Pid,
-			Memory: totalMemory,
-			CPU:    totalCPU,
+			ShimPID:        p.Handle.Pid,
+			Memory:         totalMemory,
+			CPU:            totalCPU,
+			ChildStartTime: time.Unix(0, startTimeUnix*time.Millisecond.Nanoseconds()),
 		}, true
 	}
 	return fun.Zero[Stat](), false

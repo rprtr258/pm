@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/rand"
 	"text/template"
-	"time"
 
 	"github.com/rprtr258/fun"
 )
@@ -59,8 +58,6 @@ func GenPMID() PMID {
 type Status struct {
 	Status StatusType
 
-	// running
-	StartTime time.Time // StartTime
 	// TODO: remove
 	CPU    uint64 // CPU usage percentage rounded to integer
 	Memory uint64 // Memory usage in bytes
@@ -83,10 +80,9 @@ func NewStatusCreated() Status {
 
 func NewStatusRunning() Status {
 	return Status{ //nolint:exhaustruct // not needed
-		Status:    StatusRunning,
-		StartTime: time.Now(),
-		CPU:       0,
-		Memory:    0,
+		Status: StatusRunning,
+		CPU:    0,
+		Memory: 0,
 	}
 }
 
