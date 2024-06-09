@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -115,6 +116,12 @@ func renderTable(procs []core.ProcStat, showRowDividers bool) {
 				uptime = time.Since(proc.StartTime)
 			}
 
+			var cpu, memory string
+			if proc.Status == core.StatusRunning {
+				cpu = strconv.FormatFloat(proc.CPU, 'f', 2, 64) + "%"
+				memory = formatMemory(proc.Memory)
+			}
+
 			return []string{
 				scuf.String(ids[i], scuf.FgCyan, scuf.ModBold),
 				proc.Name,
@@ -123,8 +130,8 @@ func renderTable(procs []core.ProcStat, showRowDividers bool) {
 					If(proc.Status != core.StatusRunning, "").
 					Else(uptime.Truncate(time.Second).String()),
 				strings.Join(proc.Tags, " "),
-				fmt.Sprintf("%.2f", proc.CPU) + "%",
-				formatMemory(proc.Memory),
+				cpu,
+				memory,
 			}
 		}, procs...),
 		HaveInnerRowsDividers: showRowDividers,
