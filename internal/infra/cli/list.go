@@ -19,7 +19,6 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
-	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 	"github.com/rprtr258/pm/internal/table"
 )
 
@@ -112,8 +111,8 @@ func renderTable(procs []core.ProcStat, showRowDividers bool) {
 		Rows: fun.Map[[]string](func(proc core.ProcStat, i int) []string {
 			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
 			uptime := time.Duration(0)
-			if stat, ok := linuxprocess.StatPMID(proc.ID, app.EnvPMID); ok {
-				uptime = time.Since(stat.ChildStartTime)
+			if proc.Status == core.StatusRunning {
+				uptime = time.Since(proc.StartTime)
 			}
 
 			return []string{
