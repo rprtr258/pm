@@ -17,33 +17,34 @@ func (app App) List() iter.Seq[core.ProcStat] {
 		return iter.FromNothing[core.ProcStat]()
 	}
 
-	res := make(map[core.PMID]core.ProcStat, len(procs))
-	for id, proc := range procs {
-		var procStat core.ProcStat
-		stat, ok := linuxprocess.StatPMID(proc.ID, EnvPMID)
-		switch {
-		case !ok: // no shim at all
-			procStat = core.ProcStat{
-				Proc:      proc,
-				Status:    core.StatusStopped,
-				StartTime: time.Time{}, CPU: 0, Memory: 0,
+	list := linuxprocess.List()
+	return func(yield func(core.ProcStat) bool) {
+		for _, proc := range procs {
+			var procStat core.ProcStat
+			stat, ok := linuxprocess.StatPMID(list, proc.ID, EnvPMID)
+			switch {
+			case !ok: // no shim at all
+				procStat = core.ProcStat{
+					Proc:      proc,
+					Status:    core.StatusStopped,
+					StartTime: time.Time{}, CPU: 0, Memory: 0,
+				}
+			case stat.ChildStartTime.IsZero(): // shim is running but no child
+				procStat = core.ProcStat{
+					Proc:      proc,
+					Status:    core.StatusCreated,
+					StartTime: time.Time{}, CPU: 0, Memory: 0,
+				}
+			default: // shim is running and child is happy too
+				procStat = core.ProcStat{
+					Proc:      proc,
+					StartTime: stat.ChildStartTime,
+					CPU:       stat.CPU,
+					Memory:    stat.Memory,
+					Status:    core.StatusRunning,
+				}
 			}
-		case stat.ChildStartTime.IsZero(): // shim is running but no child
-			procStat = core.ProcStat{
-				Proc:      proc,
-				Status:    core.StatusCreated,
-				StartTime: time.Time{}, CPU: 0, Memory: 0,
-			}
-		default: // shim is running and child is happy too
-			procStat = core.ProcStat{
-				Proc:      proc,
-				StartTime: stat.ChildStartTime,
-				CPU:       stat.CPU,
-				Memory:    stat.Memory,
-				Status:    core.StatusRunning,
-			}
+			yield(procStat)
 		}
-		res[id] = procStat
 	}
-	return iter.Values(iter.FromDict(res))
 }

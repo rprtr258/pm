@@ -150,7 +150,7 @@ func implLogs(ctx context.Context, proc core.ProcStat) <-chan core.LogLine {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if _, ok := linuxprocess.StatPMID(proc.ID, app.EnvPMID); !ok {
+				if _, ok := linuxprocess.StatPMID(linuxprocess.List(), proc.ID, app.EnvPMID); !ok {
 					return
 				}
 			case line, ok := <-logsCh:

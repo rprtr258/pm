@@ -17,13 +17,14 @@ func (app App) Stop(ids ...core.PMID) error {
 		return errors.Wrapf(err, "get procs")
 	}
 
+	list := linuxprocess.List()
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
 			if _, ok := procs[id]; !ok {
 				return errors.Newf("not found proc to stop")
 			}
 
-			proc, ok := linuxprocess.StatPMID(id, EnvPMID)
+			proc, ok := linuxprocess.StatPMID(list, id, EnvPMID)
 			if !ok {
 				// already stopped or not started yet
 				return nil

@@ -20,9 +20,10 @@ func implSignal(
 	sig syscall.Signal,
 	ids ...core.PMID,
 ) error {
+	list := linuxprocess.List()
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
-			osProc, ok := linuxprocess.StatPMID(id, app.EnvPMID)
+			osProc, ok := linuxprocess.StatPMID(list, id, app.EnvPMID)
 			if !ok {
 				return errors.Newf("get process by pmid, id=%s signal=%s", id, sig.String())
 			}

@@ -91,10 +91,11 @@ func (app App) startShimImpl(id core.PMID) error {
 
 // Start already created processes
 func (app App) Start(ids ...core.PMID) error {
+	list := linuxprocess.List()
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
 			// run processes by their ids in database
-			if _, ok := linuxprocess.StatPMID(id, EnvPMID); ok {
+			if _, ok := linuxprocess.StatPMID(list, id, EnvPMID); ok {
 				// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 				log.Info().Stringer("id", id).Msg("already running")
 				return nil

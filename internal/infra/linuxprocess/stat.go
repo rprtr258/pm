@@ -23,8 +23,8 @@ type Stat struct {
 
 // TODO: this might be called in function, call batch once instead
 // TODO: this is called many times and results are not reused where they might be reused
-func StatPMID(pmid core.PMID, env string) (Stat, bool) {
-	for _, p := range List() {
+func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
+	for _, p := range list {
 		if p.Environ[env] != string(pmid) {
 			continue
 		}
