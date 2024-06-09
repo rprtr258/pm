@@ -21,18 +21,17 @@ type Stat struct {
 	ChildStartTime time.Time
 }
 
-// TODO: this might be called in function, call batch once instead
-// TODO: this is called many times and results are not reused where they might be reused
 func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
 	for _, p := range list {
 		if p.Environ[env] != string(pmid) {
 			continue
 		}
 
-		totalMemory := uint64(0)
-		totalCPU := float64(0)
-		children, err := p.P.Children()
-		if err != nil {
+		children := fun.Filter(func(p ProcListItem) bool {
+			ppid, _ := p.P.Ppid()
+			return ppid == p.P.Pid
+		}, list...)
+		if len(children) == 0 {
 			// no children, no stats
 			return Stat{
 				ShimPID:        p.Handle.Pid,
@@ -42,17 +41,21 @@ func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
 			}, true
 		}
 
+		// TODO: traverse while tree, not just direct childs
+		// TODO: do as well in killing in shim
+		totalMemory := uint64(0)
+		totalCPU := float64(0)
 		startTimeUnix := int64(math.MaxInt64)
 		for _, child := range children {
-			if mem, err := child.MemoryInfo(); err == nil {
+			if mem, err := child.P.MemoryInfo(); err == nil {
 				totalMemory += mem.RSS
 			}
-			if cpu, err := child.CPUPercent(); err == nil {
+			if cpu, err := child.P.CPUPercent(); err == nil {
 				totalCPU = cpu
 			}
 
 			// find oldest child process
-			if startUnix, err := child.CreateTime(); err == nil && startUnix < startTimeUnix {
+			if startUnix, err := child.P.CreateTime(); err == nil && startUnix < startTimeUnix {
 				startTimeUnix = startUnix
 			}
 		}
