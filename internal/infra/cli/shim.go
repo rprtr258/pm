@@ -93,26 +93,24 @@ WAIT_FOR_DEATH:
 
 func initWatchChannel(
 	ctx context.Context,
-	ch chan []fsnotify.Event,
+	ch chan<- []fsnotify.Event,
 	cwd string,
 	pattern fun.Option[string],
-) error {
+) (func() error, error) {
 	watchPattern, ok := pattern.Unpack()
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	watchRE, errCompilePattern := regexp.Compile(watchPattern)
 	if errCompilePattern != nil {
-		return errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
+		return nil, errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
 	}
 
 	watcher, errWatcher := newWatcher(cwd, watchRE)
 	if errWatcher != nil {
-		return errors.Wrapf(errWatcher, "create watcher")
+		return nil, errors.Wrapf(errWatcher, "create watcher")
 	}
-	// TODO: close in outer scope
-	// defer watcher.watcher.Close()
 
 	go func() {
 		for {
@@ -151,7 +149,7 @@ func initWatchChannel(
 			}
 		}
 	}()
-	return nil
+	return watcher.watcher.Close, nil
 }
 
 //nolint:funlen // very important function, must be verbose here, done my best for now
@@ -190,10 +188,15 @@ func implShim(appp app.App, proc core.Proc) error {
 	defer cancel()
 
 	watchCh := make(chan []fsnotify.Event)
-	if err := initWatchChannel(ctx, watchCh, proc.Cwd, proc.Watch); err != nil {
+	defer close(watchCh)
+
+	watchChClose, err := initWatchChannel(ctx, watchCh, proc.Cwd, proc.Watch)
+	if watchChClose != nil {
+		defer watchChClose()
+	}
+	if err != nil {
 		return errors.Wrapf(err, "init watch channel")
 	}
-	defer close(watchCh)
 
 	terminateCh := make(chan os.Signal, 1)
 	signal.Notify(terminateCh, syscall.SIGINT, syscall.SIGTERM)
@@ -214,6 +217,7 @@ func implShim(appp app.App, proc core.Proc) error {
 	*/
 	isFirstRun := true
 	for {
+		// TODO: rewrite this switch
 		switch {
 		case isFirstRun:
 			isFirstRun = false
@@ -221,8 +225,13 @@ func implShim(appp app.App, proc core.Proc) error {
 			// TODO: autorestart
 		case proc.Watch.Valid: // watch defined, waiting for it
 			appp.DB.StatusSet(proc.ID, core.NewStatusCreated())
-			events := <-watchCh
-			log.Debug().Any("events", events).Msg("watch triggered")
+			select {
+			case events := <-watchCh:
+				log.Debug().Any("events", events).Msg("watch triggered")
+			case <-terminateCh:
+				log.Debug().Msg("terminate signal received awaiting for watch")
+				return nil
+			}
 		default:
 			return nil
 		}
@@ -246,6 +255,7 @@ func implShim(appp app.App, proc core.Proc) error {
 			// NOTE: Terminate child completely.
 			// Stop is done by sending SIGTERM.
 			// Manual restart is done by restarting whole shim and child by cli.
+			log.Debug().Msg("terminate signal received")
 			killCmd(cmd, appp, proc.ID)
 			return nil
 		case events := <-watchCh:

@@ -302,7 +302,7 @@ var _cmdLogs = func() *cobra.Command {
 					// {proc} {pad}{sep} {line}
 					fmt.Println(
 						scuf.String(line.ProcName, colorByID(line.ProcID)),
-						strings.Repeat(" ", pad-len(line.ProcName)+1)+scuf.String("|", scuf.FgGreen),
+						strings.Repeat(" ", pad-len(line.ProcName)+1)+scuf.String("|", fun.IF(line.Type == core.LogTypeStdout, scuf.FgGreen, scuf.FgRed)),
 						scuf.String(line.Line, lineColor),
 					)
 				}
