@@ -1,7 +1,9 @@
 package linuxprocess
 
 import (
+	"cmp"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -14,6 +16,7 @@ type ProcListItem struct {
 	Environ map[string]string
 }
 
+// returns list of all running processes sorted by pid
 func List() []ProcListItem {
 	entries, err := os.ReadDir("/proc")
 	if err != nil {
@@ -60,5 +63,8 @@ func List() []ProcListItem {
 			Environ: environ,
 		})
 	}
+	slices.SortFunc(procs, func(a, b ProcListItem) int {
+		return cmp.Compare(a.Handle.Pid, b.Handle.Pid)
+	})
 	return procs
 }

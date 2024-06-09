@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"math"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/rprtr258/fun"
@@ -21,6 +22,23 @@ type Stat struct {
 	ChildStartTime time.Time
 }
 
+// Returns whole children subtree as list.
+// list must be sorted by pid
+func Children(list []ProcListItem, pid int) []ProcListItem {
+	pids := map[int]struct{}{pid: {}}
+	res := []ProcListItem{}
+	for _, p := range list {
+		ppid, _ := p.P.Ppid()
+		if _, ok := pids[int(ppid)]; ok {
+			res = append(res, p)
+			pids[p.Handle.Pid] = struct{}{}
+		}
+	}
+	slices.Reverse(res)
+	return res
+}
+
+// list must be sorted by pid
 func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
 	shim, _, ok := fun.Index(func(p ProcListItem) bool {
 		return p.Environ[env] == string(pmid)
@@ -29,10 +47,7 @@ func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
 		return fun.Zero[Stat](), false
 	}
 
-	children := fun.Filter(func(p ProcListItem) bool {
-		ppid, _ := p.P.Ppid()
-		return ppid == shim.P.Pid
-	}, list...)
+	children := Children(list, shim.Handle.Pid)
 	if len(children) == 0 {
 		// no children, no stats
 		return Stat{
@@ -43,8 +58,6 @@ func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
 		}, true
 	}
 
-	// TODO: traverse while tree, not just direct childs
-	// TODO: do as well in killing in shim
 	totalMemory := uint64(0)
 	totalCPU := float64(0)
 	startTimeUnix := int64(math.MaxInt64)

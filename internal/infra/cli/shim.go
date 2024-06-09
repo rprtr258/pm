@@ -20,6 +20,7 @@ import (
 	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/fsnotify"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
 type Entry struct {
@@ -56,8 +57,18 @@ func execCmd(cmd exec.Cmd) (*exec.Cmd, error) {
 }
 
 func killCmd(cmd *exec.Cmd) {
-	if errTerm := syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM); errTerm != nil {
-		log.Error().Err(errTerm).Msg("failed to send SIGTERM to process")
+	children := map[int]struct{}{}
+	for _, child := range linuxprocess.Children(linuxprocess.List(), cmd.Process.Pid) {
+		children[child.Handle.Pid] = struct{}{}
+	}
+
+	for child := range children {
+		if errTerm := syscall.Kill(child, syscall.SIGTERM); errTerm != nil {
+			log.Error().
+				Int("pid", child).
+				Err(errTerm).
+				Msg("failed to send SIGTERM to process")
+		}
 	}
 
 	const (
@@ -74,17 +85,30 @@ WAIT_FOR_DEATH:
 		case <-time.After(durationBeforeKill):
 			break WAIT_FOR_DEATH
 		case <-timer.C:
-			// check if process is still alive, if no, return
-			if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
+			// check if there is still alive child, if no, return
+			allDied := true
+			for child := range children {
+				if err := syscall.Kill(child, syscall.Signal(0)); err == nil {
+					allDied = false
+				} else {
+					delete(children, child)
+				}
+			}
+			if allDied {
 				return
 			}
 		}
 	}
 
-	// process is still alive, send SIGKILL
+	// process is still alive, go kill all his family
 	log.Warn().Msg("timed out waiting for process to stop from SIGTERM, killing it")
-	if errKill := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); errKill != nil {
-		log.Error().Int("pid", cmd.Process.Pid).Err(errKill).Msg("failed to send SIGKILL to process")
+	for child := range children {
+		if errKill := syscall.Kill(child, syscall.SIGKILL); errKill != nil {
+			log.Error().
+				Int("pid", child).
+				Err(errKill).
+				Msg("failed to send SIGKILL to process")
+		}
 	}
 }
 
@@ -237,6 +261,7 @@ func implShim(proc core.Proc) error {
 		waitCh := make(chan error)
 		go func() {
 			waitCh <- cmd.Wait()
+			close(waitCh)
 		}()
 
 		select {
@@ -253,7 +278,6 @@ func implShim(proc core.Proc) error {
 			killCmd(cmd)
 		case <-waitCh: // TODO: we might be leaking waitCh if watch is triggered many times
 		}
-		close(waitCh)
 	}
 }
 
@@ -267,14 +291,6 @@ var _cmdShim = &cobra.Command{
 			return errors.Wrapf(err, "unmarshal shim config: %s", args[0])
 		}
 
-		// TODO: remove
-		// a little sleep to wait while calling process closes db file
-		time.Sleep(1 * time.Second)
-
-		if err := implShim(config); err != nil {
-			return errors.Wrapf(err, "run: %v", config)
-		}
-
-		return nil
+		return implShim(config)
 	},
 }
