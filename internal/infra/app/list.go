@@ -18,12 +18,7 @@ func (app App) List() iter.Seq[core.Proc] {
 			continue
 		}
 
-		stat, ok := linuxprocess.StatPMID(proc.ID, EnvPMID)
-		if !ok {
-			proc.Status = core.NewStatusStopped(-1)
-			app.DB.StatusSet(id, proc.Status)
-		}
-
+		stat, _ := linuxprocess.StatPMID(proc.ID, EnvPMID)
 		proc.Status.Memory = stat.Memory
 		proc.Status.CPU = uint64(stat.CPU)
 
