@@ -12,7 +12,6 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
-	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
 var _procInspectTemplate = template.Must(template.New("proc").
@@ -66,37 +65,16 @@ var _cmdInspect = func() *cobra.Command {
 				}).
 				ToSlice()
 
-			// TODO: remove, it is not needed
-			procs := linuxprocess.List()
-
 			for _, proc := range procsToShow {
 				if err := _procInspectTemplate.Execute(os.Stdout, proc); err != nil {
 					log.Error().Err(err).Msg("render inspect template")
 				}
 
-				// TODO: rewrite
-				var shimPid int
-				for _, p := range procs {
-					if p.Environ[app.EnvPMID] == string(proc.ID) {
-						shimPid = p.Handle.Pid
-						fmt.Println("SHIM_PID:", shimPid)
-						break
-					}
+				if proc.Status == core.StatusRunning || proc.Status == core.StatusCreated {
+					fmt.Println("SHIM_PID:", proc.ShimPID)
 				}
-				if shimPid != 0 {
-					for _, p := range procs {
-						if stat, err := linuxprocess.ReadProcessStat(p.Handle.Pid); err == nil {
-							if stat.Ppid == shimPid {
-								shimPid = p.Handle.Pid
-								fmt.Println("PID:", shimPid)
-								fmt.Println("PROCESS_ENV:")
-								for k, v := range p.Environ {
-									fmt.Printf("    %s: %q\n", k, v)
-								}
-								break
-							}
-						}
-					}
+				if proc.Status == core.StatusRunning {
+					fmt.Println("PID:", proc.ChildPID)
 				}
 			}
 

@@ -3,6 +3,7 @@ package app
 import (
 	"time"
 
+	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
 
@@ -26,22 +27,26 @@ func (app App) List() iter.Seq[core.ProcStat] {
 			case !ok: // no shim at all
 				procStat = core.ProcStat{
 					Proc:      proc,
+					ShimPID:   stat.ShimPID,
 					Status:    core.StatusStopped,
-					StartTime: time.Time{}, CPU: 0, Memory: 0,
+					StartTime: time.Time{}, CPU: 0, Memory: 0, ChildPID: fun.Invalid[int](),
 				}
 			case stat.ChildStartTime.IsZero(): // shim is running but no child
 				procStat = core.ProcStat{
 					Proc:      proc,
+					ShimPID:   stat.ShimPID,
 					Status:    core.StatusCreated,
-					StartTime: time.Time{}, CPU: 0, Memory: 0,
+					StartTime: time.Time{}, CPU: 0, Memory: 0, ChildPID: fun.Invalid[int](),
 				}
 			default: // shim is running and child is happy too
 				procStat = core.ProcStat{
 					Proc:      proc,
+					ShimPID:   stat.ShimPID,
 					StartTime: stat.ChildStartTime,
 					CPU:       stat.CPU,
 					Memory:    stat.Memory,
 					Status:    core.StatusRunning,
+					ChildPID:  fun.Valid(stat.ChildPID),
 				}
 			}
 			yield(procStat)

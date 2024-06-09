@@ -82,6 +82,8 @@ type ProcStat struct {
 	StartTime time.Time
 	CPU       float64
 	Memory    uint64
+	ShimPID   int
+	ChildPID  fun.Option[int]
 }
 
 var _procStringTemplate = template.Must(template.New("proc").

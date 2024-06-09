@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"math"
 	"os"
-	"slices"
 	"time"
 
 	"github.com/rprtr258/fun"
@@ -16,9 +15,12 @@ import (
 )
 
 type Stat struct {
-	ShimPID        int
-	Memory         uint64  // bytes
-	CPU            float64 // percent
+	ShimPID int
+	Memory  uint64  // bytes
+	CPU     float64 // percent
+
+	// might be zero
+	ChildPID       int
 	ChildStartTime time.Time
 }
 
@@ -34,7 +36,6 @@ func Children(list []ProcListItem, pid int) []ProcListItem {
 			pids[p.Handle.Pid] = struct{}{}
 		}
 	}
-	slices.Reverse(res)
 	return res
 }
 
@@ -54,6 +55,7 @@ func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
 			ShimPID:        shim.Handle.Pid,
 			Memory:         0,
 			CPU:            0,
+			ChildPID:       0,
 			ChildStartTime: time.Time{},
 		}, true
 	}
@@ -78,6 +80,7 @@ func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
 		ShimPID:        shim.Handle.Pid,
 		Memory:         totalMemory,
 		CPU:            totalCPU,
+		ChildPID:       children[0].Handle.Pid,
 		ChildStartTime: time.Unix(0, startTimeUnix*time.Millisecond.Nanoseconds()),
 	}, true
 }
