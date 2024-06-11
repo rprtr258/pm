@@ -31,10 +31,10 @@ StdoutFile: {{.StdoutFile}}
 StderrFile: {{.StderrFile}}{{if .Watch.Valid}}
 Watch: {{.Watch.Value}}{{end}}
 Status:
-  Status: {{.Status}}{{if eq (print .Status) "running"}}
-  StartTime: {{formatTime .StartTime}}
-  CPU: {{.CPU}}
-  Memory: {{.Memory}}{{end}}
+	Status: {{.Status}}{{if eq (print .Status) "running"}}
+	StartTime: {{formatTime .StartTime}}
+	CPU: {{.CPU}}
+	Memory: {{.Memory}}{{end}}
 `))
 
 var _cmdInspect = func() *cobra.Command {
@@ -71,10 +71,10 @@ var _cmdInspect = func() *cobra.Command {
 				}
 
 				if proc.Status == core.StatusRunning || proc.Status == core.StatusCreated {
-					fmt.Println("SHIM_PID:", proc.ShimPID)
+					fmt.Println("\tSHIM_PID:", proc.ShimPID)
 				}
 				if proc.Status == core.StatusRunning {
-					fmt.Println("PID:", proc.ChildPID.Value)
+					fmt.Println("\tPID:", proc.ChildPID.Value)
 				}
 			}
 
