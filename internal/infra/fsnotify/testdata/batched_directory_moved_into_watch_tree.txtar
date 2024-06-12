@@ -5,8 +5,6 @@
 # time.
 
 # Only run these tests on linux for now.
-#
-# TODO: investigate and fix the macOS expectations.
 [!linux] skip
 
 # Move a directory under a watched tree.

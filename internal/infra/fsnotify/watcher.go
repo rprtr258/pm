@@ -45,7 +45,7 @@ type RecursiveWatcher struct {
 
 	// watchers is a set of dir paths for which we have active watchers.
 	//
-	// TODO: there might be a more efficient data structure here.
+	// there might be a more efficient data structure here.
 	watchers map[string]struct{}
 
 	// doneClose indicates that we are done handling the close from the
@@ -159,7 +159,7 @@ func (w *RecursiveWatcher) runEventLoop() {
 	for {
 		select {
 		case ev, ok := <-w.w.Events:
-			// TODO handle event with respect to adding more watchers etc, i.e.
+			// handle event with respect to adding more watchers etc, i.e.
 			// when a new directory is added
 			if !ok {
 				// Pass on the close

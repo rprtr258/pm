@@ -4,8 +4,10 @@ import (
 	stdErrors "errors"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/rprtr258/fun"
+
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
@@ -44,6 +46,7 @@ func (app App) Stop(ids ...core.PMID) error {
 			}
 
 			// TODO: wait for death
+			time.Sleep(3 * time.Second)
 
 			return nil
 		}(), "stop pmid=%s", id)

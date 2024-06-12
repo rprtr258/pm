@@ -2,7 +2,6 @@ package cli
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
@@ -75,8 +74,6 @@ var _cmdRestart = func() *cobra.Command {
 			if errStop := app.Stop(procIDs...); errStop != nil {
 				return errors.Wrapf(errStop, "client.stop")
 			}
-
-			time.Sleep(3 * time.Second) // TODO: wait for killing
 
 			if errStart := app.Start(procIDs...); errStart != nil {
 				return errors.Wrapf(errStart, "client.start")

@@ -128,7 +128,6 @@ func streamProcLogs(ctx context.Context, proc core.ProcStat) <-chan ProcLine {
 }
 
 // implLogs - watch for processes logs
-// TODO: use app
 func implLogs(ctx context.Context, proc core.ProcStat) <-chan core.LogLine {
 	ctx, cancel := context.WithCancel(ctx)
 	if proc.Status != core.StatusRunning {

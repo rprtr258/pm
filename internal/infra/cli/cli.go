@@ -30,7 +30,7 @@ func ensureDir(dirname string) error {
 	return nil
 }
 
-var App = func() *cobra.Command {
+var _app = func() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:          "pm",
 		Short:        "manage running processes",
@@ -115,7 +115,7 @@ func Run(argv []string) error {
 	// Use "pm [command] --help" for more information about a command.`)
 	// 		return nil
 	// 	})
-	App.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
+	_app.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
 		scuf.New(os.Stdout).
 			String(cmd.Short, scuf.FgBlue).
 			String(fmt.Sprintf(`
@@ -124,6 +124,6 @@ func Run(argv []string) error {
 				cmd.UsageString()))
 	})
 
-	App.SetArgs(argv[1:]) // TODO: govno ebanoe
-	return App.Execute()
+	_app.SetArgs(argv[1:]) // TODO: govno ebanoe
+	return _app.Execute()
 }

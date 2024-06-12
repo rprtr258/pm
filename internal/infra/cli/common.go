@@ -100,17 +100,16 @@ func completeFlagTag(
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	// TODO: iter.Unique
-	res := iter.FlatMap(appp.
+	res := iter.Unique(iter.FlatMap(appp.
 		List(),
 		func(proc core.ProcStat) iter.Seq[string] {
 			return iter.FromMany(proc.Tags...)
 		}).
-		Chain(iter.FromMany("all")).
+		Chain(iter.FromMany("all"))).
 		ToSlice()
-	return fun.Filter[string](func(tag string) bool {
+	return fun.Filter(func(tag string) bool {
 		return strings.HasPrefix(tag, prefix)
-	}, fun.Uniq(res...)...), cobra.ShellCompDirectiveNoFileComp
+	}, res...), cobra.ShellCompDirectiveNoFileComp
 }
 
 func addFlagTags(cmd *cobra.Command, tags *[]string) {

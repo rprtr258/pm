@@ -160,7 +160,7 @@ func Render(t Table, w int) string {
 
 		line0[i] = strings.Repeat(_we, col)
 
-		header := mywrap(col, t.Headers[i])[0] // TODO: wrap rest
+		header := mywrap(col, t.Headers[i])[0]
 		totalPadding := col - ansi.PrintableRuneWidth(header)
 		line1[i] = strings.Repeat(" ", totalPadding/2) + header + strings.Repeat(" ", totalPadding-totalPadding/2)
 	}

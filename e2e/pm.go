@@ -27,6 +27,10 @@ func usePM(t *testing.T) pM {
 	return pm
 }
 
+func (pM) exec(cmd string, args ...string) *exec.Cmd {
+	return exec.Command(_pmBin, append([]string{cmd}, args...)...) //nolint:gosec // fuck you, _pmBin is constant
+}
+
 // Run returns new proc name
 func (pm pM) Run(config core.RunConfig) string {
 	args := []string{}
@@ -55,7 +59,7 @@ func (pm pM) Run(config core.RunConfig) string {
 
 	var berr bytes.Buffer
 
-	cmd := exec.Command(_pmBin, append([]string{"run"}, args...)...)
+	cmd := pm.exec("run", args...)
 	cmd.Stderr = &berr
 	nameBytes, err := cmd.Output()
 	must.NoError(pm.t, err)
@@ -70,12 +74,11 @@ func (pm pM) Run(config core.RunConfig) string {
 }
 
 func (pm pM) Stop(selectors ...string) {
-	cmd := exec.Command(_pmBin, append([]string{"stop"}, selectors...)...)
-	must.NoError(pm.t, cmd.Run())
+	must.NoError(pm.t, pm.exec("stop", selectors...).Run())
 }
 
-func (pM) delete(selectors ...string) error {
-	return exec.Command(_pmBin, append([]string{"rm"}, selectors...)...).Run()
+func (pm pM) delete(selectors ...string) error {
+	return pm.exec("rm", selectors...).Run()
 }
 
 func (pm pM) Delete(selectors ...string) {
@@ -83,7 +86,7 @@ func (pm pM) Delete(selectors ...string) {
 }
 
 func (pm pM) List() []core.Proc {
-	logsBytes, err := exec.Command(_pmBin, "l", "-f", "json").Output()
+	logsBytes, err := pm.exec("l", "-f", "json").Output()
 	must.NoError(pm.t, err)
 
 	var list []core.Proc

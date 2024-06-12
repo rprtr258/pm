@@ -110,7 +110,6 @@ func renderTable(procs []core.ProcStat, showRowDividers bool) {
 			return scuf.String(col, scuf.ModBold)
 		}, "id", "name", "status", "uptime", "tags", "cpu", "memory"),
 		Rows: fun.Map[[]string](func(proc core.ProcStat, i int) []string {
-			// TODO: if errored/stopped show time since start instead of uptime (not in place of)
 			uptime := time.Duration(0)
 			if proc.Status == core.StatusRunning {
 				uptime = time.Since(proc.StartTime)
