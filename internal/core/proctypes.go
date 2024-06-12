@@ -53,6 +53,32 @@ type Proc struct {
 	// Respawns int
 }
 
+var _procStringTemplate = template.Must(template.New("proc").
+	Parse(`Proc[
+	id={{.ID}},
+	command={{.Command}},
+	cwd={{.Cwd}},
+	name={{.Name}},
+	args={{.Args}},
+	tags={{.Tags}},
+	watch={{if .Watch.Valid}}Some({{.Watch.Value}}){{else}}None{{end}},
+	status={{.Status}},
+	stdout_file={{.StdoutFile}},
+	stderr_file={{.StderrFile}},
+	startup={{.Startup}},
+]`))
+
+// TODO: add to template above
+// "restart_tries": proc.RestartTries,
+// "restart_delay": proc.RestartDelay,
+// "respawns":     proc.Respawns,
+
+func (p *Proc) String() string {
+	var b bytes.Buffer
+	_ = _procStringTemplate.Execute(&b, p)
+	return b.String()
+}
+
 type Status int
 
 const (
@@ -84,30 +110,4 @@ type ProcStat struct {
 	Memory    uint64
 	ShimPID   int
 	ChildPID  fun.Option[int]
-}
-
-var _procStringTemplate = template.Must(template.New("proc").
-	Parse(`Proc[
-	id={{.ID}},
-	command={{.Command}},
-	cwd={{.Cwd}},
-	name={{.Name}},
-	args={{.Args}},
-	tags={{.Tags}},
-	watch={{if .Watch.Valid}}Some({{.Watch.Value}}){{else}}None{{end}},
-	status={{.Status}},
-	stdout_file={{.StdoutFile}},
-	stderr_file={{.StderrFile}},
-	startup={{.Startup}},
-]`))
-
-// TODO: add to template above
-// "restart_tries": proc.RestartTries,
-// "restart_delay": proc.RestartDelay,
-// "respawns":     proc.Respawns,
-
-func (p *Proc) String() string {
-	var b bytes.Buffer
-	_ = _procStringTemplate.Execute(&b, p)
-	return b.String()
 }
