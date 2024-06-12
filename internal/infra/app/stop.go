@@ -43,7 +43,7 @@ func (app App) Stop(ids ...core.PMID) error {
 				}
 			}
 
-			// TODO: here we can wait for killing
+			// TODO: wait for death
 
 			return nil
 		}(), "stop pmid=%s", id)
