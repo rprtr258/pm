@@ -45,8 +45,13 @@ func (app App) Stop(ids ...core.PMID) error {
 				}
 			}
 
-			// TODO: wait for death
-			time.Sleep(3 * time.Second)
+			// wait for process to stop
+			for {
+				time.Sleep(100 * time.Millisecond)
+				if _, ok := linuxprocess.StatPMID(linuxprocess.List(), id, EnvPMID); !ok {
+					break
+				}
+			}
 
 			return nil
 		}(), "stop pmid=%s", id)

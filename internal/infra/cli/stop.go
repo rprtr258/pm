@@ -73,23 +73,6 @@ var _cmdStop = func() *cobra.Command {
 			return nil
 		},
 	}
-	// &cli.BoolFlag{
-	// 	Name:  "watch",
-	// 	Usage: "stop watching for file changes",
-	// },
-	// &cli.BoolFlag{
-	// 	Name:  "kill",
-	// 	Usage: "kill process with SIGKILL instead of SIGINT",
-	// },
-	// &cli.DurationFlag{
-	// 	Name:    "kill-timeout",
-	// 	Aliases: []string{"k"},
-	// 	Usage:   "delay before sending final SIGKILL signal to process",
-	// },
-	// &cli.BoolFlag{
-	// 	Name:  "no-treekill",
-	// 	Usage: "Only kill the main process, not detached children",
-	// },
 	// TODO: -i/... to confirm which procs will be stopped
 	addFlagNames(cmd, &names)
 	addFlagTags(cmd, &tags)
