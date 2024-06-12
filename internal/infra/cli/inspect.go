@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 	"text/template"
 	"time"
@@ -34,7 +33,9 @@ Status:
 	Status: {{.Status}}{{if eq (print .Status) "running"}}
 	StartTime: {{formatTime .StartTime}}
 	CPU: {{.CPU}}
-	Memory: {{.Memory}}{{end}}
+	Memory: {{.Memory}}{{end}}{{if or (eq (print .Status) "created") (eq (print .Status) "running")}}
+	SHIM_PID: {{.ShimPID}}{{end}}{{if eq (print .Status) "running"}}
+	PID: {{.ChildPID}}{{end}}
 `))
 
 var _cmdInspect = func() *cobra.Command {
@@ -68,13 +69,6 @@ var _cmdInspect = func() *cobra.Command {
 			for _, proc := range procsToShow {
 				if err := _procInspectTemplate.Execute(os.Stdout, proc); err != nil {
 					log.Error().Err(err).Msg("render inspect template")
-				}
-
-				if proc.Status == core.StatusRunning || proc.Status == core.StatusCreated {
-					fmt.Println("\tSHIM_PID:", proc.ShimPID)
-				}
-				if proc.Status == core.StatusRunning {
-					fmt.Println("\tPID:", proc.ChildPID.Value)
 				}
 			}
 
