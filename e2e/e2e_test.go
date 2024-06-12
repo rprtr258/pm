@@ -158,12 +158,7 @@ func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 	must.NoError(t, cmd2.Run())
 
 	// check server stopped
-	must.Wait(t, wait.InitialSuccess(
-		wait.BoolFunc(func() bool {
-			return isTCPPortAvailableForListen(serverPort)
-		}),
-		wait.Timeout(time.Second*5),
-	))
+	test.True(t, isTCPPortAvailableForListen(serverPort))
 }
 
 func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parallel
@@ -215,10 +210,5 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 	pm.Stop("nc-client", "nc-server")
 
 	// check server stopped
-	must.Wait(t, wait.InitialSuccess(
-		wait.BoolFunc(func() bool {
-			return isTCPPortAvailableForListen(serverPort)
-		}),
-		wait.Timeout(time.Second*5),
-	))
+	test.True(t, isTCPPortAvailableForListen(serverPort))
 }
