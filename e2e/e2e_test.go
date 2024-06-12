@@ -100,12 +100,15 @@ func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 	})
 	must.EqOp(t, "hello-http", name)
 
+	cwd, err := os.Getwd()
+	test.NoError(t, err)
+
 	list := pm.List()
 	test.SliceLen(t, 1, list)
 	test.EqOp(t, "hello-http", list[0].Name)
 	test.Eq(t, []string{"all"}, list[0].Tags)
-	test.StrHasSuffix(t, "pm/tests/hello-http/main", list[0].Command)
-	test.StrHasSuffix(t, "pm", list[0].Cwd)
+	test.StrHasSuffix(t, "e2e/tests/hello-http/main", list[0].Command)
+	test.EqOp(t, cwd, list[0].Cwd)
 
 	must.Wait(t, wait.InitialSuccess(
 		wait.BoolFunc(func() bool {

@@ -32,9 +32,6 @@ bindir:
 
 ## Development
 
-db: # open database
-	go run github.com/antonmedv/fx@latest ~/.pm/db/procs.json
-
 bump: # bump dependencies
 	go get -u ./...
 	go mod tidy
@@ -89,10 +86,9 @@ test: # run tests
 	@go run gotest.tools/gotestsum@latest --format dots-v2 ./...
 
 test-e2e: # run integration tests
-	go build -o tests/hello-http tests/hello-http/main.go
-	@gotestsum --format dots-v2 e2e_test.go
+	go build -o e2e/tests/hello-http e2e/tests/hello-http/main.go
+	@go run gotest.tools/gotestsum@latest --format dots-v2 e2e/...
 
-# TODO: not working
 test-e2e-docker: # run integration tests in docker
-	@docker build -t pm-e2e --file tests/Dockerfile .
+	@docker build -t pm-e2e --file e2e/Dockerfile .
 	@docker run pm-e2e
