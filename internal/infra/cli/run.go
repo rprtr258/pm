@@ -101,8 +101,8 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 				Args:       config.Args,
 				Watch:      watch,
 				Env:        config.Env,
-				StdoutFile: config.StdoutFile.OrDefault(filepath.Join(appp.DirLos, fmt.Sprintf("%v.stdout", procID))),
-				StderrFile: config.StderrFile.OrDefault(filepath.Join(appp.DirLos, fmt.Sprintf("%v.stderr", procID))),
+				StdoutFile: config.StdoutFile.OrDefault(filepath.Join(appp.DirLogs, fmt.Sprintf("%v.stdout", procID))),
+				StderrFile: config.StderrFile.OrDefault(filepath.Join(appp.DirLogs, fmt.Sprintf("%v.stderr", procID))),
 				Startup:    config.Startup,
 			}
 
@@ -134,7 +134,7 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 			StdoutFile: config.StdoutFile,
 			StderrFile: config.StderrFile,
 			Startup:    config.Startup,
-		}, appp.DirLos)
+		}, appp.DirLogs)
 		if err != nil {
 			return "", errors.Wrapf(err, "save proc")
 		}
