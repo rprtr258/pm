@@ -71,7 +71,7 @@ func NewRecursiveWatcher(rootDir string, opts ...Option) (*RecursiveWatcher, err
 // operation is in progress, a batch of events that can be handled in some when
 // when the git operation completes. In glob terms, if gittoplevel where non
 // empty, the Events channel would contain events for
-// $gittoplevel/.git/index.lock and dir/**/* (including directories).  If
+// $gittoplevel/.git/index.lock and dir/**/* (including directories). If
 // gittoplevel is supplied, dir must be a subdirectory of gittoplevel.
 func newRecursiveWatcher(rootDir, gittoplevel string, opts ...Option) (*RecursiveWatcher, error) {
 	if rootDir != gittoplevel && !strings.HasPrefix(rootDir, gittoplevel+string(os.PathSeparator)) {

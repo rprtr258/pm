@@ -47,7 +47,7 @@ var _ Watcher[[]fsnotify.Event] = (*BatchedRecursiveWatcher)(nil)
 
 // NewBatchedRecursiveWatcher creates a new batched watcher. A
 // BatchedRecursiveWatcher's Events are batched into windows of at most
-// batchWindow duration.  Furthermore, if gittoplevel is supplied, events
+// batchWindow duration. Furthermore, if gittoplevel is supplied, events
 // received during git operations are batched until the end of the git
 // operation. This can mean that batch time windows can be less than
 // batchWindow when a git operation starts before a time window expires. It can
@@ -136,7 +136,7 @@ LOOP:
 			}
 
 			// Only create a ticker if we are not on the edge of a git operation
-			// and not waiting to send.  Because if we are on the edge, then we
+			// and not waiting to send. Because if we are on the edge, then we
 			// flush below so creating a ticker would be pointless.
 			if bw.send == nil && !startOfGitOp && !endOfGitOp && bw.ticker == nil {
 				bw.ticker = time.NewTicker(bw.batchWindow)
