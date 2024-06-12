@@ -207,19 +207,15 @@ var _cmdRun = func() *cobra.Command {
 				}
 
 				runConfig := core.RunConfig{
-					Command:    command,
-					Args:       args,
-					Name:       fun.FromPtr(name),
-					Tags:       tags,
-					Cwd:        workDir,
-					Env:        nil,
-					Watch:      watchOpt,
-					StdoutFile: fun.Invalid[string](),
-					StderrFile: fun.Invalid[string](),
-					Actions: core.Actions{
-						Healthcheck: nil,
-						Custom:      nil,
-					},
+					Command:      command,
+					Args:         args,
+					Name:         fun.FromPtr(name),
+					Tags:         tags,
+					Cwd:          workDir,
+					Env:          nil,
+					Watch:        watchOpt,
+					StdoutFile:   fun.Invalid[string](),
+					StderrFile:   fun.Invalid[string](),
 					KillTimeout:  0,
 					KillChildren: false,
 					Autorestart:  false,

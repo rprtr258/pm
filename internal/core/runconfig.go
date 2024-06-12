@@ -18,21 +18,10 @@ import (
 	"github.com/rprtr258/pm/internal/lo"
 )
 
-type Actions struct {
-	Healthcheck any // TODO: tcp port listen check/http check/command run
-	// Custom actions
-	Custom map[string]struct {
-		Command string
-		Args    []string
-	}
-}
-
 // RunConfig - configuration of process to manage
 type RunConfig struct {
 	// Env - environment variables
 	Env map[string]string
-	// Actions to perform on process by name
-	Actions Actions
 	// Watch - regexp for files to watch and restart on changes
 	Watch fun.Option[*regexp.Regexp]
 	// Command - process command, full path
@@ -205,11 +194,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 					return valStr
 				}
 			}),
-			Watch: watch,
-			Actions: Actions{
-				Healthcheck: nil,
-				Custom:      nil,
-			},
+			Watch:        watch,
 			StdoutFile:   fun.Zero[fun.Option[string]](),
 			StderrFile:   fun.Zero[fun.Option[string]](),
 			KillTimeout:  0,
