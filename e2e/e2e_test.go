@@ -69,18 +69,48 @@ func httpResponse(t *testing.T, endpoint string) (int, string) {
 	return resp.StatusCode, string(body)
 }
 
-func TestMain(m *testing.M) {
+func testMain(m *testing.M) int {
 	pm := pM{t: nil}
-	// TODO: backup old pm state
-	if err := pm.delete("all"); err != nil {
-		log.Fatal().Err(err).Send()
+
+	{
+		// backup pm dir if exists
+		oldDirExists := true
+		pmDirOld := filepath.Join(homeDir, ".pm")
+		pmDirBackup := filepath.Join(homeDir, ".pm.bak")
+		if err := os.Rename(pmDirOld, pmDirBackup); err != nil {
+			if os.IsNotExist(err) {
+				oldDirExists = false
+			} else {
+				log.Error().Err(err).Msg("backup pm dir")
+			}
+		}
+		// restore pm dir backup
+		if oldDirExists {
+			defer func() {
+				if err := os.RemoveAll(pmDirOld); err != nil {
+					log.Fatal().Err(err).Msg("remove pm dir")
+				}
+				if err := os.Rename(pmDirBackup, pmDirOld); err != nil {
+					log.Fatal().Err(err).Msg("restore pm dir backup")
+				}
+			}()
+		}
 	}
-	code := m.Run()
-	// TODO: restore old pm state
+
 	if err := pm.delete("all"); err != nil {
-		log.Fatal().Err(err).Send()
+		log.Error().Err(err).Msg("clear old processes")
 	}
-	os.Exit(code)
+	defer func() {
+		if err := pm.delete("all"); err != nil {
+			log.Error().Err(err).Msg("clear tested processes")
+		}
+	}()
+
+	return m.Run()
+}
+
+func TestMain(m *testing.M) {
+	os.Exit(testMain(m))
 }
 
 func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
