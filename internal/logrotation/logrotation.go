@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -179,7 +178,7 @@ func New(cfg Config) *Writer {
 // than MaxSize, file is closed, renamed to include a timestamp of the
 // current time, and a new log file is created using original log file name.
 // If length of write is greater than MaxSize, an error is returned.
-func (l *Writer) Write(b []byte) (n int, err error) {
+func (l *Writer) Write(b []byte) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -189,7 +188,7 @@ func (l *Writer) Write(b []byte) (n int, err error) {
 	}
 
 	if l.file == nil {
-		if err = l.openExistingOrNew(len(b)); err != nil {
+		if err := l.openExistingOrNew(len(b)); err != nil {
 			return 0, err
 		}
 	}
@@ -200,7 +199,7 @@ func (l *Writer) Write(b []byte) (n int, err error) {
 		}
 	}
 
-	n, err = l.file.Write(b)
+	n, err := l.file.Write(b)
 	l.size += int64(n)
 
 	return n, err
@@ -258,7 +257,11 @@ func chown(fs afero.Fs, name string, info os.FileInfo) error {
 	}
 	f.Close()
 
-	stat := info.Sys().(*syscall.Stat_t)
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return errors.New("get file owner and group")
+	}
+
 	return fs.Chown(name, int(stat.Uid), int(stat.Gid))
 }
 
@@ -370,12 +373,8 @@ func (l *Writer) millRunOnce() error {
 		preserved := map[string]struct{}{}
 		var remaining []logInfo
 		for _, f := range files {
-			// Only count uncompressed log file or the
-			// compressed log file, not both.
-			fn := f.Name()
-			if strings.HasSuffix(fn, compressSuffix) {
-				fn = fn[:len(fn)-len(compressSuffix)]
-			}
+			// only count uncompressed log file or the compressed log file, not both
+			fn := strings.TrimSuffix(f.Name(), compressSuffix)
 			preserved[fn] = struct{}{}
 
 			if len(preserved) > l.maxBackups {
@@ -446,13 +445,13 @@ func (l *Writer) mill() {
 	}
 }
 
-func readDir(dirname string) ([]fs.FileInfo, error) {
+func readDir(dirname string) ([]os.FileInfo, error) {
 	entries, err := os.ReadDir(dirname)
 	if err != nil {
 		return nil, err
 	}
 
-	infos := make([]fs.FileInfo, 0, len(entries))
+	infos := make([]os.FileInfo, 0, len(entries))
 	for _, entry := range entries {
 		info, err := entry.Info()
 		if err != nil {
@@ -525,24 +524,24 @@ func prefixAndExt(filename string) (prefix, ext string) {
 func compressLogFile(fs afero.Fs, src, dst string) (err error) {
 	f, err := fs.Open(src)
 	if err != nil {
-		return fmt.Errorf("failed to open log file: %v", err)
+		return fmt.Errorf("failed to open log file: %w", err)
 	}
 	defer f.Close()
 
 	stat, err := fs.Stat(src)
 	if err != nil {
-		return fmt.Errorf("failed to stat log file: %v", err)
+		return fmt.Errorf("failed to stat log file: %w", err)
 	}
 
-	if err := chown(fs, dst, stat); err != nil {
-		return fmt.Errorf("failed to chown compressed log file: %v", err)
+	if errChown := chown(fs, dst, stat); errChown != nil {
+		return fmt.Errorf("failed to chown compressed log file: %w", errChown)
 	}
 
 	// If this file already exists, we presume it was created by
 	// a previous attempt to compress log file.
-	gzf, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, stat.Mode())
-	if err != nil {
-		return fmt.Errorf("failed to open compressed log file: %v", err)
+	gzf, errOpen := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, stat.Mode())
+	if errOpen != nil {
+		return fmt.Errorf("failed to open compressed log file: %w", errOpen)
 	}
 	defer gzf.Close()
 
@@ -552,7 +551,7 @@ func compressLogFile(fs afero.Fs, src, dst string) (err error) {
 	defer func() {
 		if err != nil {
 			os.Remove(dst)
-			err = fmt.Errorf("failed to compress log file: %v", err)
+			err = fmt.Errorf("failed to compress log file: %w", err)
 		}
 	}()
 

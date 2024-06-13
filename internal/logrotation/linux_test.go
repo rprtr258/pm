@@ -15,7 +15,7 @@ func TestMaintainMode(t *testing.T) {
 	clock := useClock()
 	filename := fileLog(dir)
 
-	mode := os.FileMode(0600)
+	mode := os.FileMode(0o600)
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, mode)
 	test.NoError(t, err)
 	f.Close()
@@ -53,7 +53,7 @@ func TestMaintainOwner(t *testing.T) {
 	clock := useClock()
 	filename := fileLog(dir)
 
-	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0o644)
 	test.NoError(t, err)
 	f.Close()
 
@@ -83,7 +83,7 @@ func TestCompressMaintainMode(t *testing.T) {
 	clock := useClock()
 	filename := fileLog(dir)
 
-	mode := os.FileMode(0600)
+	mode := os.FileMode(0o600)
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, mode)
 	test.NoError(t, err)
 	f.Close()
@@ -125,7 +125,7 @@ func TestCompressMaintainOwner(t *testing.T) {
 	dir := useTempDir(t)
 	filename := fileLog(dir)
 
-	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0o644)
 	test.NoError(t, err)
 	f.Close()
 

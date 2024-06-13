@@ -25,7 +25,13 @@ type fakeFS struct {
 }
 
 func useFs() *fakeFS {
-	return &fakeFS{files: make(map[string]fakeFile)}
+	return &fakeFS{
+		files: make(map[string]fakeFile),
+
+		// not set
+		mu: sync.Mutex{},
+		Fs: nil,
+	}
 }
 
 func (fs *fakeFS) Open(name string) (afero.File, error) {
@@ -45,7 +51,8 @@ func (fs *fakeFS) Stat(name string) (os.FileInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	stat := info.Sys().(*syscall.Stat_t)
+
+	stat, _ := info.Sys().(*syscall.Stat_t)
 	stat.Uid = 555
 	stat.Gid = 666
 	return info, nil
@@ -61,55 +68,55 @@ func (c *fakeClock) Now() time.Time { return c.now }
 // advance sets fake "current time" to two days later
 func (c *fakeClock) advance() { c.now = c.now.Add(time.Hour * 24 * 2) }
 
-func assertWrite(t testing.TB, l *Writer, s string) {
-	t.Helper()
+func assertWrite(tb testing.TB, l *Writer, s string) {
+	tb.Helper()
 
 	n, err := l.Write([]byte(s))
-	test.NoError(t, err)
-	test.EqOp(t, len(s), n)
+	test.NoError(tb, err)
+	test.EqOp(tb, len(s), n)
 }
 
 // useTempDir creates file with semi-unique name in OS temp directory.
 // It should be based on name of test, to keep parallel tests from
 // colliding, and must be cleaned up after test is finished.
-func useTempDir(t testing.TB) string {
-	t.Helper()
+func useTempDir(tb testing.TB) string {
+	tb.Helper()
 
 	now := time.Now().Format(backupTimeFormat)
-	dir := filepath.Join(os.TempDir(), t.Name()+now)
-	test.Nil(t, os.Mkdir(dir, 0o700))
-	t.Cleanup(func() { os.RemoveAll(dir) })
+	dir := filepath.Join(os.TempDir(), tb.Name()+now)
+	test.Nil(tb, os.Mkdir(dir, 0o700))
+	tb.Cleanup(func() { os.RemoveAll(dir) })
 	return dir
 }
 
-func useGzip(t testing.TB, s string) string {
-	t.Helper()
+func useGzip(tb testing.TB, s string) string {
+	tb.Helper()
 
 	var bc bytes.Buffer
 	gz := gzip.NewWriter(&bc)
 	_, err := gz.Write([]byte(s))
-	test.NoError(t, err)
-	test.NoError(t, gz.Close())
+	test.NoError(tb, err)
+	test.NoError(tb, gz.Close())
 	return bc.String()
 }
 
 // assertFileContent checks that given file exists and has correct content.
-func assertFileContent(t testing.TB, path string, content string) {
-	t.Helper()
+func assertFileContent(tb testing.TB, path, content string) {
+	tb.Helper()
 
 	b, err := os.ReadFile(path)
-	test.NoError(t, err)
-	test.Eq(t, content, string(b))
+	test.NoError(tb, err)
+	test.Eq(tb, content, string(b))
 }
 
 // assertFileCount checks that number of files in directory is exp
-func assertFileCount(t testing.TB, dir string, exp int) {
-	t.Helper()
+func assertFileCount(tb testing.TB, dir string, exp int) {
+	tb.Helper()
 
 	files, err := os.ReadDir(dir)
-	test.NoError(t, err)
+	test.NoError(tb, err)
 	// make sure no other files were created
-	test.EqOp(t, exp, len(files))
+	test.EqOp(tb, exp, len(files))
 }
 
 // fileLog returns log file name in given directory for current fake time

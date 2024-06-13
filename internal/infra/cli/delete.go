@@ -31,7 +31,7 @@ func removeFile(name string) error {
 func removeFileGlob(glob string) error {
 	names, err := filepath.Glob(glob)
 	if err != nil {
-		// ignore
+		//nolint:nilerr // ignore
 		return nil
 	}
 
