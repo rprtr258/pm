@@ -180,7 +180,7 @@ func initWatchChannel(
 }
 
 //nolint:funlen // very important function, must be verbose here, done my best for now
-func implShim(proc core.Proc) error {
+func implShim(proc core.Proc) error { // TODO: presumably some defer takes too long, fix
 	env := os.Environ()
 	for k, v := range proc.Env {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
@@ -220,9 +220,7 @@ func implShim(proc core.Proc) error {
 		if err != nil {
 			return errors.Wrapf(err, "init watch channel")
 		}
-		defer func() {
-			_ = watchChClose()
-		}()
+		defer watchChClose()
 	}
 
 	terminateCh := make(chan os.Signal, 1)
