@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
@@ -27,6 +28,26 @@ func removeFile(name string) error {
 	return nil
 }
 
+func removeFileGlob(glob string) error {
+	names, err := filepath.Glob(glob)
+	if err != nil {
+		// ignore
+		return nil
+	}
+
+	for _, name := range names {
+		if errRm := os.Remove(name); errRm != nil {
+			if stdErrors.Is(errRm, fs.ErrNotExist) {
+				return nil
+			}
+
+			return errors.Wrapf(errRm, "remove file %s", name)
+		}
+	}
+
+	return nil
+}
+
 func ImplDelete(appp app.App, ids ...core.PMID) error {
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
@@ -39,6 +60,7 @@ func ImplDelete(appp app.App, ids ...core.PMID) error {
 
 			// remove log files
 			return errors.Combine(
+				errors.Wrapf(removeFileGlob(filepath.Join(appp.DirLogs, proc.ID.String()+"*")), "remove logrotation files"),
 				errors.Wrapf(removeFile(proc.StdoutFile), "remove stdout file %s", proc.StdoutFile),
 				errors.Wrapf(removeFile(proc.StderrFile), "remove stderr file: %s", proc.StderrFile),
 			)

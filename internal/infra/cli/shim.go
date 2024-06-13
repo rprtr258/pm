@@ -21,6 +21,7 @@ import (
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/fsnotify"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
+	"github.com/rprtr258/pm/internal/logrotation"
 )
 
 type Entry struct {
@@ -170,22 +171,20 @@ func initWatchChannel(
 
 //nolint:funlen // very important function, must be verbose here, done my best for now
 func implShim(proc core.Proc) error {
-	stdoutLogFile, errRunFirst := os.OpenFile(proc.StdoutFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
-	if errRunFirst != nil {
-		return errors.Wrapf(errRunFirst, "open stdout file %q", proc.StdoutFile)
-	}
-	defer stdoutLogFile.Close()
-
-	stderrLogFile, errRunFirst := os.OpenFile(proc.StderrFile, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0o660)
-	if errRunFirst != nil {
-		return errors.Wrapf(errRunFirst, "open stderr file %q", proc.StderrFile)
-	}
-	defer stderrLogFile.Close()
-
 	env := os.Environ()
 	for k, v := range proc.Env {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
+
+	outw := logrotation.New(logrotation.Config{
+		Filename:   proc.StdoutFile,
+		MaxBackups: 1,
+	})
+
+	errw := logrotation.New(logrotation.Config{
+		Filename:   proc.StderrFile,
+		MaxBackups: 1,
+	})
 
 	cmdShape := exec.Cmd{
 		Path:   proc.Command,
@@ -193,8 +192,8 @@ func implShim(proc core.Proc) error {
 		Dir:    proc.Cwd,
 		Env:    env,
 		Stdin:  os.Stdin,
-		Stdout: stdoutLogFile,
-		Stderr: stderrLogFile,
+		Stdout: outw,
+		Stderr: errw,
 		SysProcAttr: &syscall.SysProcAttr{
 			Setpgid: true,
 		},
