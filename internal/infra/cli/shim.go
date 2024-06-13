@@ -240,12 +240,12 @@ func implShim(proc core.Proc) error { // TODO: presumably some defer takes too l
 			- process died, loop
 			- watch triggered, kill process, then loop
 	*/
-	isFirstRun := true
+	waitTrigger := true
 	for {
 		// TODO: rewrite this switch
 		switch {
-		case isFirstRun:
-			isFirstRun = false
+		case waitTrigger:
+			waitTrigger = false
 		case false: // TODO: await autorestart if configured
 			// TODO: autorestart
 		case proc.Watch.Valid: // watch defined, waiting for it
@@ -283,6 +283,7 @@ func implShim(proc core.Proc) error { // TODO: presumably some defer takes too l
 		case events := <-watchCh:
 			log.Debug().Any("events", events).Msg("watch triggered")
 			killCmd(cmd)
+			waitTrigger = true // do not wait for autorestart or watch, start immediately
 		case <-waitCh: // TODO: we might be leaking waitCh if watch is triggered many times
 		}
 	}
