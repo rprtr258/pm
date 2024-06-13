@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"syscall"
 	"time"
 
@@ -149,6 +150,15 @@ func initWatchChannel(
 							Stringer("event", event).
 							Str("dir", watcher.dir).
 							Msg("get relative filename failed")
+						continue
+					}
+
+					// TODO: move to watcher
+					if filename == ".git" ||
+						strings.HasPrefix(filename, ".git/") ||
+						strings.HasSuffix(filename, "/.git") ||
+						strings.Contains(filename, "/.git/") {
+						// change in git directory, ignore
 						continue
 					}
 
