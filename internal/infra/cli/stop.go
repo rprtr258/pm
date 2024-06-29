@@ -24,9 +24,9 @@ var _cmdStop = func() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			db, _, errList := app.New()
-			if errList != nil {
-				return errors.Wrapf(errList, "new grpc client")
+			db, _, errApp := app.New()
+			if errApp != nil {
+				return errors.Wrapf(errApp, "open db")
 			}
 
 			list := listProcs(db)
