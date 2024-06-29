@@ -9,12 +9,13 @@ import (
 	"github.com/rprtr258/fun"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
-func (app App) Stop(ids ...core.PMID) error {
-	procs, err := app.DB.GetProcs(core.WithIDs(ids...))
+func Stop(db db.Handle, ids ...core.PMID) error {
+	procs, err := db.GetProcs(core.WithIDs(ids...))
 	if err != nil {
 		return errors.Wrapf(err, "get procs")
 	}

@@ -66,7 +66,7 @@ var _cmdRestart = func() *cobra.Command {
 				return nil
 			}
 
-			if errStop := appp.Stop(procIDs...); errStop != nil {
+			if errStop := app.Stop(appp.DB, procIDs...); errStop != nil {
 				return errors.Wrapf(errStop, "client.stop")
 			}
 
