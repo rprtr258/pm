@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
@@ -20,16 +19,11 @@ var _cmdStop = func() *cobra.Command {
 		Short:             "stop process(es)",
 		Aliases:           []string{"kill"},
 		GroupID:           "inspection",
-		ValidArgsFunction: compl.ArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			db, _, errApp := app.New()
-			if errApp != nil {
-				return errors.Wrapf(errApp, "open db")
-			}
-
-			list := listProcs(db)
+			list := listProcs(dbb)
 			if config != nil {
 				configs, errLoadConfigs := core.LoadConfigs(*config)
 				if errLoadConfigs != nil {
@@ -67,7 +61,7 @@ var _cmdStop = func() *cobra.Command {
 			}
 
 			procIDs := fun.Map[core.PMID](func(proc core.ProcStat) core.PMID { return proc.ID }, procs...)
-			if err := implStop(db, procIDs...); err != nil {
+			if err := implStop(dbb, procIDs...); err != nil {
 				return errors.Wrapf(err, "client.stop")
 			}
 

@@ -13,7 +13,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/namegen"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
@@ -178,11 +177,6 @@ var _cmdRun = func() *cobra.Command {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 			watch := fun.IF(cmd.Flags().Lookup("watch").Changed, &watch, nil)
 
-			db, cfg, errNewApp := app.New()
-			if errNewApp != nil {
-				return errors.Wrapf(errNewApp, "new app")
-			}
-
 			if config == nil {
 				if len(posArgs) == 0 {
 					return errors.Newf("neither command nor config specified")
@@ -227,7 +221,7 @@ var _cmdRun = func() *cobra.Command {
 					Startup:      false,
 				}
 
-				return run(db, cfg.DirLogs, runConfig)
+				return run(dbb, cfg.DirLogs, runConfig)
 			}
 
 			configs, errLoadConfigs := core.LoadConfigs(*config)
@@ -239,7 +233,7 @@ var _cmdRun = func() *cobra.Command {
 			names := posArgs
 			if len(names) == 0 {
 				// no filtering by names, run all processes
-				return run(db, cfg.DirLogs, configs...)
+				return run(dbb, cfg.DirLogs, configs...)
 			}
 
 			configsByName := make(map[string]core.RunConfig, len(names))
@@ -263,7 +257,7 @@ var _cmdRun = func() *cobra.Command {
 				return merr
 			}
 
-			return run(db, cfg.DirLogs, fun.Values(configsByName)...)
+			return run(dbb, cfg.DirLogs, fun.Values(configsByName)...)
 		},
 	}
 	cmd.Flags().StringVarP(&name, "name", "n", "", "set a name for the process")

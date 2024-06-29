@@ -81,6 +81,8 @@ func New() (db.Handle, core.Config, error) {
 			return errors.Wrapf(errDB, "new db, dir=%q", config.DirDB)
 		}
 
+		// TODO: cleanup logs files which are not bound to any existing process (in any status)
+
 		return nil
 	}(); err != nil {
 		return fun.Zero[db.Handle](), fun.Zero[core.Config](), err

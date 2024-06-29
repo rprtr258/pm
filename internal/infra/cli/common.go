@@ -8,7 +8,17 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/db"
 )
+
+var dbb, cfg = func() (db.Handle, core.Config) {
+	db, config, errNewApp := app.New()
+	if errNewApp != nil {
+		log.Fatal().Err(errNewApp).Msg("new app")
+	}
+	return db, config
+}()
 
 func printProcs(procs ...core.ProcStat) {
 	for _, proc := range procs {
@@ -32,15 +42,15 @@ func addFlagStrings(
 }
 
 func addFlagNames(cmd *cobra.Command, names *[]string) {
-	addFlagStrings(cmd, names, "name", "name(s) of process(es)", compl.FlagName)
+	addFlagStrings(cmd, names, "name", "name(s) of process(es)", completeFlagName)
 }
 
 func addFlagTags(cmd *cobra.Command, tags *[]string) {
-	addFlagStrings(cmd, tags, "tag", "tag(s) of process(es)", compl.FlagTag)
+	addFlagStrings(cmd, tags, "tag", "tag(s) of process(es)", completeFlagTag)
 }
 
 func addFlagIDs(cmd *cobra.Command, ids *[]string) {
-	addFlagStrings(cmd, ids, "id", "id(s) of process(es) to list", compl.FlagIDs)
+	addFlagStrings(cmd, ids, "id", "id(s) of process(es) to list", completeFlagIDs)
 }
 
 func addFlagInteractive(cmd *cobra.Command, dest *bool) {

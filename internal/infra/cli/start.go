@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
@@ -18,14 +17,9 @@ var _cmdStart = func() *cobra.Command {
 		Use:               "start [name|tag|id]...",
 		Short:             "start already added process(es)",
 		GroupID:           "management",
-		ValidArgsFunction: compl.ArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
-
-			db, _, errNewApp := app.New()
-			if errNewApp != nil {
-				return errors.Wrapf(errNewApp, "new app")
-			}
 
 			var filterFunc func(core.Proc) bool
 			if config != nil {
@@ -57,7 +51,7 @@ var _cmdStart = func() *cobra.Command {
 				)
 			}
 
-			procs := listProcs(db).
+			procs := listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				ToSlice()
 			if len(procs) == 0 {
@@ -69,7 +63,7 @@ var _cmdStart = func() *cobra.Command {
 				func(proc core.ProcStat) core.PMID {
 					return proc.ID
 				}, procs...)
-			if err := implStart(db, procIDs...); err != nil {
+			if err := implStart(dbb, procIDs...); err != nil {
 				return err
 			}
 

@@ -52,7 +52,7 @@ var _cmdSignal = func() *cobra.Command {
 		Short:             "send signal to process(es)",
 		Aliases:           []string{"kill"},
 		GroupID:           "inspection",
-		ValidArgsFunction: compl.ArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector,
 		Args:              cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			signal := args[0]
@@ -71,12 +71,7 @@ var _cmdSignal = func() *cobra.Command {
 				return errors.Newf("unknown signal: %q", signal)
 			}
 
-			db, _, errApp := app.New()
-			if errApp != nil {
-				return errors.Wrap(errApp, "open db")
-			}
-
-			list := listProcs(db)
+			list := listProcs(dbb)
 
 			if config != nil {
 				configs, errLoadConfigs := core.LoadConfigs(*config)

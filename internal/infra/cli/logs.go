@@ -214,7 +214,6 @@ var (
 	_barStderr = scuf.String("|", scuf.FgRed)
 )
 
-// TODO: cleanup logs files which are not bound to any existing process (in any status)
 var _cmdLogs = func() *cobra.Command {
 	var names, ids, tags []string
 	var config string
@@ -222,17 +221,12 @@ var _cmdLogs = func() *cobra.Command {
 		Use:               "logs [name|tag|id]...",
 		Short:             "watch for processes logs",
 		GroupID:           "inspection",
-		ValidArgsFunction: compl.ArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			db, _, errNewApp := app.New()
-			if errNewApp != nil {
-				return errors.Wrapf(errNewApp, "new app")
-			}
-
-			procs, err := getProcs(db, args, ids, names, tags, config)
+			procs, err := getProcs(dbb, args, ids, names, tags, config)
 			if err != nil {
 				return errors.Wrapf(err, "get proc ids")
 			}

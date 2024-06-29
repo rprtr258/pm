@@ -9,8 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
-	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 var _procInspectTemplate = template.Must(template.New("proc").
@@ -45,13 +43,8 @@ var _cmdInspect = func() *cobra.Command {
 		Short:             "inspect process",
 		Aliases:           []string{"i"},
 		GroupID:           "inspection",
-		ValidArgsFunction: compl.ArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector,
 		RunE: func(_ *cobra.Command, args []string) error {
-			db, _, errNewApp := app.New()
-			if errNewApp != nil {
-				return errors.Wrapf(errNewApp, "new app")
-			}
-
 			filterFunc := core.FilterFunc(
 				core.WithAllIfNoFilters,
 				core.WithGeneric(args...),
@@ -59,7 +52,7 @@ var _cmdInspect = func() *cobra.Command {
 				core.WithNames(names...),
 				core.WithTags(tags...),
 			)
-			procsToShow := listProcs(db).
+			procsToShow := listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				ToSlice()
 

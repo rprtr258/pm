@@ -9,8 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
-	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/lo"
 )
 
@@ -28,23 +26,11 @@ func registerFlagCompletionFunc(
 	}
 }
 
-type completer struct{ db db.Handle }
-
-var compl = completer{
-	db: func() db.Handle {
-		db, _, errNewApp := app.New() // TODO: call app.New only once
-		if errNewApp != nil {
-			log.Fatal().Err(errNewApp).Msg("new app")
-		}
-		return db
-	}(),
-}
-
-func (c completer) FlagName(
+func completeFlagName(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	return iter.Map(listProcs(c.db).
+	return iter.Map(listProcs(dbb).
 		Filter(func(p core.ProcStat) bool {
 			return strings.HasPrefix(p.Name, prefix)
 		}).Seq,
@@ -55,11 +41,11 @@ func (c completer) FlagName(
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
 
-func (c completer) FlagTag(
+func completeFlagTag(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	res := listProcs(c.db).
+	res := listProcs(dbb).
 		Tags().
 		ToSlice()
 	return fun.Filter(func(tag string) bool {
@@ -67,11 +53,11 @@ func (c completer) FlagTag(
 	}, res...), cobra.ShellCompDirectiveNoFileComp
 }
 
-func (c completer) FlagIDs(
+func completeFlagIDs(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	return iter.Map(listProcs(c.db).
+	return iter.Map(listProcs(dbb).
 		Filter(func(p core.ProcStat) bool {
 			return strings.HasPrefix(string(p.ID), prefix)
 		}).Seq,
@@ -82,11 +68,11 @@ func (c completer) FlagIDs(
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
 
-func (c completer) ArgGenericSelector(
+func completeArgGenericSelector(
 	cmd *cobra.Command, args []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	names, _ := c.FlagName(cmd, args, prefix)
-	tags, _ := c.FlagTag(cmd, args, prefix)
+	names, _ := completeFlagName(cmd, args, prefix)
+	tags, _ := completeFlagTag(cmd, args, prefix)
 	return lo.Flatten(names, tags), cobra.ShellCompDirectiveNoFileComp
 }

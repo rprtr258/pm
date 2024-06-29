@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
@@ -18,14 +17,9 @@ var _cmdRestart = func() *cobra.Command {
 		Use:               "restart [name|tag|id]...",
 		Short:             "restart already added process(es)",
 		GroupID:           "management",
-		ValidArgsFunction: compl.ArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
-
-			db, _, errNewApp := app.New()
-			if errNewApp != nil {
-				return errors.Wrapf(errNewApp, "new app")
-			}
 
 			var filterFunc func(core.Proc) bool
 			if config != nil {
@@ -57,7 +51,7 @@ var _cmdRestart = func() *cobra.Command {
 				)
 			}
 
-			procIDs := listProcs(db).
+			procIDs := listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				IDs().
 				ToSlice()
@@ -66,11 +60,11 @@ var _cmdRestart = func() *cobra.Command {
 				return nil
 			}
 
-			if errStop := implStop(db, procIDs...); errStop != nil {
+			if errStop := implStop(dbb, procIDs...); errStop != nil {
 				return errors.Wrapf(errStop, "client.stop")
 			}
 
-			if errStart := implStart(db, procIDs...); errStart != nil {
+			if errStart := implStart(dbb, procIDs...); errStart != nil {
 				return errors.Wrapf(errStart, "client.start")
 			}
 

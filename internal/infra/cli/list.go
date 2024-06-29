@@ -18,7 +18,6 @@ import (
 	"golang.org/x/term"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/table"
 )
@@ -319,7 +318,7 @@ var _cmdList = func() *cobra.Command {
 		Short:             "list processes",
 		Aliases:           []string{"l", "ls", "ps", "status"},
 		GroupID:           "inspection",
-		ValidArgsFunction: compl.ArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector,
 		RunE: func(_ *cobra.Command, args []string) error {
 			less, err := unmarshalFlagSort(sort)
 			if err != nil {
@@ -331,11 +330,6 @@ var _cmdList = func() *cobra.Command {
 				return fmt.Errorf("unmarshal flag format: %w", err)
 			}
 
-			db, _, errNewApp := app.New()
-			if errNewApp != nil {
-				return errors.Wrapf(errNewApp, "new app")
-			}
-
 			filterFunc := core.FilterFunc(
 				core.WithAllIfNoFilters,
 				core.WithGeneric(args...),
@@ -343,7 +337,7 @@ var _cmdList = func() *cobra.Command {
 				core.WithNames(names...),
 				core.WithTags(tags...),
 			)
-			procsToShow := listProcs(db).
+			procsToShow := listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				ToSlice()
 

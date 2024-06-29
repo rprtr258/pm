@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
@@ -75,15 +74,10 @@ var _cmdDelete = func() *cobra.Command {
 		Use:               "delete [name|tag|id]...",
 		Short:             "stop and remove process(es)",
 		GroupID:           "management",
-		ValidArgsFunction: compl.ArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector,
 		Aliases:           []string{"del", "rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
-
-			db, cfg, errNewApp := app.New()
-			if errNewApp != nil {
-				return errors.Wrapf(errNewApp, "new app")
-			}
 
 			var filterFunc func(core.Proc) bool
 			if config != nil {
@@ -115,7 +109,7 @@ var _cmdDelete = func() *cobra.Command {
 				)
 			}
 
-			procIDs := listProcs(db).
+			procIDs := listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				IDs().
 				ToSlice()
@@ -124,11 +118,11 @@ var _cmdDelete = func() *cobra.Command {
 				return nil
 			}
 
-			if err := implStop(db, procIDs...); err != nil {
+			if err := implStop(dbb, procIDs...); err != nil {
 				return errors.Wrapf(err, "stop")
 			}
 
-			if err := implDelete(db, cfg.DirLogs, procIDs...); err != nil {
+			if err := implDelete(dbb, cfg.DirLogs, procIDs...); err != nil {
 				return errors.Wrapf(err, "delete")
 			}
 
