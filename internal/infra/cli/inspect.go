@@ -27,6 +27,7 @@ Env: {{.Env}}
 StdoutFile: {{.StdoutFile}}
 StderrFile: {{.StderrFile}}{{if .Watch.Valid}}
 Watch: {{.Watch.Value}}{{end}}
+KillTimeout: {{.KillTimeout}}
 Status:
 	Status: {{.Status}}{{if eq (print .Status) "running"}}
 	StartTime: {{formatTime .StartTime}}

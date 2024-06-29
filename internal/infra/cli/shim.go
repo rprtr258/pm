@@ -37,6 +37,7 @@ type Watcher struct {
 }
 
 func newWatcher(dir string, patternRE *regexp.Regexp) (Watcher, error) {
+	// TODO: make batch window an option
 	watcher, err := fsnotify.NewBatchedRecursiveWatcher(dir, "", time.Second)
 	if err != nil {
 		return fun.Zero[Watcher](), errors.Wrapf(err, "create fsnotify watcher")
@@ -57,7 +58,7 @@ func execCmd(cmd exec.Cmd) (*exec.Cmd, error) {
 	return &c, c.Start()
 }
 
-func killCmd(cmd *exec.Cmd) {
+func killCmd(cmd *exec.Cmd, killTimeout time.Duration) {
 	children := map[int]struct{}{cmd.Process.Pid: {}}
 	for _, child := range linuxprocess.Children(linuxprocess.List(), cmd.Process.Pid) {
 		children[child.Handle.Pid] = struct{}{}
@@ -72,10 +73,7 @@ func killCmd(cmd *exec.Cmd) {
 		}
 	}
 
-	const (
-		pollInterval       = 100 * time.Millisecond
-		durationBeforeKill = 5 * time.Second
-	)
+	const pollInterval = 100 * time.Millisecond
 
 	timer := time.NewTimer(pollInterval)
 	defer timer.Stop()
@@ -83,7 +81,7 @@ func killCmd(cmd *exec.Cmd) {
 WAIT_FOR_DEATH:
 	for {
 		select {
-		case <-time.After(durationBeforeKill):
+		case <-time.After(killTimeout):
 			break WAIT_FOR_DEATH
 		case <-timer.C:
 			// check if there is still alive child, if no, return
@@ -281,11 +279,11 @@ func implShim(proc core.Proc) error {
 			// Stop is done by sending SIGTERM.
 			// Manual restart is done by restarting whole shim and child by cli.
 			log.Debug().Msg("terminate signal received")
-			killCmd(cmd)
+			killCmd(cmd, proc.KillTimeout)
 			return nil
 		case events := <-watchCh:
 			log.Debug().Any("events", events).Msg("watch triggered")
-			killCmd(cmd)
+			killCmd(cmd, proc.KillTimeout)
 			waitTrigger = true // do not wait for autorestart or watch, start immediately
 		case <-waitCh: // TODO: we might be leaking waitCh if watch is triggered many times
 		}

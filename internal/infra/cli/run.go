@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/set"
@@ -96,17 +98,18 @@ func ImplRun(
 			return procData.Name == name
 		}); ok {
 			procData := core.Proc{
-				ID:         procID,
-				Name:       name,
-				Cwd:        config.Cwd,
-				Tags:       fun.Uniq(append(config.Tags, "all")...),
-				Command:    command,
-				Args:       config.Args,
-				Watch:      watch,
-				Env:        config.Env,
-				StdoutFile: config.StdoutFile.OrDefault(filepath.Join(dirLogs, fmt.Sprintf("%v.stdout", procID))),
-				StderrFile: config.StderrFile.OrDefault(filepath.Join(dirLogs, fmt.Sprintf("%v.stderr", procID))),
-				Startup:    config.Startup,
+				ID:          procID,
+				Name:        name,
+				Cwd:         config.Cwd,
+				Tags:        fun.Uniq(append(config.Tags, "all")...),
+				Command:     command,
+				Args:        config.Args,
+				Watch:       watch,
+				Env:         config.Env,
+				StdoutFile:  config.StdoutFile.OrDefault(filepath.Join(dirLogs, fmt.Sprintf("%v.stdout", procID))),
+				StderrFile:  config.StderrFile.OrDefault(filepath.Join(dirLogs, fmt.Sprintf("%v.stderr", procID))),
+				Startup:     config.Startup,
+				KillTimeout: config.KillTimeout,
 			}
 
 			proc := procs[procID]
@@ -127,16 +130,17 @@ func ImplRun(
 		}
 
 		procID, err := dbb.AddProc(db.CreateQuery{
-			Name:       name,
-			Cwd:        config.Cwd,
-			Tags:       fun.Uniq(append(config.Tags, "all")...),
-			Command:    command,
-			Args:       config.Args,
-			Watch:      watch,
-			Env:        config.Env,
-			StdoutFile: config.StdoutFile,
-			StderrFile: config.StderrFile,
-			Startup:    config.Startup,
+			Name:        name,
+			Cwd:         config.Cwd,
+			Tags:        fun.Uniq(append(config.Tags, "all")...),
+			Command:     command,
+			Args:        config.Args,
+			Watch:       watch,
+			Env:         config.Env,
+			StdoutFile:  config.StdoutFile,
+			StderrFile:  config.StderrFile,
+			Startup:     config.Startup,
+			KillTimeout: cmp.Or(config.KillTimeout, 5*time.Second),
 		}, dirLogs)
 		if err != nil {
 			return "", errors.Wrapf(err, "save proc")

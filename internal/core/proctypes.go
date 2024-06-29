@@ -48,6 +48,7 @@ type Proc struct {
 
 	Startup bool // Startup - run on OS startup
 
+	KillTimeout time.Duration // time to wait before sending SIGKILL
 	// RestartTries int
 	// RestartDelay    time.Duration
 	// Respawns int

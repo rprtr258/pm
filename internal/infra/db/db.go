@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rprtr258/fun"
 	"github.com/spf13/afero"
@@ -31,7 +32,8 @@ type procData struct {
 
 	Watch *string `json:"watch"`
 
-	Startup bool `json:"startup"`
+	Startup     bool          `json:"startup"`
+	KillTimeout time.Duration `json:"kill_timeout"`
 
 	// RestartTries int
 	// RestartDelay    time.Duration
@@ -44,17 +46,18 @@ func (p procData) ID() string {
 
 func mapFromRepo(proc procData) core.Proc {
 	return core.Proc{
-		ID:         proc.ProcID,
-		Command:    proc.Command,
-		Cwd:        proc.Cwd,
-		Name:       proc.Name,
-		Args:       proc.Args,
-		Tags:       proc.Tags,
-		Watch:      fun.FromPtr(proc.Watch),
-		Env:        proc.Env,
-		StdoutFile: proc.StdoutFile,
-		StderrFile: proc.StderrFile,
-		Startup:    proc.Startup,
+		ID:          proc.ProcID,
+		Command:     proc.Command,
+		Cwd:         proc.Cwd,
+		Name:        proc.Name,
+		Args:        proc.Args,
+		Tags:        proc.Tags,
+		Watch:       fun.FromPtr(proc.Watch),
+		Env:         proc.Env,
+		StdoutFile:  proc.StdoutFile,
+		StderrFile:  proc.StderrFile,
+		Startup:     proc.Startup,
+		KillTimeout: proc.KillTimeout,
 	}
 }
 
@@ -95,7 +98,8 @@ type CreateQuery struct {
 
 	Watch fun.Option[string] // Watch - regex pattern for file watching
 
-	Startup bool // Startup - should process be started on startup
+	Startup     bool // Startup - should process be started on startup
+	KillTimeout time.Duration
 
 	// RestartTries int
 	// RestartDelay    time.Duration
@@ -129,7 +133,6 @@ func (h Handle) readProc(id core.PMID) (procData, error) {
 
 func (h Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 	id := core.GenPMID()
-
 	if err := h.writeProc(procData{
 		ProcID:  id,
 		Command: query.Command,
@@ -143,27 +146,28 @@ func (h Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stdout", id))),
 		StderrFile: query.StderrFile.
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stderr", id))),
-		Startup: query.Startup,
+		Startup:     query.Startup,
+		KillTimeout: query.KillTimeout,
 	}); err != nil {
 		return "", err
 	}
-
 	return id, nil
 }
 
 func (h Handle) UpdateProc(proc core.Proc) Error {
 	if err := h.writeProc(procData{
-		ProcID:     proc.ID,
-		Command:    proc.Command,
-		Cwd:        proc.Cwd,
-		Name:       proc.Name,
-		Args:       proc.Args,
-		Tags:       proc.Tags,
-		Watch:      proc.Watch.Ptr(),
-		Env:        proc.Env,
-		StdoutFile: proc.StdoutFile,
-		StderrFile: proc.StderrFile,
-		Startup:    proc.Startup,
+		ProcID:      proc.ID,
+		Command:     proc.Command,
+		Cwd:         proc.Cwd,
+		Name:        proc.Name,
+		Args:        proc.Args,
+		Tags:        proc.Tags,
+		Watch:       proc.Watch.Ptr(),
+		Env:         proc.Env,
+		StdoutFile:  proc.StdoutFile,
+		StderrFile:  proc.StderrFile,
+		Startup:     proc.Startup,
+		KillTimeout: proc.KillTimeout,
 	}); err != nil {
 		return FlushError{err}
 	}

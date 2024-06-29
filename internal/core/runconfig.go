@@ -39,7 +39,6 @@ type RunConfig struct {
 	// Name of a process if defined, otherwise generated
 	Name fun.Option[string]
 	// KillTimeout - before sending SIGKILL after SIGINT
-	// TODO: use
 	KillTimeout time.Duration
 	// KillChildren - stop children processes on process stop
 	// TODO: use

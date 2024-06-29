@@ -1,8 +1,6 @@
 module github.com/rprtr258/pm
 
-go 1.21.0
-
-toolchain go1.21.6
+go 1.22
 
 require (
 	github.com/charmbracelet/huh v0.4.2
