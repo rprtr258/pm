@@ -55,7 +55,11 @@ func compareArgs(first, second []string) bool {
 // Run - create and start processes, returns ids of created processes.
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
-func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
+func ImplRun(
+	dbb db.Handle,
+	dirLogs string,
+	config core.RunConfig,
+) (core.PMID, string, error) {
 	command, errLook := exec.LookPath(config.Command)
 	if errLook != nil {
 		// if command is relative and failed to look it up, add workdir first
@@ -84,7 +88,7 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 			return r.String()
 		})
 		// try to find by name and update
-		procs, err := appp.DB.GetProcs(core.WithAllIfNoFilters)
+		procs, err := dbb.GetProcs(core.WithAllIfNoFilters)
 		if err != nil {
 			return "", errors.Wrapf(err, "get procs from db")
 		}
@@ -101,8 +105,8 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 				Args:       config.Args,
 				Watch:      watch,
 				Env:        config.Env,
-				StdoutFile: config.StdoutFile.OrDefault(filepath.Join(appp.DirLogs, fmt.Sprintf("%v.stdout", procID))),
-				StderrFile: config.StderrFile.OrDefault(filepath.Join(appp.DirLogs, fmt.Sprintf("%v.stderr", procID))),
+				StdoutFile: config.StdoutFile.OrDefault(filepath.Join(dirLogs, fmt.Sprintf("%v.stdout", procID))),
+				StderrFile: config.StderrFile.OrDefault(filepath.Join(dirLogs, fmt.Sprintf("%v.stderr", procID))),
 				Startup:    config.Startup,
 			}
 
@@ -116,14 +120,14 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 				return procID, nil
 			}
 
-			if errUpdate := appp.DB.UpdateProc(procData); errUpdate != nil {
+			if errUpdate := dbb.UpdateProc(procData); errUpdate != nil {
 				return "", errors.Wrapf(errUpdate, "update proc: %v", procData)
 			}
 
 			return procID, nil
 		}
 
-		procID, err := appp.DB.AddProc(db.CreateQuery{
+		procID, err := dbb.AddProc(db.CreateQuery{
 			Name:       name,
 			Cwd:        config.Cwd,
 			Tags:       fun.Uniq(append(config.Tags, "all")...),
@@ -134,7 +138,7 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 			StdoutFile: config.StdoutFile,
 			StderrFile: config.StderrFile,
 			Startup:    config.Startup,
-		}, appp.DirLogs)
+		}, dirLogs)
 		if err != nil {
 			return "", errors.Wrapf(err, "save proc")
 		}
@@ -145,14 +149,14 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 		return "", "", errors.Wrapf(errCreate, "server.create: %v", config)
 	}
 
-	err := implStart(appp.DB, id)
+	err := implStart(dbb, id)
 	return id, name, err
 }
 
-func run(appp app.App, configs ...core.RunConfig) error {
+func run(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 	var merr []error
 	for _, config := range configs {
-		if _, name, errRun := ImplRun(appp, config); errRun != nil {
+		if _, name, errRun := ImplRun(db, dirLogs, config); errRun != nil {
 			merr = append(merr, errors.Wrapf(errRun, "start proc %v", config))
 		} else {
 			fmt.Println(name)
@@ -174,7 +178,7 @@ var _cmdRun = func() *cobra.Command {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 			watch := fun.IF(cmd.Flags().Lookup("watch").Changed, &watch, nil)
 
-			app, errNewApp := app.New()
+			db, cfg, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
@@ -223,7 +227,7 @@ var _cmdRun = func() *cobra.Command {
 					Startup:      false,
 				}
 
-				return run(app, runConfig)
+				return run(db, cfg.DirLogs, runConfig)
 			}
 
 			configs, errLoadConfigs := core.LoadConfigs(*config)
@@ -235,7 +239,7 @@ var _cmdRun = func() *cobra.Command {
 			names := posArgs
 			if len(names) == 0 {
 				// no filtering by names, run all processes
-				return run(app, configs...)
+				return run(db, cfg.DirLogs, configs...)
 			}
 
 			configsByName := make(map[string]core.RunConfig, len(names))
@@ -259,7 +263,7 @@ var _cmdRun = func() *cobra.Command {
 				return merr
 			}
 
-			return run(app, fun.Values(configsByName)...)
+			return run(db, cfg.DirLogs, fun.Values(configsByName)...)
 		},
 	}
 	cmd.Flags().StringVarP(&name, "name", "n", "", "set a name for the process")

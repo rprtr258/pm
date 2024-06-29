@@ -12,6 +12,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
@@ -47,10 +48,10 @@ func removeFileGlob(glob string) error {
 	return nil
 }
 
-func implDelete(appp app.App, ids ...core.PMID) error {
+func implDelete(db db.Handle, dirLogs string, ids ...core.PMID) error {
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
-			proc, errDelete := appp.DB.Delete(id)
+			proc, errDelete := db.Delete(id)
 			if errDelete != nil {
 				return errors.Wrapf(errDelete, "delete proc: %s", id)
 			}
@@ -59,7 +60,7 @@ func implDelete(appp app.App, ids ...core.PMID) error {
 
 			// remove log files
 			return errors.Combine(
-				errors.Wrapf(removeFileGlob(filepath.Join(appp.DirLogs, proc.ID.String()+"*")), "remove logrotation files"),
+				errors.Wrapf(removeFileGlob(filepath.Join(dirLogs, proc.ID.String()+"*")), "remove logrotation files"),
 				errors.Wrapf(removeFile(proc.StdoutFile), "remove stdout file %s", proc.StdoutFile),
 				errors.Wrapf(removeFile(proc.StderrFile), "remove stderr file: %s", proc.StderrFile),
 			)
@@ -79,7 +80,7 @@ var _cmdDelete = func() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			appp, errNewApp := app.New()
+			db, cfg, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
@@ -114,7 +115,7 @@ var _cmdDelete = func() *cobra.Command {
 				)
 			}
 
-			procIDs := listProcs(appp.DB).
+			procIDs := listProcs(db).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				IDs().
 				ToSlice()
@@ -123,11 +124,11 @@ var _cmdDelete = func() *cobra.Command {
 				return nil
 			}
 
-			if err := implStop(appp.DB, procIDs...); err != nil {
+			if err := implStop(db, procIDs...); err != nil {
 				return errors.Wrapf(err, "stop")
 			}
 
-			if err := implDelete(appp, procIDs...); err != nil {
+			if err := implDelete(db, cfg.DirLogs, procIDs...); err != nil {
 				return errors.Wrapf(err, "delete")
 			}
 

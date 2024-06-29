@@ -331,7 +331,7 @@ var _cmdList = func() *cobra.Command {
 				return fmt.Errorf("unmarshal flag format: %w", err)
 			}
 
-			appp, errNewApp := app.New()
+			db, _, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
@@ -343,7 +343,7 @@ var _cmdList = func() *cobra.Command {
 				core.WithNames(names...),
 				core.WithTags(tags...),
 			)
-			procsToShow := listProcs(appp.DB).
+			procsToShow := listProcs(db).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				ToSlice()
 

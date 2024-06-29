@@ -22,7 +22,7 @@ var _cmdRestart = func() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			appp, errNewApp := app.New()
+			db, _, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
@@ -57,7 +57,7 @@ var _cmdRestart = func() *cobra.Command {
 				)
 			}
 
-			procIDs := listProcs(appp.DB).
+			procIDs := listProcs(db).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				IDs().
 				ToSlice()
@@ -66,11 +66,11 @@ var _cmdRestart = func() *cobra.Command {
 				return nil
 			}
 
-			if errStop := implStop(appp.DB, procIDs...); errStop != nil {
+			if errStop := implStop(db, procIDs...); errStop != nil {
 				return errors.Wrapf(errStop, "client.stop")
 			}
 
-			if errStart := implStart(appp.DB, procIDs...); errStart != nil {
+			if errStart := implStart(db, procIDs...); errStart != nil {
 				return errors.Wrapf(errStart, "client.start")
 			}
 

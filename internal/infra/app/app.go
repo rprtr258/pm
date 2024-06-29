@@ -51,25 +51,24 @@ func MigrateConfig(config core.Config) error {
 	return nil
 }
 
-type App struct {
-	DB               db.Handle
+type Config struct {
 	DirHome, DirLogs string
 	Config           core.Config
 }
 
-func New() (App, error) {
+func New() (db.Handle, Config, error) {
 	cfg, errCfg := ReadPMConfig()
 	if errCfg != nil {
-		return App{}, fmt.Errorf("config: %w", errCfg)
+		return fun.Zero[db.Handle](), fun.Zero[Config](), fmt.Errorf("config: %w", errCfg)
 	}
 
 	if errMigrate := MigrateConfig(cfg); errMigrate != nil {
-		return fun.Zero[App](), fmt.Errorf("migrate: %w", errMigrate)
+		return fun.Zero[db.Handle](), fun.Zero[Config](), fmt.Errorf("migrate: %w", errMigrate)
 	}
 
 	dbFs, errDB := db.InitRealDir(_dirDB)
 	if errDB != nil {
-		return fun.Zero[App](), errors.Wrapf(errDB, "new db, dir=%q", _dirDB)
+		return fun.Zero[db.Handle](), fun.Zero[Config](), errors.Wrapf(errDB, "new db, dir=%q", _dirDB)
 	}
 
 	dbHandle := db.New(dbFs)
@@ -77,14 +76,13 @@ func New() (App, error) {
 	config, _, errConfig := core.ReadConfig()
 	if errConfig != nil {
 		if errConfig != core.ErrConfigNotExists {
-			return fun.Zero[App](), errors.Wrapf(errConfig, "read app config")
+			return fun.Zero[db.Handle](), fun.Zero[Config](), errors.Wrapf(errConfig, "read app config")
 		}
 
 		config = core.DefaultConfig
 	}
 
-	return App{
-		DB:      dbHandle,
+	return dbHandle, Config{
 		DirHome: core.DirHome,
 		DirLogs: _dirProcsLogs,
 		Config:  config,

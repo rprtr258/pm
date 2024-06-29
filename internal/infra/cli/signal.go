@@ -71,12 +71,12 @@ var _cmdSignal = func() *cobra.Command {
 				return errors.Newf("unknown signal: %q", signal)
 			}
 
-			appp, errList := app.New()
+			db, _, errList := app.New()
 			if errList != nil {
 				return errors.Wrap(errList, "new grpc client")
 			}
 
-			list := listProcs(appp.DB)
+			list := listProcs(db)
 
 			if config != nil {
 				configs, errLoadConfigs := core.LoadConfigs(*config)

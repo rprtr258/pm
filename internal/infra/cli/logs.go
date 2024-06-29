@@ -227,12 +227,12 @@ var _cmdLogs = func() *cobra.Command {
 			ctx := cmd.Context()
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			appp, errNewApp := app.New()
+			db, _, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
 
-			procs, err := getProcs(appp.DB, args, ids, names, tags, config)
+			procs, err := getProcs(db, args, ids, names, tags, config)
 			if err != nil {
 				return errors.Wrapf(err, "get proc ids")
 			}

@@ -24,12 +24,12 @@ var _cmdStop = func() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			appp, errList := app.New()
+			db, _, errList := app.New()
 			if errList != nil {
 				return errors.Wrapf(errList, "new grpc client")
 			}
 
-			list := listProcs(appp.DB)
+			list := listProcs(db)
 			if config != nil {
 				configs, errLoadConfigs := core.LoadConfigs(*config)
 				if errLoadConfigs != nil {
@@ -67,7 +67,7 @@ var _cmdStop = func() *cobra.Command {
 			}
 
 			procIDs := fun.Map[core.PMID](func(proc core.ProcStat) core.PMID { return proc.ID }, procs...)
-			if err := implStop(appp.DB, procIDs...); err != nil {
+			if err := implStop(db, procIDs...); err != nil {
 				return errors.Wrapf(err, "client.stop")
 			}
 

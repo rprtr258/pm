@@ -43,13 +43,13 @@ func completeFlagName(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	appp, errNewApp := app.New()
+	db, _, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	return iter.Map(listProcs(appp.DB).
+	return iter.Map(listProcs(db).
 		Filter(func(p core.ProcStat) bool {
 			return strings.HasPrefix(p.Name, prefix)
 		}).Seq,
@@ -84,13 +84,13 @@ func addFlagIDs(cmd *cobra.Command, ids *[]string) {
 		_ *cobra.Command, _ []string,
 		prefix string,
 	) ([]string, cobra.ShellCompDirective) {
-		appp, errNewApp := app.New() // TODO: reduce number of calls to app.New
+		db, _, errNewApp := app.New() // TODO: reduce number of calls to app.New
 		if errNewApp != nil {
 			log.Error().Err(errNewApp).Msg("new app")
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		return iter.Map(listProcs(appp.DB).
+		return iter.Map(listProcs(db).
 			Filter(func(p core.ProcStat) bool {
 				return strings.HasPrefix(string(p.ID), prefix)
 			}).Seq,
@@ -110,13 +110,13 @@ func completeFlagTag(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	appp, errNewApp := app.New()
+	db, _, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	res := listProcs(appp.DB).
+	res := listProcs(db).
 		Tags().
 		ToSlice()
 	return fun.Filter(func(tag string) bool {
