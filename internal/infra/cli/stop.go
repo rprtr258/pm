@@ -55,7 +55,7 @@ var _cmdStop = func() *cobra.Command {
 			)
 			procs := list.
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
-				// TODO: filter running
+				Filter(func(ps core.ProcStat) bool { return ps.Status != core.StatusStopped }).
 				Filter(func(ps core.ProcStat) bool {
 					// TODO: break on error, e.g. Ctrl-C
 					return !interactive || confirmProc(ps, "stop")
