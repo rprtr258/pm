@@ -27,6 +27,8 @@ type Config struct {
 var DefaultConfig = Config{
 	Version: Version,
 	Debug:   false,
+	DirHome: DirHome,
+	DirLogs: _dirProcsLogs,
 }
 
 func ReadConfig() (Config, error) {
