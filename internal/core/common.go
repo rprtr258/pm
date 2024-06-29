@@ -8,9 +8,9 @@ import (
 )
 
 var (
-	_userHome = userHomeDir()
-	DirHome   = filepath.Join(_userHome, ".pm")
-	SocketRPC = filepath.Join(DirHome, "rpc.sock")
+	_userHome     = userHomeDir()
+	DirHome       = filepath.Join(_userHome, ".pm")
+	_dirProcsLogs = filepath.Join(DirHome, "logs")
 )
 
 func userHomeDir() string {
