@@ -13,6 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
@@ -21,13 +22,13 @@ const CmdShim = "shim"
 
 var ErrAlreadyRunning = errors.New("process is already running")
 
-func (app App) startShimImpl(id core.PMID) error {
+func startShimImpl(db db.Handle, id core.PMID) error {
 	pmExecutable, err := os.Executable()
 	if err != nil {
 		return errors.Wrapf(err, "get pm executable")
 	}
 
-	proc, ok := app.DB.GetProc(id)
+	proc, ok := db.GetProc(id)
 	if !ok {
 		return errors.Newf("not found proc to start: %s", id)
 	}
@@ -101,7 +102,7 @@ func (app App) Start(ids ...core.PMID) error {
 				return nil
 			}
 
-			if errStart := app.startShimImpl(id); errStart != nil {
+			if errStart := startShimImpl(app.DB, id); errStart != nil {
 				return errors.Wrapf(errStart, "start proc")
 			}
 
