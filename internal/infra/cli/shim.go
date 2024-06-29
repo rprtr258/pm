@@ -119,7 +119,7 @@ func initWatchChannel(
 	ch chan<- []fsnotify.Event,
 	cwd string,
 	watchPattern string,
-) (func() error, error) {
+) (func(), error) {
 	watchRE, errCompilePattern := regexp.Compile(watchPattern)
 	if errCompilePattern != nil {
 		return nil, errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
@@ -176,7 +176,11 @@ func initWatchChannel(
 			}
 		}
 	}()
-	return watcher.watcher.Close, nil
+	return func() {
+		if err := watcher.watcher.Close(); err != nil {
+			log.Error().Err(err).Msg("failed to close watcher")
+		}
+	}, nil
 }
 
 //nolint:funlen // very important function, must be verbose here, done my best for now
