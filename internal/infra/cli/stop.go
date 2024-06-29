@@ -20,7 +20,7 @@ var _cmdStop = func() *cobra.Command {
 		Short:             "stop process(es)",
 		Aliases:           []string{"kill"},
 		GroupID:           "inspection",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: compl.ArgGenericSelector,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 

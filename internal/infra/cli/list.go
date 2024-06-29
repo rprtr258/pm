@@ -319,7 +319,7 @@ var _cmdList = func() *cobra.Command {
 		Short:             "list processes",
 		Aliases:           []string{"l", "ls", "ps", "status"},
 		GroupID:           "inspection",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: compl.ArgGenericSelector,
 		RunE: func(_ *cobra.Command, args []string) error {
 			less, err := unmarshalFlagSort(sort)
 			if err != nil {

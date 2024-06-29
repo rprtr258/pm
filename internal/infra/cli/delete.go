@@ -75,7 +75,7 @@ var _cmdDelete = func() *cobra.Command {
 		Use:               "delete [name|tag|id]...",
 		Short:             "stop and remove process(es)",
 		GroupID:           "management",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: compl.ArgGenericSelector,
 		Aliases:           []string{"del", "rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)

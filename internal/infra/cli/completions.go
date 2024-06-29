@@ -10,6 +10,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/lo"
 )
 
@@ -27,17 +28,23 @@ func registerFlagCompletionFunc(
 	}
 }
 
-func completeFlagName(
+type completer struct{ db db.Handle }
+
+var compl = completer{
+	db: func() db.Handle {
+		db, _, errNewApp := app.New() // TODO: call app.New only once
+		if errNewApp != nil {
+			log.Fatal().Err(errNewApp).Msg("new app")
+		}
+		return db
+	}(),
+}
+
+func (c completer) FlagName(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	db, _, errNewApp := app.New()
-	if errNewApp != nil {
-		log.Error().Err(errNewApp).Msg("new app")
-		return nil, cobra.ShellCompDirectiveError
-	}
-
-	return iter.Map(listProcs(db).
+	return iter.Map(listProcs(c.db).
 		Filter(func(p core.ProcStat) bool {
 			return strings.HasPrefix(p.Name, prefix)
 		}).Seq,
@@ -48,17 +55,11 @@ func completeFlagName(
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
 
-func completeFlagTag(
+func (c completer) FlagTag(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	db, _, errNewApp := app.New()
-	if errNewApp != nil {
-		log.Error().Err(errNewApp).Msg("new app")
-		return nil, cobra.ShellCompDirectiveError
-	}
-
-	res := listProcs(db).
+	res := listProcs(c.db).
 		Tags().
 		ToSlice()
 	return fun.Filter(func(tag string) bool {
@@ -66,17 +67,11 @@ func completeFlagTag(
 	}, res...), cobra.ShellCompDirectiveNoFileComp
 }
 
-func completeFlagIDs(
+func (c completer) FlagIDs(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	db, _, errNewApp := app.New() // TODO: reduce number of calls to app.New
-	if errNewApp != nil {
-		log.Error().Err(errNewApp).Msg("new app")
-		return nil, cobra.ShellCompDirectiveError
-	}
-
-	return iter.Map(listProcs(db).
+	return iter.Map(listProcs(c.db).
 		Filter(func(p core.ProcStat) bool {
 			return strings.HasPrefix(string(p.ID), prefix)
 		}).Seq,
@@ -87,11 +82,11 @@ func completeFlagIDs(
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
 
-func completeArgGenericSelector(
+func (c completer) ArgGenericSelector(
 	cmd *cobra.Command, args []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	names, _ := completeFlagName(cmd, args, prefix)
-	tags, _ := completeFlagTag(cmd, args, prefix)
+	names, _ := c.FlagName(cmd, args, prefix)
+	tags, _ := c.FlagTag(cmd, args, prefix)
 	return lo.Flatten(names, tags), cobra.ShellCompDirectiveNoFileComp
 }

@@ -52,7 +52,7 @@ var _cmdSignal = func() *cobra.Command {
 		Short:             "send signal to process(es)",
 		Aliases:           []string{"kill"},
 		GroupID:           "inspection",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: compl.ArgGenericSelector,
 		Args:              cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			signal := args[0]

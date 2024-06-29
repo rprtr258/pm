@@ -45,7 +45,7 @@ var _cmdInspect = func() *cobra.Command {
 		Short:             "inspect process",
 		Aliases:           []string{"i"},
 		GroupID:           "inspection",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: compl.ArgGenericSelector,
 		RunE: func(_ *cobra.Command, args []string) error {
 			db, _, errNewApp := app.New()
 			if errNewApp != nil {

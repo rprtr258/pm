@@ -32,15 +32,15 @@ func addFlagStrings(
 }
 
 func addFlagNames(cmd *cobra.Command, names *[]string) {
-	addFlagStrings(cmd, names, "name", "name(s) of process(es)", completeFlagName)
+	addFlagStrings(cmd, names, "name", "name(s) of process(es)", compl.FlagName)
 }
 
 func addFlagTags(cmd *cobra.Command, tags *[]string) {
-	addFlagStrings(cmd, tags, "tag", "tag(s) of process(es)", completeFlagTag)
+	addFlagStrings(cmd, tags, "tag", "tag(s) of process(es)", compl.FlagTag)
 }
 
 func addFlagIDs(cmd *cobra.Command, ids *[]string) {
-	addFlagStrings(cmd, ids, "id", "id(s) of process(es) to list", completeFlagIDs)
+	addFlagStrings(cmd, ids, "id", "id(s) of process(es) to list", compl.FlagIDs)
 }
 
 func addFlagInteractive(cmd *cobra.Command, dest *bool) {
