@@ -53,7 +53,7 @@ func completeFlagName(
 		List().
 		Filter(func(p core.ProcStat) bool {
 			return strings.HasPrefix(p.Name, prefix)
-		}),
+		}).Seq,
 		func(proc core.ProcStat) string {
 			return proc.Name
 			// Description: fun.Valid("status: " + proc.Status.String()),
@@ -85,7 +85,7 @@ func addFlagIDs(cmd *cobra.Command, ids *[]string) {
 		_ *cobra.Command, _ []string,
 		prefix string,
 	) ([]string, cobra.ShellCompDirective) {
-		app, errNewApp := app.New()
+		app, errNewApp := app.New() // TODO: reduce number of calls to app.New
 		if errNewApp != nil {
 			log.Error().Err(errNewApp).Msg("new app")
 			return nil, cobra.ShellCompDirectiveError
@@ -95,7 +95,7 @@ func addFlagIDs(cmd *cobra.Command, ids *[]string) {
 			List().
 			Filter(func(p core.ProcStat) bool {
 				return strings.HasPrefix(string(p.ID), prefix)
-			}),
+			}).Seq,
 			func(proc core.ProcStat) string {
 				return proc.ID.String()
 				// Description: fun.Valid("name: " + proc.Name),
@@ -112,18 +112,15 @@ func completeFlagTag(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	appp, errNewApp := app.New()
+	app, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	res := iter.Unique(iter.FlatMap(appp.
-		List(),
-		func(proc core.ProcStat) iter.Seq[string] {
-			return iter.FromMany(proc.Tags...)
-		}).
-		Chain(iter.FromMany("all"))).
+	res := app.
+		List().
+		Tags().
 		ToSlice()
 	return fun.Filter(func(tag string) bool {
 		return strings.HasPrefix(tag, prefix)

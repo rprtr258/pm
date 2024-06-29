@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -115,12 +114,10 @@ var _cmdDelete = func() *cobra.Command {
 				)
 			}
 
-			procIDs := iter.Map(app.
+			procIDs := app.
 				List().
-				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }),
-				func(proc core.ProcStat) core.PMID {
-					return proc.ID
-				}).
+				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
+				IDs().
 				ToSlice()
 			if len(procIDs) == 0 {
 				fmt.Println("Nothing to delete, leaving")
