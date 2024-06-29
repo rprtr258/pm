@@ -75,11 +75,9 @@ install-linter: bindir
 	)
 
 
-# TODO: pin deadcode
 lint-go: install-linter # run go linter
 	@${GOLANGCILINTBIN} run ./...
-	gocritic check -enableAll -disable='rangeValCopy,hugeParam,unnamedResult' ./...
-	# deadcode . # false positives
+	@${GOCRITICBIN} check -enableAll -disable='rangeValCopy,hugeParam,unnamedResult' ./...
 
 lint: lint-go # run all linters
 
