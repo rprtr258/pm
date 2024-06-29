@@ -110,6 +110,11 @@ func testMain(m *testing.M) int {
 }
 
 func TestMain(m *testing.M) {
+	// build pm binary
+	if err := exec.Command("go", "build", "-o", "e2e/pm", ".").Run(); err != nil {
+		log.Fatal().Err(err).Msg("failed to build pm binary")
+	}
+
 	os.Exit(testMain(m))
 }
 
