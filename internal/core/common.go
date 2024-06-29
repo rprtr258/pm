@@ -7,15 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var (
-	_userHome     = userHomeDir()
-	_dirHome      = filepath.Join(_userHome, ".pm")
-	_dirProcsLogs = filepath.Join(_dirHome, "logs")
-	_configPath   = filepath.Join(_dirHome, "config.json")
-	_dirDB        = filepath.Join(_dirHome, "db")
-)
-
-func userHomeDir() string {
+var _userHome = func() string {
 	dir, err := os.UserHomeDir()
 	if err != nil {
 		log.Error().Err(err).Msg("can't get home dir")
@@ -23,7 +15,14 @@ func userHomeDir() string {
 	}
 
 	return dir
-}
+}()
+
+var (
+	_dirHome      = filepath.Join(_userHome, ".pm")
+	_dirProcsLogs = filepath.Join(_dirHome, "logs")
+	_configPath   = filepath.Join(_dirHome, "config.json")
+	_dirDB        = filepath.Join(_dirHome, "db")
+)
 
 type LogType int
 
