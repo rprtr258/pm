@@ -20,13 +20,13 @@ var (
 )
 
 func ReadPMConfig() (core.Config, error) {
-	config, errRead := core.ReadConfig()
+	config, configFilename, errRead := core.ReadConfig()
 	if errRead != nil {
 		if errRead != core.ErrConfigNotExists {
 			return fun.Zero[core.Config](), errors.Wrapf(errRead, "read config for migrate")
 		}
 
-		log.Info().Msg("writing initial config...")
+		log.Info().Str("filename", configFilename).Msg("writing initial config...")
 
 		if errWrite := core.WriteConfig(core.DefaultConfig); errWrite != nil {
 			return fun.Zero[core.Config](), errors.Wrapf(errWrite, "write initial config")
@@ -74,7 +74,7 @@ func New() (App, error) {
 
 	dbHandle := db.New(dbFs)
 
-	config, errConfig := core.ReadConfig()
+	config, _, errConfig := core.ReadConfig()
 	if errConfig != nil {
 		if errConfig != core.ErrConfigNotExists {
 			return fun.Zero[App](), errors.Wrapf(errConfig, "read app config")

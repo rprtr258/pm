@@ -31,22 +31,22 @@ var DefaultConfig = Config{
 	Debug:   false,
 }
 
-func ReadConfig() (Config, error) {
+func ReadConfig() (Config, string, error) {
 	configBytes, errRead := os.ReadFile(_configPath)
 	if errRead != nil {
 		if stdErrors.Is(errRead, fs.ErrNotExist) {
-			return Config{}, ErrConfigNotExists
+			return Config{}, "", ErrConfigNotExists
 		}
 
-		return fun.Zero[Config](), errors.Wrapf(errRead, "read config file %q", _configPath)
+		return fun.Zero[Config](), "", errors.Wrapf(errRead, "read config file %q", _configPath)
 	}
 
 	var config Config
 	if errUnmarshal := json.Unmarshal(configBytes, &config); errUnmarshal != nil {
-		return fun.Zero[Config](), errors.Wrapf(errUnmarshal, "parse config")
+		return fun.Zero[Config](), "", errors.Wrapf(errUnmarshal, "parse config")
 	}
 
-	return config, nil
+	return config, _configPath, nil
 }
 
 func WriteConfig(config Config) error {
