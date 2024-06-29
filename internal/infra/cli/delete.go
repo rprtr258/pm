@@ -80,7 +80,7 @@ var _cmdDelete = func() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			appp, errNewApp := app.New()
+			app, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
@@ -115,10 +115,9 @@ var _cmdDelete = func() *cobra.Command {
 				)
 			}
 
-			list := appp.
+			procIDs := iter.Map(app.
 				List().
-				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) })
-			procIDs := iter.Map(list,
+				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }),
 				func(proc core.ProcStat) core.PMID {
 					return proc.ID
 				}).
@@ -128,11 +127,11 @@ var _cmdDelete = func() *cobra.Command {
 				return nil
 			}
 
-			if err := appp.Stop(procIDs...); err != nil {
+			if err := app.Stop(procIDs...); err != nil {
 				return errors.Wrapf(err, "stop")
 			}
 
-			if err := ImplDelete(appp, procIDs...); err != nil {
+			if err := ImplDelete(app, procIDs...); err != nil {
 				return errors.Wrapf(err, "delete")
 			}
 

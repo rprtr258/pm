@@ -58,10 +58,9 @@ var _cmdRestart = func() *cobra.Command {
 				)
 			}
 
-			list := app.
+			procIDs := iter.Map(app.
 				List().
-				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) })
-			procIDs := iter.Map(list,
+				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }),
 				func(proc core.ProcStat) core.PMID {
 					return proc.ID
 				}).

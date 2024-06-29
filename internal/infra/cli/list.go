@@ -345,9 +345,7 @@ var _cmdList = func() *cobra.Command {
 			)
 			procsToShow := app.
 				List().
-				Filter(func(ps core.ProcStat) bool {
-					return filterFunc(ps.Proc)
-				}).
+				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				ToSlice()
 
 			if len(procsToShow) == 0 {
