@@ -9,6 +9,7 @@ import (
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rs/zerolog/log"
 )
 
 // TODO: set at compile time
@@ -30,24 +31,29 @@ var DefaultConfig = Config{
 	Debug:   false,
 }
 
-func ReadConfig() (Config, string, error) {
+func ReadConfig() (Config, error) {
 	configBytes, errRead := os.ReadFile(_configPath)
 	if errRead != nil {
 		if stdErrors.Is(errRead, fs.ErrNotExist) {
-			return DefaultConfig, "", ErrConfigNotExists
+			log.Info().Str("filename", _configPath).Msg("writing initial config...")
+
+			if errWrite := WriteConfig(DefaultConfig); errWrite != nil {
+				return fun.Zero[Config](), errors.Wrapf(errWrite, "write initial config")
+			}
+
+			return DefaultConfig, nil
 		}
 
-		return fun.Zero[Config](), "", errors.Wrapf(errRead, "read config file %q", _configPath)
+		return fun.Zero[Config](), errors.Wrapf(errRead, "read config file %q", _configPath)
 	}
 
 	var config Config
 	if errUnmarshal := json.Unmarshal(configBytes, &config); errUnmarshal != nil {
-		return fun.Zero[Config](), "", errors.Wrapf(errUnmarshal, "parse config")
+		return fun.Zero[Config](), errors.Wrapf(errUnmarshal, "parse config")
 	}
-
 	config.DirHome = DirHome
 	config.DirLogs = _dirProcsLogs
-	return config, _configPath, nil
+	return config, nil
 }
 
 func WriteConfig(config Config) error {
