@@ -43,13 +43,13 @@ func completeFlagName(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	appp, errNewApp := app.New()
+	app, errNewApp := app.New()
 	if errNewApp != nil {
 		log.Error().Err(errNewApp).Msg("new app")
 		return nil, cobra.ShellCompDirectiveError
 	}
 
-	return iter.Map(appp.
+	return iter.Map(app.
 		List().
 		Filter(func(p core.ProcStat) bool {
 			return strings.HasPrefix(p.Name, prefix)
@@ -85,13 +85,13 @@ func addFlagIDs(cmd *cobra.Command, ids *[]string) {
 		_ *cobra.Command, _ []string,
 		prefix string,
 	) ([]string, cobra.ShellCompDirective) {
-		appp, errNewApp := app.New()
+		app, errNewApp := app.New()
 		if errNewApp != nil {
 			log.Error().Err(errNewApp).Msg("new app")
 			return nil, cobra.ShellCompDirectiveError
 		}
 
-		return iter.Map(appp.
+		return iter.Map(app.
 			List().
 			Filter(func(p core.ProcStat) bool {
 				return strings.HasPrefix(string(p.ID), prefix)
