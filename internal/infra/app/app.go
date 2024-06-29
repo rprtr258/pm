@@ -69,23 +69,18 @@ func New() (App, error) {
 
 	dbFs, errDB := db.InitRealDir(_dirDB)
 	if errDB != nil {
-		return fun.Zero[App](), errors.Wrapf(errDB, "new db, dir=%s", _dirDB)
+		return fun.Zero[App](), errors.Wrapf(errDB, "new db, dir=%q", _dirDB)
 	}
 
 	dbHandle := db.New(dbFs)
 
 	config, errConfig := core.ReadConfig()
 	if errConfig != nil {
-		if errConfig == core.ErrConfigNotExists {
-			return App{
-				DB:      dbHandle,
-				DirHome: core.DirHome,
-				DirLogs: _dirProcsLogs,
-				Config:  core.DefaultConfig,
-			}, nil
+		if errConfig != core.ErrConfigNotExists {
+			return fun.Zero[App](), errors.Wrapf(errConfig, "read app config")
 		}
 
-		return fun.Zero[App](), errors.Wrapf(errConfig, "read app config")
+		config = core.DefaultConfig
 	}
 
 	return App{

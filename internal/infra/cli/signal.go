@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -47,6 +46,7 @@ func implSignal(
 var _cmdSignal = func() *cobra.Command {
 	var names, ids, tags []string
 	var config string
+	var interactive bool
 	cmd := &cobra.Command{
 		Use:               "signal SIGNAL [name|tag|id]...",
 		Short:             "send signal to process(es)",
@@ -101,17 +101,19 @@ var _cmdSignal = func() *cobra.Command {
 				core.WithTags(tags...),
 				core.WithAllIfNoFilters,
 			)
-			procIDs := iter.Map(list.
-				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }),
-				func(proc core.ProcStat) core.PMID {
-					return proc.ID
+			procs := list.
+				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
+				Filter(func(ps core.ProcStat) bool {
+					// TODO: break on error, e.g. Ctrl-C
+					return !interactive || confirmProc(ps, "stop")
 				}).
 				ToSlice()
-			if len(procIDs) == 0 {
+			if len(procs) == 0 {
 				fmt.Println("nothing to stop")
 				return nil
 			}
 
+			procIDs := fun.Map[core.PMID](func(proc core.ProcStat) core.PMID { return proc.ID }, procs...)
 			if err := implSignal(sig, procIDs...); err != nil {
 				return errors.Wrapf(err, "client.stop signal=%v", sig)
 			}
@@ -127,7 +129,7 @@ var _cmdSignal = func() *cobra.Command {
 	// 	Name:  "no-treekill",
 	// 	Usage: "Only kill the main process, not detached children",
 	// },
-	// TODO: -i/... to confirm which procs will be stopped
+	addFlagInteractive(cmd, &interactive)
 	addFlagNames(cmd, &names)
 	addFlagTags(cmd, &tags)
 	addFlagIDs(cmd, &ids)

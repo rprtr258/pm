@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/huh"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
@@ -26,41 +27,16 @@ func addFlagConfig(cmd *cobra.Command, config *string) {
 
 func registerFlagCompletionFunc(
 	c *cobra.Command,
-	flagName string,
+	name string,
 	f func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective),
 ) {
-	if err := c.RegisterFlagCompletionFunc(flagName, f); err != nil {
+	if err := c.RegisterFlagCompletionFunc(name, f); err != nil {
 		log.Fatal().
 			Err(err).
-			Str("flagName", flagName).
+			Str("flagName", name).
 			Str("command", c.Name()).
 			Msg("failed to register flag completion func")
 	}
-}
-
-func addFlagIDs(cmd *cobra.Command, ids *[]string) {
-	cmd.Flags().StringSliceVar(ids, "id", nil, "id(s) of process(es) to list")
-	registerFlagCompletionFunc(cmd, "id", func(
-		_ *cobra.Command, _ []string,
-		prefix string,
-	) ([]string, cobra.ShellCompDirective) {
-		appp, errNewApp := app.New()
-		if errNewApp != nil {
-			log.Error().Err(errNewApp).Msg("new app")
-			return nil, cobra.ShellCompDirectiveError
-		}
-
-		return iter.Map(appp.
-			List().
-			Filter(func(p core.ProcStat) bool {
-				return strings.HasPrefix(string(p.ID), prefix)
-			}),
-			func(proc core.ProcStat) string {
-				return proc.ID.String()
-				// Description: fun.Valid("name: " + proc.Name),
-			}).
-			ToSlice(), cobra.ShellCompDirectiveNoFileComp
-	})
 }
 
 func completeFlagName(
@@ -85,9 +61,51 @@ func completeFlagName(
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
 
+func addFlagStrings(
+	cmd *cobra.Command,
+	dest *[]string,
+	long string,
+	description string,
+	completeFunc func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective),
+) {
+	cmd.Flags().StringSliceVar(dest, long, nil, description)
+	registerFlagCompletionFunc(cmd, long, completeFunc)
+}
+
 func addFlagNames(cmd *cobra.Command, names *[]string) {
-	cmd.Flags().StringSliceVar(names, "name", nil, "name(s) of process(es) to list")
-	registerFlagCompletionFunc(cmd, "name", completeFlagName)
+	addFlagStrings(cmd, names, "name", "name(s) of process(es)", completeFlagName)
+}
+
+func addFlagTags(cmd *cobra.Command, tags *[]string) {
+	addFlagStrings(cmd, tags, "tag", "tag(s) of process(es)", completeFlagTag)
+}
+
+func addFlagIDs(cmd *cobra.Command, ids *[]string) {
+	addFlagStrings(cmd, ids, "id", "id(s) of process(es) to list", func(
+		_ *cobra.Command, _ []string,
+		prefix string,
+	) ([]string, cobra.ShellCompDirective) {
+		appp, errNewApp := app.New()
+		if errNewApp != nil {
+			log.Error().Err(errNewApp).Msg("new app")
+			return nil, cobra.ShellCompDirectiveError
+		}
+
+		return iter.Map(appp.
+			List().
+			Filter(func(p core.ProcStat) bool {
+				return strings.HasPrefix(string(p.ID), prefix)
+			}),
+			func(proc core.ProcStat) string {
+				return proc.ID.String()
+				// Description: fun.Valid("name: " + proc.Name),
+			}).
+			ToSlice(), cobra.ShellCompDirectiveNoFileComp
+	})
+}
+
+func addFlagInteractive(cmd *cobra.Command, dest *bool) {
+	cmd.Flags().BoolVarP(dest, "interactive", "i", false, "prompt before taking action")
 }
 
 func completeFlagTag(
@@ -112,11 +130,6 @@ func completeFlagTag(
 	}, res...), cobra.ShellCompDirectiveNoFileComp
 }
 
-func addFlagTags(cmd *cobra.Command, tags *[]string) {
-	cmd.Flags().StringSliceVar(tags, "tag", nil, "tag(s) of process(es) to list")
-	registerFlagCompletionFunc(cmd, "tag", completeFlagTag)
-}
-
 func completeArgGenericSelector(
 	cmd *cobra.Command, args []string,
 	prefix string,
@@ -124,6 +137,22 @@ func completeArgGenericSelector(
 	names, _ := completeFlagName(cmd, args, prefix)
 	tags, _ := completeFlagTag(cmd, args, prefix)
 	return lo.Flatten(names, tags), cobra.ShellCompDirectiveNoFileComp
+}
+
+func confirmProc(ps core.ProcStat, action string) bool {
+	var result bool
+	if err := huh.NewConfirm().
+		Title(fmt.Sprintf(
+			"Do you really want to %s process %q id=%s ? ",
+			action, ps.Name, ps.ID.String(),
+		)).
+		Inline(true).
+		Value(&result).
+		WithTheme(huh.ThemeDracula()). // TODO: define theme, use colors everywhere
+		Run(); err != nil {
+		log.Error().Err(err).Send()
+	}
+	return result
 }
 
 // { Name: "link enable", PM2 I/O
