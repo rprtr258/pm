@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -27,6 +28,12 @@ var homeDir = func() string {
 		panic(err.Error())
 	}
 	return res
+}()
+
+// _e2eTestDir is the directory containing the e2e tests source code
+var _e2eTestDir = func() string {
+	_, filename, _, _ := runtime.Caller(0)
+	return filepath.Dir(filename)
 }()
 
 // isTCPPortAvailable checks if a given TCP port is available for use on the local network interface
@@ -120,14 +127,18 @@ func mustExec(cmd string, args ...string) {
 
 func TestMain(m *testing.M) {
 	// build pm binary
-	mustExec("go", "build", "-o", "e2e/pm", ".")
+	mustExec("go", "build",
+		"-o", filepath.Join(_e2eTestDir, "pm"),
+		filepath.Dir(_e2eTestDir))
 
 	os.Exit(testMain(m))
 }
 
 func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 	// build server binary beforehand
-	mustExec("go", "build", "-o", "tests/hello-http", "tests/hello-http/main.go")
+	mustExec("go", "build",
+		"-o", filepath.Join(_e2eTestDir, "tests/hello-http"),
+		filepath.Join(_e2eTestDir, "tests/hello-http/main.go"))
 
 	pm := usePM(t)
 
