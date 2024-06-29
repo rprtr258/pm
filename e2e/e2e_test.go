@@ -137,8 +137,8 @@ func TestMain(m *testing.M) {
 func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 	// build server binary beforehand
 	mustExec("go", "build",
-		"-o", filepath.Join(_e2eTestDir, "tests/hello-http"),
-		filepath.Join(_e2eTestDir, "tests/hello-http/main.go"))
+		"-o", filepath.Join(_e2eTestDir, "tests", "hello-http"),
+		filepath.Join(_e2eTestDir, "tests", "hello-http", "main.go"))
 
 	pm := usePM(t)
 
