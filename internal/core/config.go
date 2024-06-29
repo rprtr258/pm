@@ -16,6 +16,7 @@ import (
 const Version = "0.1.0"
 
 var ErrConfigNotExists = errors.New("config file not exists")
+
 var _configPath = filepath.Join(DirHome, "config.json")
 
 type Config struct {
