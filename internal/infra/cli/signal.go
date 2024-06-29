@@ -102,10 +102,11 @@ var _cmdSignal = func() *cobra.Command {
 				core.WithAllIfNoFilters,
 			)
 			procs := list.
-				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				Filter(func(ps core.ProcStat) bool {
-					// TODO: break on error, e.g. Ctrl-C
-					return !interactive || confirmProc(ps, "stop")
+					return ps.Status != core.StatusStopped &&
+						filterFunc(ps.Proc) &&
+						// TODO: break on error, e.g. Ctrl-C
+						!interactive || confirmProc(ps, "stop")
 				}).
 				ToSlice()
 			if len(procs) == 0 {
