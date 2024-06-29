@@ -1,28 +1,22 @@
 package db
 
 import (
-	"path/filepath"
-
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/mod/semver"
-
-	"github.com/rprtr258/pm/internal/core"
 )
 
 type migration struct {
-	do      func() error
+	do      func(dirDB string) error
 	version string
 }
 
 var Migrations = []migration{
 	{ // initial version
 		version: "0.0.1",
-		do: func() error {
-			dbDir := filepath.Join(core.DirHome, "db")
-
-			if _, errDB := InitRealDir(dbDir); errDB != nil {
-				return errors.Wrapf(errDB, "new db, dir=%s", dbDir)
+		do: func(dirDB string) error {
+			if _, errDB := InitRealDir(dirDB); errDB != nil {
+				return errors.Wrapf(errDB, "new db, dir=%s", dirDB)
 			}
 
 			return nil
@@ -31,7 +25,10 @@ var Migrations = []migration{
 }
 
 // TODO: unused
-func Migrate(fromVersion, toVersion string) (string, error) {
+func Migrate(
+	dirDB string,
+	fromVersion, toVersion string,
+) (string, error) {
 	lastVersion := fromVersion
 	for _, m := range Migrations {
 		if semver.Compare(fromVersion, m.version) == -1 &&
@@ -41,7 +38,7 @@ func Migrate(fromVersion, toVersion string) (string, error) {
 				Str("to", m.version).
 				Msg("migrating...")
 
-			if err := m.do(); err != nil {
+			if err := m.do(dirDB); err != nil {
 				return lastVersion, errors.Wrapf(err, "migrate from=%s to=%s", lastVersion, m.version)
 			}
 

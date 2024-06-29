@@ -9,8 +9,10 @@ import (
 
 var (
 	_userHome     = userHomeDir()
-	DirHome       = filepath.Join(_userHome, ".pm")
-	_dirProcsLogs = filepath.Join(DirHome, "logs")
+	_dirHome      = filepath.Join(_userHome, ".pm")
+	_dirProcsLogs = filepath.Join(_dirHome, "logs")
+	_configPath   = filepath.Join(_dirHome, "config.json")
+	_dirDB        = filepath.Join(_dirHome, "db")
 )
 
 func userHomeDir() string {

@@ -5,7 +5,6 @@ import (
 	stdErrors "errors"
 	"io/fs"
 	"os"
-	"path/filepath"
 
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/pm/internal/infra/errors"
@@ -16,19 +15,18 @@ import (
 // see https://developers.redhat.com/articles/2022/11/14/3-ways-embed-commit-hash-go-programs#2__using_go_generate
 const Version = "0.1.0"
 
-var _configPath = filepath.Join(DirHome, "config.json")
-
 type Config struct {
-	Version          string
-	Debug            bool
-	DirHome, DirLogs string
+	Version                 string
+	Debug                   bool
+	DirHome, DirLogs, DirDB string
 }
 
 var DefaultConfig = Config{
 	Version: Version,
 	Debug:   false,
-	DirHome: DirHome,
+	DirHome: _dirHome,
 	DirLogs: _dirProcsLogs,
+	DirDB:   _dirDB,
 }
 
 func ReadConfig() (Config, error) {
@@ -51,8 +49,9 @@ func ReadConfig() (Config, error) {
 	if errUnmarshal := json.Unmarshal(configBytes, &config); errUnmarshal != nil {
 		return fun.Zero[Config](), errors.Wrapf(errUnmarshal, "parse config")
 	}
-	config.DirHome = DirHome
+	config.DirHome = _dirHome
 	config.DirLogs = _dirProcsLogs
+	config.DirDB = _dirDB
 	return config, nil
 }
 

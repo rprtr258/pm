@@ -1,9 +1,13 @@
 package app
 
 import (
+	stdErrors "errors"
+	"io/fs"
+	"os"
 	"path/filepath"
 
 	"github.com/rprtr258/fun"
+	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/db"
@@ -11,8 +15,6 @@ import (
 )
 
 const EnvPMID = "PM_PMID"
-
-var _dirDB = filepath.Join(core.DirHome, "db")
 
 func MigrateConfig(config core.Config) error {
 	if config.Version == core.Version {
@@ -22,6 +24,21 @@ func MigrateConfig(config core.Config) error {
 	config.Version = core.Version
 	if errWrite := core.WriteConfig(config); errWrite != nil {
 		return errors.Wrapf(errWrite, "write config for migrate, version=%s", core.Version)
+	}
+
+	return nil
+}
+
+func ensureDir(dirname string) error {
+	if _, errStat := os.Stat(dirname); errStat == nil {
+		return nil
+	} else if !stdErrors.Is(errStat, fs.ErrNotExist) {
+		return errors.Wrapf(errStat, "stat dir")
+	}
+
+	log.Info().Str("dir", dirname).Msg("creating dir...")
+	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
+		return errors.Wrapf(errMkdir, "create dir")
 	}
 
 	return nil
@@ -37,9 +54,23 @@ func New() (db.Handle, core.Config, error) {
 		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrap(errMigrate, "migrate")
 	}
 
-	dbFs, errDB := db.InitRealDir(_dirDB)
+	// // TODO: uncomment
+	// if _, errMigrate := db.Migrate(config.DirDB, config.Version, core.Version); errMigrate != nil {
+	// 	return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrap(errMigrate, "migrate")
+	// }
+
+	dbFs, errDB := db.InitRealDir(config.DirDB)
 	if errDB != nil {
-		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(errDB, "new db, dir=%q", _dirDB)
+		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(errDB, "new db, dir=%q", config.DirDB)
+	}
+
+	if err := ensureDir(config.DirHome); err != nil {
+		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(err, "ensure home dir %s", config.DirHome)
+	}
+
+	_dirProcsLogs := filepath.Join(config.DirHome, "logs")
+	if err := ensureDir(_dirProcsLogs); err != nil {
+		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(err, "ensure logs dir %s", _dirProcsLogs)
 	}
 
 	return db.New(dbFs), config, nil

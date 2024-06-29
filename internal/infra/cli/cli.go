@@ -1,34 +1,13 @@
 package cli
 
 import (
-	stdErrors "errors"
 	"fmt"
-	"io/fs"
 	"os"
-	"path/filepath"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/scuf"
 )
-
-func ensureDir(dirname string) error {
-	if _, errStat := os.Stat(dirname); errStat == nil {
-		return nil
-	} else if !stdErrors.Is(errStat, fs.ErrNotExist) {
-		return errors.Wrapf(errStat, "stat dir")
-	}
-
-	log.Info().Str("dir", dirname).Msg("creating dir...")
-	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
-		return errors.Wrapf(errMkdir, "create dir")
-	}
-
-	return nil
-}
 
 var _app = func() *cobra.Command {
 	cmd := &cobra.Command{
@@ -67,15 +46,6 @@ var _app = func() *cobra.Command {
 }()
 
 func Run(argv []string) error {
-	if err := ensureDir(core.DirHome); err != nil {
-		return errors.Wrapf(err, "ensure home dir %s", core.DirHome)
-	}
-
-	_dirProcsLogs := filepath.Join(core.DirHome, "logs")
-	if err := ensureDir(_dirProcsLogs); err != nil {
-		return errors.Wrapf(err, "ensure logs dir %s", _dirProcsLogs)
-	}
-
 	// setting template strings
 	// 	App.SetUsageFunc(func(cmd *cobra.Command) error {
 	// 		scuf.New(os.Stdout).
