@@ -91,7 +91,7 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 }
 
 // Start already created processes
-func (app App) Start(ids ...core.PMID) error {
+func Start(db db.Handle, ids ...core.PMID) error {
 	list := linuxprocess.List()
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
@@ -102,7 +102,7 @@ func (app App) Start(ids ...core.PMID) error {
 				return nil
 			}
 
-			if errStart := startShimImpl(app.DB, id); errStart != nil {
+			if errStart := startShimImpl(db, id); errStart != nil {
 				return errors.Wrapf(errStart, "start proc")
 			}
 
