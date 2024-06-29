@@ -50,27 +50,33 @@ func New() (db.Handle, core.Config, error) {
 		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrap(errConfig, "config")
 	}
 
-	if errMigrate := MigrateConfig(config); errMigrate != nil {
-		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrap(errMigrate, "migrate")
-	}
+	if err := func() error {
+		if errMigrate := MigrateConfig(config); errMigrate != nil {
+			return errors.Wrap(errMigrate, "migrate")
+		}
 
-	// // TODO: uncomment
-	// if _, errMigrate := db.Migrate(config.DirDB, config.Version, core.Version); errMigrate != nil {
-	// 	return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrap(errMigrate, "migrate")
-	// }
+		// // TODO: uncomment
+		// if _, errMigrate := db.Migrate(config.DirDB, config.Version, core.Version); errMigrate != nil {
+		// 	retu errors.Wrap(errMigrate, "migrate")
+		// }
+
+		if err := ensureDir(config.DirHome); err != nil {
+			return errors.Wrapf(err, "ensure home dir %s", config.DirHome)
+		}
+
+		_dirProcsLogs := filepath.Join(config.DirHome, "logs")
+		if err := ensureDir(_dirProcsLogs); err != nil {
+			return errors.Wrapf(err, "ensure logs dir %s", _dirProcsLogs)
+		}
+
+		return nil
+	}(); err != nil {
+		return fun.Zero[db.Handle](), fun.Zero[core.Config](), err
+	}
 
 	dbFs, errDB := db.InitRealDir(config.DirDB)
 	if errDB != nil {
 		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(errDB, "new db, dir=%q", config.DirDB)
-	}
-
-	if err := ensureDir(config.DirHome); err != nil {
-		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(err, "ensure home dir %s", config.DirHome)
-	}
-
-	_dirProcsLogs := filepath.Join(config.DirHome, "logs")
-	if err := ensureDir(_dirProcsLogs); err != nil {
-		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(err, "ensure logs dir %s", _dirProcsLogs)
 	}
 
 	return db.New(dbFs), config, nil
