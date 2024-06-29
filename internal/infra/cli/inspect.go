@@ -47,7 +47,7 @@ var _cmdInspect = func() *cobra.Command {
 		GroupID:           "inspection",
 		ValidArgsFunction: completeArgGenericSelector,
 		RunE: func(_ *cobra.Command, args []string) error {
-			app, errNewApp := app.New()
+			appp, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
@@ -59,8 +59,7 @@ var _cmdInspect = func() *cobra.Command {
 				core.WithNames(names...),
 				core.WithTags(tags...),
 			)
-			procsToShow := app.
-				List().
+			procsToShow := listProcs(appp.DB).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				ToSlice()
 

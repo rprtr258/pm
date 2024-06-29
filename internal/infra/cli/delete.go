@@ -47,7 +47,7 @@ func removeFileGlob(glob string) error {
 	return nil
 }
 
-func ImplDelete(appp app.App, ids ...core.PMID) error {
+func implDelete(appp app.App, ids ...core.PMID) error {
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
 			proc, errDelete := appp.DB.Delete(id)
@@ -79,7 +79,7 @@ var _cmdDelete = func() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			app, errNewApp := app.New()
+			appp, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
@@ -114,8 +114,7 @@ var _cmdDelete = func() *cobra.Command {
 				)
 			}
 
-			procIDs := app.
-				List().
+			procIDs := listProcs(appp.DB).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				IDs().
 				ToSlice()
@@ -124,11 +123,11 @@ var _cmdDelete = func() *cobra.Command {
 				return nil
 			}
 
-			if err := app.Stop(procIDs...); err != nil {
+			if err := appp.Stop(procIDs...); err != nil {
 				return errors.Wrapf(err, "stop")
 			}
 
-			if err := ImplDelete(app, procIDs...); err != nil {
+			if err := implDelete(appp, procIDs...); err != nil {
 				return errors.Wrapf(err, "delete")
 			}
 

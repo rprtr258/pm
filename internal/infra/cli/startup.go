@@ -15,20 +15,19 @@ var _cmdStartup = &cobra.Command{
 	Args:   cobra.NoArgs,
 	Hidden: true,
 	RunE: func(*cobra.Command, []string) error {
-		app, errNewApp := app.New()
+		appp, errNewApp := app.New()
 		if errNewApp != nil {
 			return errors.Wrapf(errNewApp, "new app")
 		}
 
-		procsToStart := app.
-			List().
+		procsToStart := listProcs(appp.DB).
 			Filter(func(p core.ProcStat) bool {
 				return p.Startup && p.Status != core.StatusRunning
 			}).
 			ToSlice()
 
 		return errors.Combine(fun.Map[error](func(proc core.ProcStat) error {
-			return app.Start(proc.ID)
+			return appp.Start(proc.ID)
 		}, procsToStart...)...)
 	},
 }

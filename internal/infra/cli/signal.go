@@ -76,7 +76,7 @@ var _cmdSignal = func() *cobra.Command {
 				return errors.Wrap(errList, "new grpc client")
 			}
 
-			list := appp.List()
+			list := listProcs(appp.DB)
 
 			if config != nil {
 				configs, errLoadConfigs := core.LoadConfigs(*config)

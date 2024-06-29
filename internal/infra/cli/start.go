@@ -22,7 +22,7 @@ var _cmdStart = func() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			app, errNewApp := app.New()
+			appp, errNewApp := app.New()
 			if errNewApp != nil {
 				return errors.Wrapf(errNewApp, "new app")
 			}
@@ -57,8 +57,7 @@ var _cmdStart = func() *cobra.Command {
 				)
 			}
 
-			procs := app.
-				List().
+			procs := listProcs(appp.DB).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				ToSlice()
 			if len(procs) == 0 {
@@ -70,7 +69,7 @@ var _cmdStart = func() *cobra.Command {
 				func(proc core.ProcStat) core.PMID {
 					return proc.ID
 				}, procs...)
-			if err := app.Start(procIDs...); err != nil {
+			if err := appp.Start(procIDs...); err != nil {
 				return err
 			}
 

@@ -17,6 +17,7 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
@@ -175,7 +176,7 @@ func implLogs(ctx context.Context, proc core.ProcStat) <-chan core.LogLine {
 }
 
 func getProcs(
-	appp app.App,
+	db db.Handle,
 	rest, ids, names, tags []string,
 	config *string,
 ) ([]core.ProcStat, error) {
@@ -188,8 +189,7 @@ func getProcs(
 	)
 
 	if config == nil {
-		return appp.
-			List().
+		return listProcs(db).
 			Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 			ToSlice(), nil
 	}
@@ -203,8 +203,7 @@ func getProcs(
 		return cfg.Name.Unpack()
 	}, configs...)
 
-	return appp.
-		List().
+	return listProcs(db).
 		Filter(func(proc core.ProcStat) bool { return fun.Contains(proc.Name, procNames...) }).
 		Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 		ToSlice(), nil
@@ -233,7 +232,7 @@ var _cmdLogs = func() *cobra.Command {
 				return errors.Wrapf(errNewApp, "new app")
 			}
 
-			procs, err := getProcs(appp, args, ids, names, tags, config)
+			procs, err := getProcs(appp.DB, args, ids, names, tags, config)
 			if err != nil {
 				return errors.Wrapf(err, "get proc ids")
 			}

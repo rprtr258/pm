@@ -1,4 +1,4 @@
-package app
+package cli
 
 import (
 	"time"
@@ -8,24 +8,27 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/app"
+	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
-type ProcList struct {
+// procSeq iterator with custom methods
+type procSeq struct {
 	iter.Seq[core.ProcStat]
 }
 
-func (l ProcList) Filter(p func(core.ProcStat) bool) ProcList {
-	return ProcList{l.Seq.Filter(p)}
+func (l procSeq) Filter(p func(core.ProcStat) bool) procSeq {
+	return procSeq{l.Seq.Filter(p)}
 }
 
-func (l ProcList) IDs() iter.Seq[core.PMID] {
+func (l procSeq) IDs() iter.Seq[core.PMID] {
 	return iter.Map(l.Seq, func(proc core.ProcStat) core.PMID {
 		return proc.ID
 	})
 }
 
-func (l ProcList) Tags() iter.Seq[string] {
+func (l procSeq) Tags() iter.Seq[string] {
 	tags := map[string]struct{}{"all": {}}
 	l.ForEach(func(ps core.ProcStat) {
 		for _, tag := range ps.Tags {
@@ -35,18 +38,18 @@ func (l ProcList) Tags() iter.Seq[string] {
 	return iter.Keys(iter.FromDict(tags))
 }
 
-func (app App) List() ProcList {
-	procs, err := app.DB.GetProcs(core.WithAllIfNoFilters)
+func listProcs(db db.Handle) procSeq {
+	procs, err := db.GetProcs(core.WithAllIfNoFilters)
 	if err != nil {
 		log.Error().Err(err).Msg("get procs")
-		return ProcList{iter.FromNothing[core.ProcStat]()}
+		return procSeq{iter.FromNothing[core.ProcStat]()}
 	}
 
 	list := linuxprocess.List()
-	return ProcList{func(yield func(core.ProcStat) bool) {
+	return procSeq{func(yield func(core.ProcStat) bool) {
 		for _, proc := range procs {
 			var procStat core.ProcStat
-			stat, ok := linuxprocess.StatPMID(list, proc.ID, EnvPMID)
+			stat, ok := linuxprocess.StatPMID(list, proc.ID, app.EnvPMID)
 			switch {
 			case !ok: // no shim at all
 				procStat = core.ProcStat{
