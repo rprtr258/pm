@@ -1,4 +1,4 @@
-package app
+package cli
 
 import (
 	stdErrors "errors"
@@ -9,12 +9,13 @@ import (
 	"github.com/rprtr258/fun"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
-func Stop(db db.Handle, ids ...core.PMID) error {
+func implStop(db db.Handle, ids ...core.PMID) error {
 	procs, err := db.GetProcs(core.WithIDs(ids...))
 	if err != nil {
 		return errors.Wrapf(err, "get procs")
@@ -27,7 +28,7 @@ func Stop(db db.Handle, ids ...core.PMID) error {
 				return errors.Newf("not found proc to stop")
 			}
 
-			proc, ok := linuxprocess.StatPMID(list, id, EnvPMID)
+			proc, ok := linuxprocess.StatPMID(list, id, app.EnvPMID)
 			if !ok {
 				// already stopped or not started yet
 				return nil
@@ -49,7 +50,7 @@ func Stop(db db.Handle, ids ...core.PMID) error {
 			// wait for process to stop
 			for {
 				time.Sleep(100 * time.Millisecond)
-				if _, ok := linuxprocess.StatPMID(linuxprocess.List(), id, EnvPMID); !ok {
+				if _, ok := linuxprocess.StatPMID(linuxprocess.List(), id, app.EnvPMID); !ok {
 					break
 				}
 			}

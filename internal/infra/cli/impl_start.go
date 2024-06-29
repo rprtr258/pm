@@ -1,4 +1,4 @@
-package app
+package cli
 
 import (
 	"encoding/json"
@@ -13,12 +13,11 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
-
-const CmdShim = "shim"
 
 var ErrAlreadyRunning = errors.New("process is already running")
 
@@ -52,7 +51,7 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 	if proc.Env == nil {
 		proc.Env = map[string]string{}
 	}
-	proc.Env[EnvPMID] = string(proc.ID)
+	proc.Env[app.EnvPMID] = string(proc.ID)
 	for _, kv := range os.Environ() {
 		kvs := strings.SplitN(kv, "=", 2)
 		k, v := kvs[0], kvs[1]
@@ -68,7 +67,7 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 
 	cmd := exec.Cmd{
 		Path: pmExecutable,
-		Args: []string{pmExecutable, CmdShim, string(procDesc)},
+		Args: []string{pmExecutable, _cmdShim.Name(), string(procDesc)},
 		Dir:  proc.Cwd,
 		Env: iter.Map(iter.
 			FromDict(proc.Env),
@@ -90,13 +89,13 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 	return nil
 }
 
-// Start already created processes
-func Start(db db.Handle, ids ...core.PMID) error {
+// implStart already created processes
+func implStart(db db.Handle, ids ...core.PMID) error {
 	list := linuxprocess.List()
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
 			// run processes by their ids in database
-			if _, ok := linuxprocess.StatPMID(list, id, EnvPMID); ok {
+			if _, ok := linuxprocess.StatPMID(list, id, app.EnvPMID); ok {
 				// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
 				log.Info().Stringer("id", id).Msg("already running")
 				return nil

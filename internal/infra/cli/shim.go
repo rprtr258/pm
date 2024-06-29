@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/fsnotify"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
@@ -294,7 +293,7 @@ func implShim(proc core.Proc) error {
 }
 
 var _cmdShim = &cobra.Command{
-	Use:    app.CmdShim,
+	Use:    "shim",
 	Args:   cobra.ExactArgs(1),
 	Hidden: true,
 	RunE: func(_ *cobra.Command, args []string) error {

@@ -123,7 +123,7 @@ var _cmdDelete = func() *cobra.Command {
 				return nil
 			}
 
-			if err := app.Stop(appp.DB, procIDs...); err != nil {
+			if err := implStop(appp.DB, procIDs...); err != nil {
 				return errors.Wrapf(err, "stop")
 			}
 

@@ -66,11 +66,11 @@ var _cmdRestart = func() *cobra.Command {
 				return nil
 			}
 
-			if errStop := app.Stop(appp.DB, procIDs...); errStop != nil {
+			if errStop := implStop(appp.DB, procIDs...); errStop != nil {
 				return errors.Wrapf(errStop, "client.stop")
 			}
 
-			if errStart := app.Start(appp.DB, procIDs...); errStart != nil {
+			if errStart := implStart(appp.DB, procIDs...); errStart != nil {
 				return errors.Wrapf(errStart, "client.start")
 			}
 

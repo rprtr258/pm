@@ -145,7 +145,7 @@ func ImplRun(appp app.App, config core.RunConfig) (core.PMID, string, error) {
 		return "", "", errors.Wrapf(errCreate, "server.create: %v", config)
 	}
 
-	err := app.Start(appp.DB, id)
+	err := implStart(appp.DB, id)
 	return id, name, err
 }
 

@@ -27,7 +27,7 @@ var _cmdStartup = &cobra.Command{
 			ToSlice()
 
 		return errors.Combine(fun.Map[error](func(proc core.ProcStat) error {
-			return app.Start(appp.DB, proc.ID)
+			return implStart(appp.DB, proc.ID)
 		}, procsToStart...)...)
 	},
 }

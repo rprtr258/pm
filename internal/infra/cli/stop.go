@@ -67,7 +67,7 @@ var _cmdStop = func() *cobra.Command {
 			}
 
 			procIDs := fun.Map[core.PMID](func(proc core.ProcStat) core.PMID { return proc.ID }, procs...)
-			if err := app.Stop(appp.DB, procIDs...); err != nil {
+			if err := implStop(appp.DB, procIDs...); err != nil {
 				return errors.Wrapf(err, "client.stop")
 			}
 
