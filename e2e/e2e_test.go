@@ -16,7 +16,6 @@ import (
 	"github.com/shoenig/test"
 	"github.com/shoenig/test/must"
 	"github.com/shoenig/test/portal"
-	"github.com/shoenig/test/skip"
 	"github.com/shoenig/test/wait"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -109,23 +108,30 @@ func testMain(m *testing.M) int {
 	return m.Run()
 }
 
+func exec_(cmd string, args ...string) {
+	if err := exec.Command(cmd, args...).Run(); err != nil {
+		log.Fatal().
+			Err(err).
+			Str("cmd", cmd).
+			Strs("args", args).
+			Msg("failed to exec")
+	}
+}
+
 func TestMain(m *testing.M) {
 	// build pm binary
-	if err := exec.Command("go", "build", "-o", "e2e/pm", ".").Run(); err != nil {
-		log.Fatal().Err(err).Msg("failed to build pm binary")
-	}
+	exec_("go", "build", "-o", "e2e/pm", ".")
 
 	os.Exit(testMain(m))
 }
 
 func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
-	skip.CommandUnavailable(t, "./tests/hello-http/main")
+	// build server binary beforehand
+	exec_("go", "build", "-o", "tests/hello-http", "tests/hello-http/main.go")
 
 	pm := usePM(t)
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()
-
-	// TODO: build server binary beforehand
 
 	// start test processes
 	name := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed

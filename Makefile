@@ -82,11 +82,9 @@ docs: # generate docs
 
 test: # run tests
 	@go build .
-	@go build -o e2e/tests/hello-http e2e/tests/hello-http/main.go
 	@go run gotest.tools/gotestsum@latest --format dots-v2 ./...
 
 test-e2e: # run integration tests
-	@go build -o e2e/tests/hello-http e2e/tests/hello-http/main.go
 	@go run gotest.tools/gotestsum@latest --format dots-v2 ./e2e/...
 
 test-e2e-docker: # run integration tests in docker
