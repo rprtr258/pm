@@ -16,17 +16,21 @@ import (
 const Version = "0.1.0"
 
 type Config struct {
-	Version                 string
-	Debug                   bool
-	DirHome, DirLogs, DirDB string
+	Version        string
+	Debug          bool
+	DirLogs, DirDB string
 }
 
 var DefaultConfig = Config{
 	Version: Version,
 	Debug:   false,
-	DirHome: _dirHome,
 	DirLogs: _dirProcsLogs,
 	DirDB:   _dirDB,
+}
+
+// TODO: use for separate running contexts
+func DirHome() string {
+	return _dirHome
 }
 
 func ReadConfig() (Config, error) {
@@ -49,7 +53,6 @@ func ReadConfig() (Config, error) {
 	if errUnmarshal := json.Unmarshal(configBytes, &config); errUnmarshal != nil {
 		return fun.Zero[Config](), errors.Wrapf(errUnmarshal, "parse config")
 	}
-	config.DirHome = _dirHome
 	config.DirLogs = _dirProcsLogs
 	config.DirDB = _dirDB
 	return config, nil

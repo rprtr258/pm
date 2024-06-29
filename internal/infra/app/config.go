@@ -4,10 +4,10 @@ import (
 	stdErrors "errors"
 	"io/fs"
 	"os"
-	"path/filepath"
 
 	"github.com/rprtr258/fun"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/afero"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/db"
@@ -45,12 +45,27 @@ func ensureDir(dirname string) error {
 }
 
 func New() (db.Handle, core.Config, error) {
-	config, errConfig := core.ReadConfig()
-	if errConfig != nil {
-		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrap(errConfig, "config")
-	}
-
+	var (
+		config core.Config
+		dbFs   afero.Fs
+	)
 	if err := func() error {
+		dirHome := core.DirHome()
+
+		if err := ensureDir(dirHome); err != nil {
+			return errors.Wrapf(err, "ensure home dir %s", dirHome)
+		}
+
+		var errConfig error
+		config, errConfig = core.ReadConfig()
+		if errConfig != nil {
+			return errors.Wrap(errConfig, "config")
+		}
+
+		if err := ensureDir(config.DirLogs); err != nil {
+			return errors.Wrapf(err, "ensure logs dir %s", config.DirLogs)
+		}
+
 		if errMigrate := MigrateConfig(config); errMigrate != nil {
 			return errors.Wrap(errMigrate, "migrate")
 		}
@@ -60,23 +75,15 @@ func New() (db.Handle, core.Config, error) {
 		// 	retu errors.Wrap(errMigrate, "migrate")
 		// }
 
-		if err := ensureDir(config.DirHome); err != nil {
-			return errors.Wrapf(err, "ensure home dir %s", config.DirHome)
-		}
-
-		_dirProcsLogs := filepath.Join(config.DirHome, "logs")
-		if err := ensureDir(_dirProcsLogs); err != nil {
-			return errors.Wrapf(err, "ensure logs dir %s", _dirProcsLogs)
+		var errDB error
+		dbFs, errDB = db.InitRealDir(config.DirDB)
+		if errDB != nil {
+			return errors.Wrapf(errDB, "new db, dir=%q", config.DirDB)
 		}
 
 		return nil
 	}(); err != nil {
 		return fun.Zero[db.Handle](), fun.Zero[core.Config](), err
-	}
-
-	dbFs, errDB := db.InitRealDir(config.DirDB)
-	if errDB != nil {
-		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(errDB, "new db, dir=%q", config.DirDB)
 	}
 
 	return db.New(dbFs), config, nil
