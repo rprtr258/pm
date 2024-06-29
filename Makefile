@@ -15,6 +15,9 @@ BINDIR=${CURDIR}/bin
 GOLANGCILINTVER=1.58.1
 GOLANGCILINTBIN=${BINDIR}/golangci-lint_${GOLANGCILINTVER}
 
+GOCRITICVER=v0.11.4
+GOCRITICBIN=${BINDIR}/gocritic_${GOCRITICVER}
+
 
 .PHONY: help
 help: # show list of all commands
@@ -26,7 +29,7 @@ help: # show list of all commands
 		}' $(MAKEFILE_LIST)
 
 bindir:
-	mkdir -p ${BINDIR}
+	@mkdir -p ${BINDIR}
 
 
 
@@ -59,13 +62,20 @@ run-task: # TODO: remove # run "long running" task
 ## CI
 
 install-linter: bindir
-	@test -f ${GOLANGCILINTBIN} || \
-		(wget https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCILINTVER}/golangci-lint-${GOLANGCILINTVER}-linux-amd64.tar.gz -O ${GOLANGCILINTBIN}.tar.gz && \
+	@test -f ${GOLANGCILINTBIN} || (\
+		wget https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCILINTVER}/golangci-lint-${GOLANGCILINTVER}-linux-amd64.tar.gz -O ${GOLANGCILINTBIN}.tar.gz && \
 		tar xvf ${GOLANGCILINTBIN}.tar.gz -C ${BINDIR} && \
 		mv ${BINDIR}/golangci-lint-${GOLANGCILINTVER}-linux-amd64/golangci-lint ${GOLANGCILINTBIN} && \
-		rm -rf ${BINDRI}/${GOLANGCILINTBIN}.tar.gz ${BINDIR}/golangci-lint-${GOLANGCILINTVER}-linux-amd64)
+		rm -rf ${BINDIR}/${GOLANGCILINTBIN}.tar.gz ${BINDIR}/golangci-lint-${GOLANGCILINTVER}-linux-amd64 \
+	)
+	@test -f ${GOCRITICBIN} || (\
+		env GOPATH=${BINDIR} go install github.com/go-critic/go-critic/cmd/gocritic@${GOCRITICVER} && \
+		mv ${BINDIR}/bin/gocritic ${GOCRITICBIN} && \
+		rmdir ${BINDIR}/bin \
+	)
 
-# TODO: pin go-critic, deadcode
+
+# TODO: pin deadcode
 lint-go: install-linter # run go linter
 	@${GOLANGCILINTBIN} run ./...
 	gocritic check -enableAll -disable='rangeValCopy,hugeParam,unnamedResult' ./...
