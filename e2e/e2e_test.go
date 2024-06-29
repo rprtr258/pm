@@ -108,7 +108,7 @@ func testMain(m *testing.M) int {
 	return m.Run()
 }
 
-func exec_(cmd string, args ...string) {
+func mustExec(cmd string, args ...string) {
 	if err := exec.Command(cmd, args...).Run(); err != nil {
 		log.Fatal().
 			Err(err).
@@ -120,14 +120,14 @@ func exec_(cmd string, args ...string) {
 
 func TestMain(m *testing.M) {
 	// build pm binary
-	exec_("go", "build", "-o", "e2e/pm", ".")
+	mustExec("go", "build", "-o", "e2e/pm", ".")
 
 	os.Exit(testMain(m))
 }
 
 func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 	// build server binary beforehand
-	exec_("go", "build", "-o", "tests/hello-http", "tests/hello-http/main.go")
+	mustExec("go", "build", "-o", "tests/hello-http", "tests/hello-http/main.go")
 
 	pm := usePM(t)
 
