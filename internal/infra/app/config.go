@@ -16,7 +16,7 @@ const EnvPMID = "PM_PMID"
 
 var _dirDB = filepath.Join(core.DirHome, "db")
 
-func ReadPMConfig() (core.Config, error) {
+func readPMConfig() (core.Config, error) {
 	config, configFilename, errRead := core.ReadConfig()
 	if errRead != nil {
 		if errRead != core.ErrConfigNotExists {
@@ -49,7 +49,7 @@ func MigrateConfig(config core.Config) error {
 }
 
 func New() (db.Handle, core.Config, error) {
-	cfg, errCfg := ReadPMConfig()
+	cfg, errCfg := readPMConfig()
 	if errCfg != nil {
 		return fun.Zero[db.Handle](), fun.Zero[core.Config](), fmt.Errorf("config: %w", errCfg)
 	}
@@ -65,10 +65,5 @@ func New() (db.Handle, core.Config, error) {
 
 	dbHandle := db.New(dbFs)
 
-	config, _, errConfig := core.ReadConfig()
-	if errConfig != nil && errConfig != core.ErrConfigNotExists {
-		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(errConfig, "read app config")
-	}
-
-	return dbHandle, config, nil
+	return dbHandle, cfg, nil
 }
