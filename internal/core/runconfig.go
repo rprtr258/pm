@@ -40,9 +40,6 @@ type RunConfig struct {
 	Name fun.Option[string]
 	// KillTimeout - before sending SIGKILL after SIGINT
 	KillTimeout time.Duration
-	// KillChildren - stop children processes on process stop
-	// TODO: use
-	KillChildren bool
 	// Autorestart - restart process automatically after its death
 	Autorestart bool
 	// MaxRestarts - maximum number of restarts, 0 means no limit
@@ -193,14 +190,13 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 					return valStr
 				}
 			}),
-			Watch:        watch,
-			StdoutFile:   fun.Zero[fun.Option[string]](),
-			StderrFile:   fun.Zero[fun.Option[string]](),
-			KillTimeout:  0,
-			KillChildren: false,
-			Autorestart:  false,
-			MaxRestarts:  0,
-			Startup:      config.Startup,
+			Watch:       watch,
+			StdoutFile:  fun.Zero[fun.Option[string]](),
+			StderrFile:  fun.Zero[fun.Option[string]](),
+			KillTimeout: 0,
+			Autorestart: false,
+			MaxRestarts: 0,
+			Startup:     config.Startup,
 		}, nil
 	}, scannedConfigs...)
 }
