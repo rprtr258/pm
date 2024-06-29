@@ -63,7 +63,5 @@ func New() (db.Handle, core.Config, error) {
 		return fun.Zero[db.Handle](), fun.Zero[core.Config](), errors.Wrapf(errDB, "new db, dir=%q", _dirDB)
 	}
 
-	dbHandle := db.New(dbFs)
-
-	return dbHandle, cfg, nil
+	return db.New(dbFs), cfg, nil
 }
