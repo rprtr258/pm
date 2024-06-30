@@ -114,7 +114,7 @@ var _cmdDelete = func() *cobra.Command {
 				Filter(func(ps core.ProcStat) bool {
 					return filterFunc(ps.Proc) &&
 						// TODO: break on error, e.g. Ctrl-C
-						!interactive || confirmProc(ps, "stop")
+						!interactive || confirmProc(ps, "delete")
 				}).
 				IDs().
 				ToSlice()
