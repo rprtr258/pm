@@ -94,14 +94,15 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	type configScanDTO struct {
-		Name    *string        `json:"name"`
-		Cwd     *string        `json:"cwd"`
-		Env     map[string]any `json:"env"`
-		Command string         `json:"command"`
-		Args    []any          `json:"args"`
-		Tags    []string       `json:"tags"`
-		Watch   *string        `json:"watch"`
-		Startup bool           `json:"startup"`
+		Name      *string        `json:"name"`
+		Cwd       *string        `json:"cwd"`
+		Env       map[string]any `json:"env"`
+		Command   string         `json:"command"`
+		Args      []any          `json:"args"`
+		Tags      []string       `json:"tags"`
+		Watch     *string        `json:"watch"`
+		Startup   bool           `json:"startup"`
+		DependsOn []string       `json:"depends_on"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
@@ -186,6 +187,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			Autorestart: false,
 			MaxRestarts: 0,
 			Startup:     config.Startup,
+			DependsOn:   config.DependsOn,
 		}, nil
 	}, scannedConfigs...)
 }

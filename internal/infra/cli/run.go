@@ -166,7 +166,7 @@ func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 			return ps.Name
 		}).ToSlice()...)
 
-		nonexistingDependsErrors := []error{}
+		nonexistingErrors := []error{}
 		for _, config := range configs {
 			nonexistingDepends := []string{}
 			for _, name := range config.DependsOn {
@@ -175,11 +175,13 @@ func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 				}
 			}
 			if len(nonexistingDepends) > 0 {
-				nonexistingDependsErrors = append(nonexistingDependsErrors, errors.Newf("%q depends on non-existing processes: %v", config.Name, nonexistingDepends))
+				nonexistingErrors = append(nonexistingErrors, errors.Newf(
+					"%q depends on non-existing processes: %v",
+					config.Name, nonexistingDepends))
 			}
 		}
-		if len(nonexistingDependsErrors) > 0 {
-			return errors.Combine(nonexistingDependsErrors...)
+		if len(nonexistingErrors) > 0 {
+			return errors.Combine(nonexistingErrors...)
 		}
 	}
 
@@ -297,7 +299,8 @@ var _cmdRun = func() *cobra.Command {
 	cmd.Flags().StringVar(&watch, "watch", "", "restart on changes to files matching specified regex")
 	// TODO: not yet implemented run parameters
 	// // logs parameters
-	// &cli.BoolFlag{Name: "time", Usage: "enable time logging"}, // TODO: enable by default, this option only regulates displaying, also use for printing logs in order
+	// TODO: enable by default, this option only regulates displaying, also use for printing logs in order
+	// &cli.BoolFlag{Name: "time", Usage: "enable time logging"},
 	// // restart parameters
 	// &cli.StringFlag{
 	// 	Name:    "cron-restart",
