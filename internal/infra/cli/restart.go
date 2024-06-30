@@ -13,6 +13,7 @@ import (
 var _cmdRestart = func() *cobra.Command {
 	var names, ids, tags []string
 	var config string
+	var interactive bool
 	cmd := &cobra.Command{
 		Use:               "restart [name|tag|id]...",
 		Short:             "restart already added process(es)",
@@ -52,7 +53,12 @@ var _cmdRestart = func() *cobra.Command {
 			}
 
 			procIDs := listProcs(dbb).
-				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
+				Filter(func(ps core.ProcStat) bool {
+					return ps.Status != core.StatusStopped &&
+						filterFunc(ps.Proc) &&
+						// TODO: break on error, e.g. Ctrl-C
+						!interactive || confirmProc(ps, "stop")
+				}).
 				IDs().
 				ToSlice()
 			if len(procIDs) == 0 {
@@ -71,6 +77,7 @@ var _cmdRestart = func() *cobra.Command {
 			return nil
 		},
 	}
+	addFlagInteractive(cmd, &interactive)
 	addFlagNames(cmd, &names)
 	addFlagTags(cmd, &tags)
 	addFlagIDs(cmd, &ids)
