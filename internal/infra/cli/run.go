@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/fun/set"
 	"github.com/spf13/cobra"
 
@@ -161,19 +162,24 @@ func runProc(
 func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 	// depends_on validation
 	{
-		// all proc names on which some proc depends on
-		dependentUpon := set.NewFrom(fun.ConcatMap(
-			func(config core.RunConfig) []string { return config.DependsOn },
-			configs...)...)
+		allNames := set.NewFrom(iter.Map(listProcs(dbb).Seq, func(ps core.ProcStat) string {
+			return ps.Name
+		}).ToSlice()...)
 
-		dependentNotExisting := []string{}
-		listProcs(dbb).ForEach(func(ps core.ProcStat) {
-			if !dependentUpon.Contains(ps.Name) {
-				dependentNotExisting = append(dependentNotExisting, ps.Name)
+		nonexistingDependsErrors := []error{}
+		for _, config := range configs {
+			nonexistingDepends := []string{}
+			for _, name := range config.DependsOn {
+				if !allNames.Contains(name) {
+					nonexistingDepends = append(nonexistingDepends, name)
+				}
 			}
-		})
-		if len(dependentNotExisting) > 0 {
-			return errors.Newf("dependent procs not found: %v", dependentNotExisting)
+			if len(nonexistingDepends) > 0 {
+				nonexistingDependsErrors = append(nonexistingDependsErrors, errors.Newf("%q depends on non-existing processes: %v", config.Name, nonexistingDepends))
+			}
+		}
+		if len(nonexistingDependsErrors) > 0 {
+			return errors.Combine(nonexistingDependsErrors...)
 		}
 	}
 
