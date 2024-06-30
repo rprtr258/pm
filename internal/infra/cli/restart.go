@@ -28,8 +28,8 @@ var _cmdRestart = func() *cobra.Command {
 					return errors.Wrapf(errLoadConfigs, "load configs from %s", *config)
 				}
 
-				procNames := fun.FilterMap[string](func(cfg core.RunConfig) (string, bool) {
-					return cfg.Name.Unpack()
+				procNames := fun.Map[string](func(cfg core.RunConfig) string {
+					return cfg.Name
 				}, configs...)
 
 				ff := core.FilterFunc(

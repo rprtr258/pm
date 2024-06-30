@@ -146,7 +146,7 @@ func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 
 	// start test processes
 	name := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
-		Name:    fun.Valid("hello-http"),
+		Name:    "hello-http",
 		Command: "./tests/hello-http/main",
 		Args:    []string{":" + strconv.Itoa(serverPort)},
 	})
@@ -190,7 +190,7 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 
 	// start server
 	must.EqOp(t, "nc-server", pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
-		Name:    fun.Valid("nc-server"),
+		Name:    "nc-server",
 		Command: "/usr/bin/nc",
 		Args:    []string{"-l", "-p", strconv.Itoa(serverPort)},
 	}))
@@ -206,7 +206,7 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 
 	// start client
 	must.EqOp(t, "nc-client", pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
-		Name:    fun.Valid("nc-client"),
+		Name:    "nc-client",
 		Command: "/bin/sh",
 		Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(serverPort)},
 	}))

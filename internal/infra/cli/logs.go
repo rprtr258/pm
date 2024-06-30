@@ -199,8 +199,8 @@ func getProcs(
 		return nil, errors.Wrapf(errLoadConfigs, "load configs: %v", *config)
 	}
 
-	procNames := fun.FilterMap[string](func(cfg core.RunConfig) (string, bool) {
-		return cfg.Name.Unpack()
+	procNames := fun.Map[string](func(cfg core.RunConfig) string {
+		return cfg.Name
 	}, configs...)
 
 	return listProcs(db).

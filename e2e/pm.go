@@ -34,9 +34,7 @@ func (pM) exec(cmd string, args ...string) *exec.Cmd {
 // Run returns new proc name
 func (pm pM) Run(config core.RunConfig) string {
 	args := []string{}
-	if config.Name.Valid {
-		args = append(args, "--name", config.Name.Value)
-	}
+	args = append(args, "--name", config.Name)
 	for _, tag := range config.Tags {
 		args = append(args, "--tag", tag)
 	}

@@ -14,25 +14,26 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rs/zerolog/log"
 
+	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/lo"
 )
 
 // RunConfig - configuration of process to manage
 type RunConfig struct {
-	Env         map[string]string          // environment variables
-	Watch       fun.Option[*regexp.Regexp] // regexp for files to watch and restart on changes
-	Command     string                     // process command, full path
-	Cwd         string                     // working directory
-	StdoutFile  fun.Option[string]         // file to write stdout to
-	StderrFile  fun.Option[string]         // file to write stderr to
-	Args        []string                   // arguments for process, not including executable itself as first argument
-	Tags        []string                   // process tags, excluding `all` tag
-	Name        fun.Option[string]         // name of a process if defined, otherwise generated
-	KillTimeout time.Duration              // before sending SIGKILL after SIGINT
-	Autorestart bool                       // restart process automatically after its death
-	MaxRestarts uint                       // maximum number of restarts, 0 means no limit
-	Startup     bool                       // run process on OS startup
+	Env         map[string]string          //  environment variables
+	Watch       fun.Option[*regexp.Regexp] //  regexp for files to watch and restart on changes
+	Command     string                     //  process command, full path
+	Cwd         string                     //  working directory
+	StdoutFile  fun.Option[string]         //  file to write stdout to
+	StderrFile  fun.Option[string]         //  file to write stderr to
+	Args        []string                   //  arguments for process, not including executable itself as first argument
+	Tags        []string                   //  process tags, excluding `all` tag
+	Name        string                     // Name of a process if defined, otherwise generated
+	KillTimeout time.Duration              //  before sending SIGKILL after SIGINT
+	Autorestart bool                       //  restart process automatically after its death
+	MaxRestarts uint                       //  maximum number of restarts, 0 means no limit
+	Startup     bool                       //  run process on OS startup
 	DependsOn   []string                   // name of processes that must be started before this one
 }
 
@@ -93,15 +94,14 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	type configScanDTO struct {
-		Name      *string        `json:"name"`
-		Cwd       *string        `json:"cwd"`
-		Env       map[string]any `json:"env"`
-		Command   string         `json:"command"`
-		Args      []any          `json:"args"`
-		Tags      []string       `json:"tags"`
-		Watch     *string        `json:"watch"`
-		Startup   bool           `json:"startup"`
-		DependsOn []string       `json:"depends_on"`
+		Name    *string        `json:"name"`
+		Cwd     *string        `json:"cwd"`
+		Env     map[string]any `json:"env"`
+		Command string         `json:"command"`
+		Args    []any          `json:"args"`
+		Tags    []string       `json:"tags"`
+		Watch   *string        `json:"watch"`
+		Startup bool           `json:"startup"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
@@ -137,7 +137,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		}
 
 		return RunConfig{
-			Name:    fun.FromPtr(config.Name),
+			Name:    fun.FromPtr(config.Name).OrDefault(namegen.New()),
 			Command: config.Command,
 			Args: fun.Map[string](func(arg any, i int) string {
 				switch a := arg.(type) {
@@ -186,7 +186,6 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			Autorestart: false,
 			MaxRestarts: 0,
 			Startup:     config.Startup,
-			DependsOn:   config.DependsOn,
 		}, nil
 	}, scannedConfigs...)
 }

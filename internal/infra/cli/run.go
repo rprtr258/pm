@@ -53,10 +53,10 @@ func compareArgs(first, second []string) bool {
 	return true
 }
 
-// Run - create and start processes, returns ids of created processes.
+// runProc - create and start processes, returns ids of created processes.
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
-func ImplRun(
+func runProc(
 	dbb db.Handle,
 	dirLogs string,
 	config core.RunConfig,
@@ -82,7 +82,7 @@ func ImplRun(
 		}
 	}
 
-	name := config.Name.OrDefault(namegen.New())
+	name := config.Name
 
 	id, errCreate := func() (core.PMID, error) {
 		watch := fun.OptMap(config.Watch, func(r *regexp.Regexp) string {
@@ -158,10 +158,28 @@ func ImplRun(
 	return id, name, err
 }
 
-func run(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
+func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
+	// depends_on validation
+	{
+		// all proc names on which some proc depends on
+		dependentUpon := set.NewFrom(fun.ConcatMap(
+			func(config core.RunConfig) []string { return config.DependsOn },
+			configs...)...)
+
+		dependentNotExisting := []string{}
+		listProcs(dbb).ForEach(func(ps core.ProcStat) {
+			if !dependentUpon.Contains(ps.Name) {
+				dependentNotExisting = append(dependentNotExisting, ps.Name)
+			}
+		})
+		if len(dependentNotExisting) > 0 {
+			return errors.Newf("dependent procs not found: %v", dependentNotExisting)
+		}
+	}
+
 	var merr []error
 	for _, config := range configs {
-		if _, name, errRun := ImplRun(db, dirLogs, config); errRun != nil {
+		if _, name, errRun := runProc(db, dirLogs, config); errRun != nil {
 			merr = append(merr, errors.Wrapf(errRun, "start proc %v", config))
 		} else {
 			fmt.Println(name)
@@ -213,7 +231,7 @@ var _cmdRun = func() *cobra.Command {
 				runConfig := core.RunConfig{
 					Command:     command,
 					Args:        args,
-					Name:        fun.FromPtr(name),
+					Name:        fun.FromPtr(name).OrDefault(namegen.New()),
 					Tags:        tags,
 					Cwd:         workDir,
 					Env:         nil,
@@ -227,7 +245,7 @@ var _cmdRun = func() *cobra.Command {
 					DependsOn:   nil,
 				}
 
-				return run(dbb, cfg.DirLogs, runConfig)
+				return runProcs(dbb, cfg.DirLogs, runConfig)
 			}
 
 			configs, errLoadConfigs := core.LoadConfigs(*config)
@@ -239,13 +257,13 @@ var _cmdRun = func() *cobra.Command {
 			names := posArgs
 			if len(names) == 0 {
 				// no filtering by names, run all processes
-				return run(dbb, cfg.DirLogs, configs...)
+				return runProcs(dbb, cfg.DirLogs, configs...)
 			}
 
 			configsByName := make(map[string]core.RunConfig, len(names))
 			for _, cfg := range configs {
-				name, ok := cfg.Name.Unpack()
-				if !ok || !fun.Contains(name, names...) {
+				name := cfg.Name
+				if !fun.Contains(name, names...) {
 					continue
 				}
 
@@ -263,7 +281,7 @@ var _cmdRun = func() *cobra.Command {
 				return merr
 			}
 
-			return run(dbb, cfg.DirLogs, fun.Values(configsByName)...)
+			return runProcs(dbb, cfg.DirLogs, fun.Values(configsByName)...)
 		},
 	}
 	cmd.Flags().StringVarP(&name, "name", "n", "", "set a name for the process")
@@ -273,49 +291,18 @@ var _cmdRun = func() *cobra.Command {
 	cmd.Flags().StringVar(&watch, "watch", "", "restart on changes to files matching specified regex")
 	// TODO: not yet implemented run parameters
 	// // logs parameters
-	// &cli.BoolFlag{Name: "output", Aliases: []string{"o"}, Usage: "specify log file for stdout"},
-	// &cli.PathFlag{Name: "error", Aliases: []string{"e"}, Usage: "specify log file for stderr"},
-	// &cli.PathFlag{
-	// 	Name:    "log",
-	// 	Aliases: []string{"l"},
-	// 	Usage:   "specify log file which gathers both stdout and stderr",
-	// },
-	// &cli.BoolFlag{Name: "disable-logs", Usage: "disable all logs storage"},
-	// &cli.BoolFlag{Name: "time", Usage: "enable time logging"},
-	// &cli.StringFlag{
-	// 	Name:  "log-type",
-	// 	Usage: "specify log output style (raw by default, json optional)",
-	// 	Value: "raw",
-	// },
+	// &cli.BoolFlag{Name: "time", Usage: "enable time logging"}, // TODO: enable by default, this option only regulates displaying, also use for printing logs in order
 	// // restart parameters
 	// &cli.StringFlag{
 	// 	Name:    "cron-restart",
 	// 	Aliases: []string{"c", "cron"},
 	// 	Usage:   "restart a running process based on a cron pattern",
 	// },
-	// &cli.IntFlag{
-	// 	Name:  "max-restarts",
-	// 	Usage: "only restart the script COUNT times",
-	// },
+	// &cli.IntFlag{Name:  "max-restarts", Usage: "only restart the script COUNT times"},
 	// &cli.BoolFlag{Name: "no-autorestart", Usage: "start an app without automatic restart"},
 	// &cli.DurationFlag{Name: "restart-delay", Usage: "specify a delay between restarts"},
 	// &cli.DurationFlag{Name: "exp-backoff-restart-delay", Usage: "specify a delay between restarts"},
-	// // env parameters
-	// &cli.StringFlag{
-	// 	Name:  "env",
-	// 	Usage: "specify which set of environment variables from ecosystem file must be injected",
-	// },
-	// &cli.StringSliceFlag{
-	// 	Name:  "filter-env",
-	// 	Usage: "filter out outgoing global values that contain provided strings",
-	// },
 	// // others
-	// &cli.BoolFlag{Name: "wait-ready", Usage: "ask pm to wait for ready event from your app"},
-	// &cli.IntFlag{
-	// 	Name:    "pid",
-	// 	Aliases: []string{"p"},
-	// 	Usage:   "specify pid file",
-	// },
 	// &cli.IntFlag{Name: "gid", Usage: "run process with <gid> rights"},
 	// &cli.IntFlag{Name: "uid", Usage: "run process with <uid> rights"},
 	return cmd

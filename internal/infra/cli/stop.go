@@ -30,7 +30,7 @@ var _cmdStop = func() *cobra.Command {
 					return errors.Wrapf(errLoadConfigs, "load configs")
 				}
 
-				namesFilter := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
+				namesFilter := fun.Map[string](func(cfg core.RunConfig) string {
 					return cfg.Name
 				}, configs...)
 

@@ -79,7 +79,7 @@ var _cmdSignal = func() *cobra.Command {
 					return errors.Wrap(errLoadConfigs, "load configs")
 				}
 
-				namesFilter := fun.FilterMap[string](func(cfg core.RunConfig) fun.Option[string] {
+				namesFilter := fun.Map[string](func(cfg core.RunConfig) string {
 					return cfg.Name
 				}, configs...)
 
