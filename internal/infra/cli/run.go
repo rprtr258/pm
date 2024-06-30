@@ -210,20 +210,18 @@ func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 				log.Error().
 					Strs("loop", fun.Map[string](func(i int) string { return configs[i].Name }, res...)).
 					Msg("loop found")
-				return
 			case statusProcessed:
-				return
-			}
-
-			visited[i] = statusInProgress
-			for _, dependency := range configs[i].DependsOn {
-				dfs(indexByName[dependency])
-				if loopFound {
-					return
+			case statusNotVisited:
+				visited[i] = statusInProgress
+				for _, dependency := range configs[i].DependsOn {
+					dfs(indexByName[dependency])
+					if loopFound {
+						return
+					}
 				}
+				res = append(res, i)
+				visited[i] = statusProcessed
 			}
-			res = append(res, i)
-			visited[i] = statusProcessed
 		}
 		for i := 0; i < len(configs); i++ {
 			dfs(i)
