@@ -54,8 +54,7 @@ var _cmdRestart = func() *cobra.Command {
 
 			procIDs := listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool {
-					return ps.Status != core.StatusStopped &&
-						filterFunc(ps.Proc) &&
+					return filterFunc(ps.Proc) &&
 						// TODO: break on error, e.g. Ctrl-C
 						!interactive || confirmProc(ps, "stop")
 				}).

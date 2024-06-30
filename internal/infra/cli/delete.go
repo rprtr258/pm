@@ -70,6 +70,7 @@ func implDelete(db db.Handle, dirLogs string, ids ...core.PMID) error {
 var _cmdDelete = func() *cobra.Command {
 	var names, ids, tags []string
 	var config string
+	var interactive bool
 	cmd := &cobra.Command{
 		Use:               "delete [name|tag|id]...",
 		Short:             "stop and remove process(es)",
@@ -110,7 +111,11 @@ var _cmdDelete = func() *cobra.Command {
 			}
 
 			procIDs := listProcs(dbb).
-				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
+				Filter(func(ps core.ProcStat) bool {
+					return filterFunc(ps.Proc) &&
+						// TODO: break on error, e.g. Ctrl-C
+						!interactive || confirmProc(ps, "stop")
+				}).
 				IDs().
 				ToSlice()
 			if len(procIDs) == 0 {
@@ -129,6 +134,7 @@ var _cmdDelete = func() *cobra.Command {
 			return nil
 		},
 	}
+	addFlagInteractive(cmd, &interactive)
 	addFlagNames(cmd, &names)
 	addFlagTags(cmd, &tags)
 	addFlagIDs(cmd, &ids)
