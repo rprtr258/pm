@@ -12,6 +12,7 @@ import (
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/fun/set"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -183,6 +184,56 @@ func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 		if len(nonexistingErrors) > 0 {
 			return errors.Combine(nonexistingErrors...)
 		}
+	}
+
+	// sort procs by depends_on
+	{
+		indexByName := fun.SliceToMap[string, int](
+			func(proc core.RunConfig, i int) (string, int) { return proc.Name, i },
+			configs...)
+
+		// topological sort
+		type visitStatus int8
+		const (
+			statusNotVisited visitStatus = iota
+			statusInProgress
+			statusProcessed
+		)
+		loopFound := false
+		res := []int{} // indices in configs slice
+		visited := make([]visitStatus, len(configs))
+		var dfs func(int)
+		dfs = func(i int) {
+			switch visited[i] {
+			case statusInProgress:
+				loopFound = true
+				log.Error().
+					Strs("loop", fun.Map[string](func(i int) string { return configs[i].Name }, res...)).
+					Msg("loop found")
+				return
+			case statusProcessed:
+				return
+			}
+
+			visited[i] = statusInProgress
+			for _, dependency := range configs[i].DependsOn {
+				dfs(indexByName[dependency])
+				if loopFound {
+					return
+				}
+			}
+			res = append(res, i)
+			visited[i] = statusProcessed
+		}
+		for i := 0; i < len(configs); i++ {
+			dfs(i)
+			if loopFound {
+				return errors.Newf("loop found")
+			}
+		}
+
+		// actually sort procs by indices in res slice
+		configs = fun.Map[core.RunConfig](func(i int) core.RunConfig { return configs[i] }, res...)
 	}
 
 	var merr []error
