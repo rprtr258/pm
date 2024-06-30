@@ -110,6 +110,7 @@ func ImplRun(
 				StderrFile:  config.StderrFile.OrDefault(filepath.Join(dirLogs, fmt.Sprintf("%v.stderr", procID))),
 				Startup:     config.Startup,
 				KillTimeout: config.KillTimeout,
+				DependsOn:   config.DependsOn,
 			}
 
 			proc := procs[procID]
@@ -141,6 +142,7 @@ func ImplRun(
 			StderrFile:  config.StderrFile,
 			Startup:     config.Startup,
 			KillTimeout: cmp.Or(config.KillTimeout, 5*time.Second),
+			DependsOn:   config.DependsOn,
 		}, dirLogs)
 		if err != nil {
 			return "", errors.Wrapf(err, "save proc")
@@ -222,6 +224,7 @@ var _cmdRun = func() *cobra.Command {
 					Autorestart: false,
 					MaxRestarts: 0,
 					Startup:     false,
+					DependsOn:   nil,
 				}
 
 				return run(dbb, cfg.DirLogs, runConfig)

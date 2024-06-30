@@ -20,32 +20,20 @@ import (
 
 // RunConfig - configuration of process to manage
 type RunConfig struct {
-	// Env - environment variables
-	Env map[string]string
-	// Watch - regexp for files to watch and restart on changes
-	Watch fun.Option[*regexp.Regexp]
-	// Command - process command, full path
-	Command string
-	// Cwd - working directory
-	Cwd string
-	// StdoutFile - file to write stdout to
-	StdoutFile fun.Option[string]
-	// StderrFile - file to write stderr to
-	StderrFile fun.Option[string]
-	// Args - arguments for process, not including executable itself as first argument
-	Args []string
-	// Tags - process tags, excluding `all` tag
-	Tags []string
-	// Name of a process if defined, otherwise generated
-	Name fun.Option[string]
-	// KillTimeout - before sending SIGKILL after SIGINT
-	KillTimeout time.Duration
-	// Autorestart - restart process automatically after its death
-	Autorestart bool
-	// MaxRestarts - maximum number of restarts, 0 means no limit
-	MaxRestarts uint
-	// Startup - run process on OS startup
-	Startup bool
+	Env         map[string]string          // environment variables
+	Watch       fun.Option[*regexp.Regexp] // regexp for files to watch and restart on changes
+	Command     string                     // process command, full path
+	Cwd         string                     // working directory
+	StdoutFile  fun.Option[string]         // file to write stdout to
+	StderrFile  fun.Option[string]         // file to write stderr to
+	Args        []string                   // arguments for process, not including executable itself as first argument
+	Tags        []string                   // process tags, excluding `all` tag
+	Name        fun.Option[string]         // name of a process if defined, otherwise generated
+	KillTimeout time.Duration              // before sending SIGKILL after SIGINT
+	Autorestart bool                       // restart process automatically after its death
+	MaxRestarts uint                       // maximum number of restarts, 0 means no limit
+	Startup     bool                       // run process on OS startup
+	DependsOn   []string                   // name of processes that must be started before this one
 }
 
 func isConfigFile(arg string) bool {
@@ -105,14 +93,15 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	type configScanDTO struct {
-		Name    *string        `json:"name"`
-		Cwd     *string        `json:"cwd"`
-		Env     map[string]any `json:"env"`
-		Command string         `json:"command"`
-		Args    []any          `json:"args"`
-		Tags    []string       `json:"tags"`
-		Watch   *string        `json:"watch"`
-		Startup bool           `json:"startup"`
+		Name      *string        `json:"name"`
+		Cwd       *string        `json:"cwd"`
+		Env       map[string]any `json:"env"`
+		Command   string         `json:"command"`
+		Args      []any          `json:"args"`
+		Tags      []string       `json:"tags"`
+		Watch     *string        `json:"watch"`
+		Startup   bool           `json:"startup"`
+		DependsOn []string       `json:"depends_on"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
@@ -197,6 +186,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			Autorestart: false,
 			MaxRestarts: 0,
 			Startup:     config.Startup,
+			DependsOn:   config.DependsOn,
 		}, nil
 	}, scannedConfigs...)
 }

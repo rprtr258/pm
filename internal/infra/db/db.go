@@ -34,6 +34,7 @@ type procData struct {
 
 	Startup     bool          `json:"startup"`
 	KillTimeout time.Duration `json:"kill_timeout"`
+	DependsOn   []string      `json:"depends_on"`
 
 	// RestartTries int
 	// RestartDelay    time.Duration
@@ -58,6 +59,7 @@ func mapFromRepo(proc procData) core.Proc {
 		StderrFile:  proc.StderrFile,
 		Startup:     proc.Startup,
 		KillTimeout: proc.KillTimeout,
+		DependsOn:   proc.DependsOn,
 	}
 }
 
@@ -100,6 +102,7 @@ type CreateQuery struct {
 
 	Startup     bool // Startup - should process be started on startup
 	KillTimeout time.Duration
+	DependsOn   []string
 
 	// RestartTries int
 	// RestartDelay    time.Duration
@@ -148,6 +151,7 @@ func (h Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 			OrDefault(filepath.Join(logsDir, fmt.Sprintf("%s.stderr", id))),
 		Startup:     query.Startup,
 		KillTimeout: query.KillTimeout,
+		DependsOn:   query.DependsOn,
 	}); err != nil {
 		return "", err
 	}
@@ -168,6 +172,7 @@ func (h Handle) UpdateProc(proc core.Proc) Error {
 		StderrFile:  proc.StderrFile,
 		Startup:     proc.Startup,
 		KillTimeout: proc.KillTimeout,
+		DependsOn:   proc.DependsOn,
 	}); err != nil {
 		return FlushError{err}
 	}
