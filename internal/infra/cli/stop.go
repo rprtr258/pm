@@ -52,7 +52,7 @@ var _cmdStop = func() *cobra.Command {
 					return ps.Status != core.StatusStopped &&
 						filterFunc(ps.Proc) &&
 						// TODO: break on error, e.g. Ctrl-C
-						!interactive || confirmProc(ps, "stop")
+						(!interactive || confirmProc(ps, "stop"))
 				}).
 				ToSlice()
 			if len(procs) == 0 {
