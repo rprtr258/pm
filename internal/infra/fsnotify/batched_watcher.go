@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/rs/zerolog/log"
 )
 
 // BatchedRecursiveWatcher is an instance of a recursive watcher that batches
@@ -88,7 +89,8 @@ func (bw *BatchedRecursiveWatcher) Close() error {
 	if err := bw.w.Close(); err != nil {
 		return fmt.Errorf("failed to shutdown underlying Watcher: %w", err)
 	}
-	<-bw.doneClose
+	// NOTE: do not wait for closing
+	// <-bw.doneClose
 	return nil
 }
 
@@ -107,6 +109,7 @@ LOOP:
 		}
 		select {
 		case ev, ok := <-bw.w.events:
+			log.Debug().Stringer("event", ev).Bool("ok", ok).Msg("batched recursive watcher event")
 			if !ok {
 				// Pass on the close
 				close(bw.events)

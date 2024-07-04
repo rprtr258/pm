@@ -174,6 +174,7 @@ func initWatchChannel(
 		}
 	}()
 	return func() {
+		log.Debug().Msg("closing watcher")
 		if err := watcher.watcher.Close(); err != nil {
 			log.Error().Err(err).Msg("failed to close watcher")
 		}
@@ -214,7 +215,10 @@ func implShim(proc core.Proc) error {
 	defer cancel()
 
 	watchCh := make(chan []fsnotify.Event)
-	defer close(watchCh)
+	defer func() {
+		log.Debug().Msg("closing watch channel")
+		close(watchCh)
+	}()
 
 	if watchPattern, ok := proc.Watch.Unpack(); ok {
 		watchChClose, err := initWatchChannel(ctx, watchCh, proc.Cwd, watchPattern)
@@ -226,7 +230,10 @@ func implShim(proc core.Proc) error {
 
 	terminateCh := make(chan os.Signal, 1)
 	signal.Notify(terminateCh, syscall.SIGINT, syscall.SIGTERM)
-	defer close(terminateCh)
+	defer func() {
+		log.Debug().Msg("closing signals channel")
+		close(terminateCh)
+	}()
 
 	/*
 		Very important shit happens here in loop aka zaloopa.
@@ -300,6 +307,7 @@ var _cmdShim = &cobra.Command{
 			return errors.Wrapf(err, "unmarshal shim config: %s", args[0])
 		}
 
+		defer log.Debug().Msg("shim done")
 		return implShim(config)
 	},
 }

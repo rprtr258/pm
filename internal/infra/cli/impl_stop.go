@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rprtr258/fun"
+	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/infra/app"
@@ -30,12 +31,14 @@ func implStop(db db.Handle, ids ...core.PMID) error {
 
 			proc, ok := linuxprocess.StatPMID(list, id, app.EnvPMID)
 			if !ok {
+				log.Debug().Str("id", id.String()).Msg("proc not running")
 				// already stopped or not started yet
 				return nil
 			}
 
 			// NOTE: since we are running the process behind the shim, we don't
 			// need to send SIGKILL to it, shim will handle everything for us
+			log.Debug().Int("shim_pid", proc.ShimPID).Str("id", id.String()).Msg("sending SIGTERM to shim")
 			if errKill := syscall.Kill(-proc.ShimPID, syscall.SIGTERM); errKill != nil {
 				switch {
 				case stdErrors.Is(errKill, os.ErrProcessDone):

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/rs/zerolog/log"
 )
 
 type Watcher[T any] interface {
@@ -159,6 +160,7 @@ func (w *RecursiveWatcher) runEventLoop() {
 	for {
 		select {
 		case ev, ok := <-w.w.Events:
+			log.Debug().Stringer("event", ev).Bool("ok", ok).Msg("fsnotify event")
 			// handle event with respect to adding more watchers etc, i.e.
 			// when a new directory is added
 			if !ok {
