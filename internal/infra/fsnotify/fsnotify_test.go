@@ -190,6 +190,15 @@ type special struct {
 	Wait  chan struct{}
 }
 
+type batchedWatcherHandler[T any] struct {
+	s       *setupCtx
+	wEvents <-chan T
+	wErrors <-chan error
+	watchCh chan string
+	waitCh  chan struct{}
+	handler func(*batchedWatcherHandler[T], string, T) string
+}
+
 func newBatchedWatcherHandler[T any](
 	s *setupCtx,
 	w fsnotify.Watcher[T],
@@ -203,15 +212,6 @@ func newBatchedWatcherHandler[T any](
 		waitCh:  make(chan struct{}),
 		handler: handler,
 	}
-}
-
-type batchedWatcherHandler[T any] struct {
-	s       *setupCtx
-	wEvents <-chan T
-	wErrors <-chan error
-	watchCh chan string
-	waitCh  chan struct{}
-	handler func(*batchedWatcherHandler[T], string, T) string
 }
 
 func (b *batchedWatcherHandler[T]) Special() special {
