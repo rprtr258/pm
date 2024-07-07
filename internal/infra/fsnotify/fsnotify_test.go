@@ -52,12 +52,6 @@ func setup(e *testscript.Env) (err error) {
 		}
 	}()
 
-	s := &setupCtx{ //nolint:exhaustruct // not needed
-		Env: e,
-		log: &watcherLog{b: bytes.NewBuffer(nil), mu: sync.Mutex{}},
-	}
-	e.Values[setupContextKey] = s
-
 	// Establish $HOME for a clean git configuration
 	homeDir := filepath.Join(e.Cd, ".home")
 	if err := os.Mkdir(homeDir, 0o777); err != nil {
@@ -65,7 +59,13 @@ func setup(e *testscript.Env) (err error) {
 	}
 	e.Setenv("HOME", homeDir)
 
-	if gittoplevel, rootdir, err := findSpecialFiles(s.Cd); err != nil {
+	s := &setupCtx{ //nolint:exhaustruct // not needed
+		Env: e,
+		log: &watcherLog{b: bytes.NewBuffer(nil), mu: sync.Mutex{}},
+	}
+	e.Values[setupContextKey] = s
+
+	if gittoplevel, rootdir, err := findSpecialFiles(e.Cd); err != nil {
 		return err
 	} else {
 		s.rootdir = rootdir
