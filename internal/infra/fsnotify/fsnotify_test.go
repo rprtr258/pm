@@ -79,7 +79,7 @@ func setup(e *testscript.Env) (err error) {
 
 	// If there is a .batched file in e.Cd, we want a BatchedWatcher. If it has
 	// non-empty contents, they should parse to a time.Duration
-	var h func() special
+	var h special
 	var herr error
 	batchedFn := filepath.Join(e.Cd, ".batched")
 	if f, err := os.Open(batchedFn); err == nil {
@@ -96,7 +96,7 @@ func setup(e *testscript.Env) (err error) {
 	} else {
 		h, herr = watcher(s)
 	}
-	s.handler = h()
+	s.handler = h
 	return herr
 }
 
@@ -158,10 +158,10 @@ var debugOpt = func() fsnotify.Option {
 	return nil
 }()
 
-func watcher(s *setupCtx) (func() special, error) {
+func watcher(s *setupCtx) (special, error) {
 	w, err := fsnotify.NewRecursiveWatcher(s.rootdir, debugOpt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
+		return special{}, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
 	s.Env.Defer(func() {
 		w.Close()
@@ -169,20 +169,20 @@ func watcher(s *setupCtx) (func() special, error) {
 	bwh := newBatchedWatcherHandler(s, w, handleEvent)
 	s.handler = bwh.Special()
 	go bwh.run()
-	return bwh.Special, nil
+	return s.handler, nil
 }
 
-func batchedWatcher(s *setupCtx, d time.Duration) (func() special, error) {
+func batchedWatcher(s *setupCtx, d time.Duration) (special, error) {
 	bw, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d, debugOpt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
+		return special{}, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
 	s.Defer(func() {
 		bw.Close()
 	})
 	bwh := newBatchedWatcherHandler(s, bw, handleSliceEvent)
 	go bwh.run()
-	return bwh.Special, nil
+	return bwh.Special(), nil
 }
 
 type special struct {
