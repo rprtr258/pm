@@ -1,12 +1,13 @@
 package fsnotify
 
 import (
+	"cmp"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/fsnotify/fsnotify"
@@ -212,14 +213,11 @@ func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
 				toRemove = append(toRemove, k)
 			}
 		}
-		sort.Slice(toRemove, func(i, j int) bool {
-			lhs, rhs := toRemove[i], toRemove[j]
-			lhsSeps := countRune(lhs, os.PathSeparator)
-			rhsSeps := countRune(rhs, os.PathSeparator)
-			if lhsSeps != rhsSeps {
-				return lhsSeps < rhsSeps
-			}
-			return lhs < rhs
+		slices.SortFunc(toRemove, func(lhs, rhs string) int {
+			return cmp.Or(
+				cmp.Compare(countRune(lhs, os.PathSeparator), countRune(rhs, os.PathSeparator)),
+				cmp.Compare(lhs, rhs),
+			)
 		})
 		for _, v := range toRemove {
 			_ = w.w.Remove(v)
