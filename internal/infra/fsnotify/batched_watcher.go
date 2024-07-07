@@ -55,9 +55,8 @@ type BatchedRecursiveWatcher struct {
 func NewBatchedRecursiveWatcher(
 	dir, gittoplevel string,
 	batchWindow time.Duration,
-	opts ...Option,
 ) (*BatchedRecursiveWatcher, error) {
-	w, err := newRecursiveWatcher(dir, gittoplevel, opts...)
+	w, err := newRecursiveWatcher(dir, gittoplevel)
 	if err != nil {
 		return nil, err
 	}

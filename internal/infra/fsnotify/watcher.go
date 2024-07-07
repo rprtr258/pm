@@ -3,7 +3,6 @@ package fsnotify
 import (
 	"cmp"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -57,14 +56,11 @@ type RecursiveWatcher struct {
 	// doneClose indicates that we are done handling the close from the
 	// underlying fsnotify
 	doneClose chan struct{}
-
-	// debug can be set to an io.Writer in order to log debug-level information
-	debug io.Writer
 }
 
 // NewRecursiveWatcher creates a new recursive watcher rooted at directory rootDir.
-func NewRecursiveWatcher(rootDir string, opts ...Option) (*RecursiveWatcher, error) {
-	return newRecursiveWatcher(rootDir, "", opts...)
+func NewRecursiveWatcher(rootDir string) (*RecursiveWatcher, error) {
+	return newRecursiveWatcher(rootDir, "")
 }
 
 // newRecursiveWatcher creates a new recursive watcher rooted at directory
@@ -76,7 +72,7 @@ func NewRecursiveWatcher(rootDir string, opts ...Option) (*RecursiveWatcher, err
 // empty, the Events channel would contain events for
 // $gittoplevel/.git/index.lock and dir/**/* (including directories). If
 // gittoplevel is supplied, dir must be a subdirectory of gittoplevel.
-func newRecursiveWatcher(rootDir, gittoplevel string, opts ...Option) (*RecursiveWatcher, error) {
+func newRecursiveWatcher(rootDir, gittoplevel string) (*RecursiveWatcher, error) {
 	if rootDir != gittoplevel && !strings.HasPrefix(rootDir, gittoplevel+string(os.PathSeparator)) {
 		return nil, fmt.Errorf("%s is not a subdirectory of %s", rootDir, gittoplevel)
 	}
@@ -91,13 +87,6 @@ func newRecursiveWatcher(rootDir, gittoplevel string, opts ...Option) (*Recursiv
 		return nil, fmt.Errorf("failed to create fsnotify watcher: %w", err)
 	}
 
-	theOpts := &options{}
-	for _, v := range opts {
-		if v != nil {
-			v(theOpts)
-		}
-	}
-
 	res := &RecursiveWatcher{
 		rootDir:     rootDir,
 		gitDir:      gitDir,
@@ -107,7 +96,6 @@ func newRecursiveWatcher(rootDir, gittoplevel string, opts ...Option) (*Recursiv
 		Errors:      make(chan error),
 		watchers:    make(map[string]struct{}),
 		doneClose:   make(chan struct{}),
-		debug:       theOpts.debug,
 	}
 
 	// Recursively add rootDir. Because we are not yet in the main event loop,
@@ -232,8 +220,7 @@ func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
 	}
 }
 
-// addDir recursively adds watches on dir, ignoring errors if ignoreErrors is
-// set.
+// addDir recursively adds watches on dir, ignoring errors if ignoreErrors is set.
 func (w *RecursiveWatcher) addDir(dir string, ignoreErrors bool) error {
 	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -272,7 +259,5 @@ func (w *RecursiveWatcher) debugf(format string, args ...any) {
 	if format == "" || format[len(format)-1] != '\n' {
 		format += "\n"
 	}
-	if w.debug != nil {
-		fmt.Fprintf(w.debug, format, args...)
-	}
+	log.Debug().Msgf(format, args...)
 }

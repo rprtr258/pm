@@ -2,7 +2,6 @@ package fsnotify_test
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -17,8 +16,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/infra/fsnotify"
 )
-
-var fDebug = flag.Bool("debug", false, "debug logging for tests")
 
 const (
 	setupContextKey     = "setupContextKey"
@@ -151,15 +148,8 @@ Walk:
 	return
 }
 
-var debugOpt = func() fsnotify.Option {
-	if *fDebug {
-		return fsnotify.Debug(os.Stderr)
-	}
-	return nil
-}()
-
 func watcher(s *setupCtx) (special, error) {
-	w, err := fsnotify.NewRecursiveWatcher(s.rootdir, debugOpt)
+	w, err := fsnotify.NewRecursiveWatcher(s.rootdir)
 	if err != nil {
 		return special{}, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
@@ -173,7 +163,7 @@ func watcher(s *setupCtx) (special, error) {
 }
 
 func batchedWatcher(s *setupCtx, d time.Duration) (special, error) {
-	w, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d, debugOpt)
+	w, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d)
 	if err != nil {
 		return special{}, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
