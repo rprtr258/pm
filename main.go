@@ -19,7 +19,7 @@ func newLogger() zerolog.Logger {
 		Logger().
 		Output(zerolog.ConsoleWriter{ //nolint:exhaustruct // not needed
 			Out: os.Stderr,
-			FormatLevel: func(i interface{}) string {
+			FormatLevel: func(i any) string {
 				s, _ := i.(string)
 				bg := fun.Switch(s, scuf.BgRed).
 					Case(scuf.BgBlue, zerolog.LevelInfoValue).
@@ -29,7 +29,7 @@ func newLogger() zerolog.Logger {
 
 				return scuf.String(" "+strings.ToUpper(s)+" ", bg, scuf.FgBlack)
 			},
-			FormatTimestamp: func(i interface{}) string {
+			FormatTimestamp: func(i any) string {
 				s, _ := i.(string)
 				t, err := time.Parse(zerolog.TimeFieldFormat, s)
 				if err != nil {
