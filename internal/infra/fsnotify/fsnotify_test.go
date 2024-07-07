@@ -65,7 +65,7 @@ func setup(e *testscript.Env) (err error) {
 	}
 	e.Setenv("HOME", homeDir)
 
-	if gittoplevel, rootdir, err := s.findSpecialFiles(); err != nil {
+	if gittoplevel, rootdir, err := findSpecialFiles(s.Cd); err != nil {
 		return err
 	} else {
 		s.rootdir = rootdir
@@ -115,9 +115,9 @@ type setupCtx struct {
 // findSpecialFiles walks the directory rooted at s.e.Cd to find special files
 // that indicate where our watcher should be established, but also where the
 // git directory is rooted.
-func (s *setupCtx) findSpecialFiles() (gittoplevel, rootdir string, _ error) {
+func findSpecialFiles(currentDir string) (gittoplevel, rootdir string, _ error) {
 	var _rootdir, _gittoplevel *string
-	toWalk := []string{s.Cd}
+	toWalk := []string{currentDir}
 Walk:
 	for len(toWalk) > 0 {
 		var dir string
