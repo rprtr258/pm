@@ -185,9 +185,13 @@ func batchedWatcher(s *setupCtx, d time.Duration) (specialHandler, error) {
 	return bwh, nil
 }
 
+type special struct {
+	Watch chan string
+	Wait  chan struct{}
+}
+
 type specialHandler interface {
-	SpecialWatch() chan string
-	SpecialWait() chan struct{}
+	Special() special
 }
 
 func newBatchedWatcherHandler[T any](
@@ -216,12 +220,8 @@ type batchedWatcherHandler[T any] struct {
 
 var _ specialHandler = (*batchedWatcherHandler[fsnotify.Event])(nil)
 
-func (b *batchedWatcherHandler[T]) SpecialWatch() chan string {
-	return b.specialWatch
-}
-
-func (b *batchedWatcherHandler[T]) SpecialWait() chan struct{} {
-	return b.specialWait
+func (b *batchedWatcherHandler[T]) Special() special {
+	return special{b.specialWatch, b.specialWait}
 }
 
 func (b *batchedWatcherHandler[T]) run() {
@@ -332,12 +332,12 @@ func logCmd(ts *testscript.TestScript, neg bool, args []string) {
 
 	done := make(chan struct{})
 	go func() {
-		<-sc.handler.SpecialWait()
+		<-sc.handler.Special().Wait
 		close(done)
 	}()
 
 	// Tell the handler about the special file
-	sc.handler.SpecialWatch() <- sf
+	sc.handler.Special().Watch <- sf
 
 	// Now touch the special file
 	now := time.Now()
