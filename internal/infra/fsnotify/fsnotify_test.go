@@ -147,11 +147,10 @@ Walk:
 	if _rootdir == nil {
 		return "", "", fmt.Errorf("failed to find special %s file", rootdirFilename)
 	}
-	rootdir = *_rootdir
 	if _gittoplevel != nil {
-		gittoplevel = *_gittoplevel
+		return *_gittoplevel, *_rootdir, nil
 	}
-	return
+	return "", *_rootdir, nil
 }
 
 func watcher(s *setupCtx) (special, error) {
