@@ -83,11 +83,11 @@ func setup(e *testscript.Env) (err error) {
 	var herr error
 	batchedFn := filepath.Join(e.Cd, ".batched")
 	if f, err := os.Open(batchedFn); err == nil {
-		byts, err := io.ReadAll(f)
+		bytes, err := io.ReadAll(f)
 		if err != nil {
 			return fmt.Errorf("failed to read %s: %w", batchedFn, err)
 		}
-		dur := strings.TrimSpace(string(byts))
+		dur := strings.TrimSpace(string(bytes))
 		d, err := time.ParseDuration(dur)
 		if err != nil {
 			return fmt.Errorf("failed to parse time.Duration from contents of %s: %w", batchedFn, err)
