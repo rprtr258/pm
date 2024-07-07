@@ -94,7 +94,7 @@ func setup(e *testscript.Env) (err error) {
 		}
 		h, herr = batchedWatcher(s, d)
 	} else {
-		h, herr = s.watcher()
+		h, herr = watcher(s)
 	}
 	s.handler = h
 	return herr
@@ -158,7 +158,7 @@ func debugOpt() fsnotify.Option {
 	return nil
 }
 
-func (s *setupCtx) watcher() (specialHandler, error) {
+func watcher(s *setupCtx) (specialHandler, error) {
 	w, err := fsnotify.NewRecursiveWatcher(s.rootdir, debugOpt())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
