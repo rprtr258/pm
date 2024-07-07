@@ -190,10 +190,6 @@ type special struct {
 	Wait  chan struct{}
 }
 
-type specialHandler interface {
-	Special() special
-}
-
 func newBatchedWatcherHandler[T any](
 	s *setupCtx,
 	w fsnotify.Watcher[T],
@@ -217,8 +213,6 @@ type batchedWatcherHandler[T any] struct {
 	specialWait  chan struct{}
 	handler      eventHandler[T]
 }
-
-var _ specialHandler = (*batchedWatcherHandler[fsnotify.Event])(nil)
 
 func (b *batchedWatcherHandler[T]) Special() special {
 	return special{b.specialWatch, b.specialWait}
