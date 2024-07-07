@@ -61,6 +61,7 @@ func NewBatchedRecursiveWatcher(
 	if err != nil {
 		return nil, err
 	}
+
 	res := &BatchedRecursiveWatcher{ //nolint:exhaustruct // not needed
 		w:           w,
 		events:      make(chan []fsnotify.Event),
@@ -68,9 +69,7 @@ func NewBatchedRecursiveWatcher(
 		batchWindow: batchWindow,
 		doneClose:   make(chan struct{}),
 	}
-
 	go res.runEventLoop()
-
 	return res, nil
 }
 
