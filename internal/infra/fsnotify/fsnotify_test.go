@@ -65,10 +65,11 @@ func setup(e *testscript.Env) (err error) {
 	}
 	e.Setenv("HOME", homeDir)
 
-	if rootdir, err := s.findSpecialFiles(); err != nil {
+	if gittoplevel, rootdir, err := s.findSpecialFiles(); err != nil {
 		return err
 	} else {
 		s.rootdir = rootdir
+		s.gittoplevel = gittoplevel
 	}
 
 	// Run git setup if we have a configured gittoplevel
@@ -114,7 +115,7 @@ type setupCtx struct {
 // findSpecialFiles walks the directory rooted at s.e.Cd to find special files
 // that indicate where our watcher should be established, but also where the
 // git directory is rooted.
-func (s *setupCtx) findSpecialFiles() (rootdir string, _ error) {
+func (s *setupCtx) findSpecialFiles() (gittoplevel, rootdir string, _ error) {
 	var _rootdir, _gittoplevel *string
 	toWalk := []string{s.Cd}
 Walk:
@@ -123,7 +124,7 @@ Walk:
 		dir, toWalk = toWalk[0], toWalk[1:]
 		dirEntries, err := os.ReadDir(dir)
 		if err != nil {
-			return "", fmt.Errorf("failed in search for %s and %s", rootdirFilename, gittoplevelFilename)
+			return "", "", fmt.Errorf("failed in search for %s and %s", rootdirFilename, gittoplevelFilename)
 		}
 		for _, dirEntry := range dirEntries {
 			if dirEntry.IsDir() {
@@ -145,12 +146,13 @@ Walk:
 		}
 	}
 	if _rootdir == nil {
-		return "", fmt.Errorf("failed to find special %s file", rootdirFilename)
+		return "", "", fmt.Errorf("failed to find special %s file", rootdirFilename)
 	}
+	rootdir = *_rootdir
 	if _gittoplevel != nil {
-		s.gittoplevel = *_gittoplevel
+		gittoplevel = *_gittoplevel
 	}
-	return *_rootdir, nil
+	return
 }
 
 func debugOpt() fsnotify.Option {
