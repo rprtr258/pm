@@ -62,9 +62,11 @@ func setup(e *testscript.Env) (err error) {
 	}
 	e.Values[setupContextKey] = s
 
-	if gittoplevel, rootdir, err := findSpecialFiles(e.Cd); err != nil {
-		return err
-	} else {
+	{
+		gittoplevel, rootdir, err := findSpecialFiles(e.Cd)
+		if err != nil {
+			return err
+		}
 		s.rootdir = rootdir
 		s.gittoplevel = gittoplevel
 	}
