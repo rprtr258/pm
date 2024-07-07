@@ -4,6 +4,7 @@
 package logrotation
 
 import (
+	"cmp"
 	"compress/gzip"
 	"errors"
 	"fmt"
@@ -135,15 +136,15 @@ type Config struct {
 }
 
 func New(cfg Config) *Writer {
-	filename := filepath.Join(os.TempDir(), filepath.Base(os.Args[0])+"-logrotation.log")
-	if cfg.Filename != "" {
-		filename = cfg.Filename
-	}
+	filename := cmp.Or(
+		cfg.Filename,
+		filepath.Join(os.TempDir(), filepath.Base(os.Args[0])+"-logrotation.log"),
+	)
 
-	maxSize := int64(100 * 1024 * 1024) // 100 MiB
-	if cfg.MaxSize > 0 {
-		maxSize = cfg.MaxSize
-	}
+	maxSize := cmp.Or(
+		cfg.MaxSize,
+		int64(100*1024*1024), // 100 MiB
+	)
 
 	clock := time.Now
 	if cfg.clock != nil {
