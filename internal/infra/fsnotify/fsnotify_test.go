@@ -79,7 +79,7 @@ func setup(e *testscript.Env) (err error) {
 
 	// If there is a .batched file in e.Cd, we want a BatchedWatcher. If it has
 	// non-empty contents, they should parse to a time.Duration
-	var h specialHandler
+	var h special
 	var herr error
 	batchedFn := filepath.Join(e.Cd, ".batched")
 	if f, err := os.Open(batchedFn); err == nil {
@@ -102,7 +102,7 @@ func setup(e *testscript.Env) (err error) {
 
 type setupCtx struct {
 	*testscript.Env
-	handler     specialHandler
+	handler     special
 	log         *watcherLog
 	rootdir     string
 	gittoplevel string
@@ -158,31 +158,31 @@ var debugOpt = func() fsnotify.Option {
 	return nil
 }()
 
-func watcher(s *setupCtx) (*batchedWatcherHandler[fsnotify.Event], error) {
+func watcher(s *setupCtx) (special, error) {
 	w, err := fsnotify.NewRecursiveWatcher(s.rootdir, debugOpt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
+		return special{}, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
 	s.Env.Defer(func() {
 		w.Close()
 	})
 	bwh := newBatchedWatcherHandler(s, w, handleEvent)
-	s.handler = bwh
+	s.handler = bwh.Special()
 	go bwh.run()
-	return bwh, nil
+	return bwh.Special(), nil
 }
 
-func batchedWatcher(s *setupCtx, d time.Duration) (*batchedWatcherHandler[[]fsnotify.Event], error) {
+func batchedWatcher(s *setupCtx, d time.Duration) (special, error) {
 	bw, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d, debugOpt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
+		return special{}, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
 	s.Defer(func() {
 		bw.Close()
 	})
 	bwh := newBatchedWatcherHandler(s, bw, handleSliceEvent)
 	go bwh.run()
-	return bwh, nil
+	return bwh.Special(), nil
 }
 
 type special struct {
@@ -332,12 +332,12 @@ func logCmd(ts *testscript.TestScript, neg bool, args []string) {
 
 	done := make(chan struct{})
 	go func() {
-		<-sc.handler.Special().Wait
+		<-sc.handler.Wait
 		close(done)
 	}()
 
 	// Tell the handler about the special file
-	sc.handler.Special().Watch <- sf
+	sc.handler.Watch <- sf
 
 	// Now touch the special file
 	now := time.Now()
