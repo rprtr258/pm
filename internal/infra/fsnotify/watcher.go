@@ -254,11 +254,7 @@ func (w *RecursiveWatcher) addDir(dir string, ignoreErrors bool) error {
 	})
 }
 
-// debugf debug-level logs the fmt formatted format and args to w.debug if it
-// is non-nil.
+// debugf debug-level logs the fmt formatted format and args to w.debug if it is non-nil.
 func (w *RecursiveWatcher) debugf(format string, args ...any) {
-	if format == "" || format[len(format)-1] != '\n' {
-		format += "\n"
-	}
 	log.Debug().Msgf(format, args...)
 }
