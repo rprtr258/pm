@@ -65,7 +65,7 @@ func NewBatchedRecursiveWatcher(
 	res := &BatchedRecursiveWatcher{ //nolint:exhaustruct // not needed
 		w:           w,
 		Events:      make(chan []fsnotify.Event),
-		Errors:      w.errors,
+		Errors:      w.Errors,
 		batchWindow: batchWindow,
 		doneClose:   make(chan struct{}),
 	}
@@ -97,7 +97,7 @@ LOOP:
 			tick = bw.ticker.C
 		}
 		select {
-		case ev, ok := <-bw.w.events:
+		case ev, ok := <-bw.w.Events:
 			log.Debug().Stringer("event", ev).Bool("ok", ok).Msg("batched recursive watcher event")
 			if !ok {
 				// Pass on the close

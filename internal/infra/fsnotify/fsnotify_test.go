@@ -166,7 +166,7 @@ func watcher(s *setupCtx) (special, error) {
 	s.Env.Defer(func() {
 		w.Close()
 	})
-	bwh := newBatchedWatcherHandler(s, w.Events(), w.Errors(), handleEvent)
+	bwh := newBatchedWatcherHandler(s, w.Events, w.Errors, handleEvent)
 	s.handler = bwh.Special()
 	go bwh.run()
 	return s.handler, nil

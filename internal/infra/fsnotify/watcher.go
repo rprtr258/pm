@@ -32,11 +32,11 @@ type RecursiveWatcher struct {
 	// w is the underlying fsnotify watcher used for watching.
 	w *fsnotify.Watcher
 
-	// events is a proxy to the events channel exposed by fsnotify
-	events chan fsnotify.Event
+	// Events is a proxy to the Events channel exposed by fsnotify
+	Events chan fsnotify.Event
 
-	// errors is proxy for errors passed from fsnotify
-	errors chan error
+	// Errors is proxy for Errors passed from fsnotify
+	Errors chan error
 
 	// watchers is a set of dir paths for which we have active watchers.
 	//
@@ -93,8 +93,8 @@ func newRecursiveWatcher(rootDir, gittoplevel string, opts ...Option) (*Recursiv
 		gitDir:      gitDir,
 		gitLockFile: gitLockfile,
 		w:           uw,
-		events:      make(chan fsnotify.Event),
-		errors:      make(chan error),
+		Events:      make(chan fsnotify.Event),
+		Errors:      make(chan error),
 		watchers:    make(map[string]struct{}),
 		doneClose:   make(chan struct{}),
 		debug:       theOpts.debug,
@@ -123,16 +123,7 @@ func newRecursiveWatcher(rootDir, gittoplevel string, opts ...Option) (*Recursiv
 	return res, nil
 }
 
-func (w *RecursiveWatcher) Events() <-chan fsnotify.Event {
-	return w.events
-}
-
-func (w *RecursiveWatcher) Errors() <-chan error {
-	return w.errors
-}
-
-// Close shuts down the watcher, by removing all watches and closing the Events
-// channel.
+// Close shuts down the watcher, by removing all watches and closing the Events channel.
 func (w *RecursiveWatcher) Close() error {
 	if err := w.w.Close(); err != nil {
 		return fmt.Errorf("failed to shutdown underlying fsnotify watcher: %w", err)
@@ -157,7 +148,7 @@ func (w *RecursiveWatcher) runEventLoop() {
 			// when a new directory is added
 			if !ok {
 				// Pass on the close
-				close(w.events)
+				close(w.Events)
 				return
 			}
 
@@ -176,9 +167,9 @@ func (w *RecursiveWatcher) runEventLoop() {
 			// Finally relay the event, regardless of whether our processing
 			// encountered an error. If the event comes from w.gitDir, only
 			// relay the events for index.lock
-			w.events <- ev
+			w.Events <- ev
 		case err := <-w.w.Errors:
-			w.errors <- err
+			w.Errors <- err
 		}
 	}
 }
