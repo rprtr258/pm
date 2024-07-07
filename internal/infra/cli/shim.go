@@ -132,12 +132,12 @@ func initWatchChannel(
 			select {
 			case <-ctx.Done():
 				return
-			case err := <-watcher.watcher.Errors():
+			case err := <-watcher.watcher.Errors:
 				if err != nil {
 					log.Error().Err(err).Msg("fsnotify error")
 				}
 				return
-			case events := <-watcher.watcher.Events():
+			case events := <-watcher.watcher.Events:
 				triggered := false
 				for _, event := range events {
 					filename, err := filepath.Rel(watcher.dir, event.Name)

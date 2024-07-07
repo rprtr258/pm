@@ -180,7 +180,7 @@ func batchedWatcher(s *setupCtx, d time.Duration) (special, error) {
 	s.Defer(func() {
 		w.Close()
 	})
-	bwh := newBatchedWatcherHandler(s, w.Events(), w.Errors(), handleSliceEvent)
+	bwh := newBatchedWatcherHandler(s, w.Events, w.Errors, handleSliceEvent)
 	go bwh.run()
 	return bwh.Special(), nil
 }

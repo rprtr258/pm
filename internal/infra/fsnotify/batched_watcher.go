@@ -15,11 +15,11 @@ type BatchedRecursiveWatcher struct {
 	// w is the underlying Watcher used to batch events
 	w *RecursiveWatcher
 
-	// events is the channel over which batches of events are sent.
-	events chan []fsnotify.Event
+	// Events is the channel over which batches of Events are sent.
+	Events chan []fsnotify.Event
 
-	// errors is the channel over which any errors are reported
-	errors chan error
+	// Errors is the channel over which any Errors are reported
+	Errors chan error
 
 	// ticker is set if the run loop is in the process of batching events.
 	ticker *time.Ticker
@@ -64,21 +64,13 @@ func NewBatchedRecursiveWatcher(
 
 	res := &BatchedRecursiveWatcher{ //nolint:exhaustruct // not needed
 		w:           w,
-		events:      make(chan []fsnotify.Event),
-		errors:      w.errors,
+		Events:      make(chan []fsnotify.Event),
+		Errors:      w.errors,
 		batchWindow: batchWindow,
 		doneClose:   make(chan struct{}),
 	}
 	go res.runEventLoop()
 	return res, nil
-}
-
-func (bw *BatchedRecursiveWatcher) Events() <-chan []fsnotify.Event {
-	return bw.events
-}
-
-func (bw *BatchedRecursiveWatcher) Errors() <-chan error {
-	return bw.errors
 }
 
 // Close shuts down the watcher, by removing all watches and closing the Events channel.
@@ -109,7 +101,7 @@ LOOP:
 			log.Debug().Stringer("event", ev).Bool("ok", ok).Msg("batched recursive watcher event")
 			if !ok {
 				// Pass on the close
-				close(bw.events)
+				close(bw.Events)
 				break LOOP
 			}
 			var startOfGitOp, endOfGitOp bool
@@ -180,5 +172,5 @@ func (bw *BatchedRecursiveWatcher) flush() {
 	if len(bw.buffer) == 0 {
 		return
 	}
-	bw.send = bw.events
+	bw.send = bw.Events
 }
