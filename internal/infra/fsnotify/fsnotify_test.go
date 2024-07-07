@@ -163,10 +163,10 @@ func (s *setupCtx) watcher() (specialHandler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
-	s.Defer(func() {
+	s.Env.Defer(func() {
 		w.Close()
 	})
-	bwh := newBatchedWatcherHandler[fsnotify.Event](s, w, handleEvent)
+	bwh := newBatchedWatcherHandler(s, w, handleEvent)
 	s.handler = bwh
 	go bwh.run()
 	return bwh, nil
@@ -180,7 +180,7 @@ func (s *setupCtx) batchedWatcher(d time.Duration) (specialHandler, error) {
 	s.Defer(func() {
 		bw.Close()
 	})
-	bwh := newBatchedWatcherHandler[[]fsnotify.Event](s, bw, handleSliceEvent)
+	bwh := newBatchedWatcherHandler(s, bw, handleSliceEvent)
 	go bwh.run()
 	return bwh, nil
 }
