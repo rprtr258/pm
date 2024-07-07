@@ -197,7 +197,8 @@ func newBatchedWatcherHandler[T any](
 ) *batchedWatcherHandler[T] {
 	return &batchedWatcherHandler[T]{
 		s:       s,
-		w:       w,
+		wEvents: w.Events(),
+		wErrors: w.Errors(),
 		watchCh: make(chan string),
 		waitCh:  make(chan struct{}),
 		handler: handler,
@@ -206,7 +207,8 @@ func newBatchedWatcherHandler[T any](
 
 type batchedWatcherHandler[T any] struct {
 	s       *setupCtx
-	w       fsnotify.Watcher[T]
+	wEvents <-chan T
+	wErrors <-chan error
 	watchCh chan string
 	waitCh  chan struct{}
 	handler func(*batchedWatcherHandler[T], string, T) string
@@ -225,13 +227,13 @@ func (b *batchedWatcherHandler[T]) run() {
 				panic(fmt.Errorf("specialFile already set to %q; tried to set to %q", specialFile, f))
 			}
 			specialFile = f
-		case evs, ok := <-b.w.Events():
+		case evs, ok := <-b.wEvents:
 			if !ok {
 				// Events have been stopped
 				return
 			}
 			specialFile = b.handler(b, specialFile, evs)
-		case err := <-b.w.Errors():
+		case err := <-b.wErrors:
 			b.s.log.logf("error: %v", err)
 		}
 	}
