@@ -206,8 +206,8 @@ func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
 			lhs, rhs := toRemove[i], toRemove[j]
 			lhsSeps := strings.Count(lhs, string(os.PathSeparator))
 			rhsSeps := strings.Count(rhs, string(os.PathSeparator))
-			if diff := lhsSeps - rhsSeps; diff != 0 {
-				return diff < 0
+			if lhsSeps != rhsSeps {
+				return lhsSeps < rhsSeps
 			}
 			return lhs < rhs
 		})
