@@ -142,11 +142,12 @@ LOOP:
 			}
 			bw.buffer = append(bw.buffer, ev)
 
-			// Again we only flush if we are not already waiting to send. There is no
-			// point flushing at the start of a git op, because it's possible/likely
-			// that there will be further changes. Triggering an event on this edge
-			// therefore increases the likelihood of there being a race in the code
-			// that reacts to a change. So only trigger at the end of the git op, by
+			// Again we only flush if we are not already waiting to send.
+			// There is no point flushing at the start of a git op, because it's
+			// possible/likely that there will be further changes.
+			// Triggering an event on this edge therefore increases the likelihood
+			// of there being a race in the code that reacts to a change.
+			// So only trigger at the end of the git op, by
 			// which point we might well have gathered more events.
 			if bw.send == nil && endOfGitOp {
 				bw.flush()
