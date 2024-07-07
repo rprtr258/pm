@@ -44,8 +44,6 @@ type BatchedRecursiveWatcher struct {
 	send chan []fsnotify.Event
 }
 
-var _ Watcher[[]fsnotify.Event] = (*BatchedRecursiveWatcher)(nil)
-
 // NewBatchedRecursiveWatcher creates a new batched watcher. A
 // BatchedRecursiveWatcher's Events are batched into windows of at most
 // batchWindow duration. Furthermore, if gittoplevel is supplied, events

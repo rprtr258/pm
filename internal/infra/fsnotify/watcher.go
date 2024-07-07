@@ -13,11 +13,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Watcher[T any] interface {
-	Events() <-chan T
-	Errors() <-chan error
-}
-
 // RecursiveWatcher is an instance of a recursive watcher. Create a new
 // RecursiveWatcher via NewRecursiveWatcher.
 type RecursiveWatcher struct {
@@ -55,8 +50,6 @@ type RecursiveWatcher struct {
 	// debug can be set to an io.Writer in order to log debug-level information
 	debug io.Writer
 }
-
-var _ Watcher[fsnotify.Event] = (*RecursiveWatcher)(nil)
 
 // NewRecursiveWatcher creates a new recursive watcher rooted at directory rootDir.
 func NewRecursiveWatcher(rootDir string, opts ...Option) (*RecursiveWatcher, error) {
