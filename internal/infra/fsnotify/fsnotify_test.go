@@ -218,7 +218,6 @@ func (b *batchedWatcherHandler[T]) Special() special {
 
 func (b *batchedWatcherHandler[T]) run() {
 	var specialFile string
-	w := b.w
 	for {
 		select {
 		case f := <-b.watchCh:
@@ -226,13 +225,13 @@ func (b *batchedWatcherHandler[T]) run() {
 				panic(fmt.Errorf("specialFile already set to %q; tried to set to %q", specialFile, f))
 			}
 			specialFile = f
-		case evs, ok := <-w.Events():
+		case evs, ok := <-b.w.Events():
 			if !ok {
 				// Events have been stopped
 				return
 			}
 			specialFile = b.handler(b, specialFile, evs)
-		case err := <-w.Errors():
+		case err := <-b.w.Errors():
 			b.s.log.logf("error: %v", err)
 		}
 	}

@@ -16,7 +16,6 @@ import (
 type Watcher[T any] interface {
 	Events() <-chan T
 	Errors() <-chan error
-	Close() error
 }
 
 // RecursiveWatcher is an instance of a recursive watcher. Create a new
