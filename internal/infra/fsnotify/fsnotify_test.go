@@ -169,7 +169,7 @@ func watcher(s *setupCtx) (special, error) {
 	bwh := newBatchedWatcherHandler(s, w, handleEvent)
 	s.handler = bwh.Special()
 	go bwh.run()
-	return bwh.Special(), nil
+	return s.handler, nil
 }
 
 func batchedWatcher(s *setupCtx, d time.Duration) (special, error) {
@@ -196,26 +196,26 @@ func newBatchedWatcherHandler[T any](
 	handler eventHandler[T],
 ) *batchedWatcherHandler[T] {
 	return &batchedWatcherHandler[T]{
-		s:            s,
-		w:            w,
-		specialWatch: make(chan string),
-		specialWait:  make(chan struct{}),
-		handler:      handler,
+		s:       s,
+		w:       w,
+		watchCh: make(chan string),
+		waitCh:  make(chan struct{}),
+		handler: handler,
 	}
 }
 
 type eventHandler[T any] func(*batchedWatcherHandler[T], string, T) string
 
 type batchedWatcherHandler[T any] struct {
-	s            *setupCtx
-	w            fsnotify.Watcher[T]
-	specialWatch chan string
-	specialWait  chan struct{}
-	handler      eventHandler[T]
+	s       *setupCtx
+	w       fsnotify.Watcher[T]
+	watchCh chan string
+	waitCh  chan struct{}
+	handler eventHandler[T]
 }
 
 func (b *batchedWatcherHandler[T]) Special() special {
-	return special{b.specialWatch, b.specialWait}
+	return special{b.watchCh, b.waitCh}
 }
 
 func (b *batchedWatcherHandler[T]) run() {
@@ -223,7 +223,7 @@ func (b *batchedWatcherHandler[T]) run() {
 	w := b.w
 	for {
 		select {
-		case f := <-b.specialWatch:
+		case f := <-b.watchCh:
 			if specialFile != "" {
 				panic(fmt.Errorf("specialFile already set to %q; tried to set to %q", specialFile, f))
 			}
@@ -249,7 +249,7 @@ func handleEvent(b *batchedWatcherHandler[fsnotify.Event], specialFile string, e
 		b.s.log.logf("name: %s, op: %v\n", rel, ev.Op)
 	}
 	if ev.Name == specialFile {
-		b.specialWait <- struct{}{}
+		b.waitCh <- struct{}{}
 		return ""
 	}
 	return specialFile
@@ -274,7 +274,7 @@ func handleSliceEvent(b *batchedWatcherHandler[[]fsnotify.Event], specialFile st
 	sb.WriteString("]\n")
 	b.s.log.logf(sb.String())
 	if sawSpecial {
-		b.specialWait <- struct{}{}
+		b.waitCh <- struct{}{}
 		return ""
 	}
 	return specialFile
