@@ -74,11 +74,11 @@ func setup(e *testscript.Env) (err error) {
 
 	// Run git setup if we have a configured gittoplevel
 	if s.gittoplevel != "" {
-		s.rungit("init")
-		s.rungit("config", "user.name", "blah")
-		s.rungit("config", "user.email", "blah@blah.com")
-		s.rungit("add", "-A")
-		s.rungit("commit", "-m", "initial commit")
+		rungit(s.Vars, s.gittoplevel, "init")
+		rungit(s.Vars, s.gittoplevel, "config", "user.name", "blah")
+		rungit(s.Vars, s.gittoplevel, "config", "user.email", "blah@blah.com")
+		rungit(s.Vars, s.gittoplevel, "add", "-A")
+		rungit(s.Vars, s.gittoplevel, "commit", "-m", "initial commit")
 	}
 
 	// If there is a .batched file in e.Cd, we want a BatchedWatcher. If it has
@@ -290,8 +290,8 @@ func handleSliceEvent(b *batchedWatcherHandler[[]fsnotify.Event], specialFile st
 	return specialFile
 }
 
-func (s *setupCtx) rungit(args ...string) {
-	run(s.Vars, s.gittoplevel, "git", args...)
+func rungit(vars []string, gittoplevel string, args ...string) {
+	run(vars, gittoplevel, "git", args...)
 }
 
 func run(vars []string, dir, cmd string, args ...string) {
