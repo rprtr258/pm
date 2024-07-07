@@ -53,8 +53,7 @@ type RecursiveWatcher struct {
 
 // NewRecursiveWatcher creates a new recursive watcher rooted at directory rootDir.
 func NewRecursiveWatcher(rootDir string, opts ...Option) (*RecursiveWatcher, error) {
-	rw, err := newRecursiveWatcher(rootDir, "", opts...)
-	return rw, err
+	return newRecursiveWatcher(rootDir, "", opts...)
 }
 
 // newRecursiveWatcher creates a new recursive watcher rooted at directory
