@@ -13,6 +13,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+func countRune(s string, r rune) int {
+	res := 0
+	for _, c := range s {
+		if c == r {
+			res++
+		}
+	}
+	return res
+}
+
 // RecursiveWatcher is an instance of a recursive watcher. Create a new
 // RecursiveWatcher via NewRecursiveWatcher.
 type RecursiveWatcher struct {
@@ -204,8 +214,8 @@ func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
 		}
 		sort.Slice(toRemove, func(i, j int) bool {
 			lhs, rhs := toRemove[i], toRemove[j]
-			lhsSeps := strings.Count(lhs, string(os.PathSeparator))
-			rhsSeps := strings.Count(rhs, string(os.PathSeparator))
+			lhsSeps := countRune(lhs, os.PathSeparator)
+			rhsSeps := countRune(rhs, os.PathSeparator)
 			if lhsSeps != rhsSeps {
 				return lhsSeps < rhsSeps
 			}
