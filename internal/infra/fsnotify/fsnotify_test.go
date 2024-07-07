@@ -291,13 +291,13 @@ func handleSliceEvent(b *batchedWatcherHandler[[]fsnotify.Event], specialFile st
 }
 
 func (s *setupCtx) rungit(args ...string) {
-	s.run(s.gittoplevel, "git", args...)
+	run(s.Vars, s.gittoplevel, "git", args...)
 }
 
-func (s *setupCtx) run(dir, cmd string, args ...string) {
+func run(vars []string, dir, cmd string, args ...string) {
 	c := exec.Command(cmd, args...)
 	c.Dir = dir
-	c.Env = s.Vars
+	c.Env = vars
 	byts, err := c.CombinedOutput()
 	if err != nil {
 		panic(cmdError{fmt.Errorf("failed to run %v: %w\n%s", c, err, byts)})
