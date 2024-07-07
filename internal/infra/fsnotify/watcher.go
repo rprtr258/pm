@@ -69,6 +69,7 @@ func newRecursiveWatcher(rootDir, gittoplevel string, opts ...Option) (*Recursiv
 	if rootDir != gittoplevel && !strings.HasPrefix(rootDir, gittoplevel+string(os.PathSeparator)) {
 		return nil, fmt.Errorf("%s is not a subdirectory of %s", rootDir, gittoplevel)
 	}
+
 	var gitDir, gitLockfile string
 	if gittoplevel != "" {
 		gitDir = filepath.Join(gittoplevel, ".git")
@@ -79,12 +80,11 @@ func newRecursiveWatcher(rootDir, gittoplevel string, opts ...Option) (*Recursiv
 		return nil, fmt.Errorf("failed to create fsnotify watcher: %w", err)
 	}
 
-	theOpts := new(options)
+	theOpts := &options{}
 	for _, v := range opts {
-		if v == nil {
-			continue
+		if v != nil {
+			v(theOpts)
 		}
-		v(theOpts)
 	}
 
 	res := &RecursiveWatcher{
