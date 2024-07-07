@@ -158,7 +158,10 @@ func (w *RecursiveWatcher) runEventLoop() {
 				continue
 			}
 
-			log.Debug().Str("path", ev.Name).Stringer("op", ev.Op).Msg("fsnotify event")
+			log.Debug().
+				Str("path", ev.Name).
+				Stringer("op", ev.Op).
+				Msg("fsnotify event")
 
 			w.handleEvent(ev)
 
