@@ -198,14 +198,14 @@ func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
 	// under it.
 	switch ev.Op {
 	case fsnotify.Remove:
-		// If we have a watcher at that path then it is a directory. Remove that
-		// watcher path and all watchers that have a directory prefix of the path
-		// we just removed.
+		// If we have a watcher at that path then it is a directory.
+		// Remove that watcher path and all watchers that have a directory
+		// prefix of the path we just removed.
 		if _, ok := w.watchers[ev.Name]; !ok {
 			return
 		}
 		// In case it matters, remove the directory watches breadth first.
-		var toRemove []string
+		toRemove := make([]string, 0, len(w.watchers))
 		dirPrefix := ev.Name + string(os.PathSeparator)
 		for k := range w.watchers {
 			if k == ev.Name || strings.HasPrefix(k, dirPrefix) {
