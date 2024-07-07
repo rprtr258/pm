@@ -158,7 +158,7 @@ var debugOpt = func() fsnotify.Option {
 	return nil
 }()
 
-func watcher(s *setupCtx) (specialHandler, error) {
+func watcher(s *setupCtx) (*batchedWatcherHandler[fsnotify.Event], error) {
 	w, err := fsnotify.NewRecursiveWatcher(s.rootdir, debugOpt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
@@ -172,7 +172,7 @@ func watcher(s *setupCtx) (specialHandler, error) {
 	return bwh, nil
 }
 
-func batchedWatcher(s *setupCtx, d time.Duration) (specialHandler, error) {
+func batchedWatcher(s *setupCtx, d time.Duration) (*batchedWatcherHandler[[]fsnotify.Event], error) {
 	bw, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d, debugOpt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a Watcher: %w", err)
