@@ -109,11 +109,11 @@ LOOP:
 				startOfGitOp = !bw.inGitOperation && ev.Op == fsnotify.Create
 				endOfGitOp = bw.inGitOperation && (ev.Op == fsnotify.Rename || ev.Op == fsnotify.Remove)
 				if startOfGitOp {
-					bw.w.debugf("git: operation: start")
+					log.Debug().Str("operation", "start").Msg("git")
 					bw.inGitOperation = true
 				}
 				if endOfGitOp {
-					bw.w.debugf("git: operation: end")
+					log.Debug().Str("operation", "end").Msg("git")
 					bw.inGitOperation = false
 				}
 				// We don't care about other events on the lock file during a git
@@ -135,7 +135,10 @@ LOOP:
 
 			if bw.send != nil {
 				// We have a slow consumer
-				bw.w.debugf("slow consumer; adding %s (%v) to existing batch", ev.Name, ev.Op)
+				log.Debug().
+					Str("path", ev.Name).
+					Stringer("op", ev.Op).
+					Msg("slow consumer, adding to existing batch")
 			}
 			bw.buffer = append(bw.buffer, ev)
 

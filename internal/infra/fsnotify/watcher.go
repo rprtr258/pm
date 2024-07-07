@@ -142,7 +142,6 @@ func (w *RecursiveWatcher) runEventLoop() {
 	for {
 		select {
 		case ev, ok := <-w.w.Events:
-			log.Debug().Stringer("event", ev).Bool("ok", ok).Msg("fsnotify event")
 			// handle event with respect to adding more watchers etc, i.e.
 			// when a new directory is added
 			if !ok {
@@ -159,7 +158,7 @@ func (w *RecursiveWatcher) runEventLoop() {
 				continue
 			}
 
-			w.debugf("event: path: %v, op: %v\n", ev.Name, ev.Op)
+			log.Debug().Str("path", ev.Name).Stringer("op", ev.Op).Msg("fsnotify event")
 
 			w.handleEvent(ev)
 
@@ -241,7 +240,7 @@ func (w *RecursiveWatcher) addDir(dir string, ignoreErrors bool) error {
 		if _, ok := w.watchers[path]; ok {
 			return nil
 		}
-		w.debugf("add: %v\n", path)
+		log.Debug().Str("path", path).Msg("watcher added")
 		// Try to create a watcher. Only add an entry in w.watches if we succeed
 		err = w.w.Add(path)
 		if !ignoreErrors && err != nil {
@@ -252,9 +251,4 @@ func (w *RecursiveWatcher) addDir(dir string, ignoreErrors bool) error {
 		}
 		return nil
 	})
-}
-
-// debugf debug-level logs the fmt formatted format and args to w.debug if it is non-nil.
-func (w *RecursiveWatcher) debugf(format string, args ...any) {
-	log.Debug().Msgf(format, args...)
 }
