@@ -166,21 +166,21 @@ func watcher(s *setupCtx) (special, error) {
 	s.Env.Defer(func() {
 		w.Close()
 	})
-	bwh := newBatchedWatcherHandler(s, w, handleEvent)
+	bwh := newBatchedWatcherHandler(s, w.Events(), w.Errors(), handleEvent)
 	s.handler = bwh.Special()
 	go bwh.run()
 	return s.handler, nil
 }
 
 func batchedWatcher(s *setupCtx, d time.Duration) (special, error) {
-	bw, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d, debugOpt)
+	w, err := fsnotify.NewBatchedRecursiveWatcher(s.rootdir, s.gittoplevel, d, debugOpt)
 	if err != nil {
 		return special{}, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
 	s.Defer(func() {
-		bw.Close()
+		w.Close()
 	})
-	bwh := newBatchedWatcherHandler(s, bw, handleSliceEvent)
+	bwh := newBatchedWatcherHandler(s, w.Events(), w.Errors(), handleSliceEvent)
 	go bwh.run()
 	return bwh.Special(), nil
 }
@@ -201,13 +201,14 @@ type batchedWatcherHandler[T any] struct {
 
 func newBatchedWatcherHandler[T any](
 	s *setupCtx,
-	w fsnotify.Watcher[T],
+	wEvents <-chan T,
+	wErrors <-chan error,
 	handler func(*batchedWatcherHandler[T], string, T) string,
 ) *batchedWatcherHandler[T] {
 	return &batchedWatcherHandler[T]{
 		s:       s,
-		wEvents: w.Events(),
-		wErrors: w.Errors(),
+		wEvents: wEvents,
+		wErrors: wErrors,
 		watchCh: make(chan string),
 		waitCh:  make(chan struct{}),
 		handler: handler,
