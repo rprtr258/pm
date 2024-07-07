@@ -82,7 +82,8 @@ func newRecursiveWatcher(rootDir, gittoplevel string) (*RecursiveWatcher, error)
 		gitDir = filepath.Join(gittoplevel, ".git")
 		gitLockfile = filepath.Join(gitDir, "index.lock")
 	}
-	uw, err := fsnotify.NewWatcher()
+
+	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create fsnotify watcher: %w", err)
 	}
@@ -91,7 +92,7 @@ func newRecursiveWatcher(rootDir, gittoplevel string) (*RecursiveWatcher, error)
 		rootDir:     rootDir,
 		gitDir:      gitDir,
 		gitLockFile: gitLockfile,
-		w:           uw,
+		w:           w,
 		Events:      make(chan fsnotify.Event),
 		Errors:      make(chan error),
 		watchers:    make(map[string]struct{}),
