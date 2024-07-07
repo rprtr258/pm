@@ -136,16 +136,6 @@ type Config struct {
 }
 
 func New(cfg Config) *Writer {
-	filename := cmp.Or(
-		cfg.Filename,
-		filepath.Join(os.TempDir(), filepath.Base(os.Args[0])+"-logrotation.log"),
-	)
-
-	maxSize := cmp.Or(
-		cfg.MaxSize,
-		int64(100*1024*1024), // 100 MiB
-	)
-
 	clock := time.Now
 	if cfg.clock != nil {
 		clock = cfg.clock
@@ -157,8 +147,14 @@ func New(cfg Config) *Writer {
 	}
 
 	return &Writer{
-		filename:    filename,
-		maxSize:     maxSize,
+		filename: cmp.Or(
+			cfg.Filename,
+			filepath.Join(os.TempDir(), filepath.Base(os.Args[0])+"-logrotation.log"),
+		),
+		maxSize: cmp.Or(
+			cfg.MaxSize,
+			int64(100*1024*1024), // 100 MiB
+		),
 		maxAge:      cfg.MaxAge,
 		maxBackups:  cfg.MaxBackups,
 		isLocalTime: cfg.LocalTime,
