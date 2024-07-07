@@ -158,7 +158,7 @@ func (h Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 	return id, nil
 }
 
-func (h Handle) UpdateProc(proc core.Proc) Error {
+func (h Handle) UpdateProc(proc core.Proc) error {
 	if err := h.writeProc(procData{
 		ProcID:      proc.ID,
 		Command:     proc.Command,
@@ -212,7 +212,7 @@ func (h Handle) GetProcs(filterOpts ...core.FilterOption) (map[core.PMID]core.Pr
 		core.FilterProcMap(procs, filterOpts...)...), nil
 }
 
-func (h Handle) Delete(id core.PMID) (core.Proc, Error) {
+func (h Handle) Delete(id core.PMID) (core.Proc, error) {
 	proc, err := h.readProc(id)
 	if err != nil {
 		return fun.Zero[core.Proc](), ProcNotFoundError{id}
