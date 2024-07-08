@@ -138,15 +138,18 @@ func (w *RecursiveWatcher) Close() error {
 // is otherwise responsible for proxying events from the underlying watcher
 // that result from the recursive watches we have added.
 func (w *RecursiveWatcher) runEventLoop() {
-	defer close(w.doneClose)
+	defer func() {
+		close(w.doneClose)
+		// Pass on the close
+		close(w.Events)
+	}()
+
 	for {
 		select {
 		case ev, ok := <-w.w.Events:
-			// handle event with respect to adding more watchers etc, i.e.
-			// when a new directory is added
+			// handle event with respect to adding more watchers etc,
+			// i.e. when a new directory is added
 			if !ok {
-				// Pass on the close
-				close(w.Events)
 				return
 			}
 
@@ -169,7 +172,10 @@ func (w *RecursiveWatcher) runEventLoop() {
 			// encountered an error. If the event comes from w.gitDir, only
 			// relay the events for index.lock
 			w.Events <- ev
-		case err := <-w.w.Errors:
+		case err, ok := <-w.w.Errors:
+			if !ok {
+				return
+			}
 			w.Errors <- err
 		}
 	}

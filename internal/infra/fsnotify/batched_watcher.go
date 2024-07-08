@@ -77,8 +77,7 @@ func (bw *BatchedRecursiveWatcher) Close() error {
 	if err := bw.w.Close(); err != nil {
 		return fmt.Errorf("failed to shutdown underlying Watcher: %w", err)
 	}
-	// NOTE: do not wait for closing
-	// <-bw.doneClose
+	<-bw.doneClose
 	return nil
 }
 

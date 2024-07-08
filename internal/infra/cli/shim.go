@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rprtr258/fun"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -34,20 +33,6 @@ type Watcher struct {
 	dir     string
 	re      *regexp.Regexp
 	watcher *fsnotify.BatchedRecursiveWatcher
-}
-
-func newWatcher(dir string, patternRE *regexp.Regexp) (Watcher, error) {
-	// TODO: make batch window an option
-	watcher, err := fsnotify.NewBatchedRecursiveWatcher(dir, "", time.Second)
-	if err != nil {
-		return fun.Zero[Watcher](), errors.Wrapf(err, "create fsnotify watcher")
-	}
-
-	return Watcher{
-		dir:     dir,
-		re:      patternRE,
-		watcher: watcher,
-	}, nil
 }
 
 // execCmd start copy of given command. We cannot use cmd itself since
@@ -122,9 +107,16 @@ func initWatchChannel(
 		return nil, errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
 	}
 
-	watcher, errWatcher := newWatcher(cwd, watchRE)
-	if errWatcher != nil {
-		return nil, errors.Wrapf(errWatcher, "create watcher")
+	// TODO: make batch window an option
+	watcher, err := fsnotify.NewBatchedRecursiveWatcher(cwd, "", time.Second)
+	if err != nil {
+		return nil, errors.Wrapf(err, "create watcher")
+	}
+
+	w := Watcher{
+		dir:     cwd,
+		re:      watchRE,
+		watcher: watcher,
 	}
 
 	go func() {
@@ -132,20 +124,20 @@ func initWatchChannel(
 			select {
 			case <-ctx.Done():
 				return
-			case err := <-watcher.watcher.Errors:
+			case err := <-w.watcher.Errors:
 				if err != nil {
 					log.Error().Err(err).Msg("fsnotify error")
 				}
 				return
-			case events := <-watcher.watcher.Events:
+			case events := <-w.watcher.Events:
 				triggered := false
 				for _, event := range events {
-					filename, err := filepath.Rel(watcher.dir, event.Name)
+					filename, err := filepath.Rel(w.dir, event.Name)
 					if err != nil {
 						log.Error().
 							Err(err).
 							Stringer("event", event).
-							Str("dir", watcher.dir).
+							Str("dir", w.dir).
 							Msg("get relative filename failed")
 						continue
 					}
@@ -159,7 +151,7 @@ func initWatchChannel(
 						continue
 					}
 
-					if !watcher.re.MatchString(filename) {
+					if !w.re.MatchString(filename) {
 						continue
 					}
 
@@ -175,7 +167,7 @@ func initWatchChannel(
 	}()
 	return func() {
 		log.Debug().Msg("closing watcher")
-		if err := watcher.watcher.Close(); err != nil {
+		if err := w.watcher.Close(); err != nil {
 			log.Error().Err(err).Msg("failed to close watcher")
 		}
 	}, nil
