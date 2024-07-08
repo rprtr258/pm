@@ -5,8 +5,6 @@ import (
 	"unsafe"
 
 	"github.com/rprtr258/fun"
-
-	"github.com/rprtr258/pm/internal/lo"
 )
 
 type filter struct {
@@ -81,7 +79,9 @@ func FilterFunc(opts ...FilterOption) func(Proc) bool {
 
 	return func(proc Proc) bool {
 		return fun.Contains(proc.Name, _filter.Names...) ||
-			lo.Some(proc.Tags, _filter.Tags...) ||
+			fun.Any(func(elem string) bool {
+				return fun.Contains(elem, _filter.Tags...)
+			}, proc.Tags...) ||
 			fun.Any(func(idPrefix string) bool {
 				return strings.HasPrefix(proc.ID.String(), idPrefix)
 			}, _filter.IDs...)
