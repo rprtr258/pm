@@ -1,6 +1,6 @@
 [
   {
-    name: "qmen24-" ,//+ std.extVar("now"),
+    name: "qmen24-",// + std.extVar("now"),
     command: "sleep",
     args: [10],
   },
