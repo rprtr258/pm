@@ -163,9 +163,13 @@ func runProc(
 func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 	// depends_on validation
 	{
+		// collect all names from db and configs list
 		allNames := set.NewFrom(iter.Map(listProcs(dbb).Seq, func(ps core.ProcStat) string {
 			return ps.Name
 		}).ToSlice()...)
+		for _, config := range configs {
+			allNames.Add(config.Name)
+		}
 
 		nonexistingErrors := []error{}
 		for _, config := range configs {
@@ -258,7 +262,7 @@ var _cmdRun = func() *cobra.Command {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 			watch := fun.IF(cmd.Flags().Lookup("watch").Changed, &watch, nil)
 
-			if config == nil {
+			if config == nil { // inline run, e.g. `pm run -- npm dev`
 				if len(posArgs) == 0 {
 					return errors.Newf("neither command nor config specified")
 				}
