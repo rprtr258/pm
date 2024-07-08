@@ -207,10 +207,7 @@ func implShim(proc core.Proc) error {
 	defer cancel()
 
 	watchCh := make(chan []fsnotify.Event)
-	defer func() {
-		log.Debug().Msg("closing watch channel")
-		close(watchCh)
-	}()
+	defer close(watchCh)
 
 	if watchPattern, ok := proc.Watch.Unpack(); ok {
 		watchChClose, err := initWatchChannel(ctx, watchCh, proc.Cwd, watchPattern)
