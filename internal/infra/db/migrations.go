@@ -1,9 +1,10 @@
 package db
 
 import (
-	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/mod/semver"
+
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 type migration struct {

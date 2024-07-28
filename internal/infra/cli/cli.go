@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-
 	"github.com/rprtr258/scuf"
+	"github.com/spf13/cobra"
 )
 
 var _app = func() *cobra.Command {

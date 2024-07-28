@@ -7,8 +7,9 @@ import (
 	"os"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rs/zerolog/log"
+
+	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
 // TODO: set at compile time
