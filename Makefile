@@ -45,9 +45,10 @@ todo: # check todos
 fmt: # run formatters
 	@go install mvdan.cc/gofumpt@latest
 	@go install golang.org/x/tools/cmd/goimports@latest
+	@go install github.com/incu6us/goimports-reviser/v3@latest
 	go fmt ./...
 	gofumpt -l -w .
-	goimports -l -w -local $(shell head -n1 go.mod | cut -d' ' -f2) .
+	goimports-reviser ./...
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
