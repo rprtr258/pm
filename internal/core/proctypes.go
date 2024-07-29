@@ -50,9 +50,6 @@ type Proc struct {
 
 	KillTimeout time.Duration // time to wait before sending SIGKILL
 	DependsOn   []string      // names of processes that must be started before this proc
-	// RestartTries int
-	// RestartDelay    time.Duration
-	// Respawns int
 }
 
 var _procStringTemplate = template.Must(template.New("proc").
@@ -69,11 +66,6 @@ var _procStringTemplate = template.Must(template.New("proc").
 	stderr_file={{.StderrFile}},
 	startup={{.Startup}},
 ]`))
-
-// TODO: add to template above
-// "restart_tries": proc.RestartTries,
-// "restart_delay": proc.RestartDelay,
-// "respawns":     proc.Respawns,
 
 func (p *Proc) String() string {
 	var b bytes.Buffer
