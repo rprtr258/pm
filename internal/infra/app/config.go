@@ -5,8 +5,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/scuf"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/afero"
 
@@ -82,6 +86,38 @@ func pruneLogs(db db.Handle, config core.Config) error {
 	return nil
 }
 
+func setupLogger(config core.Config) {
+	level := zerolog.InfoLevel
+	if config.Debug {
+		level = zerolog.DebugLevel
+	}
+
+	log.Logger = zerolog.New(os.Stderr).
+		Level(level).
+		Output(zerolog.ConsoleWriter{ //nolint:exhaustruct // not needed
+			Out: os.Stderr,
+			FormatLevel: func(i any) string {
+				s, _ := i.(string)
+				bg := fun.Switch(s, scuf.BgRed).
+					Case(scuf.BgBlue, zerolog.LevelInfoValue).
+					Case(scuf.BgGreen, zerolog.LevelWarnValue).
+					Case(scuf.BgYellow, zerolog.LevelErrorValue).
+					End()
+
+				return scuf.String(" "+strings.ToUpper(s)+" ", bg, scuf.FgBlack)
+			},
+			FormatTimestamp: func(i any) string {
+				s, _ := i.(string)
+				t, err := time.Parse(zerolog.TimeFieldFormat, s)
+				if err != nil {
+					return s
+				}
+
+				return scuf.String(t.Format("[15:06:05]"), scuf.ModFaint, scuf.FgWhite)
+			},
+		})
+}
+
 func New() (db.Handle, core.Config, error) {
 	var (
 		config core.Config
@@ -127,6 +163,8 @@ func New() (db.Handle, core.Config, error) {
 	}(); err != nil {
 		return fun.Zero[db.Handle](), fun.Zero[core.Config](), err
 	}
+
+	setupLogger(config)
 
 	return db.New(dbFs), config, nil
 }
