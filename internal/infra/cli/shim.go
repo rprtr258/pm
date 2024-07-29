@@ -238,12 +238,14 @@ func implShim(proc core.Proc) error {
 			- watch triggered, kill process, then loop
 	*/
 	waitTrigger := true
+	autorestartsLeft := proc.MaxRestarts
 	for {
 		switch {
 		case waitTrigger:
 			waitTrigger = false
-		case false: // TODO: await autorestart if configured
-			// TODO: autorestart
+		case autorestartsLeft > 0:
+			autorestartsLeft--
+			// autorestart
 		case proc.Watch.Valid: // watch defined, waiting for it
 			select {
 			case events := <-watchCh:

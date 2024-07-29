@@ -53,6 +53,7 @@ type Proc struct {
 
 	KillTimeout time.Duration // time to wait before sending SIGKILL
 	DependsOn   []string      // names of processes that must be started before this proc
+	MaxRestarts int           // MaxRestarts - max number of times to restart process
 }
 
 var _procStringTemplate = template.Must(template.New("proc").
