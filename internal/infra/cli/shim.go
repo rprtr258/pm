@@ -143,12 +143,11 @@ func initWatchChannel(
 						continue
 					}
 
-					// TODO: move to watcher
+					// ignore changes in git directory
 					if filename == ".git" ||
 						strings.HasPrefix(filename, ".git/") ||
 						strings.HasSuffix(filename, "/.git") ||
 						strings.Contains(filename, "/.git/") {
-						// change in git directory, ignore
 						continue
 					}
 
