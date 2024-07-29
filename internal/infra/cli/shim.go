@@ -23,6 +23,8 @@ import (
 	"github.com/rprtr258/pm/internal/logrotation"
 )
 
+const _batchWindow = time.Second
+
 type Entry struct {
 	RootDir     string
 	Pattern     *regexp.Regexp
@@ -107,8 +109,7 @@ func initWatchChannel(
 		return nil, errors.Wrapf(errCompilePattern, "compile pattern %q", watchPattern)
 	}
 
-	// TODO: make batch window an option
-	watcher, err := fsnotify.NewBatchedRecursiveWatcher(cwd, "", time.Second)
+	watcher, err := fsnotify.NewBatchedRecursiveWatcher(cwd, "", _batchWindow)
 	if err != nil {
 		return nil, errors.Wrapf(err, "create watcher")
 	}
