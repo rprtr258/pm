@@ -314,7 +314,6 @@ var _cmdRun = func() *cobra.Command {
 				return errors.Wrapf(errLoadConfigs, "load run configs")
 			}
 
-			// TODO: if config is specified Args.Command and Args.Args are not required
 			names := posArgs
 			if len(names) == 0 {
 				// no filtering by names, run all processes
