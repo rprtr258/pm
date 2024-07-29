@@ -4,6 +4,7 @@ import (
 	stdErrors "errors"
 	"io/fs"
 	"os"
+	"path/filepath"
 
 	"github.com/rprtr258/fun"
 	"github.com/rs/zerolog/log"
@@ -39,6 +40,43 @@ func ensureDir(dirname string) error {
 	log.Info().Str("dir", dirname).Msg("creating dir...")
 	if errMkdir := os.Mkdir(dirname, 0o755); errMkdir != nil {
 		return errors.Wrapf(errMkdir, "create dir")
+	}
+
+	return nil
+}
+
+func pruneLogs(db db.Handle, config core.Config) error {
+	logFiles, err := os.ReadDir(config.DirLogs)
+	if err != nil {
+		return errors.Wrapf(err, "read log dir %s", config.DirLogs)
+	}
+
+	procs, err := db.GetProcs(core.WithAllIfNoFilters)
+	if err != nil {
+		return errors.Wrapf(err, "get procs")
+	}
+
+	ids := make(map[core.PMID]struct{}, len(procs))
+	for id := range procs {
+		ids[id] = struct{}{}
+	}
+
+	for _, logFile := range logFiles {
+		if len(logFile.Name()) >= core.PMIDLen {
+			id := logFile.Name()[:core.PMIDLen]
+			if _, ok := ids[core.PMID(id)]; ok {
+				continue
+			}
+		}
+
+		// proc not found, remove log file
+		filename := filepath.Join(config.DirLogs, logFile.Name())
+		log.Info().
+			Str("file", filename).
+			Msg("pruning log file")
+		if errRemove := os.Remove(filename); errRemove != nil {
+			return errors.Wrapf(errRemove, "remove log file %s", logFile.Name())
+		}
 	}
 
 	return nil
@@ -81,7 +119,9 @@ func New() (db.Handle, core.Config, error) {
 			return errors.Wrapf(errDB, "new db, dir=%q", config.DirDB)
 		}
 
-		// TODO: cleanup logs files which are not bound to any existing process (in any status)
+		if err := pruneLogs(db.New(dbFs), config); err != nil {
+			return errors.Wrap(err, "prune logs")
+		}
 
 		return nil
 	}(); err != nil {

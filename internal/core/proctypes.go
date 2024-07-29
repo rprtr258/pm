@@ -13,6 +13,8 @@ import (
 	"github.com/rprtr258/fun"
 )
 
+const PMIDLen = 32
+
 // PMID is a unique identifier for a process
 type PMID string
 
@@ -21,7 +23,8 @@ func (pmid PMID) String() string {
 }
 
 func GenPMID() PMID {
-	b := make([]byte, 16)
+	// one byte is two hex digits, so divide by two
+	b := make([]byte, PMIDLen/2)
 	if _, err := io.ReadFull(rand2.Reader, b); err != nil {
 		// fallback to random string
 		for i := range b {
