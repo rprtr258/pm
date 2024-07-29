@@ -239,7 +239,6 @@ func implShim(proc core.Proc) error {
 	*/
 	waitTrigger := true
 	for {
-		// TODO: rewrite this switch
 		switch {
 		case waitTrigger:
 			waitTrigger = false
