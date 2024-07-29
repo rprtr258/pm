@@ -15,7 +15,6 @@ import (
 
 func newLogger() zerolog.Logger {
 	return zerolog.New(os.Stderr).With().
-		Timestamp().
 		Logger().
 		Output(zerolog.ConsoleWriter{ //nolint:exhaustruct // not needed
 			Out: os.Stderr,

@@ -68,7 +68,7 @@ func confirmProc(ps core.ProcStat, action string) bool {
 		Value(&result).
 		WithTheme(huh.ThemeDracula()). // TODO: define theme, use colors everywhere
 		Run(); err != nil {
-		log.Error().Err(err).Send()
+		log.Fatal().Msg(err.Error())
 	}
 	return result
 }
