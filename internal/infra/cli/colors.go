@@ -20,14 +20,14 @@ func theme() *huh.Theme {
 	t := huh.ThemeBase()
 
 	var (
-		background = lipgloss.AdaptiveColor{Dark: background}
-		selection  = lipgloss.AdaptiveColor{Dark: selection}
-		foreground = lipgloss.AdaptiveColor{Dark: foreground}
-		comment    = lipgloss.AdaptiveColor{Dark: comment}
-		green      = lipgloss.AdaptiveColor{Dark: green}
-		purple     = lipgloss.AdaptiveColor{Dark: purple}
-		red        = lipgloss.AdaptiveColor{Dark: red}
-		yellow     = lipgloss.AdaptiveColor{Dark: yellow}
+		background = lipgloss.Color(background)
+		selection  = lipgloss.Color(selection)
+		foreground = lipgloss.Color(foreground)
+		comment    = lipgloss.Color(comment)
+		green      = lipgloss.Color(green)
+		purple     = lipgloss.Color(purple)
+		red        = lipgloss.Color(red)
+		yellow     = lipgloss.Color(yellow)
 	)
 
 	t.Focused.Base = t.Focused.Base.BorderForeground(selection)

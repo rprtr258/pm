@@ -59,6 +59,8 @@ func compareArgs(first, second []string) bool {
 // runProc - create and start processes, returns ids of created processes.
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
+//
+//nolint:funlen
 func runProc(
 	dbb db.Handle,
 	dirLogs string,
@@ -97,6 +99,7 @@ func runProc(
 			return "", errors.Wrapf(err, "get procs from db")
 		}
 
+		//nolint:nestif // fuck you
 		if procID, ok := fun.FindKeyBy(procs, func(_ core.PMID, procData core.Proc) bool {
 			return procData.Name == name
 		}); ok {
@@ -114,6 +117,7 @@ func runProc(
 				Startup:     config.Startup,
 				KillTimeout: config.KillTimeout,
 				DependsOn:   config.DependsOn,
+				MaxRestarts: config.MaxRestarts,
 			}
 
 			proc := procs[procID]
@@ -128,8 +132,8 @@ func runProc(
 
 			// proc updated, if it is running, stop it to start later
 			if _, ok := linuxprocess.StatPMID(dbb.ListRunning(), procID); ok {
-				if err := implStop(dbb, procID); err != nil {
-					return "", errors.Wrapf(err, "stop updated proc: %v", procID)
+				if errStop := implStop(dbb, procID); errStop != nil {
+					return "", errors.Wrapf(errStop, "stop updated proc: %v", procID)
 				}
 			}
 

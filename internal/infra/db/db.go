@@ -176,6 +176,7 @@ func (h Handle) UpdateProc(proc core.Proc) error {
 		Startup:     proc.Startup,
 		KillTimeout: proc.KillTimeout,
 		DependsOn:   proc.DependsOn,
+		MaxRestarts: proc.MaxRestarts,
 	}); err != nil {
 		return FlushError{err}
 	}
