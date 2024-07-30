@@ -224,6 +224,9 @@ func implShim(proc core.Proc) error {
 		close(terminateCh)
 	}()
 
+	waitCh := make(chan error) // process death events
+	defer close(waitCh)
+
 	/*
 		Very important shit happens here in loop aka zaloopa.
 		Each iteration is single proc life:
@@ -263,14 +266,16 @@ func implShim(proc core.Proc) error {
 			return errors.Wrapf(errRunFirst, "run proc: %v", proc)
 		}
 
-		waitCh := make(chan error)
 		go func() {
-			waitCh <- cmd.Wait()
-			close(waitCh)
+			err := cmd.Wait()
+			// try notify, if not listening, ignore
+			select {
+			case waitCh <- err:
+			default:
+			}
 		}()
 
 		select {
-		// TODO: pass other signals
 		case <-terminateCh:
 			// NOTE: Terminate child completely.
 			// Stop is done by sending SIGTERM.
@@ -282,7 +287,7 @@ func implShim(proc core.Proc) error {
 			log.Debug().Any("events", events).Msg("watch triggered")
 			killCmd(cmd, proc.KillTimeout)
 			waitTrigger = true // do not wait for autorestart or watch, start immediately
-		case <-waitCh: // TODO: we might be leaking waitCh if watch is triggered many times
+		case <-waitCh:
 		}
 	}
 }
