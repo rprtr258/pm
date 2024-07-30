@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/charmbracelet/huh v0.4.2
+	github.com/charmbracelet/lipgloss v0.11.0
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/go-jsonnet v0.20.0
@@ -30,7 +31,6 @@ require (
 	github.com/catppuccin/go v0.2.0 // indirect
 	github.com/charmbracelet/bubbles v0.18.0 // indirect
 	github.com/charmbracelet/bubbletea v0.26.6 // indirect
-	github.com/charmbracelet/lipgloss v0.11.0 // indirect
 	github.com/charmbracelet/x/ansi v0.1.2 // indirect
 	github.com/charmbracelet/x/exp/strings v0.0.0-20240625164403-2627ec16405d // indirect
 	github.com/charmbracelet/x/input v0.1.2 // indirect
