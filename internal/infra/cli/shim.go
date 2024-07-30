@@ -231,8 +231,8 @@ func implShim(proc core.Proc) error {
 		Very important shit happens here in loop aka zaloopa.
 		Each iteration is single proc life:
 		- first, we wait for when we can start process. Three cases here:
-			- very first launch, just launch then
-			- process exited or failed, autorestart enabled, wait for autorestart // TODO: not implemented for now
+			- very first launch, just launch
+			- process exited or failed, autorestarts left, autorestart
 			- same case, but no autorestart, but watch enabled, wait for it
 		- then, launch proc. Setup waitCh with exit status
 		- listen for event leading to process death:
@@ -246,9 +246,8 @@ func implShim(proc core.Proc) error {
 		switch {
 		case waitTrigger:
 			waitTrigger = false
-		case autorestartsLeft > 0:
+		case autorestartsLeft > 0: // autorestart
 			autorestartsLeft--
-			// autorestart
 		case proc.Watch.Valid: // watch defined, waiting for it
 			select {
 			case events := <-watchCh:

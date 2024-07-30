@@ -13,6 +13,5 @@
     name: "t1",
     command: "docker",
     args: ["run", "--network", "foo", "curlimages/curl", "sh -c 'while true; do curl -s http://echo:5678; sleep 1; done'"],
-    // TODO: depends_on: echo[condition: service_healthy]
   },
 ]
