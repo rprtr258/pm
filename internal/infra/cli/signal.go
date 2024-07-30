@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
@@ -22,7 +21,7 @@ func implSignal(
 	list := linuxprocess.List()
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
-			osProc, ok := linuxprocess.StatPMID(list, id, app.EnvPMID)
+			osProc, ok := linuxprocess.StatPMID(list, id)
 			if !ok {
 				return errors.Newf("get process by pmid, id=%s signal=%s", id, sig.String())
 			}

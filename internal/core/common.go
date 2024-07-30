@@ -7,6 +7,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const EnvPMID = "PM_PMID"
+
 var _userHome = func() string {
 	dir, err := os.UserHomeDir()
 	if err != nil {

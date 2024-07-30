@@ -10,7 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
@@ -29,7 +28,7 @@ func implStop(db db.Handle, ids ...core.PMID) error {
 				return errors.Newf("not found proc to stop")
 			}
 
-			proc, ok := linuxprocess.StatPMID(list, id, app.EnvPMID)
+			proc, ok := linuxprocess.StatPMID(list, id)
 			if !ok {
 				log.Debug().Str("id", id.String()).Msg("proc not running")
 				// already stopped or not started yet
@@ -53,7 +52,7 @@ func implStop(db db.Handle, ids ...core.PMID) error {
 			// wait for process to stop
 			for {
 				time.Sleep(100 * time.Millisecond)
-				if _, ok := linuxprocess.StatPMID(linuxprocess.List(), id, app.EnvPMID); !ok {
+				if _, ok := linuxprocess.StatPMID(linuxprocess.List(), id); !ok {
 					break
 				}
 			}

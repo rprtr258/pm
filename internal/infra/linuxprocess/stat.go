@@ -40,9 +40,9 @@ func Children(list []ProcListItem, pid int) []ProcListItem {
 }
 
 // list must be sorted by pid
-func StatPMID(list []ProcListItem, pmid core.PMID, env string) (Stat, bool) {
+func StatPMID(list []ProcListItem, pmid core.PMID) (Stat, bool) {
 	shim, _, ok := fun.Index(func(p ProcListItem) bool {
-		return p.Environ[env] == string(pmid)
+		return p.Environ[core.EnvPMID] == string(pmid)
 	}, list...)
 	if !ok {
 		return fun.Zero[Stat](), false

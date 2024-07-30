@@ -19,8 +19,6 @@ import (
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
-const EnvPMID = "PM_PMID"
-
 func MigrateConfig(config core.Config) error {
 	if config.Version == core.Version {
 		return nil

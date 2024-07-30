@@ -13,7 +13,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
@@ -51,7 +50,7 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 	if proc.Env == nil {
 		proc.Env = map[string]string{}
 	}
-	proc.Env[app.EnvPMID] = string(proc.ID)
+	proc.Env[core.EnvPMID] = string(proc.ID)
 	for _, kv := range os.Environ() {
 		kvs := strings.SplitN(kv, "=", 2)
 		k, v := kvs[0], kvs[1]
@@ -97,7 +96,7 @@ func implStart(
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
 			// run processes by their ids in database
-			if _, ok := linuxprocess.StatPMID(db.ListRunning(), id, app.EnvPMID); ok {
+			if _, ok := linuxprocess.StatPMID(db.ListRunning(), id); ok {
 				log.Info().Stringer("id", id).Msg("already running")
 				return nil
 			}

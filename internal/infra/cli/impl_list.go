@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
@@ -49,7 +48,7 @@ func listProcs(db db.Handle) procSeq {
 	return procSeq{func(yield func(core.ProcStat) bool) {
 		for _, proc := range procs {
 			var procStat core.ProcStat
-			stat, ok := linuxprocess.StatPMID(list, proc.ID, app.EnvPMID)
+			stat, ok := linuxprocess.StatPMID(list, proc.ID)
 			switch {
 			case !ok: // no shim at all
 				procStat = core.ProcStat{
