@@ -17,8 +17,10 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/namegen"
+	"github.com/rprtr258/pm/internal/infra/app"
 	"github.com/rprtr258/pm/internal/infra/db"
 	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
 // compareTags and return true if equal
@@ -123,6 +125,13 @@ func runProc(
 				proc.Watch == procData.Watch {
 				// not updated, do nothing
 				return procID, nil
+			}
+
+			// proc updated, if it is running, stop it to start later
+			if _, ok := linuxprocess.StatPMID(dbb.ListRunning(), procID, app.EnvPMID); ok {
+				if err := implStop(dbb, procID); err != nil {
+					return "", errors.Wrapf(err, "stop updated proc: %v", procID)
+				}
 			}
 
 			if errUpdate := dbb.UpdateProc(procData); errUpdate != nil {

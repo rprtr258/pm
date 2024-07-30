@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
 // procData - db representation of core.ProcData
@@ -78,13 +79,19 @@ func InitRealDir(dir string) (afero.Fs, error) {
 }
 
 type Handle struct {
-	dir afero.Fs
+	dir  afero.Fs
+	list []linuxprocess.ProcListItem
 }
 
 func New(dir afero.Fs) Handle {
 	return Handle{
-		dir: dir,
+		dir:  dir,
+		list: linuxprocess.List(),
 	}
+}
+
+func (h Handle) ListRunning() []linuxprocess.ProcListItem {
+	return h.list
 }
 
 type CreateQuery struct {

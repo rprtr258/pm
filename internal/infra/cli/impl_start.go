@@ -90,13 +90,14 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 }
 
 // implStart already created processes
-func implStart(db db.Handle, ids ...core.PMID) error {
-	list := linuxprocess.List()
+func implStart(
+	db db.Handle,
+	ids ...core.PMID,
+) error {
 	return errors.Combine(fun.Map[error](func(id core.PMID) error {
 		return errors.Wrapf(func() error {
 			// run processes by their ids in database
-			if _, ok := linuxprocess.StatPMID(list, id, app.EnvPMID); ok {
-				// TODO: If process is already running, check if it is updated, if so, restart it, else do nothing
+			if _, ok := linuxprocess.StatPMID(db.ListRunning(), id, app.EnvPMID); ok {
 				log.Info().Stringer("id", id).Msg("already running")
 				return nil
 			}
