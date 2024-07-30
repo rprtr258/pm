@@ -93,6 +93,6 @@ func Run(argv []string) error {
 				cmd.UsageString()))
 	})
 
-	_app.SetArgs(argv[1:]) // TODO: govno ebanoe
+	_app.SetArgs(argv[1:])
 	return _app.Execute()
 }
