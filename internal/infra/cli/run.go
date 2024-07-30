@@ -260,6 +260,7 @@ func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 var _cmdRun = func() *cobra.Command {
 	var name, cwd, config, watch string
 	var tags []string
+	var maxRestarts uint
 	cmd := &cobra.Command{
 		Use:     "run",
 		Short:   "create and run new process",
@@ -309,7 +310,7 @@ var _cmdRun = func() *cobra.Command {
 					StderrFile:  fun.Invalid[string](),
 					KillTimeout: 0,
 					Autorestart: false,
-					MaxRestarts: 0,
+					MaxRestarts: maxRestarts,
 					Startup:     false,
 					DependsOn:   nil,
 				}
@@ -357,22 +358,6 @@ var _cmdRun = func() *cobra.Command {
 	cmd.Flags().StringVar(&cwd, "cwd", "", "set working directory")
 	addFlagConfig(cmd, &config)
 	cmd.Flags().StringVar(&watch, "watch", "", "restart on changes to files matching specified regex")
-	// TODO: not yet implemented run parameters
-	// // logs parameters
-	// TODO: enable by default, this option only regulates displaying, also use for printing logs in order
-	// &cli.BoolFlag{Name: "time", Usage: "enable time logging"},
-	// // restart parameters
-	// &cli.StringFlag{
-	// 	Name:    "cron-restart",
-	// 	Aliases: []string{"c", "cron"},
-	// 	Usage:   "restart a running process based on a cron pattern",
-	// },
-	// &cli.IntFlag{Name:  "max-restarts", Usage: "only restart the script COUNT times"},
-	// &cli.BoolFlag{Name: "no-autorestart", Usage: "start an app without automatic restart"},
-	// &cli.DurationFlag{Name: "restart-delay", Usage: "specify a delay between restarts"},
-	// &cli.DurationFlag{Name: "exp-backoff-restart-delay", Usage: "specify a delay between restarts"},
-	// // others
-	// &cli.IntFlag{Name: "gid", Usage: "run process with <gid> rights"},
-	// &cli.IntFlag{Name: "uid", Usage: "run process with <uid> rights"},
+	cmd.Flags().UintVar(&maxRestarts, "max-restarts", 0, "autorestart process, giving up after COUNT times")
 	return cmd
 }()
