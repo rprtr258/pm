@@ -37,7 +37,10 @@ func implStop(db db.Handle, ids ...core.PMID) error {
 
 			// NOTE: since we are running the process behind the shim, we don't
 			// need to send SIGKILL to it, shim will handle everything for us
-			log.Debug().Int("shim_pid", proc.ShimPID).Str("id", id.String()).Msg("sending SIGTERM to shim")
+			log.Debug().
+				Int("shim_pid", proc.ShimPID).
+				Str("id", id.String()).
+				Msg("sending SIGTERM to shim")
 			if errKill := syscall.Kill(-proc.ShimPID, syscall.SIGTERM); errKill != nil {
 				switch {
 				case stdErrors.Is(errKill, os.ErrProcessDone):
@@ -52,7 +55,7 @@ func implStop(db db.Handle, ids ...core.PMID) error {
 			// wait for process to stop
 			for {
 				time.Sleep(100 * time.Millisecond)
-				if _, ok := linuxprocess.StatPMID(linuxprocess.List(), id); !ok {
+				if _, ok := linuxprocess.StatPMID(db.ListRunning(), id); !ok {
 					break
 				}
 			}

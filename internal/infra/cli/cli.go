@@ -10,9 +10,10 @@ import (
 
 var _app = func() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "pm",
-		Short:        "manage running processes",
-		SilenceUsage: true,
+		Use:           "pm",
+		Short:         "manage running processes",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 	}
 
 	cmd.AddCommand(_cmdVersion)

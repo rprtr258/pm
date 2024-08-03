@@ -14,7 +14,7 @@ require (
 	github.com/nxadm/tail v1.4.11
 	github.com/rogpeppe/go-internal v1.12.0
 	github.com/rprtr258/cmp v0.0.2
-	github.com/rprtr258/fun v0.0.18
+	github.com/rprtr258/fun v0.0.19
 	github.com/rprtr258/scuf v0.0.6
 	github.com/rs/zerolog v1.33.0
 	github.com/shirou/gopsutil/v3 v3.24.5

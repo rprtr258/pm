@@ -78,19 +78,18 @@ func InitRealDir(dir string) (afero.Fs, error) {
 }
 
 type Handle struct {
-	dir  afero.Fs
-	list []linuxprocess.ProcListItem
+	dir afero.Fs
 }
 
 func New(dir afero.Fs) Handle {
 	return Handle{
-		dir:  dir,
-		list: linuxprocess.List(),
+		dir: dir,
 	}
 }
 
+// WARN: slow
 func (h Handle) ListRunning() []linuxprocess.ProcListItem {
-	return h.list
+	return linuxprocess.List()
 }
 
 type CreateQuery struct {
