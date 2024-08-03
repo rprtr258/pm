@@ -60,7 +60,7 @@ func pruneLogs(db db.Handle, config core.Config) error {
 
 		// proc not found, remove log file
 		filename := filepath.Join(config.DirLogs, logFile.Name())
-		log.Info().
+		log.Debug().
 			Str("file", filename).
 			Msg("pruning log file")
 		if errRemove := os.Remove(filename); errRemove != nil {

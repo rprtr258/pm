@@ -3,6 +3,7 @@ package e2e
 import (
 	"bytes"
 	"encoding/json"
+	"os"
 	"os/exec"
 	"testing"
 
@@ -84,11 +85,14 @@ func (pm pM) Delete(selectors ...string) {
 }
 
 func (pm pM) List() []core.Proc {
-	logsBytes, err := pm.exec("l", "-f", "json").Output()
+	cmd := pm.exec("l", "-f", "json")
+	cmd.Stderr = os.Stderr
+
+	logsBytes, err := cmd.Output()
 	must.NoError(pm.t, err)
 
 	var list []core.Proc
-	must.NoError(pm.t, json.Unmarshal(logsBytes, &list))
+	must.NoError(pm.t, json.Unmarshal(logsBytes, &list), must.Values("output", string(logsBytes)))
 
 	return list
 }

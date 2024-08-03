@@ -105,7 +105,7 @@ flowchart TB
 - shim - monitors and restarts processes, handle watches, signals and shutdowns
 
 ### PM directory structure
-`pm` uses directory `$HOME/.pm` to store data. Layout is following:
+`pm` uses directory `$HOME/.pm` to store data by default. `PM_HOME` environment variable can be used to change this. Layout is following:
 
 ```sh
 $HOME/.pm/

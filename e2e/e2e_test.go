@@ -22,14 +22,6 @@ import (
 	"github.com/rprtr258/pm/internal/core"
 )
 
-var homeDir = func() string {
-	res, err := os.UserHomeDir()
-	if err != nil {
-		panic(err.Error())
-	}
-	return res
-}()
-
 // _e2eTestDir is the directory containing the e2e tests source code
 var _e2eTestDir = func() string {
 	_, filename, _, _ := runtime.Caller(0)
@@ -75,32 +67,25 @@ func httpResponse(t *testing.T, endpoint string) (int, string) {
 	return resp.StatusCode, string(body)
 }
 
+var pmDir = func() string {
+	res, err := os.MkdirTemp(os.TempDir(), "pm-e2e-test-*")
+	if err != nil {
+		log.Fatal().Err(err).Msg("create temp dir")
+	}
+	return res
+}()
+
 func testMain(m *testing.M) int {
 	pm := pM{t: nil}
 
 	{
-		// backup pm dir if exists
-		oldDirExists := true
-		pmDirOld := filepath.Join(homeDir, ".pm")
-		pmDirBackup := filepath.Join(homeDir, ".pm.bak")
-		if err := os.Rename(pmDirOld, pmDirBackup); err != nil {
-			if os.IsNotExist(err) {
-				oldDirExists = false
-			} else {
-				log.Error().Err(err).Msg("backup pm dir")
+		os.Setenv("PM_HOME", pmDir)
+		// cleanup
+		defer func() {
+			if err := os.RemoveAll(pmDir); err != nil {
+				log.Warn().Err(err).Msg("remove pm dir")
 			}
-		}
-		// restore pm dir backup
-		if oldDirExists {
-			defer func() {
-				if err := os.RemoveAll(pmDirOld); err != nil {
-					log.Fatal().Err(err).Msg("remove pm dir")
-				}
-				if err := os.Rename(pmDirBackup, pmDirOld); err != nil {
-					log.Fatal().Err(err).Msg("restore pm dir backup")
-				}
-			}()
-		}
+		}()
 	}
 
 	if err := pm.delete("all"); err != nil {
@@ -221,7 +206,7 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 
 	must.Wait(t, wait.InitialSuccess(
 		wait.BoolFunc(func() bool {
-			d, err := os.ReadFile(filepath.Join(homeDir, ".pm", "logs", string(serverID)+".stdout"))
+			d, err := os.ReadFile(filepath.Join(pmDir, "logs", string(serverID)+".stdout"))
 			test.NoError(t, err, test.Sprint("read server stdout"))
 			return string(d) == "123\n"
 		}),

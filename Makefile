@@ -18,6 +18,8 @@ GOLANGCILINTBIN=${BINDIR}/golangci-lint_${GOLANGCILINTVER}
 GOCRITICVER=v0.11.4
 GOCRITICBIN=${BINDIR}/gocritic_${GOCRITICVER}
 
+GOTESTSUM=go run gotest.tools/gotestsum@latest
+
 
 .PHONY: help
 help: # show list of all commands
@@ -93,11 +95,10 @@ docs: # generate docs
 ## Test
 
 test: # run tests
-	@go build .
-	@go run gotest.tools/gotestsum@latest --format dots-v2 ./...
+	@${GOTESTSUM} --format dots-v2 ./...
 
 test-e2e: # run integration tests
-	@go run gotest.tools/gotestsum@latest --format dots-v2 ./e2e/...
+	@${GOTESTSUM} --format dots-v2 ./e2e/...
 
 test-e2e-docker: # run integration tests in docker
 	@docker build -t pm-e2e --file e2e/Dockerfile .
