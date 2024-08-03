@@ -72,7 +72,6 @@ func newVM() *jsonnet.VM {
 	return vm
 }
 
-//nolint:funlen // no
 func LoadConfigs(filename string) ([]RunConfig, error) {
 	if !isConfigFile(filename) {
 		return nil, errors.Newf("invalid config file %q", filename)

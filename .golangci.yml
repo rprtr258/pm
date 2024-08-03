@@ -153,6 +153,12 @@ linters-settings:
     ignorePackageGlobs:
       - github.com/rprtr258/xerr
 
+  gosec:
+    # To specify the configuration of rules.
+    config:
+      # Maximum allowed permissions mode for os.WriteFile and ioutil.WriteFile
+      G306: "0640"
+
 linters:
   disable-all: true
   enable:
