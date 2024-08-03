@@ -12,9 +12,8 @@ import (
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
-// TODO: set at compile time
-// see https://developers.redhat.com/articles/2022/11/14/3-ways-embed-commit-hash-go-programs#2__using_go_generate
-const Version = "0.1.0"
+// NOTE: set at compile time using ldflags
+var Version = "dev"
 
 type Config struct {
 	Version        string

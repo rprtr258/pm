@@ -80,7 +80,10 @@ lint-go: install-linter # run go linter
 	@${GOLANGCILINTBIN} run ./...
 	@${GOCRITICBIN} check -enableAll -disable='rangeValCopy,hugeParam,unnamedResult' ./...
 
-lint: lint-go # run all linters
+lint-goreleaser: # run goreleaser linter
+	goreleaser check
+
+lint: lint-go lint-goreleaser # run all linters
 
 docs: # generate docs
 	jsonnet --string --multi . docs.jsonnet

@@ -1,3 +1,4 @@
 pm
-bin/
-index.html
+/bin/
+/index.html
+/dist/

@@ -123,3 +123,11 @@ $HOME/.pm/
 - supports only `linux` now
 - I can fix problems/add features as I need, independent of whether they work or not in `pm2`, because I don't know `js`
 - fast and convenient (I hope so)
+
+### Release
+On `master` branch:
+```sh
+git tag v1.2.3
+git push --tags
+goreleaser release --clean
+```
