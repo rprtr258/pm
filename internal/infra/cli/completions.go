@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/lo"
 )
 
 func registerFlagCompletionFunc(
@@ -68,11 +67,25 @@ func completeFlagIDs(
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
 
+// Flatten returns array single level deep.
+func Flatten[T any](collection ...[]T) []T {
+	total := 0
+	for _, coll := range collection {
+		total += len(coll)
+	}
+
+	res := make([]T, 0, total)
+	for _, coll := range collection {
+		res = append(res, coll...)
+	}
+	return res
+}
+
 func completeArgGenericSelector(
 	cmd *cobra.Command, args []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
 	names, _ := completeFlagName(cmd, args, prefix)
 	tags, _ := completeFlagTag(cmd, args, prefix)
-	return lo.Flatten(names, tags), cobra.ShellCompDirectiveNoFileComp
+	return Flatten(names, tags), cobra.ShellCompDirectiveNoFileComp
 }
