@@ -19,19 +19,6 @@ import (
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
-func MigrateConfig(config core.Config) error {
-	if config.Version == core.Version {
-		return nil
-	}
-
-	config.Version = core.Version
-	if errWrite := core.WriteConfig(config); errWrite != nil {
-		return errors.Wrapf(errWrite, "write config for migrate, version=%s", core.Version)
-	}
-
-	return nil
-}
-
 func ensureDir(dirname string) error {
 	if _, errStat := os.Stat(dirname); errStat == nil {
 		return nil
@@ -134,18 +121,15 @@ func New() (db.Handle, core.Config, error) {
 			return errors.Wrap(errConfig, "config")
 		}
 
+		setupLogger(config)
+
 		if err := ensureDir(config.DirLogs); err != nil {
 			return errors.Wrapf(err, "ensure logs dir %s", config.DirLogs)
 		}
 
-		if errMigrate := MigrateConfig(config); errMigrate != nil {
-			return errors.Wrap(errMigrate, "migrate")
+		if core.Version != "dev" && config.Version != core.Version {
+			return errors.Newf("config version mismatch, config=%s, pm=%s", config.Version, core.Version)
 		}
-
-		// // TODO: uncomment
-		// if _, errMigrate := db.Migrate(config.DirDB, config.Version, core.Version); errMigrate != nil {
-		// 	retu errors.Wrap(errMigrate, "migrate")
-		// }
 
 		var errDB error
 		dbFs, errDB = db.InitRealDir(config.DirDB)
@@ -161,8 +145,6 @@ func New() (db.Handle, core.Config, error) {
 	}(); err != nil {
 		return fun.Zero[db.Handle](), fun.Zero[core.Config](), err
 	}
-
-	setupLogger(config)
 
 	return db.New(dbFs), config, nil
 }
