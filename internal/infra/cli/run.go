@@ -363,6 +363,6 @@ var _cmdRun = func() *cobra.Command {
 	cmd.Flags().StringVar(&cwd, "cwd", "", "set working directory")
 	addFlagConfig(cmd, &config)
 	cmd.Flags().StringVar(&watch, "watch", "", "restart on changes to files matching specified regex")
-	cmd.Flags().UintVar(&maxRestarts, "max-restarts", 1, "autorestart process, giving up after COUNT times")
+	cmd.Flags().UintVar(&maxRestarts, "max-restarts", 0, "autorestart process, giving up after COUNT times")
 	return cmd
 }()
