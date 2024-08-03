@@ -104,6 +104,8 @@ func setupLogger(config core.Config) {
 }
 
 func New() (db.Handle, core.Config, error) {
+	setupLogger(core.DefaultConfig)
+
 	var (
 		config core.Config
 		dbFs   afero.Fs
