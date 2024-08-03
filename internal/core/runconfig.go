@@ -55,26 +55,19 @@ func newVM() *jsonnet.VM {
 				return nil, errors.Newf("wrong number of arguments %d", len(args))
 			}
 
-			filename, ok := args[0].(string)
+			data, ok := args[0].(string)
 			if !ok {
-				return nil, errors.Newf("filename must be a string, but was %T", args[0])
+				return nil, errors.Newf("dotenv must be a string, but was %T", args[0])
 			}
 
-			// TODO: somehow relative to cwd
-
-			data, errRead := os.ReadFile(filename)
-			if errRead != nil {
-				return nil, errors.Wrapf(errRead, "read file %q", filename)
-			}
-
-			env, errUnmarshal := godotenv.UnmarshalBytes(data)
+			env, errUnmarshal := godotenv.Unmarshal(data)
 			if errUnmarshal != nil {
-				return nil, errors.Wrapf(errUnmarshal, "parse dotenv file %q", filename)
+				return nil, errors.Wrapf(errUnmarshal, "parse dotenv")
 			}
 
 			return env, nil
 		},
-		Params: ast.Identifiers{"filename"},
+		Params: ast.Identifiers{"dotenv"},
 	})
 	return vm
 }

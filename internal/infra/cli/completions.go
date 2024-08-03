@@ -67,25 +67,17 @@ func completeFlagIDs(
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
 
-// Flatten returns array single level deep.
-func Flatten[T any](collection ...[]T) []T {
-	total := 0
-	for _, coll := range collection {
-		total += len(coll)
-	}
-
-	res := make([]T, 0, total)
-	for _, coll := range collection {
-		res = append(res, coll...)
-	}
-	return res
-}
-
 func completeArgGenericSelector(
-	cmd *cobra.Command, args []string,
+	cmd *cobra.Command,
+	args []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
 	names, _ := completeFlagName(cmd, args, prefix)
 	tags, _ := completeFlagTag(cmd, args, prefix)
-	return Flatten(names, tags), cobra.ShellCompDirectiveNoFileComp
+
+	flatten := make([]string, 0, len(names)+len(tags))
+	flatten = append(flatten, names...)
+	flatten = append(flatten, tags...)
+
+	return flatten, cobra.ShellCompDirectiveNoFileComp
 }

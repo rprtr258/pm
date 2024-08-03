@@ -1,7 +1,7 @@
 local dotenv = std.native("dotenv");
 local now = std.extVar("now");
 
-[
+function(now, dotenv) [
   {
     name: "qmen24-" + now,
     command: "sleep",
@@ -41,7 +41,7 @@ local now = std.extVar("now");
     env: {
       TEST_VAR: "test1",
       FROMCONFIG: "fromconfig456",
-    } + dotenv(".test.env")
+    } + dotenv(importstr ".test.env")
   },
   {
     name: "web",
