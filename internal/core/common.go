@@ -21,10 +21,10 @@ var _userHome = func() string {
 }()
 
 var (
-	_dirHome      = cmp.Or(os.Getenv("PM_HOME"), filepath.Join(_userHome, ".pm"))
-	_dirProcsLogs = filepath.Join(_dirHome, "logs")
-	_configPath   = filepath.Join(_dirHome, "config.json")
-	_dirDB        = filepath.Join(_dirHome, "db")
+	DirHome       = cmp.Or(os.Getenv("PM_HOME"), filepath.Join(_userHome, ".pm"))
+	_dirProcsLogs = filepath.Join(DirHome, "logs")
+	_configPath   = filepath.Join(DirHome, "config.json")
+	_dirDB        = filepath.Join(DirHome, "db")
 )
 
 type LogType int

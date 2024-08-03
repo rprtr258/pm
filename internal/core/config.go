@@ -28,11 +28,6 @@ var DefaultConfig = Config{
 	DirDB:   _dirDB,
 }
 
-// TODO: use for separate running contexts
-func DirHome() string {
-	return _dirHome
-}
-
 func writeConfig(config Config) error {
 	configBytes, errMarshal := json.Marshal(config)
 	if errMarshal != nil {

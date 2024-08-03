@@ -111,10 +111,8 @@ func New() (db.Handle, core.Config, error) {
 		dbFs   afero.Fs
 	)
 	if err := func() error {
-		dirHome := core.DirHome()
-
-		if err := ensureDir(dirHome); err != nil {
-			return errors.Wrapf(err, "ensure home dir %s", dirHome)
+		if err := ensureDir(core.DirHome); err != nil {
+			return errors.Wrapf(err, "ensure home dir %s", core.DirHome)
 		}
 
 		var errConfig error
