@@ -3,8 +3,8 @@ module github.com/rprtr258/pm
 go 1.22
 
 require (
-	github.com/charmbracelet/huh v0.4.2
-	github.com/charmbracelet/lipgloss v0.11.0
+	github.com/charmbracelet/huh v0.5.2
+	github.com/charmbracelet/lipgloss v0.12.1
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/go-jsonnet v0.20.0
@@ -14,14 +14,14 @@ require (
 	github.com/nxadm/tail v1.4.11
 	github.com/rogpeppe/go-internal v1.12.0
 	github.com/rprtr258/cmp v0.0.2
-	github.com/rprtr258/fun v0.0.16
+	github.com/rprtr258/fun v0.0.17
 	github.com/rprtr258/scuf v0.0.6
 	github.com/rs/zerolog v1.33.0
 	github.com/shirou/gopsutil/v3 v3.24.5
 	github.com/shoenig/test v1.8.2
 	github.com/spf13/afero v1.11.0
 	github.com/spf13/cobra v1.8.1
-	golang.org/x/term v0.21.0
+	golang.org/x/term v0.22.0
 )
 
 require (
@@ -30,9 +30,9 @@ require (
 	github.com/catppuccin/go v0.2.0 // indirect
 	github.com/charmbracelet/bubbles v0.18.0 // indirect
 	github.com/charmbracelet/bubbletea v0.26.6 // indirect
-	github.com/charmbracelet/x/ansi v0.1.2 // indirect
-	github.com/charmbracelet/x/exp/strings v0.0.0-20240625164403-2627ec16405d // indirect
-	github.com/charmbracelet/x/input v0.1.2 // indirect
+	github.com/charmbracelet/x/ansi v0.1.4 // indirect
+	github.com/charmbracelet/x/exp/strings v0.0.0-20240725160154-f9f6568126ec // indirect
+	github.com/charmbracelet/x/input v0.1.3 // indirect
 	github.com/charmbracelet/x/term v0.1.1 // indirect
 	github.com/charmbracelet/x/windows v0.1.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -45,7 +45,8 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
-	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
@@ -57,7 +58,7 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
