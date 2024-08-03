@@ -14,16 +14,6 @@ var _app = func() *cobra.Command {
 		Short:        "manage running processes",
 		SilenceUsage: true,
 	}
-	// If sets and script’s memory usage goes about the configured number, pm2 restarts the script.
-	// Uses human-friendly suffixes: ‘K’ for kilobytes, ‘M’ for megabytes, ‘G’ for gigabytes’, etc. Eg “150M”.
-	// "max-memory-restart": {Int, "Restart the app if an amount of memory is exceeded (in bytes)"},
-	// "attach":             {Bool, "attach logging after your start/restart/stop/reload"},
-	// "listen-timeout":     {Duration, "listen timeout on application reload"},
-	// "no-daemon":          {Bool, "run pm2 daemon in the foreground if it doesn\t exist already"},
-	// "no-vizion":          {Bool, "start an app without vizion feature (versioning control)"},
-	// "parallel":           {Int, "number of parallel actions (for restart/reload)"},
-	// "silent":             {Bool, "hide all messages"}.Aliases("s"),
-	// "wait-ip":            {Bool, "override systemd script to wait for full internet connectivity to launch pm2"},
 
 	cmd.AddCommand(_cmdVersion)
 	cmd.AddCommand(_cmdShim)

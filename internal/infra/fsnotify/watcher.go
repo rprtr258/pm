@@ -242,7 +242,7 @@ func (w *RecursiveWatcher) addDir(dir string, ignoreErrors bool) error {
 		}
 		// Do not descend into gitDir if set. Note there is logic in Watcher.run
 		// that relies on this not being recursive.
-		if w.gitDir != "" && w.gitDir == path {
+		if w.gitDir != "" && w.gitDir == path || filepath.Base(path) == ".git" {
 			return fs.SkipDir
 		}
 		// Only need to create a watcher if we don't have one
