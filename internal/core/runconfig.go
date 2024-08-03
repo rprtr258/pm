@@ -53,7 +53,7 @@ func newVM() *jsonnet.VM {
 		Name: "dotenv",
 		Func: func(args []any) (any, error) {
 			if len(args) != 1 {
-				return nil, errors.Newf("wrong number of arguments %d, expected: filename", len(args))
+				return nil, errors.Newf("wrong number of arguments %d", len(args))
 			}
 
 			filename, ok := args[0].(string)
@@ -65,17 +65,15 @@ func newVM() *jsonnet.VM {
 
 			data, errRead := os.ReadFile(filename)
 			if errRead != nil {
-				return nil, errors.Wrapf(errRead, "read env file %q", filename)
+				return nil, errors.Wrapf(errRead, "read file %q", filename)
 			}
 
 			env, errUnmarshal := godotenv.UnmarshalBytes(data)
 			if errUnmarshal != nil {
-				return nil, errors.Wrapf(errUnmarshal, "parse env file %q", filename)
+				return nil, errors.Wrapf(errUnmarshal, "parse dotenv file %q", filename)
 			}
 
-			return lo.MapValues(env, func(v string, _ string) any {
-				return v
-			}), nil
+			return env, nil
 		},
 		Params: ast.Identifiers{"filename"},
 	})

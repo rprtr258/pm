@@ -1,6 +1,9 @@
+local dotenv = std.native("dotenv");
+local now = std.extVar("now");
+
 [
   {
-    name: "qmen24-",// + std.extVar("now"),
+    name: "qmen24-" + now,
     command: "sleep",
     args: [10],
   },
@@ -37,7 +40,8 @@
     command: "rwenv",
     env: {
       TEST_VAR: "test1",
-    } //+ std.native("dotenv")(".test.env")
+      FROMCONFIG: "fromconfig456",
+    } + dotenv(".test.env")
   },
   {
     name: "web",
