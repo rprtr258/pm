@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/rprtr258/pm/internal/core"
+	"github.com/rprtr258/pm/internal/infra/errors"
 	"github.com/rprtr258/pm/internal/infra/linuxprocess"
 )
 
@@ -65,11 +66,11 @@ func mapFromRepo(proc procData) core.Proc {
 func InitRealDir(dir string) (afero.Fs, error) {
 	if _, err := os.Stat(dir); err != nil {
 		if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("check directory %q: %w", dir, err)
+			return nil, errors.Newf("check directory %q: %w", dir, err)
 		}
 
 		if err := os.Mkdir(dir, 0o755); err != nil {
-			return nil, fmt.Errorf("create directory %q: %w", dir, err)
+			return nil, errors.Newf("create directory %q: %w", dir, err)
 		}
 	}
 

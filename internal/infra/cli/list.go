@@ -322,12 +322,12 @@ var _cmdList = func() *cobra.Command {
 		RunE: func(_ *cobra.Command, args []string) error {
 			less, err := unmarshalFlagSort(sort)
 			if err != nil {
-				return fmt.Errorf("unmarshal flag sort: %w", err)
+				return errors.Newf("unmarshal flag sort: %w", err)
 			}
 
 			format, err := unmarshalFlagListFormat(listFormat)
 			if err != nil {
-				return fmt.Errorf("unmarshal flag format: %w", err)
+				return errors.Newf("unmarshal flag format: %w", err)
 			}
 
 			filterFunc := core.FilterFunc(

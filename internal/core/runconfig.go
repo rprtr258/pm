@@ -53,12 +53,12 @@ func newVM() *jsonnet.VM {
 		Name: "dotenv",
 		Func: func(args []any) (any, error) {
 			if len(args) != 1 {
-				return nil, fmt.Errorf("wrong number of arguments")
+				return nil, errors.Newf("wrong number of arguments %d, expected: filename", len(args))
 			}
 
 			filename, ok := args[0].(string)
 			if !ok {
-				return nil, errors.Newf("filename must be a string, but was %q", args[0])
+				return nil, errors.Newf("filename must be a string, but was %T", args[0])
 			}
 
 			// TODO: somehow relative to cwd

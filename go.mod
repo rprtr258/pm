@@ -21,7 +21,6 @@ require (
 	github.com/shoenig/test v1.8.2
 	github.com/spf13/afero v1.11.0
 	github.com/spf13/cobra v1.8.1
-	golang.org/x/mod v0.18.0
 	golang.org/x/term v0.21.0
 )
 
