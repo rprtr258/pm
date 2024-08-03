@@ -13,11 +13,3 @@ func Flatten[T any](collection ...[]T) []T {
 	}
 	return res
 }
-
-func MapValues[K comparable, V, R any](in map[K]V, f func(K, V) R) map[K]R {
-	result := make(map[K]R, len(in))
-	for k, v := range in {
-		result[k] = f(k, v)
-	}
-	return result
-}

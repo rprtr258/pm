@@ -16,7 +16,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core/namegen"
 	"github.com/rprtr258/pm/internal/infra/errors"
-	"github.com/rprtr258/pm/internal/lo"
 )
 
 // RunConfig - configuration of process to manage
@@ -92,15 +91,15 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 	}
 
 	type configScanDTO struct {
-		Name      *string        `json:"name"`
-		Cwd       *string        `json:"cwd"`
-		Env       map[string]any `json:"env"`
-		Command   string         `json:"command"`
-		Args      []any          `json:"args"`
-		Tags      []string       `json:"tags"`
-		Watch     *string        `json:"watch"`
-		Startup   bool           `json:"startup"`
-		DependsOn []string       `json:"depends_on"`
+		Name      *string           `json:"name"`
+		Cwd       *string           `json:"cwd"`
+		Env       map[string]string `json:"env"`
+		Command   string            `json:"command"`
+		Args      []any             `json:"args"`
+		Tags      []string          `json:"tags"`
+		Watch     *string           `json:"watch"`
+		Startup   bool              `json:"startup"`
+		DependsOn []string          `json:"depends_on"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
@@ -157,27 +156,9 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 					return argStr
 				}
 			}, config.Args...),
-			Tags: config.Tags,
-			Cwd:  cwd,
-			Env: lo.MapValues(config.Env, func(name string, value any) string {
-				switch v := value.(type) {
-				case fmt.Stringer:
-					return v.String()
-				case int, int8, int16, int32, int64,
-					uint, uint8, uint16, uint32, uint64,
-					float32, float64, bool, string:
-					return fmt.Sprint(v)
-				default:
-					valStr := fmt.Sprintf("%v", v)
-					log.Error().
-						Str("value", valStr).
-						Str("name", name).
-						Any("config", config).
-						Msg("unknown env value type")
-
-					return valStr
-				}
-			}),
+			Tags:        config.Tags,
+			Cwd:         cwd,
+			Env:         config.Env,
 			Watch:       watch,
 			StdoutFile:  fun.Zero[fun.Option[string]](),
 			StderrFile:  fun.Zero[fun.Option[string]](),
