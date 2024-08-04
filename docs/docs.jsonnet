@@ -17,13 +17,15 @@ local links = [
 ];
 // available themes as to https://docsify.js.org/#/themes
 // vue, buble, dark, pure
-local theme = "//cdn.jsdelivr.net/npm/docsify@4/lib/themes/%(theme)s.css" % {theme: "buble"};
+local theme = "https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/%(theme)s.css" % {theme: "buble"};
 local config = {
   subMaxLevel: 1,
   maxLevel: 3,
   auto2top: true,
   repo: repo,
   routerMode: "history",
+  relativePath: true,
+  basePath: "https://rprtr258.github.io/pm/",
   homepage: "https://raw.githubusercontent.com/rprtr258/pm/master/readme.md",
 };
 local style = renderCSS({
@@ -55,18 +57,19 @@ local dom = ["html", {lang: "en"},
     ["script", {}, |||
       window.$docsify = %(config)s;
     ||| % {config: std.manifestJson(config)}],
-    ["script", {src: "//cdn.jsdelivr.net/npm/docsify@4.12.2/lib/docsify.min.js"}],
-    ["script", {src: "//cdn.jsdelivr.net/npm/prismjs@1.28.0/prism.min.js"}],
-    ["script", {src: "//unpkg.com/docsify/lib/plugins/search.min.js"}],
+    ["script", {src: "https://cdn.jsdelivr.net/npm/docsify@4.12.2/lib/docsify.js"}],
+    ["script", {src: "https://cdn.jsdelivr.net/npm/prismjs@1.28.0/prism.min.js"}],
+    ["script", {src: "https://unpkg.com/docsify/lib/plugins/search.min.js"}],
     ["script", {type: "module"}, |||
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
       mermaid.initialize({ startOnLoad: true });
       window.mermaid = mermaid;
     |||],
-    ["script", {src: "//unpkg.com/docsify-mermaid@2.0.1/dist/docsify-mermaid.js"}],
+    ["script", {src: "https://unpkg.com/docsify-mermaid@2.0.1/dist/docsify-mermaid.js"}],
   ],
 ];
 
 {
   "index.html": "<!DOCTYPE html>"+std.manifestXmlJsonml(dom),
+  "readme.md": importstr "../readme.md",
 }
