@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"time"
-
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
@@ -47,33 +45,22 @@ func listProcs(db db.Handle) procSeq {
 	list := linuxprocess.List()
 	return procSeq{func(yield func(core.ProcStat) bool) {
 		for _, proc := range procs {
-			var procStat core.ProcStat
 			stat, ok := linuxprocess.StatPMID(list, proc.ID)
+			procStat := core.ProcStat{
+				Proc:    proc,
+				ShimPID: stat.ShimPID,
+			}
 			switch {
 			case !ok: // no shim at all
-				procStat = core.ProcStat{
-					Proc:      proc,
-					ShimPID:   stat.ShimPID,
-					Status:    core.StatusStopped,
-					StartTime: time.Time{}, CPU: 0, Memory: 0, ChildPID: fun.Invalid[int](),
-				}
+				procStat.Status = core.StatusStopped
 			case stat.ChildStartTime.IsZero(): // shim is running but no child
-				procStat = core.ProcStat{
-					Proc:      proc,
-					ShimPID:   stat.ShimPID,
-					Status:    core.StatusCreated,
-					StartTime: time.Time{}, CPU: 0, Memory: 0, ChildPID: fun.Invalid[int](),
-				}
+				procStat.Status = core.StatusCreated
 			default: // shim is running and child is happy too
-				procStat = core.ProcStat{
-					Proc:      proc,
-					ShimPID:   stat.ShimPID,
-					StartTime: stat.ChildStartTime,
-					CPU:       stat.CPU,
-					Memory:    stat.Memory,
-					Status:    core.StatusRunning,
-					ChildPID:  fun.Valid(stat.ChildPID),
-				}
+				procStat.StartTime = stat.ChildStartTime
+				procStat.CPU = stat.CPU
+				procStat.Memory = stat.Memory
+				procStat.Status = core.StatusRunning
+				procStat.ChildPID = fun.Valid(stat.ChildPID)
 			}
 			yield(procStat)
 		}
