@@ -115,14 +115,6 @@ var _cmdSignal = func() *cobra.Command {
 			return nil
 		},
 	}
-	// &cli.BoolFlag{
-	// 	Name:  "kill",
-	// 	Usage: "kill process with SIGKILL instead of SIGINT",
-	// },
-	// &cli.BoolFlag{
-	// 	Name:  "no-treekill",
-	// 	Usage: "Only kill the main process, not detached children",
-	// },
 	addFlagInteractive(cmd, &interactive)
 	addFlagNames(cmd, &names)
 	addFlagTags(cmd, &tags)
