@@ -1,12 +1,12 @@
 .github/
-.pm2/
 .pms/
 bin/
 .bashrc
 .dockerignore
 .gitignore
-.golangci.yml
+.golangci.yaml
+.goreleaser.yaml
 config.jsonnet
-main
+pm
 Makefile
 readme.md

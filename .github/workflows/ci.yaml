@@ -43,7 +43,7 @@ jobs:
         run: |
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-            ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
+            ssh-agent -a $SSH_AUTH_SOCK > /dev/null
             ssh-add - <<< "${{ secrets.GO_MODULE_PRIVATE_KEY }}"
             echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
 
@@ -57,7 +57,7 @@ jobs:
           GOPRIVATE: github.com/rprtr258
         with:
           version: latest
-          args: --config=.golangci.yml
+          args: --config=.golangci.yaml
           only-new-issues: true # show only new issues if it's a pull request
 
   test:
@@ -78,7 +78,7 @@ jobs:
         run: |
             mkdir -p ~/.ssh
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-            ssh-agent -a $SSH_AUTH_SOCK > /dev/null	
+            ssh-agent -a $SSH_AUTH_SOCK > /dev/null
             ssh-add - <<< "${{ secrets.GO_MODULE_PRIVATE_KEY }}"
             echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
 
