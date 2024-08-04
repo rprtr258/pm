@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/rprtr258/fun"
 	"github.com/spf13/cobra"
@@ -16,7 +17,7 @@ import (
 )
 
 func removeFile(name string) error {
-	if errRm := os.Remove(name); errRm != nil {
+	if errRm := syscall.Unlink(name); errRm != nil {
 		if stdErrors.Is(errRm, fs.ErrNotExist) {
 			return nil
 		}
