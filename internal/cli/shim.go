@@ -17,9 +17,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/errors"
-	"github.com/rprtr258/pm/internal/infra/fsnotify"
-	"github.com/rprtr258/pm/internal/infra/linuxprocess"
+	"github.com/rprtr258/pm/internal/errors"
+	"github.com/rprtr258/pm/internal/fsnotify"
+	"github.com/rprtr258/pm/internal/linuxprocess"
 	"github.com/rprtr258/pm/internal/logrotation"
 )
 

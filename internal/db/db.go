@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/errors"
-	"github.com/rprtr258/pm/internal/infra/linuxprocess"
+	"github.com/rprtr258/pm/internal/errors"
+	"github.com/rprtr258/pm/internal/linuxprocess"
 )
 
 // procData - db representation of core.ProcData

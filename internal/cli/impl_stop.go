@@ -10,9 +10,9 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/db"
-	"github.com/rprtr258/pm/internal/infra/errors"
-	"github.com/rprtr258/pm/internal/infra/linuxprocess"
+	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/pm/internal/errors"
+	"github.com/rprtr258/pm/internal/linuxprocess"
 )
 
 func implStop(db db.Handle, ids ...core.PMID) error {

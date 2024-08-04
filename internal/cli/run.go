@@ -17,9 +17,9 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/core/namegen"
-	"github.com/rprtr258/pm/internal/infra/db"
-	"github.com/rprtr258/pm/internal/infra/errors"
-	"github.com/rprtr258/pm/internal/infra/linuxprocess"
+	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/pm/internal/errors"
+	"github.com/rprtr258/pm/internal/linuxprocess"
 )
 
 // compareTags and return true if equal

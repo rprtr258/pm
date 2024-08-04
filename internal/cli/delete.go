@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/db"
-	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/pm/internal/errors"
 )
 
 func removeFile(name string) error {

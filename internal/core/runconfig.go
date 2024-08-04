@@ -15,7 +15,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core/namegen"
-	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/errors"
 )
 
 // RunConfig - configuration of process to manage

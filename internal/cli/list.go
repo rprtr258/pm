@@ -17,7 +17,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/errors"
 	"github.com/rprtr258/pm/internal/table"
 )
 

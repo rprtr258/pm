@@ -7,9 +7,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"github.com/rprtr258/pm/internal/config"
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/config"
-	"github.com/rprtr258/pm/internal/infra/db"
+	"github.com/rprtr258/pm/internal/db"
 )
 
 var dbb, cfg = func() (db.Handle, core.Config) {

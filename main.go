@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/rprtr258/pm/internal/infra/cli"
+	"github.com/rprtr258/pm/internal/cli"
 )
 
 func main() {

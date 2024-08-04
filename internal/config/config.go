@@ -15,8 +15,8 @@ import (
 	"github.com/spf13/afero"
 
 	"github.com/rprtr258/pm/internal/core"
-	"github.com/rprtr258/pm/internal/infra/db"
-	"github.com/rprtr258/pm/internal/infra/errors"
+	"github.com/rprtr258/pm/internal/db"
+	"github.com/rprtr258/pm/internal/errors"
 )
 
 func ensureDir(dirname string) error {
