@@ -67,4 +67,7 @@ local dom = ["html", {lang: "en"},
   ],
 ];
 
-{"index.html": "<!DOCTYPE html>"+std.manifestXmlJsonml(dom)}
+{
+  "index.html": "<!DOCTYPE html>"+std.manifestXmlJsonml(dom),
+  "readme.md": importstr "../readme.md",
+}
