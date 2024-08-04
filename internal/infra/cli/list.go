@@ -11,7 +11,6 @@ import (
 	"text/template"
 	"time"
 
-	cmp2 "github.com/rprtr258/cmp"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
 	"github.com/spf13/cobra"
@@ -172,42 +171,29 @@ func unmarshalFlagSort(value string) (func(a, b core.ProcStat) int, error) {
 	case "status":
 		getOrder := func(p core.ProcStat) int {
 			// priority weights
-			switch p.Status {
-			case core.StatusCreated:
-				return 0
-			case core.StatusRunning:
-				return 100
-			case core.StatusStopped:
-				return 200
-			default:
-				return 400
-			}
+			return fun.Switch(p.Status, 99999).
+				Case(0, core.StatusCreated).
+				Case(100, core.StatusRunning).
+				Case(200, core.StatusStopped).
+				End()
 		}
 		less = func(a, b core.ProcStat) int {
 			return cmp.Compare(getOrder(a), getOrder(b))
 		}
 	case "uptime":
-		less = cmp2.Comparator[core.ProcStat](func(a, b core.ProcStat) int {
-			if a.Status != core.StatusRunning || b.Status != core.StatusRunning {
-				if a.Status == core.StatusRunning {
-					return -1
-				}
-
-				if b.Status == core.StatusRunning {
-					return 1
-				}
-			}
-			return 0
-		}).Then(func(a, b core.ProcStat) int {
-			switch {
-			case a.StartTime.Before(b.StartTime):
-				return -1
-			case b.StartTime.Before(a.StartTime):
-				return 1
-			default:
-				return 0
-			}
-		})
+		getOrder := func(p core.ProcStat) int {
+			// priority weights
+			return fun.IF(p.Status == core.StatusRunning, 99999, 0)
+		}
+		less = func(a, b core.ProcStat) int {
+			return cmp.Or(
+				cmp.Compare(getOrder(a), getOrder(b)),
+				fun.Switch(true, 0).
+					Case(-1, a.StartTime.Before(b.StartTime)).
+					Case(1, b.StartTime.Before(a.StartTime)).
+					End(),
+			)
+		}
 	default:
 		return nil, errors.Newf("unknown sort field: %q", sortField)
 	}
@@ -216,7 +202,9 @@ func unmarshalFlagSort(value string) (func(a, b core.ProcStat) int, error) {
 	case "asc":
 		return less, nil
 	case "desc":
-		return cmp2.Comparator[core.ProcStat](less).Reversed(), nil
+		return func(a, b core.ProcStat) int {
+			return -less(a, b)
+		}, nil
 	default:
 		return nil, errors.Newf("unknown sort order: %q", sortOrder)
 	}

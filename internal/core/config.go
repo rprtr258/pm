@@ -12,7 +12,7 @@ import (
 	"github.com/rprtr258/pm/internal/infra/errors"
 )
 
-// NOTE: set at compile time using ldflags
+// NOTE: being set at compile time using ldflags
 var Version = "dev"
 
 type Config struct {

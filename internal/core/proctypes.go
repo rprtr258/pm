@@ -24,15 +24,15 @@ func (pmid PMID) String() string {
 
 func GenPMID() PMID {
 	// one byte is two hex digits, so divide by two
-	b := make([]byte, PMIDLen/2)
-	if _, err := io.ReadFull(rand2.Reader, b); err != nil {
+	var b [PMIDLen / 2]byte
+	if _, err := io.ReadFull(rand2.Reader, b[:]); err != nil {
 		// fallback to random string
 		for i := range b {
 			b[i] = byte(rand.Intn(256)) //nolint:gosec // fuck you
 		}
 	}
 
-	return PMID(hex.EncodeToString(b))
+	return PMID(hex.EncodeToString(b[:]))
 }
 
 type Proc struct {

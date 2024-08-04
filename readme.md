@@ -25,6 +25,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable pm
 # starts service immediately
 sudo systemctl start pm
+# soft link /usr/bin/pm binary to whenever it is installed
+sudo ln -s ~/go/bin/pm /usr/bin/pm
 ```
 
 After these commands, processes with `startup: true` config option will be started on system startup.
@@ -77,24 +79,21 @@ pm delete all
 ## Process state diagram
 ```mermaid
 flowchart TB
-  C[Created]
-  RC[Running/Child]
-  RD[Running/Detached]
-  subgraph Stopped
-    S
-    S1
-  end
+  0( )
+  S(Stopped)
+  C(Created)
+  R(Running)
+  A{{autorestart/watch enabled?}}
+  0 -->|new process| S
   subgraph Running
     direction TB
-    RC -->|daemon restart| RD
+    C -->|process started| R
+    R -->|process died| A
   end
-  S["Stopped(ExitCode)"]
-  S1["Stopped(-1)"]
-  C -->|start| RC
-  RC -->|SIGCHLD| S
-  RC -->|stop| S1
-  RD -->|stop/process died| S1
-  Stopped -->|start| RC
+  A -->|yes| C
+  A -->|no| S
+  Running  -->|stop| S
+  S -->|start| C
 ```
 
 ## Development
@@ -111,7 +110,7 @@ flowchart TB
 $HOME/.pm/
 ├──config.json # pm config file
 ├──db/ # database tables
-│   └──procs.json # processes table
+│   └──<ID> # process info
 └──logs/ # processes logs
     ├──<ID>.stdout # stdout of process with id ID
     └──<ID>.stderr # stderr of process with id ID
@@ -123,6 +122,7 @@ $HOME/.pm/
 - supports only `linux` now
 - I can fix problems/add features as I need, independent of whether they work or not in `pm2`, because I don't know `js`
 - fast and convenient (I hope so)
+- no specific integrations for `js`
 
 ### Release
 On `master` branch:

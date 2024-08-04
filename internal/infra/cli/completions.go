@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/rprtr258/fun"
@@ -34,8 +35,7 @@ func completeFlagName(
 			return strings.HasPrefix(p.Name, prefix)
 		}).Seq,
 		func(proc core.ProcStat) string {
-			return proc.Name
-			// Description: fun.Valid("status: " + proc.Status.String()),
+			return fmt.Sprintf("%s\tproc: %s", proc.Name, proc.Status.String())
 		}).
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
@@ -61,8 +61,7 @@ func completeFlagIDs(
 			return strings.HasPrefix(string(p.ID), prefix)
 		}).Seq,
 		func(proc core.ProcStat) string {
-			return proc.ID.String()
-			// Description: fun.Valid("name: " + proc.Name),
+			return fmt.Sprintf("%s\tname: %s", proc.ID.String(), proc.Name)
 		}).
 		ToSlice(), cobra.ShellCompDirectiveNoFileComp
 }
