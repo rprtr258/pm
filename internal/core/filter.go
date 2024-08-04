@@ -1,115 +1,99 @@
 package core
 
 import (
-	"log"
-	"strconv"
+	"strings"
+	"unsafe"
 
-	"github.com/samber/lo"
-
-	"github.com/rprtr258/pm/internal/core/fun"
+	"github.com/rprtr258/fun"
 )
 
 type filter struct {
-	Names    []string
-	Tags     []string
-	Statuses []StatusType
-	IDs      []ProcID
+	Names          []string
+	Tags           []string
+	IDs            []string
+	AllIfNoFilters bool
 }
 
-type filterConfig struct {
-	filter         filter
-	allIfNoFilters bool
+func (f filter) NoFilters() bool {
+	return len(f.Names) == 0 &&
+		len(f.Tags) == 0 &&
+		len(f.IDs) == 0
 }
 
-type FilterProcsOption func(*filterConfig)
+type FilterOption func(*filter)
 
-func WithGeneric(args []string) FilterProcsOption {
-	ids := lo.FilterMap(args, func(id string, _ int) (ProcID, bool) {
-		procID, err := strconv.ParseUint(id, 10, 64) //nolint:gomnd // parse id as decimal uint64
-		if err != nil {
-			return 0, false
+func reinterpretSlice[R, T any](slice []T) []R {
+	return *(*[]R)(unsafe.Pointer(&slice))
+}
+
+func WithGeneric[S ~string](args ...S) FilterOption {
+	ids := fun.FilterMap[string](func(id S, _ int) (string, bool) {
+		isHex := fun.All(func(c byte) bool {
+			return '0' <= c && c <= '9' || 'a' <= c && c <= 'f'
+		}, []byte(id)...)
+		return string(id), isHex && len(id) <= 16
+	}, args...)
+
+	return func(cfg *filter) {
+		cfg.IDs = append(cfg.IDs, ids...)
+		cfg.Names = append(cfg.Names, reinterpretSlice[string](args)...)
+		cfg.Tags = append(cfg.Tags, reinterpretSlice[string](args)...)
+	}
+}
+
+func WithNames[S ~string](names ...S) FilterOption {
+	return func(cfg *filter) {
+		cfg.Names = append(cfg.Names, reinterpretSlice[string](names)...)
+	}
+}
+
+func WithTags[S ~string](tags ...S) FilterOption {
+	return func(cfg *filter) {
+		cfg.Tags = append(cfg.Tags, reinterpretSlice[string](tags)...)
+	}
+}
+
+func WithIDs[S ~string](ids ...S) FilterOption {
+	return func(cfg *filter) {
+		for _, id := range ids {
+			cfg.IDs = append(cfg.IDs, string(id))
 		}
-
-		return ProcID(procID), true
-	})
-
-	return func(cfg *filterConfig) {
-		cfg.filter.IDs = append(cfg.filter.IDs, ids...)
-		cfg.filter.Names = append(cfg.filter.Names, args...)
-		cfg.filter.Tags = append(cfg.filter.Tags, args...)
 	}
 }
 
-func WithNames(args []string) FilterProcsOption {
-	return func(cfg *filterConfig) {
-		cfg.filter.Names = append(cfg.filter.Names, args...)
-	}
+func WithAllIfNoFilters(cfg *filter) {
+	cfg.AllIfNoFilters = true
 }
 
-func WithTags(args []string) FilterProcsOption {
-	return func(cfg *filterConfig) {
-		cfg.filter.Tags = append(cfg.filter.Tags, args...)
-	}
-}
-
-func WithStatuses(args []string) FilterProcsOption {
-	statuses := lo.Map(args, func(status string, _ int) StatusType {
-		switch status {
-		case "invalid":
-			return StatusInvalid
-		case "created":
-			return StatusCreated
-		case "running":
-			return StatusRunning
-		case "stopped":
-			return StatusStopped
-		default:
-			log.Printf("unknown status %q\n", status)
-			return lo.Empty[StatusType]()
-		}
-	})
-
-	return func(cfg *filterConfig) {
-		cfg.filter.Statuses = append(cfg.filter.Statuses, statuses...)
-	}
-}
-
-func WithIDs[T uint64](args []T) FilterProcsOption {
-	return func(cfg *filterConfig) {
-		cfg.filter.IDs = append(cfg.filter.IDs, lo.Map(args, func(id T, _ int) ProcID {
-			return ProcID(id)
-		})...)
-	}
-}
-
-func WithAllIfNoFilters(cfg *filterConfig) {
-	cfg.allIfNoFilters = true
-}
-
-func FilterProcs[T ~uint64](procs map[ProcID]ProcData, opts ...FilterProcsOption) []T {
-	var cfg filterConfig
+func FilterFunc(opts ...FilterOption) func(Proc) bool {
+	var _filter filter
 	for _, opt := range opts {
-		opt(&cfg)
+		opt(&_filter)
 	}
 
-	// if no filters, return all
-	if len(cfg.filter.Names) == 0 &&
-		len(cfg.filter.Tags) == 0 &&
-		len(cfg.filter.Statuses) == 0 &&
-		len(cfg.filter.IDs) == 0 {
-		if !cfg.allIfNoFilters {
-			return nil
+	if _filter.NoFilters() {
+		return func(Proc) bool {
+			return _filter.AllIfNoFilters
 		}
-
-		return lo.Map(lo.Keys(procs), func(id ProcID, _ int) T {
-			return T(id)
-		})
 	}
 
-	return fun.FilterMapToSlice(procs, func(procID ProcID, proc ProcData) (T, bool) {
-		return T(procID), lo.Contains(cfg.filter.Names, proc.Name) ||
-			lo.Some(cfg.filter.Tags, proc.Tags) ||
-			lo.Contains(cfg.filter.Statuses, proc.Status.Status) ||
-			lo.Contains(cfg.filter.IDs, proc.ProcID)
-	})
+	return func(proc Proc) bool {
+		return fun.Contains(proc.Name, _filter.Names...) ||
+			fun.Any(func(elem string) bool {
+				return fun.Contains(elem, _filter.Tags...)
+			}, proc.Tags...) ||
+			fun.Any(func(idPrefix string) bool {
+				return strings.HasPrefix(proc.ID.String(), idPrefix)
+			}, _filter.IDs...)
+	}
+}
+
+func FilterProcMap(procs map[PMID]Proc, opts ...FilterOption) []PMID {
+	f := FilterFunc(opts...)
+
+	return fun.MapFilterToSlice(
+		procs,
+		func(id PMID, proc Proc) (PMID, bool) {
+			return id, f(proc)
+		})
 }

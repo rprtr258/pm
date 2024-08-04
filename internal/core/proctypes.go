@@ -1,24 +1,92 @@
 package core
 
 import (
+	"bytes"
+	rand2 "crypto/rand"
+	"encoding/hex"
 	"fmt"
-	"strconv"
+	"io"
+	"math/rand"
+	"text/template"
 	"time"
+
+	"github.com/rprtr258/fun"
 )
 
-type StatusType int
+const PMIDLen = 32
+
+// PMID is a unique identifier for a process
+type PMID string
+
+func (pmid PMID) String() string {
+	return string(pmid)
+}
+
+func GenPMID() PMID {
+	// one byte is two hex digits, so divide by two
+	var b [PMIDLen / 2]byte
+	if _, err := io.ReadFull(rand2.Reader, b[:]); err != nil {
+		// fallback to random string
+		for i := range b {
+			b[i] = byte(rand.Intn(256)) //nolint:gosec // fuck you
+		}
+	}
+
+	return PMID(hex.EncodeToString(b[:]))
+}
+
+type Proc struct {
+	ID   PMID
+	Name string
+	Tags []string
+
+	Command    string            // Command - executable to run
+	Args       []string          // Args - arguments for executable, not including executable itself as first argument
+	Cwd        string            // Cwd - working directory, must be absolute
+	Env        map[string]string // Env - process environment
+	StdoutFile string
+	StderrFile string
+
+	Watch fun.Option[string]
+
+	Startup bool // Startup - run on OS startup
+
+	KillTimeout time.Duration // time to wait before sending SIGKILL
+	DependsOn   []string      // names of processes that must be started before this proc
+	MaxRestarts uint          // MaxRestarts - max number of times to restart process
+}
+
+var _procStringTemplate = template.Must(template.New("proc").
+	Parse(`Proc[
+	id={{.ID}},
+	command={{.Command}},
+	cwd={{.Cwd}},
+	name={{.Name}},
+	args={{.Args}},
+	tags={{.Tags}},
+	watch={{if .Watch.Valid}}Some({{.Watch.Value}}){{else}}None{{end}},
+	status={{.Status}},
+	stdout_file={{.StdoutFile}},
+	stderr_file={{.StderrFile}},
+	startup={{.Startup}},
+]`))
+
+func (p *Proc) String() string {
+	var b bytes.Buffer
+	_ = _procStringTemplate.Execute(&b, p)
+	return b.String()
+}
+
+type Status int
 
 const (
-	StatusInvalid StatusType = iota
-	StatusCreated
+	StatusCreated Status = iota
 	StatusRunning
 	StatusStopped
 )
 
-func (ps StatusType) String() string {
+func (ps Status) String() string {
 	switch ps {
-	case StatusInvalid:
-		return "invalid"
 	case StatusCreated:
 		return "created"
 	case StatusRunning:
@@ -30,68 +98,14 @@ func (ps StatusType) String() string {
 	}
 }
 
-type Status struct {
-	StartTime time.Time // StartTime, valid if running
-	StoppedAt time.Time // StoppedAt - time when the process stopped, valid if stopped
-	Status    StatusType
-	Pid       int    // PID, valid if running
-	CPU       uint64 // CPU usage percentage rounded to integer, valid if running
-	Memory    uint64 // Memory usage in bytes, valid if running
-	ExitCode  int    // ExitCode of the process, valid if stopped
-}
-
-func NewStatusInvalid() Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusInvalid,
-	}
-}
-
-func NewStatusCreated() Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status: StatusCreated,
-	}
-}
-
-func NewStatusRunning(startTime time.Time, pid int, cpu, memory uint64) Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status:    StatusRunning,
-		StartTime: startTime,
-		Pid:       pid,
-		CPU:       cpu,
-		Memory:    memory,
-	}
-}
-
-func NewStatusStopped(exitCode int) Status {
-	return Status{ //nolint:exhaustruct // not needed
-		Status:    StatusStopped,
-		ExitCode:  exitCode,
-		StoppedAt: time.Now(),
-	}
-}
-
-type ProcID uint64
-
-func (id ProcID) String() string {
-	return strconv.FormatUint(uint64(id), 10) //nolint:gomnd // decimal id
-}
-
-type ProcData struct {
-	// Command - executable to run
-	Command string
-	Cwd     string
-	Name    string
-	// Args - arguments for executable, not including executable itself as first argument
-	Args   []string
-	Tags   []string
-	Watch  []string
-	Status Status
-	ProcID ProcID
-
-	// StdoutFile  string
-	// StderrFile  string
-	// RestartTries int
-	// RestartDelay    time.Duration
-	// Pid      int
-	// Respawns int
+// ProcStat is Proc with Stat!
+// Stat means current status.
+type ProcStat struct {
+	Proc
+	Status    Status
+	StartTime time.Time
+	CPU       float64
+	Memory    uint64
+	ShimPID   int
+	ChildPID  fun.Option[int]
 }

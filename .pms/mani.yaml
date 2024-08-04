@@ -1,0 +1,143 @@
+# some projects to inspire from
+projects:
+  pm2:
+    tags: [js]
+    url: https://github.com/Unitech/pm2
+
+  apm:
+    tags: [go]
+    url: https://github.com/topfreegames/apm
+
+  cmd:
+    tags: [go]
+    url: https://github.com/go-cmd/cmd
+
+  exo:
+    tags: [go]
+    url: https://github.com/deref/exo
+
+  godpm:
+    tags: [go]
+    url: https://github.com/godpm/godpm
+
+  goreman:
+    tags: [go]
+    url: https://github.com/mattn/goreman
+
+  gowl:
+    tags: [go]
+    url: https://github.com/hmdsefi/gowl
+
+  hivemind:
+    tags: [go]
+    url: https://github.com/DarthSim/hivemind
+
+  immortal:
+    tags: [go]
+    url: https://github.com/immortal/immortal
+
+  overmind:
+    tags: [go]
+    url: https://github.com/DarthSim/overmind
+
+  overseer:
+    tags: [go]
+    url: https://github.com/ShinyTrinkets/overseer
+
+  pm:
+    tags: [go]
+    url: https://github.com/VividCortex/pm
+
+  pmgo:
+    tags: [go]
+    url: https://github.com/struCoder/pmgo
+
+  procs:
+    tags: [go]
+    url: https://github.com/ionrock/procs
+
+  pst:
+    tags: [go]
+    url: https://github.com/skanehira/pst
+
+  runsit:
+    tags: [go]
+    url: https://github.com/bradfitz/runsit
+
+  supervisord:
+    tags: [go]
+    url: https://github.com/ochinchina/supervisord
+
+  supervisor:
+    tags: [python]
+    url: https://github.com/Supervisor/supervisor
+
+  tsusu:
+    tags: [zig]
+    url: https://github.com/lun-4/tsusu
+
+  pmon2:
+    tags: [go]
+    url: https://github.com/ntt360/pmon2
+
+  goforever:
+    tags: [go]
+    url: https://github.com/gwoo/goforever
+
+  qup:
+    tags: [go]
+    url: https://github.com/prasanthmj/qup
+
+  spinal:
+    tags: [go]
+    url: https://github.com/ShinyTrinkets/spinal
+
+  foreman:
+    tags: [ruby]
+    url: https://github.com/ddollar/foreman
+
+  porter:
+    tags: [php]
+    url: https://github.com/anystack-sh/porter
+
+  bluepill:
+    tags: [ruby]
+    url: https://github.com/bluepill-rb/bluepill
+
+  forego:
+    tags: [go]
+    url: https://github.com/ddollar/forego
+
+  node-foreman:
+    tags: [js]
+    url: https://github.com/strongloop/node-foreman
+
+  gaffer:
+    url: https://github.com/owenthereal/gaffer
+
+  honcho:
+    url: https://github.com/nickstenning/honcho
+
+  proclet:
+    url: https://github.com/kazeburo/Proclet
+
+  shoreman:
+    url: https://github.com/chrismytton/shoreman
+
+  crank:
+    url: https://github.com/arktisklada/crank
+
+  houseman:
+    url: https://github.com/fujimura/houseman
+
+  spm:
+    url: https://github.com/bytegust/spm
+
+  process-compose:
+    tags: [go]
+    url: https://github.com/F1bonacc1/process-compose
+
+tasks:
+  pull:
+    desc: Pull the latest code
+    cmd: git pull

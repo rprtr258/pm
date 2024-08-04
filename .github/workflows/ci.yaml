@@ -15,38 +15,76 @@ jobs:
   #   steps:
   #     - name: Checkout
   #       uses: actions/checkout@v3
-      
+
   #     - name: Install go
   #       uses: actions/setup-go@v4
   #       with:
-  #         go-version: '1.19'
-  #         cache: true
+  #         go-version-file: 'go.mod'
 
   #     - name: Run go linter
   #       uses: golangci/golangci-lint-action@v3
   #       with:
   #         version: v1.53.2
 
-  lint-proto:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
-      - name: Run proto linter
-        run: make lint-proto
+
+      - name: Install go
+        uses: actions/setup-go@v4
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Add SSH Go Module Private Key
+        env:
+            SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+            ssh-add - <<< "${{ secrets.GO_MODULE_PRIVATE_KEY }}"
+            echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+
+      - name: Setup access for private go modules
+        run: |
+          git config --global url."ssh://git@github.com/".insteadOf https://github.com/
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        env:
+          GOPRIVATE: github.com/rprtr258
+        with:
+          version: latest
+          args: --config=.golangci.yaml
+          only-new-issues: true # show only new issues if it's a pull request
 
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
       - name: Install go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.19'
+          go-version: '1.21'
           cache: true
+
+      - name: Add SSH Go Module Private Key
+        env:
+            SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+        run: |
+            mkdir -p ~/.ssh
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+            ssh-add - <<< "${{ secrets.GO_MODULE_PRIVATE_KEY }}"
+            echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV
+
+      - name: Setup access for private go modules
+        run: |
+          git config --global url."ssh://git@github.com/".insteadOf https://github.com/
 
       - name: Run tests
         run: make test

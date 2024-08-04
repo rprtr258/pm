@@ -1,0 +1,14 @@
+[Unit]
+Description=PM process manager
+After=network.target
+
+[Service]
+Type=simple
+User=rprtr258
+Group=rprtr258
+ExecStart=/usr/bin/pm startup
+Restart=on-failure
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

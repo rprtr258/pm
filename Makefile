@@ -12,20 +12,13 @@ PM := go run main.go
 CURDIR=$(shell pwd)
 BINDIR=${CURDIR}/bin
 
-GOLANGCILINTVER=1.53.2
+GOLANGCILINTVER=1.58.1
 GOLANGCILINTBIN=${BINDIR}/golangci-lint_${GOLANGCILINTVER}
 
-PROTOLINTVER=v0.44.0
-PROTOLINTBIN=${BINDIR}/protolint_${PROTOLINTVER}
+GOCRITICVER=v0.11.4
+GOCRITICBIN=${BINDIR}/gocritic_${GOCRITICVER}
 
-PROTOCVER=3.15.8
-PROTOCBIN=${BINDIR}/protoc_${PROTOCVER}
-
-PROTOCGENGOVER=v1.30.0
-PROTOCGENGOBIN=${BINDIR}/protoc-gen-go
-
-PROTOCGENGOGRPCVER=v1.3.0
-PROTOCGENGOGRPCBIN=${BINDIR}/protoc-gen-go-grpc
+GOTESTSUM=go run gotest.tools/gotestsum@latest
 
 
 .PHONY: help
@@ -38,12 +31,11 @@ help: # show list of all commands
 		}' $(MAKEFILE_LIST)
 
 bindir:
-	mkdir -p ${BINDIR}
+	@mkdir -p ${BINDIR}
+
+
 
 ## Development
-
-db: # open database
-	go run github.com/antonmedv/fx@latest ~/.pm/db/procs.json
 
 bump: # bump dependencies
 	go get -u ./...
@@ -52,42 +44,13 @@ bump: # bump dependencies
 todo: # check todos
 	rg 'TODO' --glob '**/*.go' || echo 'All done!'
 
-install-protoc: bindir
-	@test -f ${PROTOCBIN} || \
-		(curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOCVER}/protoc-${PROTOCVER}-linux-x86_64.zip && \
-		unzip protoc-${PROTOCVER}-linux-x86_64.zip -d ${BINDIR} && \
-		mv ${BINDIR}/bin/protoc ${PROTOCBIN} && \
-		rmdir ${BINDIR}/bin && \
-		rm protoc-${PROTOCVER}-linux-x86_64.zip)
-
-install-protoc-gen-go: bindir
-	@test -f ${PROTOCGENGOBIN} || \
-		(GOBIN=${BINDIR} go install google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOCGENGOVER})
-
-install-protoc-gen-go-grpc: bindir
-	@test -f ${PROTOCGENGOGRPCBIN} || \
-		(GOBIN=${BINDIR} go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${PROTOCGENGOGRPCVER})
-
-gen-proto: install-protoc install-protoc-gen-go install-protoc-gen-go-grpc # compile go sources for protobuf
-	# service proto
-	rm api/*.pb.go || true
-	${PROTOCBIN} \
-		--plugin=${PROTOCGENGOGRPCBIN} \
-		--plugin=${PROTOCGENGOBIN} \
-		--go_out=. \
-		--go_opt=paths=source_relative \
-		--go-grpc_out=. \
-		--go-grpc_opt=paths=source_relative \
-		api/api.proto
-
-## CI
-
 fmt: # run formatters
 	@go install mvdan.cc/gofumpt@latest
 	@go install golang.org/x/tools/cmd/goimports@latest
+	@go install github.com/incu6us/goimports-reviser/v3@latest
 	go fmt ./...
 	gofumpt -l -w .
-	goimports -l -w -local $(shell head -n1 go.mod | cut -d' ' -f2) .
+	goimports-reviser ./...
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./... || \
@@ -95,43 +58,49 @@ fmt: # run formatters
 	# go run -mod=mod golang.org/x/tools/go/analysis/passes/fieldalignment/cmd/fieldalignment -fix ./...
 	go mod tidy
 
-install-protolint: bindir
-	@test -f ${PROTOLINTBIN} || \
-		(GOBIN=${BINDIR} go install github.com/yoheimuta/protolint/cmd/protolint@${PROTOLINTVER} && \
-		mv ${BINDIR}/protolint ${PROTOLINTBIN})
+run-task: # TODO: remove # run "long running" task
+	${PM} run --name qmen24-$(date +'%H:%M:%S') sleep 10
 
-lint-proto: install-protolint # run proto linter
-	@${PROTOLINTBIN} lint api/api.proto
+
+## CI
 
 install-linter: bindir
-	@test -f ${GOLANGCILINTBIN} || \
-		(wget https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCILINTVER}/golangci-lint-${GOLANGCILINTVER}-linux-amd64.tar.gz -O ${GOLANGCILINTBIN}.tar.gz && \
+	@test -f ${GOLANGCILINTBIN} || (\
+		wget https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCILINTVER}/golangci-lint-${GOLANGCILINTVER}-linux-amd64.tar.gz -O ${GOLANGCILINTBIN}.tar.gz && \
 		tar xvf ${GOLANGCILINTBIN}.tar.gz -C ${BINDIR} && \
 		mv ${BINDIR}/golangci-lint-${GOLANGCILINTVER}-linux-amd64/golangci-lint ${GOLANGCILINTBIN} && \
-		rm -rf ${BINDRI}/${GOLANGCILINTBIN}.tar.gz ${BINDIR}/golangci-lint-${GOLANGCILINTVER}-linux-amd64)
+		rm -rf ${BINDIR}/${GOLANGCILINTBIN}.tar.gz ${BINDIR}/golangci-lint-${GOLANGCILINTVER}-linux-amd64 \
+	)
+	@test -f ${GOCRITICBIN} || (\
+		env GOPATH=${BINDIR} go install github.com/go-critic/go-critic/cmd/gocritic@${GOCRITICVER} && \
+		mv ${BINDIR}/bin/gocritic ${GOCRITICBIN} && \
+		rmdir ${BINDIR}/bin \
+	)
+
 
 lint-go: install-linter # run go linter
 	@${GOLANGCILINTBIN} run ./...
+	@${GOCRITICBIN} check -enableAll -disable='rangeValCopy,hugeParam,unnamedResult' ./...
 
-lint: lint-proto lint-go # run all linters
+lint-goreleaser: # run goreleaser linter
+	goreleaser check
+
+lint: lint-go lint-goreleaser # run all linters
+
+.PHONY: docs
+docs: # generate docs
+	jsonnet --string --multi ./docs/ ./docs/docs.jsonnet
+	go run github.com/eliben/static-server@latest ./docs/
+
 
 ## Test
 
 test: # run tests
-	@go run gotest.tools/gotestsum@latest ./...
+	@${GOTESTSUM} --format dots-v2 ./...
 
 test-e2e: # run integration tests
-	go build -o tests/hello-http tests/hello-http/main.go
-	@go run tests/main.go test all
+	@${GOTESTSUM} --format dots-v2 ./e2e/...
 
 test-e2e-docker: # run integration tests in docker
-	@docker build -t pm-e2e --file tests/Dockerfile .
+	@docker build -t pm-e2e --file e2e/Dockerfile .
 	@docker run pm-e2e
-
-## Run & test
-
-watch-daemon: # run daemon and restart on file changes
-	reflex --start-service --regex='\.go$$' -- ${PM} daemon run
-
-run-task: # TODO: remove # run "long running" task
-	${PM} run --name qmen24-$(date +'%H:%M:%S') sleep 10
