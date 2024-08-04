@@ -14,7 +14,7 @@ import (
 
 	"github.com/rogpeppe/go-internal/testscript"
 
-	"github.com/rprtr258/pm/internal/infra/fsnotify"
+	"github.com/rprtr258/pm/internal/fsnotify"
 )
 
 const (
