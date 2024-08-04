@@ -46,7 +46,7 @@ func listProcs(db db.Handle) procSeq {
 	return procSeq{func(yield func(core.ProcStat) bool) {
 		for _, proc := range procs {
 			stat, ok := linuxprocess.StatPMID(list, proc.ID)
-			procStat := core.ProcStat{
+			procStat := core.ProcStat{ //nolint:exhaustruct // filled in switch below
 				Proc:    proc,
 				ShimPID: stat.ShimPID,
 			}
