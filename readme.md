@@ -1,9 +1,14 @@
 # PM (process manager)
 
 ## Installation
-PM is available only for linux due to heavy usage of linux mechanisms. For now only installation way is to use `go install`:
+PM is available only for linux due to heavy usage of linux mechanisms. Go to the [releases](https://github.com/rprtr258/pm/releases/latest) page to download the latest binary.
 ```sh
-go install github.com/rprtr258/pm@latest
+# download binary
+wget https://github.com/rprtr258/pm/releases/latest/download/pm_linux_amd64
+# make binary executable
+chmod +x pm_linux_amd64
+# move binary to $PATH, here just local
+mv pm_linux_amd64 pm
 ```
 
 ### Systemd service

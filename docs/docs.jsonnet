@@ -23,8 +23,8 @@ local config = {
   maxLevel: 3,
   auto2top: true,
   repo: repo,
-  routerMode: 'history',
-  homepage: "readme.md",
+  routerMode: "history",
+  homepage: "https://raw.githubusercontent.com/rprtr258/pm/master/readme.md",
 };
 local style = renderCSS({
   ".markdown-section": { "max-width": "90%" },
@@ -69,5 +69,4 @@ local dom = ["html", {lang: "en"},
 
 {
   "index.html": "<!DOCTYPE html>"+std.manifestXmlJsonml(dom),
-  "readme.md": importstr "../readme.md",
 }
