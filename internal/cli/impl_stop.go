@@ -45,8 +45,9 @@ func implStop(db db.Handle, ids ...core.PMID) error {
 				switch {
 				case stdErrors.Is(errKill, os.ErrProcessDone):
 					return errors.New("tried to stop process which is done")
-				case stdErrors.Is(errKill, syscall.ESRCH): // no such process
-					return errors.New("tried to stop process which doesn't exist")
+				case stdErrors.Is(errKill, syscall.ESRCH):
+					// no such process, seems to be dead already
+					return nil
 				default:
 					return errors.Wrapf(errKill, "kill process, pid=%d", proc.ShimPID)
 				}

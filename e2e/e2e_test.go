@@ -214,7 +214,7 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 	), must.Sprint("check server received payload"))
 
 	// stop test processes
-	pm.Stop("nc-client", "nc-server")
+	must.NoError(t, pm.Stop("nc-client", "nc-server"))
 
 	// check server stopped
 	test.True(t, isTCPPortAvailableForListen(serverPort))

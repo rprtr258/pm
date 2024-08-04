@@ -23,7 +23,7 @@ func usePM(t *testing.T) pM {
 
 	pm := pM{t}
 	t.Cleanup(func() {
-		pm.Delete("all")
+		must.NoError(t, pm.Delete("all"))
 	})
 	return pm
 }
@@ -72,16 +72,16 @@ func (pm pM) Run(config core.RunConfig) string {
 	return string(nameBytes[:len(nameBytes)-1])
 }
 
-func (pm pM) Stop(selectors ...string) {
-	must.NoError(pm.t, pm.exec("stop", selectors...).Run())
+func (pm pM) Stop(selectors ...string) error {
+	return pm.exec("stop", selectors...).Run()
 }
 
 func (pm pM) delete(selectors ...string) error {
 	return pm.exec("rm", selectors...).Run()
 }
 
-func (pm pM) Delete(selectors ...string) {
-	must.NoError(pm.t, pm.delete(selectors...))
+func (pm pM) Delete(selectors ...string) error {
+	return pm.delete(selectors...)
 }
 
 func (pm pM) List() []core.Proc {
