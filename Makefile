@@ -92,6 +92,8 @@ docs: # generate docs
 	jsonnet --string --multi ./docs/ ./docs/docs.jsonnet
 	# go run github.com/eliben/static-server@latest ./docs/
 
+docs-watch: # watch docs
+	reflex -r 'docs/.*' -- jsonnet --string --multi ./docs/ ./docs/docs.jsonnet
 
 ## Test
 

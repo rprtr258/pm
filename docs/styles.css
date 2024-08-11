@@ -573,10 +573,6 @@ body:not([data-platform^=Mac]) * {
     scrollbar-width: thin;
 }
 
-[tabindex="-1"]:focus {
-    outline: none !important;
-}
-
 ::selection {
     background: var(--selection-color);
 }
@@ -856,12 +852,12 @@ pre[data-lang] {
     margin-top: 0;
 }
 
-.markdown-section h1 a[data-id],
-.markdown-section h2 a[data-id],
-.markdown-section h3 a[data-id],
-.markdown-section h4 a[data-id],
-.markdown-section h5 a[data-id],
-.markdown-section h6 a[data-id] {
+.markdown-section h1 a,
+.markdown-section h2 a,
+.markdown-section h3 a,
+.markdown-section h4 a,
+.markdown-section h5 a,
+.markdown-section h6 a {
     display: inline-block;
 }
 
