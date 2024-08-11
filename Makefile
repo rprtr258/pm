@@ -90,7 +90,7 @@ lint: lint-go lint-goreleaser # run all linters
 .PHONY: docs
 docs: # generate docs
 	jsonnet --string --multi ./docs/ ./docs/docs.jsonnet
-	go run github.com/eliben/static-server@latest ./docs/
+	# go run github.com/eliben/static-server@latest ./docs/
 
 
 ## Test
