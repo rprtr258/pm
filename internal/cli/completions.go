@@ -2,14 +2,11 @@ package cli
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
-	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-
-	"github.com/rprtr258/pm/internal/core"
 )
 
 func registerFlagCompletionFunc(
@@ -30,40 +27,39 @@ func completeFlagName(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	return iter.Map(listProcs(dbb).
-		Filter(func(p core.ProcStat) bool {
-			return strings.HasPrefix(p.Name, prefix)
-		}).Seq,
-		func(proc core.ProcStat) string {
-			return fmt.Sprintf("%s\tproc: %s", proc.Name, proc.Status.String())
-		}).
-		ToSlice(), cobra.ShellCompDirectiveNoFileComp
+	return slices.Collect(func(yield func(string) bool) {
+		for proc := range listProcs(dbb).Seq {
+			if strings.HasPrefix(proc.Name, prefix) && !yield(fmt.Sprintf("%s\tproc: %s", proc.Name, proc.Status.String())) {
+				break
+			}
+		}
+	}), cobra.ShellCompDirectiveNoFileComp
 }
 
 func completeFlagTag(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	res := listProcs(dbb).
-		Tags().
-		ToSlice()
-	return fun.Filter(func(tag string) bool {
-		return strings.HasPrefix(tag, prefix)
-	}, res...), cobra.ShellCompDirectiveNoFileComp
+	return slices.Collect(func(yield func(string) bool) {
+		for tag := range listProcs(dbb).Tags() {
+			if strings.HasPrefix(tag, prefix) && !yield(tag) {
+				break
+			}
+		}
+	}), cobra.ShellCompDirectiveNoFileComp
 }
 
 func completeFlagIDs(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	return iter.Map(listProcs(dbb).
-		Filter(func(p core.ProcStat) bool {
-			return strings.HasPrefix(string(p.ID), prefix)
-		}).Seq,
-		func(proc core.ProcStat) string {
-			return fmt.Sprintf("%s\tname: %s", proc.ID.String(), proc.Name)
-		}).
-		ToSlice(), cobra.ShellCompDirectiveNoFileComp
+	return slices.Collect(func(yield func(string) bool) {
+		for proc := range listProcs(dbb).Seq {
+			if strings.HasPrefix(string(proc.ID), prefix) && !yield(fmt.Sprintf("%s\tname: %s", proc.ID.String(), proc.Name)) {
+				break
+			}
+		}
+	}), cobra.ShellCompDirectiveNoFileComp
 }
 
 func completeArgGenericSelector(

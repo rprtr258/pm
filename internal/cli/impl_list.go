@@ -1,8 +1,11 @@
 package cli
 
 import (
+	"iter"
+	"maps"
+	"slices"
+
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -16,30 +19,44 @@ type procSeq struct {
 }
 
 func (l procSeq) Filter(p func(core.ProcStat) bool) procSeq {
-	return procSeq{l.Seq.Filter(p)}
+	return procSeq{func(yield func(core.ProcStat) bool) {
+		for proc := range l.Seq {
+			if p(proc) && !yield(proc) {
+				break
+			}
+		}
+	}}
+}
+
+func (l procSeq) Slice() []core.ProcStat {
+	return slices.Collect(l.Seq)
 }
 
 func (l procSeq) IDs() iter.Seq[core.PMID] {
-	return iter.Map(l.Seq, func(proc core.ProcStat) core.PMID {
-		return proc.ID
-	})
+	return func(yield func(core.PMID) bool) {
+		for ps := range l.Seq {
+			if !yield(ps.ID) {
+				break
+			}
+		}
+	}
 }
 
 func (l procSeq) Tags() iter.Seq[string] {
 	tags := map[string]struct{}{"all": {}}
-	l.ForEach(func(ps core.ProcStat) {
+	for ps := range l.Seq {
 		for _, tag := range ps.Tags {
 			tags[tag] = struct{}{}
 		}
-	})
-	return iter.Keys(iter.FromDict(tags))
+	}
+	return maps.Keys(tags)
 }
 
 func listProcs(db db.Handle) procSeq {
 	procs, err := db.GetProcs(core.WithAllIfNoFilters)
 	if err != nil {
 		log.Error().Err(err).Msg("get procs")
-		return procSeq{iter.FromNothing[core.ProcStat]()}
+		return procSeq{nil}
 	}
 
 	list := linuxprocess.List()

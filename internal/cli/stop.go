@@ -53,7 +53,7 @@ var _cmdStop = func() *cobra.Command {
 						filterFunc(ps.Proc) &&
 						(!interactive || confirmProc(ps, "stop"))
 				}).
-				ToSlice()
+				Slice()
 			if len(procs) == 0 {
 				fmt.Println("nothing to stop")
 				return nil

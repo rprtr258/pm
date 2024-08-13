@@ -55,7 +55,7 @@ var _cmdInspect = func() *cobra.Command {
 			)
 			procsToShow := listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
-				ToSlice()
+				Slice()
 
 			for _, proc := range procsToShow {
 				if err := _procInspectTemplate.Execute(os.Stdout, proc); err != nil {

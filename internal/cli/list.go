@@ -327,7 +327,7 @@ var _cmdList = func() *cobra.Command {
 			)
 			procsToShow := listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
-				ToSlice()
+				Slice()
 
 			if len(procsToShow) == 0 {
 				fmt.Fprintln(os.Stderr, "no processes added")

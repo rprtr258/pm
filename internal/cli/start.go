@@ -53,7 +53,7 @@ var _cmdStart = func() *cobra.Command {
 
 			procs := listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
-				ToSlice()
+				Slice()
 			if len(procs) == 0 {
 				fmt.Println("nothing to start")
 				return nil

@@ -69,7 +69,7 @@ jobs:
       - name: Install go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.23.0'
           cache: true
 
       - name: Add SSH Go Module Private Key
