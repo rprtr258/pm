@@ -80,7 +80,7 @@ local content_example(R) = (
     R.h2("Usage"),
     R.h3("Run process"),
     R.h3("List processes"),
-    R.h3("Start processes that already has been added"),
+    R.h3("Start already added processes"),
     R.h3("Stop processes"),
     R.h3("Delete processes"),
     R.h2("Process state diagram"),
@@ -104,13 +104,15 @@ local html_renderer = {
   h1(id, title): ["h1", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
   h2(id, title): ["h2", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
   h3(id, title): ["h3", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
+  img(src): ["img", {src: src, style: renderCSSProps({"max-width": "100%", border: "0"})}],
   codeblock_sh(code): (
-    local functionn(s) = ["span", {class: "token function"}, s];
-    local variable(s) = ["span", {class: "token parameter variable"}, s];
-    local comment(s) = ["span", {class: "token comment"}, s];
-    local operator(s) = ["span", {class: "token operator"}, s];
-    local env(s) = ["span", {class: "token environment constant"}, s];
-    local punctuation(s) = ["span", {class: "token punctuation"}, s];
+    local functionn(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-function)"})}, s];
+    local variable(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-variable)"})}, s];
+    local comment(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-comment)"})}, s];
+    local operator(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-operator)"})}, s];
+    local env(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
+    local number(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
+    local punctuation(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-punctuation)"})}, s];
     local render_word(word) =
       local functionns = ["wget", "chmod", "chown", "mv", "cp", "ln", "sudo", "git"];
       local lt = std.findSubstr("<", word);
@@ -118,7 +120,6 @@ local html_renderer = {
       local lsb = std.findSubstr("[", word);
       local rsb = std.findSubstr("]", word);
       local ellipsis = std.findSubstr("...", word);
-      local _ = std.trace(std.toString(word) + " " + std.toString(lt), null);
       if word == "" then []
       else if std.length(lt) > 0 then render_word(std.substr(word, 0, lt[0])) + [operator("&lt;")] + render_word(std.substr(word, lt[0]+1, std.length(word)))
       else if std.length(gt) > 0 then render_word(std.substr(word, 0, gt[0])) + [operator("&gt;")] + render_word(std.substr(word, gt[0]+1, std.length(word)))
@@ -128,8 +129,8 @@ local html_renderer = {
       else if std.any([word == x for x in functionns]) then [functionn(word)]
       else if word == "[" then [punctuation(word)]
       else if word == "]" then [punctuation(word)]
-      else if word == "644" then [["span", {class: "token number"}, "644"]]
-      else if word == "enable" then [["span", {class: "token builtin class-name"}, "enable"]]
+      else if word == "644" then [number(word)]
+      else if word == "enable" then [["span", {class: "token class-name", style: renderCSSProps({color: "var(--code-theme-selector)"})}, "enable"]]
       else if word[0] == "-" then [variable(word)]
       else if word == "$HOME/.pm/" then [env("$HOME"), "/.pm/"]
       else [word];
@@ -141,15 +142,14 @@ local html_renderer = {
           local before = std.substr(line, 0, hash[0]);
           local after = std.substr(line, hash[0], std.length(line));
           render(before) + [comment(after)]
-          // std.trace(std.toString(line) + " " + std.toString([render(before), comment(after)]), [line])
         else std.join([" "], [
           render_word(word)
           for word in words
         ])
       else [line];
     local lines = [render(line) for line in std.split(code, "\n")];
-    ["pre", {"data-lang": "sh", class: "language-sh"},
-      ["code", {class: "lang-sh language-sh"}] + std.join(["\n"], lines)]
+    ["pre", {"data-lang": "sh", style: renderCSSProps({background: "var(--code-theme-background)"})},
+      ["code", {class: "language-sh"}] + std.join(["\n"], lines)]
     ),
 };
 local R = html_renderer;
@@ -157,19 +157,10 @@ local R = html_renderer;
 // docs
 local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
   "--navbar-root-color--active":             "#0374B5",
-  "--blockquote-border-color":               "#0374B5",
   "--sidebar-name-color":                    "#0374B5",
   "--sidebar-nav-link-color--active":        "#0374B5",
   "--sidebar-nav-link-border-color--active": "#0374B5",
   "--link-color":                            "#0374B5",
-  "--pagination-title-color":                "#0374B5",
-  "--cover-link-color":                      "#0374B5",
-  "--cover-button-primary-color":            "#FFFFFF",
-  "--cover-button-primary-background":       "#0374B5",
-  "--cover-button-primary-border":           "1px solid #0374B5",
-  "--cover-button-color":                    "#0374B5",
-  "--cover-button-border":                   "1px solid #0374B5",
-  "--cover-background-color":                "#6c8a9a",
   "--sidebar-nav-pagelink-background--active": "no-repeat 0px center / 5px 6px linear-gradient(225deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4.25px), no-repeat 5px center / 5px 6px linear-gradient(135deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4.25px)",
   "--sidebar-nav-pagelink-background--collapse": "no-repeat 2px calc(50% - 2.5px) / 6px 5px linear-gradient(45deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4px), no-repeat 2px calc(50% + 2.5px) / 6px 5px linear-gradient(135deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4px)",
   "--sidebar-nav-pagelink-background--loaded": "no-repeat 0px center / 5px 6px linear-gradient(225deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4.25px), no-repeat 5px center / 5px 6px linear-gradient(135deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4.25px)",
@@ -190,33 +181,33 @@ local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
 
     ["link", {rel: "stylesheet", href: "./styles.css"}],
   ],
-  ["body", {class: "ready sticky ready-fix vsc-initialized"},
+  ["body", {class: "sticky", style: renderCSSProps({margin: "0"})},
     ["main", {role: "presentation"},
-      ["aside", {id: "__sidebar", class: "sidebar", role: "none"},
+      ["aside", {class: "sidebar", role: "none"},
         ["div", {class: "sidebar-nav", role: "navigation", "aria-label": "primary"},
           local a(id, title) = ["a", {class: "section-link", href: "#"+id, title: title}, title];
-          R.ul([
-            R.li([a("installation", "Installation")]),
-            R.ul_flat([
+          R.ul_flat([
+            [a("installation", "Installation")],
+            [R.ul_flat([
               [a("systemd-service", "Systemd service")],
-            ]),
-            R.li([a("configuration", "Configuration")]),
-            R.li([a("usage", "Usage")]),
-            R.ul_flat([
+            ])],
+            [a("configuration", "Configuration")],
+            [a("usage", "Usage")],
+            [R.ul_flat([
               [a("run-process", "Run process")],
               [a("list-processes", "List processes")],
-              [a("start-processes-that-already-has-been-added", "Start processes that already has been added")],
+              [a("start-already-added-processes", "Start already added processes")],
               [a("stop-processes", "Stop processes")],
               [a("delete-processes", "Delete processes")],
-            ]),
-            R.li([a("process-state-diagram", "Process state diagram")]),
-            R.li([a("development", "Development")]),
-            R.ul_flat([
+            ])],
+            [a("process-state-diagram", "Process state diagram")],
+            [a("development", "Development")],
+            [R.ul_flat([
               [a("architecture", "Architecture")],
               [a("pm-directory-structure", "PM directory structure")],
               [a("differences-from-pm2", "Differences from pm2")],
               [a("release", "Release")],
-            ]),
+            ])],
           ]),
         ],
       ],
@@ -224,7 +215,7 @@ local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
         ["article", {id: "main", class: "markdown-section", role: "main"},
           R.h1("pm-process-manager", "PM (process manager)"),
 
-          ["div", {}, R.a("https://github.com/rprtr258/pm", ["img", {src: "https://img.shields.io/badge/source-code?logo=github&label=github"}])],
+          ["div", {}, R.a("https://github.com/rprtr258/pm", R.img("https://img.shields.io/badge/source-code?logo=github&label=github"))],
           R.h2("installation", "Installation"),
             R.p(["PM is available only for linux due to heavy usage of linux mechanisms. Go to the ", R.a_external("https://github.com/rprtr258/pm/releases/latest", "releases"), " page to download the latest binary."]),
             R.codeblock_sh(|||
@@ -280,7 +271,7 @@ local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
                 pm list
               |||),
 
-            R.h3("start-processes-that-already-has-been-added", "Start processes that already has been added"),
+            R.h3("start-already-added-processes", "Start already added processes"),
               R.codeblock_sh(|||
                 pm start [ID/NAME/TAG]...
               |||),

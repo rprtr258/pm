@@ -42,7 +42,7 @@ See [example configuration file](./config.jsonnet). Other examples can be found 
 ## Usage
 ### Run process
 ### List processes
-### Start processes that already has been added
+### Start already added processes
 ### Stop processes
 ### Delete processes
 ## Process state diagram
