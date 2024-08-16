@@ -104,15 +104,53 @@ local html_renderer = {
   h1(id, title): ["h1", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
   h2(id, title): ["h2", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
   h3(id, title): ["h3", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
-  codeblock_sh(lines): ["pre", {"data-lang": "sh", class: "language-sh"},
-    ["code", {class: "lang-sh language-sh"}] + std.join(["\n"], lines({
-      functionn(s): ["span", {class: "token function"}, s],
-      variable(s): ["span", {class: "token parameter variable"}, s],
-      comment(s): ["span", {class: "token comment"}, s],
-      operator(s): ["span", {class: "token operator"}, s],
-      env(s): ["span", {class: "token environment constant"}, s],
-      punctuation(s): ["span", {class: "token punctuation"}, s],
-    }))],
+  codeblock_sh(code): (
+    local functionn(s) = ["span", {class: "token function"}, s];
+    local variable(s) = ["span", {class: "token parameter variable"}, s];
+    local comment(s) = ["span", {class: "token comment"}, s];
+    local operator(s) = ["span", {class: "token operator"}, s];
+    local env(s) = ["span", {class: "token environment constant"}, s];
+    local punctuation(s) = ["span", {class: "token punctuation"}, s];
+    local render_word(word) =
+      local functionns = ["wget", "chmod", "chown", "mv", "cp", "ln", "sudo", "git"];
+      local lt = std.findSubstr("<", word);
+      local gt = std.findSubstr(">", word);
+      local lsb = std.findSubstr("[", word);
+      local rsb = std.findSubstr("]", word);
+      local ellipsis = std.findSubstr("...", word);
+      local _ = std.trace(std.toString(word) + " " + std.toString(lt), null);
+      if word == "" then []
+      else if std.length(lt) > 0 then render_word(std.substr(word, 0, lt[0])) + [operator("&lt;")] + render_word(std.substr(word, lt[0]+1, std.length(word)))
+      else if std.length(gt) > 0 then render_word(std.substr(word, 0, gt[0])) + [operator("&gt;")] + render_word(std.substr(word, gt[0]+1, std.length(word)))
+      else if std.length(lsb) > 0 then render_word(std.substr(word, 0, lsb[0])) + [punctuation("[")] + render_word(std.substr(word, lsb[0]+1, std.length(word)))
+      else if std.length(rsb) > 0 then render_word(std.substr(word, 0, rsb[0])) + [punctuation("]")] + render_word(std.substr(word, rsb[0]+1, std.length(word)))
+      else if std.length(ellipsis) > 0 then render_word(std.substr(word, 0, ellipsis[0])) + [punctuation("...")] + render_word(std.substr(word, ellipsis[0]+3, std.length(word)))
+      else if std.any([word == x for x in functionns]) then [functionn(word)]
+      else if word == "[" then [punctuation(word)]
+      else if word == "]" then [punctuation(word)]
+      else if word == "644" then [["span", {class: "token number"}, "644"]]
+      else if word == "enable" then [["span", {class: "token builtin class-name"}, "enable"]]
+      else if word[0] == "-" then [variable(word)]
+      else if word == "$HOME/.pm/" then [env("$HOME"), "/.pm/"]
+      else [word];
+    local render(line) = // TODO: use sh parser actually
+      if std.length(line) > 0 then
+        local hash = std.findSubstr("#", line);
+        local words = std.split(line, " ");
+        if std.length(hash) > 0 then
+          local before = std.substr(line, 0, hash[0]);
+          local after = std.substr(line, hash[0], std.length(line));
+          render(before) + [comment(after)]
+          // std.trace(std.toString(line) + " " + std.toString([render(before), comment(after)]), [line])
+        else std.join([" "], [
+          render_word(word)
+          for word in words
+        ])
+      else [line];
+    local lines = [render(line) for line in std.split(code, "\n")];
+    ["pre", {"data-lang": "sh", class: "language-sh"},
+      ["code", {class: "lang-sh language-sh"}] + std.join(["\n"], lines)]
+    ),
 };
 local R = html_renderer;
 
@@ -189,14 +227,14 @@ local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
           ["div", {}, R.a("https://github.com/rprtr258/pm", ["img", {src: "https://img.shields.io/badge/source-code?logo=github&label=github"}])],
           R.h2("installation", "Installation"),
             R.p(["PM is available only for linux due to heavy usage of linux mechanisms. Go to the ", R.a_external("https://github.com/rprtr258/pm/releases/latest", "releases"), " page to download the latest binary."]),
-            R.codeblock_sh(function(h) [
-              [h.comment("# download binary")],
-              [h.functionn("wget"), " https://github.com/rprtr258/pm/releases/latest/download/pm_linux_amd64"],
-              [h.comment("# make binary executable")],
-              [h.functionn("chmod"), " +x pm_linux_amd64"],
-              [h.comment("# move binary to $PATH, here just local")],
-              [h.functionn("mv"), " pm_linux_amd64 pm"],
-            ]),
+            R.codeblock_sh(|||
+              # download binary
+              wget https://github.com/rprtr258/pm/releases/latest/download/pm_linux_amd64
+              # make binary executable
+              chmod +x pm_linux_amd64
+              # move binary to $PATH, here just local
+              mv pm_linux_amd64 pm
+            |||),
             R.h3("systemd-service", "Systemd service"),
               R.p(["To enable running processes on system startup:"]),
               R.ul_flat([
@@ -205,22 +243,22 @@ local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
                 ["Change", R.code("ExecStart"), "to use", R.code("pm"), "binary installed. This is the command that systemd will execute to start your service."],
                 ["Move the file to", R.code("/etc/systemd/system/pm.service"), "and set root permissions on it:"],
               ]),
-              R.codeblock_sh(function(h) [
-                [h.comment("# copy service file to system's directory for systemd services")],
-                [h.functionn("sudo"), " ", h.functionn("cp"), " pm.service /etc/systemd/system/pm.service"],
-                [h.comment("# set permission of service file to be readable and writable by owner, and readable by others")],
-                [h.functionn("sudo"), " ", h.functionn("chmod"), " ", ["span", {class: "token number"}, "644"], "/etc/systemd/system/pm.service"],
-                [h.comment("# change owner and group of service file to root, ensuring that it is managed by system administrator")],
-                [h.functionn("sudo"), " ", h.functionn("chown"), " root:root /etc/systemd/system/pm.service"],
-                [h.comment("# reload systemd manager configuration, scanning for new or changed units")],
-                [h.functionn("sudo"), " systemctl daemon-reload"],
-                [h.comment("# enables service to start at boot time")],
-                [h.functionn("sudo"), " systemctl ", ["span", {class: "token builtin class-name"}, "enable"], " pm"],
-                [h.comment("# starts service immediately")],
-                [h.functionn("sudo"), " systemctl start pm"],
-                [h.comment("# soft link /usr/bin/pm binary to whenever it is installed")],
-                [h.functionn("sudo"), " ", h.functionn("ln"), " ", h.variable("-s"), " ~/go/bin/pm /usr/bin/pm"],
-              ]),
+              R.codeblock_sh(|||
+                # copy service file to system's directory for systemd services
+                sudo cp pm.service /etc/systemd/system/pm.service
+                # set permission of service file to be readable and writable by owner, and readable by others
+                sudo chmod 644 /etc/systemd/system/pm.service
+                # change owner and group of service file to root, ensuring that it is managed by system administrator
+                sudo chown root:root /etc/systemd/system/pm.service
+                # reload systemd manager configuration, scanning for new or changed units
+                sudo systemctl daemon-reload
+                # enables service to start at boot time
+                sudo systemctl enable pm
+                # starts service immediately
+                sudo systemctl start pm
+                # soft link /usr/bin/pm binary to whenever it is installed
+                sudo ln -s ~/go/bin/pm /usr/bin/pm
+              |||),
               R.p(["After these commands, processes with", R.code("startup: true"), "config option will be started on system startup."]),
 
           R.h2("configuration", "Configuration"),
@@ -230,38 +268,38 @@ local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
           R.h2("usage", "Usage"),
             R.p(["Most fresh usage descriptions can be seen using", R.code("pm &lt;command&gt; --help"), "."]),
             R.h3("run-process", "Run process"),
-              R.codeblock_sh(function(h) [
-                [h.comment("# run process using command")],
-                ["pm run go run main.go"],
-                [],
-                [h.comment("# run processes from config file")],
-                ["pm run ", h.variable("--config"), " config.jsonnet"],
-              ]),
+              R.codeblock_sh(|||
+                # run process using command
+                pm run go run main.go
+
+                # run processes from config file
+                pm run --config config.jsonnet
+              |||),
             R.h3("list-processes", "List processes"),
-              R.codeblock_sh(function(h) [
-                ["pm list"],
-              ]),
+              R.codeblock_sh(|||
+                pm list
+              |||),
 
             R.h3("start-processes-that-already-has-been-added", "Start processes that already has been added"),
-              R.codeblock_sh(function(h) [
-                ["pm start ", h.punctuation("["), "ID/NAME/TAG", h.punctuation("]"), h.punctuation("...")],
-              ]),
+              R.codeblock_sh(|||
+                pm start [ID/NAME/TAG]...
+              |||),
 
             R.h3("stop-processes", "Stop processes"),
-              R.codeblock_sh(function(h) [
-                ["pm stop ", h.punctuation("["), "ID/NAME/TAG", h.punctuation("]"), h.punctuation("...")],
-                [],
-                [h.comment("# e.g. stop all added processes (all processes has tag `all` by default)")],
-                ["pm stop all"],
-              ]),
+              R.codeblock_sh(|||
+                pm stop [ID/NAME/TAG]...
+
+                # e.g. stop all added processes (all processes has tag `all` by default)
+                pm stop all
+              |||),
             R.h3("delete-processes", "Delete processes"),
               R.p(["When deleting process, they are first stopped, then removed from", R.code("pm"), "."]),
-              R.codeblock_sh(function(h) [
-                ["pm delete ", h.punctuation("["), "ID/NAME/TAG", h.punctuation("]"), h.punctuation("...")],
-                [],
-                [h.comment("# e.g. delete all processes")],
-                ["pm delete all"],
-              ]),
+              R.codeblock_sh(|||
+                pm delete [ID/NAME/TAG]...
+
+                # e.g. delete all processes
+                pm delete all
+              |||),
 
           R.h2("process-state-diagram", "Process state diagram"),
             import "process-state-diagram.jsonnet",
@@ -277,15 +315,15 @@ local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
 
             R.h3("pm-directory-structure", "PM directory structure"),
               R.p([R.code("pm"), "uses directory", R.code("$HOME/.pm"), "to store data by default.", R.code("PM_HOME"), "environment variable can be used to change this. Layout is following:"]),
-              R.codeblock_sh(function(h) [
-                [h.env("$HOME"), "/.pm/"],
-                ["├──config.json ", h.comment("# pm config file")],
-                ["├──db/ ", h.comment("# database tables")],
-                ["│   └──", h.operator("&lt;"), "ID", h.operator("&gt;"), " ", h.comment("# process info")],
-                ["└──logs/ ", h.comment("# processes logs")],
-                ["   ├──", h.operator("&lt;"), "ID", h.operator("&gt;"), ".stdout ", h.comment("# stdout of process with id ID")],
-                ["   └──", h.operator("&lt;"), "ID", h.operator("&gt;"), ".stderr ", h.comment("# stderr of process with id ID")],
-              ]),
+              R.codeblock_sh(|||
+                $HOME/.pm/
+                ├──config.json # pm config file
+                ├──db/ # database tables
+                │   └──<ID> # process info
+                └──logs/ # processes logs
+                   ├──<ID>.stdout # stdout of process with id ID
+                   └──<ID>.stderr # stderr of process with id ID
+              |||),
 
             R.h3("differences-from-pm2", "Differences from pm2"),
               R.ul_flat([
@@ -299,11 +337,11 @@ local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
 
             R.h3("release", "Release"),
               R.p(["On", R.code("master"), "branch:"]),
-              R.codeblock_sh(function(h) [
-                [h.functionn("git"), " tag v1.2.3"],
-                [h.functionn("git"), " push ", h.variable("--tags")],
-                [h.functionn("goreleaser"), " release ", h.variable("--clean")],
-              ]),
+              R.codeblock_sh(|||
+                git tag v1.2.3
+                git push --tags
+                goreleaser release --clean
+              |||),
         ],
       ],
     ],
