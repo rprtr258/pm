@@ -170,7 +170,7 @@ local dom = ["html", {lang: "en"},
     ["meta", {property: "og:url", content: "https://rprtr258.github.io/pm/"}],
     ["meta", {property: "og:image", content: "https://rprtr258.github.io/pm/images/og-image.png"}],
 
-    ["link", {rel: "stylesheet", href: "./styles.css"}],
+    ["style", {}, renderCSS(import "styles.jsonnet")],
   ],
   ["body", {class: "sticky", style: renderCSSProps({margin: "0"})},
     ["main", {role: "presentation"},
