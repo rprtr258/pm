@@ -74,7 +74,6 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 				if !yield(fmt.Sprintf("%s=%s", k, v)) {
 					break
 				}
-				return
 			}
 		}),
 		Stdin:  os.Stdin,
@@ -84,6 +83,7 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 			Setpgid: true,
 		},
 	}
+	log.Debug().Str("cmd", cmd.String()).Msg("starting")
 	if err := cmd.Start(); err != nil {
 		return errors.Wrapf(err, "running failed: %v", proc)
 	}
