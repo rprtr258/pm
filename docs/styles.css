@@ -20,12 +20,6 @@
     --heading-h4-margin: 1rem 0rem -.5rem 0rem;
     --heading-h5-margin: 1rem 0rem -.5rem 0rem;
     --heading-h6-margin: 1rem 0rem 0rem 0rem;
-    --heading-h1-font-weight: 400;
-    --heading-h2-font-weight: 400;
-    --heading-h3-font-weight: 400;
-    --heading-h4-font-weight: 400;
-    --heading-h5-font-weight: 400;
-    --heading-h6-font-weight: 400;
     --heading-h1-font-size: var(--font-size-xxl);
     --heading-h2-font-size: var(--font-size-xl);
     --heading-h3-font-size: var(--font-size-l);
@@ -245,8 +239,8 @@ body * {
     margin: 0 auto;
 }
 
-.markdown-section code[class*=lang-],
-.markdown-section pre[data-lang] {
+.markdown-section code,
+.markdown-section pre {
     border-radius: var(--code-block-border-radius);
     font-family: var(--code-font-family);
     font-size: var(--code-font-size);
@@ -260,8 +254,6 @@ body * {
     word-wrap: normal;
     word-break: normal;
     hyphens: none;
-}
-.markdown-section pre[data-lang] {
     position: relative;
     margin: var(--code-block-margin);
     padding: 0;
@@ -276,13 +268,13 @@ body * {
     font-size: var(--font-size-s);
     line-height: 1;
 }
-.markdown-section pre[data-lang] code {
+.markdown-section pre code {
     display: block;
     overflow: auto;
     padding: 0.5em 1em;
+    word-break: break-all!important;
 }
-code[class*=lang-],
-pre[data-lang] {
+code[class*=lang-], pre[data-lang] {
     color: var(--code-theme-text);
 }
 pre[data-lang]::selection,
@@ -295,7 +287,8 @@ code[class*=lang-] ::selection {
     font-family: var(--code-font-family);
     font-size: var(--code-font-size);
     font-weight: var(--code-font-weight);
-    /* line-height: inherit; */
+    white-space: pre-wrap!important;
+    overflow-wrap: anywhere;
 }
 .markdown-section code:not([class*=lang-]):not([class*=language-]) {
     margin: var(--code-inline-margin);
@@ -304,13 +297,6 @@ code[class*=lang-] ::selection {
     background: var(--code-inline-background);
     color: var(--code-inline-color, currentColor);
     white-space: nowrap;
-}
-.markdown-section code {
-    white-space: pre-wrap!important;
-    overflow-wrap: anywhere;
-}
-.markdown-section pre code {
-    word-break: break-all!important;
 }
 
 .markdown-section p,
@@ -408,7 +394,7 @@ code[class*=lang-] ::selection {
     border-color: var(--heading-h1-border-color);
     font-family: var(--heading-h1-font-family, var(--heading-font-family));
     font-size: var(--heading-h1-font-size);
-    font-weight: var(--heading-h1-font-weight, var(--heading-font-weight));
+    font-weight: 400;
     line-height: var(--base-line-height);
     color: var(--heading-h1-color, var(--heading-color));
     line-height: 4.00rem;
@@ -422,7 +408,7 @@ code[class*=lang-] ::selection {
     border-color: var(--heading-h2-border-color);
     font-family: var(--heading-h2-font-family, var(--heading-font-family));
     font-size: var(--heading-h2-font-size);
-    font-weight: var(--heading-h2-font-weight, var(--heading-font-weight));
+    font-weight: 400;
     line-height: var(--base-line-height);
     color: var(--heading-h2-color, var(--heading-color));
     line-height: 1.55rem;
@@ -436,7 +422,7 @@ code[class*=lang-] ::selection {
     border-color: var(--heading-h3-border-color);
     font-family: var(--heading-h3-font-family, var(--heading-font-family));
     font-size: var(--heading-h3-font-size);
-    font-weight: var(--heading-h3-font-weight, var(--heading-font-weight));
+    font-weight: 400;
     color: var(--heading-h3-color, var(--heading-color));
     line-height: 1.35rem;
 }
@@ -449,7 +435,7 @@ code[class*=lang-] ::selection {
     border-color: var(--heading-h4-border-color);
     font-family: var(--heading-h4-font-family, var(--heading-font-family));
     font-size: var(--heading-h4-font-size);
-    font-weight: var(--heading-h4-font-weight, var(--heading-font-weight));
+    font-weight: 400;
     color: var(--heading-h4-color, var(--heading-color));
     line-height: 1.30rem;
 }
@@ -462,7 +448,7 @@ code[class*=lang-] ::selection {
     border-color: var(--heading-h5-border-color);
     font-family: var(--heading-h5-font-family, var(--heading-font-family));
     font-size: var(--heading-h5-font-size);
-    font-weight: var(--heading-h5-font-weight, var(--heading-font-weight));
+    font-weight: 400;
     color: var(--heading-h5-color, var(--heading-color));
     line-height: 1.25rem;
 }
@@ -475,7 +461,7 @@ code[class*=lang-] ::selection {
     border-color: var(--heading-h6-border-color);
     font-family: var(--heading-h6-font-family, var(--heading-font-family));
     font-size: var(--heading-h6-font-size);
-    font-weight: var(--heading-h6-font-weight, var(--heading-font-weight));
+    font-weight: 400;
     color: var(--heading-h6-color, var(--heading-color));
     line-height: 1.20rem;
 }
