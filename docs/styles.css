@@ -1,47 +1,31 @@
-/* theme-simple CSS */
 :root {
-    --base-font-family: "Source Sans Pro", "Helvetica Neue", Arial, sans-serif;
-    --base-font-size: 1.125rem;
-    --base-font-weight: normal;
-
+    --mono-hue: 113;
+    --mono-saturation: 0%;
+    --mono-shade3: hsl(var(--mono-hue), var(--mono-saturation), 20%);
+    --mono-shade2: hsl(var(--mono-hue), var(--mono-saturation), 30%);
+    --mono-shade1: hsl(var(--mono-hue), var(--mono-saturation), 40%);
+    --mono-base:   hsl(var(--mono-hue), var(--mono-saturation), 50%);
+    --mono-tint1:  hsl(var(--mono-hue), var(--mono-saturation), 70%);
+    --mono-tint2:  hsl(var(--mono-hue), var(--mono-saturation), 89%);
+    --mono-tint3:  hsl(var(--mono-hue), var(--mono-saturation), 97%);
+    --theme-color: hsl(204, 90%, 45%);
+    --link-color: #0374B5;
+    --mark-background: #ffecb3;
+    --selection-color: #b4d5fe;
     --base-background-color: #fff;
     --base-color: var(--mono-shade2);
+
+    --base-font-size: 1.125rem;
+    --base-font-weight: normal;
     --base-line-height: 1.6;
 
-    --heading-margin: 2.5rem 0 0;
     --heading-color: var(--mono-shade3);
-    --heading-font-weight: var(--strong-font-weight);
-    --heading-h2-padding: 0 0 0.75rem 0;
-    --heading-h2-border-color: var(--mono-tint2);
-    --heading-h2-border-width: 0 0 1px 0;
-    --heading-h1-margin: 1rem 0rem -0.5rem 0rem;
-    --heading-h2-margin: 2.5rem 0 1rem;
-    --heading-h3-margin: 1rem 0rem -.5rem 0rem;
-    --heading-h4-margin: 1rem 0rem -.5rem 0rem;
-    --heading-h5-margin: 1rem 0rem -.5rem 0rem;
-    --heading-h6-margin: 1rem 0rem 0rem 0rem;
     --heading-h1-font-size: var(--font-size-xxl);
     --heading-h2-font-size: var(--font-size-xl);
     --heading-h3-font-size: var(--font-size-l);
     --heading-h4-font-size: var(--font-size-m);
     --heading-h5-font-size: var(--font-size-s);
     --heading-h6-font-size: var(--font-size-xs);
-    --heading-h1-border-style: solid;
-    --heading-h2-border-style: solid;
-    --heading-h3-border-style: solid;
-    --heading-h4-border-style: solid;
-    --heading-h5-border-style: solid;
-    --heading-h6-border-style: solid;
-
-    --navbar-root-color--active: #0374B5;
-    --navbar-root-margin: 0 0 0 .8em;
-
-    --sidebar-name-color: #0374B5;
-    --sidebar-nav-link-color--active: #0374B5;
-    --sidebar-nav-link-border-color--active: #0374B5;
-    --sidebar-nav-link-font-weight--active: bold;
-
-    --link-color: #0374B5;
 
     box-sizing: border-box;
     background-color: var(--base-background-color);
@@ -51,16 +35,6 @@
     letter-spacing: var(--base-letter-spacing);
     color: var(--base-color);
 
-    --mono-hue: 113;
-    --mono-saturation: 0%;
-    --mono-shade3: hsl(var(--mono-hue), var(--mono-saturation), 20%);
-    --mono-shade2: hsl(var(--mono-hue), var(--mono-saturation), 30%);
-    --mono-shade1: hsl(var(--mono-hue), var(--mono-saturation), 40%);
-    --mono-base: hsl(var(--mono-hue), var(--mono-saturation), 50%);
-    --mono-tint1: hsl(var(--mono-hue), var(--mono-saturation), 70%);
-    --mono-tint2: hsl(var(--mono-hue), var(--mono-saturation), 89%);
-    --mono-tint3: hsl(var(--mono-hue), var(--mono-saturation), 97%);
-    --theme-color: hsl(204, 90%, 45%);
     --modular-scale: 1.333;
     --modular-scale--2: calc(var(--modular-scale--1) / var(--modular-scale));
     --modular-scale--1: calc(var(--modular-scale-1) / var(--modular-scale));
@@ -68,7 +42,6 @@
     --modular-scale-2:  calc(var(--modular-scale-1) * var(--modular-scale));
     --modular-scale-3:  calc(var(--modular-scale-2) * var(--modular-scale));
     --modular-scale-4:  calc(var(--modular-scale-3) * var(--modular-scale));
-    --modular-scale-5:  calc(var(--modular-scale-4) * var(--modular-scale));
     --font-size-xxl: var(--modular-scale-4);
     --font-size-xl:  var(--modular-scale-3);
     --font-size-l:   var(--modular-scale-2);
@@ -77,17 +50,13 @@
     --font-size-xs:  var(--modular-scale--2);
 
     --hr-border: 1px solid var(--mono-tint2);
-    --mark-background: #ffecb3;
     --pre-font-family: var(--code-font-family);
     --pre-font-size: var(--code-font-size);
-    --pre-font-weight: normal;
-    --selection-color: #b4d5fe;
     --small-font-size: var(--font-size-s);
     --strong-color: var(--heading-color);
     --strong-font-weight: 600;
     --subsup-font-size: var(--font-size-s);
 
-    --content-max-width: 90%;
     --code-font-family: Inconsolata, Consolas, Menlo, Monaco, "Andale Mono WT", "Andale Mono", "Lucida Console", "DejaVu Sans Mono", "Bitstream Vera Sans Mono", "Courier New", Courier, monospace;
     --code-font-size: calc(var(--font-size-m) * 0.95);
     --code-font-weight: normal;
@@ -100,21 +69,20 @@
     --code-inline-margin: 0 0.15em;
     --code-inline-padding: 0.125em 0.4em;
     --code-theme-background: var(--mono-tint3);
-    --link-text-decoration: underline;
 
     --navbar-root-border-style: solid;
-    --navbar-root-margin: 0 0 0 1.5em;
     --navbar-menu-background: var(--base-background-color);
-    --navbar-menu-border-radius: var(--border-radius-m);
+    --navbar-root-color--active: var(--theme-color);
     --navbar-menu-box-shadow: rgba(45, 45, 45, 0.05) 0px 0px 1px, rgba(49, 49, 49, 0.05) 0px 1px 2px, rgba(42, 42, 42, 0.05) 0px 2px 4px, rgba(32, 32, 32, 0.05) 0px 4px 8px, rgba(49, 49, 49, 0.05) 0px 8px 16px, rgba(35, 35, 35, 0.05) 0px 16px 32px;
     --navbar-menu-padding: 0.5em;
     --navbar-menu-link-border-style: solid;
     --navbar-menu-link-margin: 0.75em 0.5em;
     --navbar-menu-link-padding: 0.2em 0;
 
-    --copycode-background: #808080;
-    --copycode-color: #fff;
-
+    --sidebar-name-color: #0374B5;
+    --sidebar-nav-link-color--active: #0374B5;
+    --sidebar-nav-link-border-color--active: #0374B5;
+    --sidebar-nav-link-font-weight--active: bold;
     --sidebar-background: var(--base-background-color);
     --sidebar-border-width: 0;
     --sidebar-padding: 0 25px;
@@ -153,14 +121,8 @@
     --border-radius-s: 2px;
     --border-radius-m: 4px;
     --border-radius-l: 8px;
-    --strong-font-weight: 600;
     --code-inline-background: var(--mono-tint2);
     --code-theme-background: var(--mono-tint3);
-
-    --navbar-root-color--active: var(--theme-color);
-    --navbar-menu-border-radius: var(--border-radius-m);
-    --navbar-menu-root-background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9.6' height='6' viewBox='0 0 9.6 6'%3E%3Cpath d='M1.5 1.5l3.3 3 3.3-3' stroke-width='1.5' stroke='rgb%28179, 179, 179%29' fill='none' stroke-linecap='square' stroke-linejoin='miter' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") right no-repeat;
-    --navbar-menu-root-padding: 0 18px 0 0;
 
     --sidebar-background: var(--mono-tint3);
     --sidebar-border-color: var(--mono-tint2);
@@ -195,7 +157,7 @@
 }
 
 html {
-    font-family: var(--base-font-family);
+    font-family: "Source Sans Pro", "Helvetica Neue", Arial, sans-serif;
 }
 
 a {
@@ -220,8 +182,7 @@ main {
 pre {
     font-family: var(--pre-font-family);
     font-size: var(--pre-font-size);
-    font-weight: var(--pre-font-weight);
-    line-height: var(--pre-line-height);
+    font-weight: normal;
 }
 
 body * {
@@ -235,7 +196,7 @@ body * {
 
 .markdown-section {
     position: relative;
-    max-width: var(--content-max-width);
+    max-width: 95%;
     margin: 0 auto;
 }
 
@@ -272,22 +233,20 @@ body * {
     display: block;
     overflow: auto;
     padding: 0.5em 1em;
-    word-break: break-all!important;
+    word-break: break-all;
 }
 code[class*=lang-], pre[data-lang] {
     color: var(--code-theme-text);
 }
 pre[data-lang]::selection,
-pre[data-lang] ::selection,
-code[class*=lang-]::selection,
-code[class*=lang-] ::selection {
+code[class*=lang-]::selection {
     background: var(--code-theme-selection, var(--selection-color));
 }
 .markdown-section code {
     font-family: var(--code-font-family);
     font-size: var(--code-font-size);
     font-weight: var(--code-font-weight);
-    white-space: pre-wrap!important;
+    white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
 .markdown-section code:not([class*=lang-]):not([class*=language-]) {
@@ -322,14 +281,11 @@ code[class*=lang-] ::selection {
     overflow-wrap: anywhere;
     border-bottom: var(--link-border-bottom);
     color: var(--link-color);
-    text-decoration: var(--link-text-decoration);
-    text-decoration-color: var(--link-text-decoration-color);
+    text-decoration: underline;
 }
 .markdown-section a:hover {
     border-bottom: var(--link-border-bottom--hover, var(--link-border-bottom, 0));
     color: var(--link-color--hover, var(--link-color));
-    text-decoration: var(--link-text-decoration--hover, var(--link-text-decoration));
-    text-decoration-color: var(--link-text-decoration-color--hover, var(--link-text-decoration-color));
 }
 
 .markdown-section a.anchor {
@@ -387,82 +343,56 @@ code[class*=lang-] ::selection {
 }
 
 .markdown-section h1 {
-    margin: var(--heading-h1-margin, var(--heading-margin));
-    padding: var(--heading-h1-padding, var(--heading-padding));
-    border-width: var(--heading-h1-border-width, 0);
-    border-style: var(--heading-h1-border-style);
-    border-color: var(--heading-h1-border-color);
-    font-family: var(--heading-h1-font-family, var(--heading-font-family));
+    margin: 1rem 0rem -0.5rem 0rem;
     font-size: var(--heading-h1-font-size);
     font-weight: 400;
     line-height: var(--base-line-height);
-    color: var(--heading-h1-color, var(--heading-color));
+    color: var(--heading-color);
     line-height: 4.00rem;
 }
 
 .markdown-section h2 {
-    margin: var(--heading-h2-margin, var(--heading-margin));
-    padding: var(--heading-h2-padding, var(--heading-padding));
-    border-width: var(--heading-h2-border-width, 0);
-    border-style: var(--heading-h2-border-style);
-    border-color: var(--heading-h2-border-color);
-    font-family: var(--heading-h2-font-family, var(--heading-font-family));
+    margin: 2.5rem 0 1rem;
+    padding: 0 0 0.75rem 0;
+    border-width: 0 0 1px 0;
+    border-style: solid;
+    border-color: var(--mono-tint2);
     font-size: var(--heading-h2-font-size);
     font-weight: 400;
     line-height: var(--base-line-height);
-    color: var(--heading-h2-color, var(--heading-color));
+    color: var(--heading-color);
     line-height: 1.55rem;
 }
 
 .markdown-section h3 {
-    margin: var(--heading-h3-margin, var(--heading-margin));
-    padding: var(--heading-h3-padding, var(--heading-padding));
-    border-width: var(--heading-h3-border-width, 0);
-    border-style: var(--heading-h3-border-style);
-    border-color: var(--heading-h3-border-color);
-    font-family: var(--heading-h3-font-family, var(--heading-font-family));
+    margin: 1rem 0rem -.5rem 0rem;
     font-size: var(--heading-h3-font-size);
     font-weight: 400;
-    color: var(--heading-h3-color, var(--heading-color));
+    color: var(--heading-color);
     line-height: 1.35rem;
 }
 
 .markdown-section h4 {
-    margin: var(--heading-h4-margin, var(--heading-margin));
-    padding: var(--heading-h4-padding, var(--heading-padding));
-    border-width: var(--heading-h4-border-width, 0);
-    border-style: var(--heading-h4-border-style);
-    border-color: var(--heading-h4-border-color);
-    font-family: var(--heading-h4-font-family, var(--heading-font-family));
+    margin: 1rem 0rem -.5rem 0rem;
     font-size: var(--heading-h4-font-size);
     font-weight: 400;
-    color: var(--heading-h4-color, var(--heading-color));
+    color: var(--heading-color);
     line-height: 1.30rem;
 }
 
 .markdown-section h5 {
-    margin: var(--heading-h5-margin, var(--heading-margin));
-    padding: var(--heading-h5-padding, var(--heading-padding));
-    border-width: var(--heading-h5-border-width, 0);
-    border-style: var(--heading-h5-border-style);
-    border-color: var(--heading-h5-border-color);
-    font-family: var(--heading-h5-font-family, var(--heading-font-family));
+    margin: 1rem 0rem -.5rem 0rem;
     font-size: var(--heading-h5-font-size);
     font-weight: 400;
-    color: var(--heading-h5-color, var(--heading-color));
+    color: var(--heading-color);
     line-height: 1.25rem;
 }
 
 .markdown-section h6 {
-    margin: var(--heading-h6-margin, var(--heading-margin));
-    padding: var(--heading-h6-padding, var(--heading-padding));
-    border-width: var(--heading-h6-border-width, 0);
-    border-style: var(--heading-h6-border-style);
-    border-color: var(--heading-h6-border-color);
-    font-family: var(--heading-h6-font-family, var(--heading-font-family));
+    margin: 1rem 0rem 0rem 0rem;
     font-size: var(--heading-h6-font-size);
     font-weight: 400;
-    color: var(--heading-h6-color, var(--heading-color));
+    color: var(--heading-color);
     line-height: 1.20rem;
 }
 

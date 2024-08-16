@@ -155,16 +155,7 @@ local html_renderer = {
 local R = html_renderer;
 
 // docs
-local dom = ["html", {lang: "en", class: "themeable", style: renderCSSProps({
-  "--navbar-root-color--active":             "#0374B5",
-  "--sidebar-name-color":                    "#0374B5",
-  "--sidebar-nav-link-color--active":        "#0374B5",
-  "--sidebar-nav-link-border-color--active": "#0374B5",
-  "--link-color":                            "#0374B5",
-  "--sidebar-nav-pagelink-background--active": "no-repeat 0px center / 5px 6px linear-gradient(225deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4.25px), no-repeat 5px center / 5px 6px linear-gradient(135deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4.25px)",
-  "--sidebar-nav-pagelink-background--collapse": "no-repeat 2px calc(50% - 2.5px) / 6px 5px linear-gradient(45deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4px), no-repeat 2px calc(50% + 2.5px) / 6px 5px linear-gradient(135deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4px)",
-  "--sidebar-nav-pagelink-background--loaded": "no-repeat 0px center / 5px 6px linear-gradient(225deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4.25px), no-repeat 5px center / 5px 6px linear-gradient(135deg, transparent 2.75px, #0374B5 2.75px 4.25px, transparent 4.25px)",
-})},
+local dom = ["html", {lang: "en"},
   ["head", {},
     ["meta", {"http-equiv": "Content-Type", charset: "UTF-8"}],
     ["title", {}, "pm"],
