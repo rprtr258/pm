@@ -28,6 +28,7 @@ local renderer_markdown = {
   img(src, alt): "![%(alt)s](%(src)s)" % {src: src, alt: alt},
   hr: "---",
 };
+local link_release = "https://github.com/rprtr258/pm/releases/latest";
 local content_example(R) = (
   local a_external = R.a;
   R.compose([
@@ -35,17 +36,17 @@ local content_example(R) = (
     R.h2("Installation"),
     R.p([
       "PM is available only for linux due to heavy usage of linux mechanisms. Go to the ",
-      a_external("releases", "https://github.com/rprtr258/pm/releases/latest"),
+      a_external("releases", link_release),
       " page to download the latest binary.",
     ]),
     R.codeblock("sh", |||
       # download binary
-      wget https://github.com/rprtr258/pm/releases/latest/download/pm_linux_amd64
+      wget %(link_release)s/download/pm_linux_amd64
       # make binary executable
       chmod +x pm_linux_amd64
       # move binary to $PATH, here just local
       mv pm_linux_amd64 pm
-    |||),
+    ||| % {link_release: link_release}),
     R.h3("Systemd service"),
     R.p([
       "To enable running processes on system startup:",
@@ -100,7 +101,7 @@ local html_renderer = {
   ul(xs): ["ul", {}] + xs,
   ul_flat(xs): self.ul([self.li(x) for x in xs]),
   a(href, text): ["a", {href: href}, text],
-  a_external(href, text): ["a", {href: href, target: "_top"}, text],
+  a_external(text, href): ["a", {href: href, target: "_top"}, text],
   h1(id, title): ["h1", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
   h2(id, title): ["h2", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
   h3(id, title): ["h3", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
@@ -208,15 +209,15 @@ local dom = ["html", {lang: "en"},
 
           ["div", {}, R.a("https://github.com/rprtr258/pm", R.img("https://img.shields.io/badge/source-code?logo=github&label=github"))],
           R.h2("installation", "Installation"),
-            R.p(["PM is available only for linux due to heavy usage of linux mechanisms. Go to the ", R.a_external("https://github.com/rprtr258/pm/releases/latest", "releases"), " page to download the latest binary."]),
+            R.p(["PM is available only for linux due to heavy usage of linux mechanisms. Go to the ", R.a_external("releases", link_release), " page to download the latest binary."]),
             R.codeblock_sh(|||
               # download binary
-              wget https://github.com/rprtr258/pm/releases/latest/download/pm_linux_amd64
+              wget %(link_release)s/download/pm_linux_amd64
               # make binary executable
               chmod +x pm_linux_amd64
               # move binary to $PATH, here just local
               mv pm_linux_amd64 pm
-            |||),
+            ||| % {link_release: link_release}),
             R.h3("systemd-service", "Systemd service"),
               R.p(["To enable running processes on system startup:"]),
               R.ul_flat([
@@ -244,7 +245,7 @@ local dom = ["html", {lang: "en"},
               R.p(["After these commands, processes with", R.code("startup: true"), "config option will be started on system startup."]),
 
           R.h2("configuration", "Configuration"),
-            R.p([R.a_external("https://jsonnet.org/", "jsonnet"), " configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead."]),
+            R.p([R.a_external("jsonnet", "https://jsonnet.org/"), " configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead."]),
             R.p(["See ", R.a("#/config.jsonnet", "example configuration file"), ". Other examples can be found in ", R.a("#/tests", "tests"), " directory."]),
 
           R.h2("usage", "Usage"),
@@ -310,7 +311,7 @@ local dom = ["html", {lang: "en"},
             R.h3("differences-from-pm2", "Differences from pm2"),
               R.ul_flat([
                 [R.code("pm"), "is just a single binary, not dependent on", R.code("nodejs"), "and bunch of", R.code("js"), "scripts"],
-                [R.a_external("https://jsonnet.org/", "jsonnet"), " configuration language, back compatible with", R.code("JSON"), "and allows to thoroughly configure processes, e.g. separate environments without requiring corresponding mechanism in", R.code("pm"), "(others configuration languages might be added in future such as", R.code("Procfile"), R.code("HCL"), "etc.)"],
+                [R.a_external("jsonnet", "https://jsonnet.org/"), " configuration language, back compatible with", R.code("JSON"), "and allows to thoroughly configure processes, e.g. separate environments without requiring corresponding mechanism in", R.code("pm"), "(others configuration languages might be added in future such as", R.code("Procfile"), R.code("HCL"), "etc.)"],
                 ["supports only", R.code("linux"), "now"],
                 ["I can fix problems/add features as I need, independent of whether they work or not in", R.code("pm2"), "because I don’t know", R.code("js")],
                 ["fast and convenient (I hope so)"],
