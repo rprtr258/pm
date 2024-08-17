@@ -18,7 +18,7 @@ var _cmdStartup = &cobra.Command{
 			Filter(func(p core.ProcStat) bool {
 				return p.Startup && p.Status != core.StatusRunning
 			}).
-			ToSlice()
+			Slice()
 
 		return errors.Combine(fun.Map[error](func(proc core.ProcStat) error {
 			return implStart(dbb, proc.ID)

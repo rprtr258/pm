@@ -35,7 +35,7 @@ func addFlagStrings(
 	dest *[]string,
 	long string,
 	description string,
-	completeFunc func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective),
+	completeFunc func(string) ([]string, cobra.ShellCompDirective),
 ) {
 	cmd.Flags().StringSliceVar(dest, long, nil, description)
 	registerFlagCompletionFunc(cmd, long, completeFunc)

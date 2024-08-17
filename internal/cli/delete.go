@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"syscall"
 
 	"github.com/rprtr258/fun"
@@ -111,13 +112,12 @@ var _cmdDelete = func() *cobra.Command {
 				)
 			}
 
-			procIDs := listProcs(dbb).
+			procIDs := slices.Collect(listProcs(dbb).
 				Filter(func(ps core.ProcStat) bool {
 					return filterFunc(ps.Proc) &&
 						(!interactive || confirmProc(ps, "delete"))
 				}).
-				IDs().
-				ToSlice()
+				IDs())
 			if len(procIDs) == 0 {
 				fmt.Println("Nothing to delete, leaving")
 				return nil

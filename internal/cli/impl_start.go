@@ -3,13 +3,14 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"syscall"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
@@ -68,12 +69,13 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 		Path: pmExecutable,
 		Args: []string{pmExecutable, _cmdShim.Name(), string(procDesc)},
 		Dir:  proc.Cwd,
-		Env: iter.Map(iter.
-			FromDict(proc.Env),
-			func(kv fun.Pair[string, string]) string {
-				return fmt.Sprintf("%s=%s", kv.K, kv.V)
-			}).
-			ToSlice(),
+		Env: slices.Collect(func(yield func(string) bool) {
+			for k, v := range maps.All(proc.Env) {
+				if !yield(fmt.Sprintf("%s=%s", k, v)) {
+					break
+				}
+			}
+		}),
 		Stdin:  os.Stdin,
 		Stdout: stdoutLogFile,
 		Stderr: stderrLogFile,
@@ -81,6 +83,7 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 			Setpgid: true,
 		},
 	}
+	log.Debug().Str("cmd", cmd.String()).Msg("starting")
 	if err := cmd.Start(); err != nil {
 		return errors.Wrapf(err, "running failed: %v", proc)
 	}

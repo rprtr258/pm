@@ -190,7 +190,7 @@ func getProcs(
 	if config == nil {
 		return listProcs(db).
 			Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
-			ToSlice(), nil
+			Slice(), nil
 	}
 
 	configs, errLoadConfigs := core.LoadConfigs(*config)
@@ -205,7 +205,7 @@ func getProcs(
 	return listProcs(db).
 		Filter(func(proc core.ProcStat) bool { return fun.Contains(proc.Name, procNames...) }).
 		Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
-		ToSlice(), nil
+		Slice(), nil
 }
 
 var (

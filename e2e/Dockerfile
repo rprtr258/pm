@@ -1,4 +1,4 @@
-FROM golang:1.21-alpine AS build
+FROM golang:1.23.0-alpine AS build
 RUN go install gotest.tools/gotestsum@latest
 WORKDIR /app
 COPY go.mod go.sum /app/

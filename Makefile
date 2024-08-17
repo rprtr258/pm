@@ -12,7 +12,7 @@ PM := go run main.go
 CURDIR=$(shell pwd)
 BINDIR=${CURDIR}/bin
 
-GOLANGCILINTVER=1.58.1
+GOLANGCILINTVER=1.60.1
 GOLANGCILINTBIN=${BINDIR}/golangci-lint_${GOLANGCILINTVER}
 
 GOCRITICVER=v0.11.4
@@ -89,9 +89,10 @@ lint: lint-go lint-goreleaser # run all linters
 
 .PHONY: docs
 docs: # generate docs
-	jsonnet --string --multi ./docs/ ./docs/docs.jsonnet
-	go run github.com/eliben/static-server@latest ./docs/
+	jsonnet --string --multi ./docs/ ./docs/docs.jsonnet --max-trace 1024
 
+docs-watch: # watch docs
+	reflex -r 'docs/.*' -- $(MAKE) docs
 
 ## Test
 

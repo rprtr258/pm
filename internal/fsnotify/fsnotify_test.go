@@ -267,7 +267,7 @@ func handleSliceEvent(b *batchedWatcherHandler[[]fsnotify.Event], specialFile st
 		}
 	}
 	sb.WriteString("]\n")
-	b.s.log.logf(sb.String())
+	b.s.log.logf("%s", sb.String())
 	if sawSpecial {
 		b.waitCh <- struct{}{}
 		return ""

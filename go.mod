@@ -1,6 +1,6 @@
 module github.com/rprtr258/pm
 
-go 1.22
+go 1.23.0
 
 require (
 	github.com/charmbracelet/huh v0.5.2

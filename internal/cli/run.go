@@ -7,10 +7,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"time"
 
 	"github.com/rprtr258/fun"
-	"github.com/rprtr258/fun/iter"
 	"github.com/rprtr258/fun/set"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -177,9 +177,13 @@ func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 	// depends_on validation
 	{
 		// collect all names from db and configs list
-		allNames := set.NewFrom(iter.Map(listProcs(dbb).Seq, func(ps core.ProcStat) string {
-			return ps.Name
-		}).ToSlice()...)
+		allNames := set.NewFrom(slices.Collect(func(yield func(string) bool) {
+			for ps := range listProcs(dbb).Seq {
+				if !yield(ps.Name) {
+					break
+				}
+			}
+		})...)
 		for _, config := range configs {
 			allNames.Add(config.Name)
 		}
