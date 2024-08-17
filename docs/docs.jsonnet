@@ -142,7 +142,7 @@ local html_adapter = (
     p(xs): ["p", {}] + xs,
     li(xs): ["li", {}] + xs,
     ul(xs): ["ul", {}] + [self.li(x) for x in xs],
-    a(text, href): ["a", {href: href}, text],
+    a(text, href): ["a", {href: "https://github.com/rprtr258/pm/blob/master/" + href}, text],
     a_external(text, href): ["a", {href: href, target: "_top"}, text],
     h1(title): ["h1", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
     h2(title): ["h2", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
@@ -241,7 +241,7 @@ local docs(R) = [
 
   R.h2("Configuration"),
   R.p([R.a_external("jsonnet", "https://jsonnet.org/"), " configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead."]),
-  R.p(["See ", R.a("example configuration file", "./config.jsonnet"), ". Other examples can be found in ", R.a("tests", "./tests"), " directory."]),
+  R.p(["See ", R.a("example configuration file", "./config.jsonnet"), ". Other examples can be found in ", R.a("tests", "./e2e/tests"), " directory."]),
 
   R.h2("Usage"),
   R.p(["Most fresh usage descriptions can be seen using ", R.code("pm <command> --help"), "."]),

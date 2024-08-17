@@ -41,7 +41,7 @@ After these commands, processes with `startup: true` config option will be start
 ## Configuration
 [jsonnet](https://jsonnet.org/) configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead.
 
-See [example configuration file](./config.jsonnet). Other examples can be found in [tests](./tests) directory.
+See [example configuration file](./config.jsonnet). Other examples can be found in [tests](./e2e/tests) directory.
 
 ## Usage
 Most fresh usage descriptions can be seen using `pm <command> --help`.
