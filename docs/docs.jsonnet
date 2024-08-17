@@ -7,7 +7,6 @@ local renderCSS(o) = join(
   std.mapWithKey(function(_, props) renderCSSProps(props), o),
 );
 
-// TODO:
 local renderer_markdown = {
   compose(xs): std.join("\n", xs),
   unknown(x): error "unknown renderer_markdown element: %(x)s" % {x: x},
@@ -28,6 +27,66 @@ local renderer_markdown = {
   img(src, alt): "![%(alt)s](%(src)s)" % {src: src, alt: alt},
   hr: "---",
 };
+local html_adapter = {
+  code(s): ["code", {}, s],
+  span(s): ["span", {}, s],
+  p(xs): ["p", {}] + xs,
+  li(xs): ["li", {}] + xs,
+  ul(xs): ["ul", {}] + [self.li(x) for x in xs],
+  a(href, text): ["a", {href: href}, text],
+  a_external(text, href): ["a", {href: href, target: "_top"}, text],
+  h1(id, title): ["h1", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
+  h2(id, title): ["h2", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
+  h3(id, title): ["h3", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
+  img(src): ["img", {src: src, style: renderCSSProps({"max-width": "100%", border: "0"})}],
+  codeblock_sh(code): (
+    local functionn(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-function)"})}, s];
+    local variable(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-variable)"})}, s];
+    local comment(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-comment)"})}, s];
+    local operator(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-operator)"})}, s];
+    local env(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
+    local number(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
+    local punctuation(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-punctuation)"})}, s];
+    local render_word(word) =
+      local functionns = ["wget", "chmod", "chown", "mv", "cp", "ln", "sudo", "git"];
+      local lt = std.findSubstr("<", word);
+      local gt = std.findSubstr(">", word);
+      local lsb = std.findSubstr("[", word);
+      local rsb = std.findSubstr("]", word);
+      local ellipsis = std.findSubstr("...", word);
+      if word == "" then []
+      else if std.length(lt) > 0 then render_word(std.substr(word, 0, lt[0])) + [operator("&lt;")] + render_word(std.substr(word, lt[0]+1, std.length(word)))
+      else if std.length(gt) > 0 then render_word(std.substr(word, 0, gt[0])) + [operator("&gt;")] + render_word(std.substr(word, gt[0]+1, std.length(word)))
+      else if std.length(lsb) > 0 then render_word(std.substr(word, 0, lsb[0])) + [punctuation("[")] + render_word(std.substr(word, lsb[0]+1, std.length(word)))
+      else if std.length(rsb) > 0 then render_word(std.substr(word, 0, rsb[0])) + [punctuation("]")] + render_word(std.substr(word, rsb[0]+1, std.length(word)))
+      else if std.length(ellipsis) > 0 then render_word(std.substr(word, 0, ellipsis[0])) + [punctuation("...")] + render_word(std.substr(word, ellipsis[0]+3, std.length(word)))
+      else if std.any([word == x for x in functionns]) then [functionn(word)]
+      else if word == "[" then [punctuation(word)]
+      else if word == "]" then [punctuation(word)]
+      else if word == "644" then [number(word)]
+      else if word == "enable" then [["span", {class: "token class-name", style: renderCSSProps({color: "var(--code-theme-selector)"})}, "enable"]]
+      else if word[0] == "-" then [variable(word)]
+      else if word == "$HOME/.pm/" then [env("$HOME"), "/.pm/"]
+      else [word];
+    local render(line) = // TODO: use sh parser actually
+      if std.length(line) > 0 then
+        local hash = std.findSubstr("#", line);
+        local words = std.split(line, " ");
+        if std.length(hash) > 0 then
+          local before = std.substr(line, 0, hash[0]);
+          local after = std.substr(line, hash[0], std.length(line));
+          render(before) + [comment(after)]
+        else std.join([" "], [
+          render_word(word)
+          for word in words
+        ])
+      else [line];
+    local lines = [render(line) for line in std.split(code, "\n")];
+    ["pre", {"data-lang": "sh", style: renderCSSProps({background: "var(--code-theme-background)"})},
+      ["code", {class: "language-sh"}] + std.join(["\n"], lines)]
+    ),
+};
+local R = html_adapter;
 local link_release = "https://github.com/rprtr258/pm/releases/latest";
 local content_example(R) = (
   local a_external = R.a;
@@ -93,68 +152,6 @@ local content_example(R) = (
   ])
 );
 
-local html_renderer = {
-  code(s): ["code", {}, s],
-  span(s): ["span", {}, s],
-  p(xs): ["p", {}] + xs,
-  li(xs): ["li", {}] + xs,
-  ul(xs): ["ul", {}] + xs,
-  ul_flat(xs): self.ul([self.li(x) for x in xs]),
-  a(href, text): ["a", {href: href}, text],
-  a_external(text, href): ["a", {href: href, target: "_top"}, text],
-  h1(id, title): ["h1", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
-  h2(id, title): ["h2", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
-  h3(id, title): ["h3", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
-  img(src): ["img", {src: src, style: renderCSSProps({"max-width": "100%", border: "0"})}],
-  codeblock_sh(code): (
-    local functionn(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-function)"})}, s];
-    local variable(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-variable)"})}, s];
-    local comment(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-comment)"})}, s];
-    local operator(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-operator)"})}, s];
-    local env(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
-    local number(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
-    local punctuation(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-punctuation)"})}, s];
-    local render_word(word) =
-      local functionns = ["wget", "chmod", "chown", "mv", "cp", "ln", "sudo", "git"];
-      local lt = std.findSubstr("<", word);
-      local gt = std.findSubstr(">", word);
-      local lsb = std.findSubstr("[", word);
-      local rsb = std.findSubstr("]", word);
-      local ellipsis = std.findSubstr("...", word);
-      if word == "" then []
-      else if std.length(lt) > 0 then render_word(std.substr(word, 0, lt[0])) + [operator("&lt;")] + render_word(std.substr(word, lt[0]+1, std.length(word)))
-      else if std.length(gt) > 0 then render_word(std.substr(word, 0, gt[0])) + [operator("&gt;")] + render_word(std.substr(word, gt[0]+1, std.length(word)))
-      else if std.length(lsb) > 0 then render_word(std.substr(word, 0, lsb[0])) + [punctuation("[")] + render_word(std.substr(word, lsb[0]+1, std.length(word)))
-      else if std.length(rsb) > 0 then render_word(std.substr(word, 0, rsb[0])) + [punctuation("]")] + render_word(std.substr(word, rsb[0]+1, std.length(word)))
-      else if std.length(ellipsis) > 0 then render_word(std.substr(word, 0, ellipsis[0])) + [punctuation("...")] + render_word(std.substr(word, ellipsis[0]+3, std.length(word)))
-      else if std.any([word == x for x in functionns]) then [functionn(word)]
-      else if word == "[" then [punctuation(word)]
-      else if word == "]" then [punctuation(word)]
-      else if word == "644" then [number(word)]
-      else if word == "enable" then [["span", {class: "token class-name", style: renderCSSProps({color: "var(--code-theme-selector)"})}, "enable"]]
-      else if word[0] == "-" then [variable(word)]
-      else if word == "$HOME/.pm/" then [env("$HOME"), "/.pm/"]
-      else [word];
-    local render(line) = // TODO: use sh parser actually
-      if std.length(line) > 0 then
-        local hash = std.findSubstr("#", line);
-        local words = std.split(line, " ");
-        if std.length(hash) > 0 then
-          local before = std.substr(line, 0, hash[0]);
-          local after = std.substr(line, hash[0], std.length(line));
-          render(before) + [comment(after)]
-        else std.join([" "], [
-          render_word(word)
-          for word in words
-        ])
-      else [line];
-    local lines = [render(line) for line in std.split(code, "\n")];
-    ["pre", {"data-lang": "sh", style: renderCSSProps({background: "var(--code-theme-background)"})},
-      ["code", {class: "language-sh"}] + std.join(["\n"], lines)]
-    ),
-};
-local R = html_renderer;
-
 // docs
 local dom = ["html", {lang: "en"},
   ["head", {},
@@ -178,14 +175,14 @@ local dom = ["html", {lang: "en"},
       ["aside", {class: "sidebar", role: "none"},
         ["div", {class: "sidebar-nav", role: "navigation", "aria-label": "primary"},
           local a(id, title) = ["a", {class: "section-link", href: "#"+id, title: title}, title];
-          R.ul_flat([
+          R.ul([
             [a("installation", "Installation")],
-            [R.ul_flat([
+            [R.ul([
               [a("systemd-service", "Systemd service")],
             ])],
             [a("configuration", "Configuration")],
             [a("usage", "Usage")],
-            [R.ul_flat([
+            [R.ul([
               [a("run-process", "Run process")],
               [a("list-processes", "List processes")],
               [a("start-already-added-processes", "Start already added processes")],
@@ -194,7 +191,7 @@ local dom = ["html", {lang: "en"},
             ])],
             [a("process-state-diagram", "Process state diagram")],
             [a("development", "Development")],
-            [R.ul_flat([
+            [R.ul([
               [a("architecture", "Architecture")],
               [a("pm-directory-structure", "PM directory structure")],
               [a("differences-from-pm2", "Differences from pm2")],
@@ -220,7 +217,7 @@ local dom = ["html", {lang: "en"},
             ||| % {link_release: link_release}),
             R.h3("systemd-service", "Systemd service"),
               R.p(["To enable running processes on system startup:"]),
-              R.ul_flat([
+              R.ul([
                 ["Copy", R.a("#/pm.service", R.code("pm.service")), "file locally. This is the systemd service file that tells systemd how to manage your application."],
                 ["Change", R.code("User"), "field to your own username. This specifies under which user account the service will run, which affects permissions and environment."],
                 ["Change", R.code("ExecStart"), "to use", R.code("pm"), "binary installed. This is the command that systemd will execute to start your service."],
@@ -291,7 +288,7 @@ local dom = ["html", {lang: "en"},
             R.h3("architecture", "Architecture"),
               R.p([R.code("pm"), "consists of two parts:"]),
               local b = function(x) ["b", {}, x];
-              R.ul_flat([
+              R.ul([
                 [b("cli client"), " - requests server, launches/stops shim processes"],
                 [b("shim"), " - monitors and restarts processes, handle watches, signals and shutdowns"],
               ]),
@@ -309,7 +306,7 @@ local dom = ["html", {lang: "en"},
               |||),
 
             R.h3("differences-from-pm2", "Differences from pm2"),
-              R.ul_flat([
+              R.ul([
                 [R.code("pm"), "is just a single binary, not dependent on", R.code("nodejs"), "and bunch of", R.code("js"), "scripts"],
                 [R.a_external("jsonnet", "https://jsonnet.org/"), " configuration language, back compatible with", R.code("JSON"), "and allows to thoroughly configure processes, e.g. separate environments without requiring corresponding mechanism in", R.code("pm"), "(others configuration languages might be added in future such as", R.code("Procfile"), R.code("HCL"), "etc.)"],
                 ["supports only", R.code("linux"), "now"],
