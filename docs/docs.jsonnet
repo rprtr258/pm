@@ -7,6 +7,44 @@ local renderCSS(o) = join(
   std.mapWithKey(function(_, props) renderCSSProps(props), o),
 );
 
+local toc = {
+  compose(xs): std.foldl(function(acc, x)
+    local node(x) = {title: x.title, children: []};
+    if std.type(x) != "object" then acc
+    else if x.level == 0 then acc + [node(x)]
+    else if x.level == 1 then (
+      local n = std.length(acc);
+      local last = acc[n-1];
+      acc[:n-1] + [{title: last.title, children: last.children + [node(x)]}]
+    )
+    else if x.level == 2 then (
+      local n = std.length(acc);
+      local last = acc[n-1];
+      local m = std.length(last.children);
+      local lastlast = last.children[m-1];
+      acc[:n-1] + [{
+        title: last.title,
+        children: last.children[:m-1] + [{
+          title: lastlast.title,
+          children: lastlast.children + [node(x)]
+        }],
+      }]
+    )
+    else acc
+    , xs, []),
+  h1(title): {title: title, level: 0},
+  h2(title): {title: title, level: 1},
+  h3(title): {title: title, level: 2},
+  ul(xs): [],
+  p(xs): [],
+  code(code): [],
+  codeblock_sh(code): [],
+  a(text, href): [],
+  a_external(text, href): [],
+  img(src, alt): [],
+  process_state_diagram: [],
+};
+
 local renderer_markdown = {
   compose(xs): std.join("\n", xs),
   unknown(x): error "unknown renderer_markdown element: %(x)s" % {x: x},
@@ -22,22 +60,94 @@ local renderer_markdown = {
   a(text, href): "[%(text)s](%(href)s)" % {text: text, href: href},
   bold(text): "**%(text)s**" % {text: text},
   italic(text): "_%(text)s_" % {text: text},
-  ul(xs): std.join("", ["\n- "+x for x in xs])+"\n",
-  li(x): "- "+x,
+  ul(lines): std.join("\n", [self.li(line) for line in lines])+"\n", // TODO: move out li
+  li(x): "- "+std.join("", x),
   img(src, alt): "![%(alt)s](%(src)s)" % {src: src, alt: alt},
   hr: "---",
 };
+
+local markdown_adapter = {
+  render(doc): renderer_markdown.compose(doc(markdown_adapter)),
+  h1(title): renderer_markdown.h1(title),
+  h2(title): renderer_markdown.h2(title),
+  h3(title): renderer_markdown.h3(title),
+  p(xs): renderer_markdown.p(xs),
+  b(s): renderer_markdown.bold(s),
+  a(text, href): renderer_markdown.a(text, href), // TODO: local links should work
+  a_external(text, href): renderer_markdown.a(text, href),
+  code(code): renderer_markdown.code(code),
+  codeblock_sh(code): renderer_markdown.codeblock("sh", code),
+  ul(xs): renderer_markdown.ul(xs),
+  process_state_diagram: |||
+    ```mermaid
+    flowchart TB
+      0( )
+      S(Stopped)
+      C(Created)
+      R(Running)
+      A{{autorestart/watch enabled?}}
+      0 -->|new process| S
+      subgraph Running
+        direction TB
+        C -->|process started| R
+        R -->|process died| A
+      end
+      A -->|yes| C
+      A -->|no| S
+      Running  -->|stop| S
+      S -->|start| C
+    ```
+  |||,
+};
+
 local html_adapter = {
-  code(s): ["code", {}, s],
+  render(doc): (
+    local TOC = toc.compose(doc(toc))[0].children; // NOTE: skip h1
+    "<!DOCTYPE html>"+std.manifestXmlJsonml(["html", {lang: "en"},
+      ["head", {},
+        ["title", {}, "pm"],
+        ["meta", {"http-equiv": "Content-Type", charset: "UTF-8"}],
+        ["meta", {name: "description", content: "process manager"}],
+        ["meta", {"http-equiv": "X-UA-Compatible", content: "IE=edge,chrome=1"}],
+        ["meta", {name: "viewport", content: "width=device-width, initial-scale=1"}],
+        ["meta", {property: "og:title", content: "pm"}],
+        ["meta", {property: "og:description", content: "process manager"}],
+        ["meta", {property: "og:type", content: "website"}],
+        ["meta", {property: "og:url", content: "https://rprtr258.github.io/pm/"}],
+        ["meta", {property: "og:image", content: "https://rprtr258.github.io/pm/images/og-image.png"}],
+        ["style", {}, renderCSS(import "styles.jsonnet")],
+      ],
+      ["body", {class: "sticky", style: renderCSSProps({margin: "0"})},
+        ["main", {role: "presentation"},
+          ["aside", {class: "sidebar", role: "none"},
+            ["div", {class: "sidebar-nav", role: "navigation", "aria-label": "primary"}, (
+              local a(id, title) = ["a", {class: "section-link", href: "#"+id, title: title}, title];
+              local toc_render(xs) = self.ul(std.foldl(function(acc, x) acc + [[a(x.title, x.title)], [toc_render(x.children)]], xs, []));
+              toc_render(TOC)
+            )],
+          ],
+          ["section", {class: "content"},
+            ["article", {id: "main", class: "markdown-section", role: "main"}] + doc(html_adapter)]]]])
+  ),
+  process_state_diagram: import "process-state-diagram.jsonnet", // TODO: render from mermaid
+  code(s): (
+    local escape(s) = std.join("", std.map(function(c)
+      if c == "<" then "&lt;"
+      else if c == ">" then "&gt;"
+      else c,
+    s));
+    ["code", {}, escape(s)]
+  ),
+  b(s): ["b", {}, s],
   span(s): ["span", {}, s],
   p(xs): ["p", {}] + xs,
   li(xs): ["li", {}] + xs,
   ul(xs): ["ul", {}] + [self.li(x) for x in xs],
-  a(href, text): ["a", {href: href}, text],
+  a(text, href): ["a", {href: href}, text],
   a_external(text, href): ["a", {href: href, target: "_top"}, text],
-  h1(id, title): ["h1", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
-  h2(id, title): ["h2", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
-  h3(id, title): ["h3", {id: id}, ["a", {href: "#"+id, class: "anchor"}, self.span(title)]],
+  h1(title): ["h1", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
+  h2(title): ["h2", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
+  h3(title): ["h3", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
   img(src): ["img", {src: src, style: renderCSSProps({"max-width": "100%", border: "0"})}],
   codeblock_sh(code): (
     local functionn(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-function)"})}, s];
@@ -86,250 +196,133 @@ local html_adapter = {
       ["code", {class: "language-sh"}] + std.join(["\n"], lines)]
     ),
 };
-local R = html_adapter;
+
 local link_release = "https://github.com/rprtr258/pm/releases/latest";
-local content_example(R) = (
-  local a_external = R.a;
-  R.compose([
-    R.h1("PM (process manager)"),
-    R.h2("Installation"),
-    R.p([
-      "PM is available only for linux due to heavy usage of linux mechanisms. Go to the ",
-      a_external("releases", link_release),
-      " page to download the latest binary.",
-    ]),
-    R.codeblock("sh", |||
-      # download binary
-      wget %(link_release)s/download/pm_linux_amd64
-      # make binary executable
-      chmod +x pm_linux_amd64
-      # move binary to $PATH, here just local
-      mv pm_linux_amd64 pm
-    ||| % {link_release: link_release}),
+
+local docs(R) = [
+  R.h1("PM (process manager)"),
+
+  // ["div", {}, R.a("https://github.com/rprtr258/pm", R.img("https://img.shields.io/badge/source-code?logo=github&label=github"))],
+  R.h2("Installation"),
+  R.p(["PM is available only for linux due to heavy usage of linux mechanisms. Go to the ", R.a_external("releases", link_release), " page to download the latest binary."]),
+  R.codeblock_sh(|||
+    # download binary
+    wget %(link_release)s/download/pm_linux_amd64
+    # make binary executable
+    chmod +x pm_linux_amd64
+    # move binary to $PATH, here just local
+    mv pm_linux_amd64 pm
+  ||| % {link_release: link_release}),
     R.h3("Systemd service"),
-    R.p([
-      "To enable running processes on system startup:",
-      R.ul([
-        "Copy "+R.a("pm.service", "./pm.service")+" file locally. This is the systemd service file that tells systemd how to manage your application.",
-        "Change `User` field to your own username. This specifies under which user account the service will run, which affects permissions and environment.",
-        "Change `ExecStart` to use `pm` binary installed. This is the command that systemd will execute to start your service.",
-        "Move the file to `/etc/systemd/system/pm.service` and set root permissions on it:",
-      ]),
-      R.codeblock("sh", |||
-        # copy service file to system's directory for systemd services
-        sudo cp pm.service /etc/systemd/system/pm.service
-        # set permission of service file to be readable and writable by owner, and readable by others
-        sudo chmod 644 /etc/systemd/system/pm.service
-        # change owner and group of service file to root, ensuring that it is managed by system administrator
-        sudo chown root:root /etc/systemd/system/pm.service
-        # reload systemd manager configuration, scanning for new or changed units
-        sudo systemctl daemon-reload
-        # enables service to start at boot time
-        sudo systemctl enable pm
-        # starts service immediately
-        sudo systemctl start pm
-        # soft link /usr/bin/pm binary to whenever it is installed
-        sudo ln -s ~/go/bin/pm /usr/bin/pm
-      |||),
-      "After these commands, processes with "+R.code("startup: true")+" config option will be started on system startup."
+    R.p(["To enable running processes on system startup:"]),
+    R.ul([
+      ["Copy ", R.a(R.code("pm.service"), "./pm.service"), " file locally. This is the systemd service file that tells systemd how to manage your application."],
+      ["Change ", R.code("User"), " field to your own username. This specifies under which user account the service will run, which affects permissions and environment."],
+      ["Change ", R.code("ExecStart"), " to use ", R.code("pm"), " binary installed. This is the command that systemd will execute to start your service."],
+      ["Move the file to ", R.code("/etc/systemd/system/pm.service"), " and set root permissions on it:"],
     ]),
-    R.h2("Configuration"),
-    R.a("jsonnet", "https://jsonnet.org/") + " configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead.",
-    "",
-    "See "+R.a("example configuration file", "./config.jsonnet") + ". Other examples can be found in " + R.a("tests", "./tests") + " directory.",
-    R.h2("Usage"),
+    R.codeblock_sh(|||
+      # copy service file to system's directory for systemd services
+      sudo cp pm.service /etc/systemd/system/pm.service
+      # set permission of service file to be readable and writable by owner, and readable by others
+      sudo chmod 644 /etc/systemd/system/pm.service
+      # change owner and group of service file to root, ensuring that it is managed by system administrator
+      sudo chown root:root /etc/systemd/system/pm.service
+      # reload systemd manager configuration, scanning for new or changed units
+      sudo systemctl daemon-reload
+      # enables service to start at boot time
+      sudo systemctl enable pm
+      # starts service immediately
+      sudo systemctl start pm
+      # soft link /usr/bin/pm binary to whenever it is installed
+      sudo ln -s ~/go/bin/pm /usr/bin/pm
+    |||),
+    R.p(["After these commands, processes with ", R.code("startup: true"), " config option will be started on system startup."]),
+
+  R.h2("Configuration"),
+  R.p([R.a_external("jsonnet", "https://jsonnet.org/"), " configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead."]),
+  R.p(["See ", R.a("example configuration file", "./config.jsonnet"), ". Other examples can be found in ", R.a("tests", "./tests"), " directory."]),
+
+  R.h2("Usage"),
+  R.p(["Most fresh usage descriptions can be seen using ", R.code("pm <command> --help"), "."]),
     R.h3("Run process"),
+    R.codeblock_sh(|||
+      # run process using command
+      pm run go run main.go
+
+      # run processes from config file
+      pm run --config config.jsonnet
+    |||),
     R.h3("List processes"),
+    R.codeblock_sh(|||
+      pm list
+    |||),
+
     R.h3("Start already added processes"),
+    R.codeblock_sh(|||
+      pm start [ID/NAME/TAG]...
+    |||),
+
     R.h3("Stop processes"),
+    R.codeblock_sh(|||
+      pm stop [ID/NAME/TAG]...
+
+      # e.g. stop all added processes (all processes has tag `all` by default)
+      pm stop all
+    |||),
     R.h3("Delete processes"),
-    R.h2("Process state diagram"),
-    R.h2("Development"),
+    R.p(["When deleting process, they are first stopped, then removed from ", R.code("pm"), "."]),
+    R.codeblock_sh(|||
+      pm delete [ID/NAME/TAG]...
+
+      # e.g. delete all processes
+      pm delete all
+    |||),
+
+  R.h2("Process state diagram"),
+  R.process_state_diagram,
+
+  R.h2("Development"),
     R.h3("Architecture"),
+    R.p([R.code("pm"), " consists of two parts:"]),
+    R.ul([
+      [R.b("cli client"), " - requests server, launches/stops shim processes"],
+      [R.b("shim"), " - monitors and restarts processes, handle watches, signals and shutdowns"],
+    ]),
+
     R.h3("PM directory structure"),
+    R.p([R.code("pm"), " uses directory ", R.code("$HOME/.pm"), " to store data by default. ", R.code("PM_HOME"), " environment variable can be used to change this. Layout is following:"]),
+    R.codeblock_sh(|||
+      $HOME/.pm/
+      ├──config.json # pm config file
+      ├──db/ # database tables
+      │   └──<ID> # process info
+      └──logs/ # processes logs
+          ├──<ID>.stdout # stdout of process with id ID
+          └──<ID>.stderr # stderr of process with id ID
+    |||),
+
     R.h3("Differences from pm2"),
+    R.ul([
+      [R.code("pm"), " is just a single binary, not dependent on ", R.code("nodejs"), " and bunch of ", R.code("js"), " scripts"],
+      [R.a_external("jsonnet", "https://jsonnet.org/"), " configuration language, back compatible with ", R.code("JSON"), " and allows to thoroughly configure processes, e.g. separate environments without requiring corresponding mechanism in ", R.code("pm"), " (others configuration languages might be added in future such as ", R.code("Procfile"), ", ", R.code("HCL"), ", etc.)"],
+      ["supports only ", R.code("linux"), " now"],
+      ["I can fix problems/add features as I need, independent of whether they work or not in ", R.code("pm2"), " because I don't know ", R.code("js")],
+      ["fast and convenient (I hope so)"],
+      ["no specific integrations for ", R.code("js")],
+    ]),
+
     R.h3("Release"),
-  ])
-);
-
-// docs
-local dom = ["html", {lang: "en"},
-  ["head", {},
-    ["meta", {"http-equiv": "Content-Type", charset: "UTF-8"}],
-    ["title", {}, "pm"],
-    ["meta", {name: "description", content: "process manager"}],
-    ["meta", {"http-equiv": "X-UA-Compatible", content: "IE=edge,chrome=1"}],
-    ["meta", {"name": "viewport", content: "width=device-width, initial-scale=1"}],
-    ["link", {rel: "icon", href: "assets/favicon/favicon.png"}],
-
-    ["meta", {property: "og:title", content: "pm"}],
-    ["meta", {property: "og:description", content: "process manager"}],
-    ["meta", {property: "og:type", content: "website"}],
-    ["meta", {property: "og:url", content: "https://rprtr258.github.io/pm/"}],
-    ["meta", {property: "og:image", content: "https://rprtr258.github.io/pm/images/og-image.png"}],
-
-    ["style", {}, renderCSS(import "styles.jsonnet")],
-  ],
-  ["body", {class: "sticky", style: renderCSSProps({margin: "0"})},
-    ["main", {role: "presentation"},
-      ["aside", {class: "sidebar", role: "none"},
-        ["div", {class: "sidebar-nav", role: "navigation", "aria-label": "primary"},
-          local a(id, title) = ["a", {class: "section-link", href: "#"+id, title: title}, title];
-          R.ul([
-            [a("installation", "Installation")],
-            [R.ul([
-              [a("systemd-service", "Systemd service")],
-            ])],
-            [a("configuration", "Configuration")],
-            [a("usage", "Usage")],
-            [R.ul([
-              [a("run-process", "Run process")],
-              [a("list-processes", "List processes")],
-              [a("start-already-added-processes", "Start already added processes")],
-              [a("stop-processes", "Stop processes")],
-              [a("delete-processes", "Delete processes")],
-            ])],
-            [a("process-state-diagram", "Process state diagram")],
-            [a("development", "Development")],
-            [R.ul([
-              [a("architecture", "Architecture")],
-              [a("pm-directory-structure", "PM directory structure")],
-              [a("differences-from-pm2", "Differences from pm2")],
-              [a("release", "Release")],
-            ])],
-          ]),
-        ],
-      ],
-      ["section", {class: "content"},
-        ["article", {id: "main", class: "markdown-section", role: "main"},
-          R.h1("pm-process-manager", "PM (process manager)"),
-
-          ["div", {}, R.a("https://github.com/rprtr258/pm", R.img("https://img.shields.io/badge/source-code?logo=github&label=github"))],
-          R.h2("installation", "Installation"),
-            R.p(["PM is available only for linux due to heavy usage of linux mechanisms. Go to the ", R.a_external("releases", link_release), " page to download the latest binary."]),
-            R.codeblock_sh(|||
-              # download binary
-              wget %(link_release)s/download/pm_linux_amd64
-              # make binary executable
-              chmod +x pm_linux_amd64
-              # move binary to $PATH, here just local
-              mv pm_linux_amd64 pm
-            ||| % {link_release: link_release}),
-            R.h3("systemd-service", "Systemd service"),
-              R.p(["To enable running processes on system startup:"]),
-              R.ul([
-                ["Copy", R.a("#/pm.service", R.code("pm.service")), "file locally. This is the systemd service file that tells systemd how to manage your application."],
-                ["Change", R.code("User"), "field to your own username. This specifies under which user account the service will run, which affects permissions and environment."],
-                ["Change", R.code("ExecStart"), "to use", R.code("pm"), "binary installed. This is the command that systemd will execute to start your service."],
-                ["Move the file to", R.code("/etc/systemd/system/pm.service"), "and set root permissions on it:"],
-              ]),
-              R.codeblock_sh(|||
-                # copy service file to system's directory for systemd services
-                sudo cp pm.service /etc/systemd/system/pm.service
-                # set permission of service file to be readable and writable by owner, and readable by others
-                sudo chmod 644 /etc/systemd/system/pm.service
-                # change owner and group of service file to root, ensuring that it is managed by system administrator
-                sudo chown root:root /etc/systemd/system/pm.service
-                # reload systemd manager configuration, scanning for new or changed units
-                sudo systemctl daemon-reload
-                # enables service to start at boot time
-                sudo systemctl enable pm
-                # starts service immediately
-                sudo systemctl start pm
-                # soft link /usr/bin/pm binary to whenever it is installed
-                sudo ln -s ~/go/bin/pm /usr/bin/pm
-              |||),
-              R.p(["After these commands, processes with", R.code("startup: true"), "config option will be started on system startup."]),
-
-          R.h2("configuration", "Configuration"),
-            R.p([R.a_external("jsonnet", "https://jsonnet.org/"), " configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead."]),
-            R.p(["See ", R.a("#/config.jsonnet", "example configuration file"), ". Other examples can be found in ", R.a("#/tests", "tests"), " directory."]),
-
-          R.h2("usage", "Usage"),
-            R.p(["Most fresh usage descriptions can be seen using", R.code("pm &lt;command&gt; --help"), "."]),
-            R.h3("run-process", "Run process"),
-              R.codeblock_sh(|||
-                # run process using command
-                pm run go run main.go
-
-                # run processes from config file
-                pm run --config config.jsonnet
-              |||),
-            R.h3("list-processes", "List processes"),
-              R.codeblock_sh(|||
-                pm list
-              |||),
-
-            R.h3("start-already-added-processes", "Start already added processes"),
-              R.codeblock_sh(|||
-                pm start [ID/NAME/TAG]...
-              |||),
-
-            R.h3("stop-processes", "Stop processes"),
-              R.codeblock_sh(|||
-                pm stop [ID/NAME/TAG]...
-
-                # e.g. stop all added processes (all processes has tag `all` by default)
-                pm stop all
-              |||),
-            R.h3("delete-processes", "Delete processes"),
-              R.p(["When deleting process, they are first stopped, then removed from", R.code("pm"), "."]),
-              R.codeblock_sh(|||
-                pm delete [ID/NAME/TAG]...
-
-                # e.g. delete all processes
-                pm delete all
-              |||),
-
-          R.h2("process-state-diagram", "Process state diagram"),
-            import "process-state-diagram.jsonnet",
-
-          R.h2("development", "Development"),
-            R.h3("architecture", "Architecture"),
-              R.p([R.code("pm"), "consists of two parts:"]),
-              local b = function(x) ["b", {}, x];
-              R.ul([
-                [b("cli client"), " - requests server, launches/stops shim processes"],
-                [b("shim"), " - monitors and restarts processes, handle watches, signals and shutdowns"],
-              ]),
-
-            R.h3("pm-directory-structure", "PM directory structure"),
-              R.p([R.code("pm"), "uses directory", R.code("$HOME/.pm"), "to store data by default.", R.code("PM_HOME"), "environment variable can be used to change this. Layout is following:"]),
-              R.codeblock_sh(|||
-                $HOME/.pm/
-                ├──config.json # pm config file
-                ├──db/ # database tables
-                │   └──<ID> # process info
-                └──logs/ # processes logs
-                   ├──<ID>.stdout # stdout of process with id ID
-                   └──<ID>.stderr # stderr of process with id ID
-              |||),
-
-            R.h3("differences-from-pm2", "Differences from pm2"),
-              R.ul([
-                [R.code("pm"), "is just a single binary, not dependent on", R.code("nodejs"), "and bunch of", R.code("js"), "scripts"],
-                [R.a_external("jsonnet", "https://jsonnet.org/"), " configuration language, back compatible with", R.code("JSON"), "and allows to thoroughly configure processes, e.g. separate environments without requiring corresponding mechanism in", R.code("pm"), "(others configuration languages might be added in future such as", R.code("Procfile"), R.code("HCL"), "etc.)"],
-                ["supports only", R.code("linux"), "now"],
-                ["I can fix problems/add features as I need, independent of whether they work or not in", R.code("pm2"), "because I don’t know", R.code("js")],
-                ["fast and convenient (I hope so)"],
-                ["no specific integrations for", R.code("js")],
-              ]),
-
-            R.h3("release", "Release"),
-              R.p(["On", R.code("master"), "branch:"]),
-              R.codeblock_sh(|||
-                git tag v1.2.3
-                git push --tags
-                goreleaser release --clean
-              |||),
-        ],
-      ],
-    ],
-  ],
+    R.p(["On ", R.code("master"), " branch:"]),
+    R.codeblock_sh(|||
+      git tag v1.2.3
+      git push --tags
+      goreleaser release --clean
+    |||),
 ];
 
 {
-  "index.html": "<!DOCTYPE html>"+std.manifestXmlJsonml(dom),
-  "readme.md": importstr "../readme.md",
-  "example.md": content_example(renderer_markdown),
+  "index.html": html_adapter.render(docs),
+  // "readme.md": importstr "../readme.md",
+  "readme.md": markdown_adapter.render(docs),
 }
