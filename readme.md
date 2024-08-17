@@ -13,10 +13,12 @@ mv pm_linux_amd64 pm
 
 ### Systemd service
 To enable running processes on system startup:
+
 - Copy [`pm.service`](./pm.service) file locally. This is the systemd service file that tells systemd how to manage your application.
 - Change `User` field to your own username. This specifies under which user account the service will run, which affects permissions and environment.
 - Change `ExecStart` to use `pm` binary installed. This is the command that systemd will execute to start your service.
 - Move the file to `/etc/systemd/system/pm.service` and set root permissions on it:
+
 ```sh
 # copy service file to system's directory for systemd services
 sudo cp pm.service /etc/systemd/system/pm.service
@@ -58,7 +60,7 @@ pm run --config config.jsonnet
 pm list
 ```
 
-### Start processes that already has been added
+### Start already added processes
 ```sh
 pm start [ID/NAME/TAG]...
 ```
@@ -73,13 +75,13 @@ pm stop all
 
 ### Delete processes
 When deleting process, they are first stopped, then removed from `pm`.
+
 ```sh
 pm delete [ID/NAME/TAG]...
 
 # e.g. delete all processes
 pm delete all
 ```
-
 
 ## Process state diagram
 ```mermaid
@@ -102,11 +104,11 @@ flowchart TB
 ```
 
 ## Development
-
 ### Architecture
 `pm` consists of two parts:
-- cli client - requests server, launches/stops shim processes
-- shim - monitors and restarts processes, handle watches, signals and shutdowns
+
+- **cli client** - requests server, launches/stops shim processes
+- **shim** - monitors and restarts processes, handle watches, signals and shutdowns
 
 ### PM directory structure
 `pm` uses directory `$HOME/.pm` to store data by default. `PM_HOME` environment variable can be used to change this. Layout is following:
@@ -121,16 +123,17 @@ $HOME/.pm/
     └──<ID>.stderr # stderr of process with id ID
 ```
 
-### Differences from [pm2](https://github.com/Unitech/pm2)
+### Differences from pm2
 - `pm` is just a single binary, not dependent on `nodejs` and bunch of `js` scripts
-- [jsonnet](https://jsonnet.org/) configuration language, back compatible with `JSON`, and allows to thoroughly configure processes, e.g. separate environments without requiring corresponding mechanism in `pm` (others configuration languages might be added in future such as `Procfile`, `HCL`, etc.)
+- [jsonnet](https://jsonnet.org/) configuration language, back compatible with `JSON` and allows to thoroughly configure processes, e.g. separate environments without requiring corresponding mechanism in `pm` (others configuration languages might be added in future such as `Procfile`, `HCL`, etc.)
 - supports only `linux` now
-- I can fix problems/add features as I need, independent of whether they work or not in `pm2`, because I don't know `js`
+- I can fix problems/add features as I need, independent of whether they work or not in `pm2` because I don't know `js`
 - fast and convenient (I hope so)
 - no specific integrations for `js`
 
 ### Release
 On `master` branch:
+
 ```sh
 git tag v1.2.3
 git push --tags

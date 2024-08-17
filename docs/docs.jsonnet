@@ -1,12 +1,3 @@
-// utils
-local items(o) = [{k: k, v: o[k]} for k in std.objectFields(o)];
-local join(sep, fmt, o) = std.join(sep, [fmt % kv for kv in items(o)]);
-local renderCSSProps(o) = join(" ", "%(k)s: %(v)s;", o);
-local renderCSS(o) = join(
-  "\n", "%(k)s { %(v)s }",
-  std.mapWithKey(function(_, props) renderCSSProps(props), o),
-);
-
 local toc = {
   compose(xs): std.foldl(function(acc, x)
     local node(x) = {title: x.title, children: []};
@@ -100,102 +91,111 @@ local markdown_adapter = {
   |||,
 };
 
-local html_adapter = {
-  render(doc): (
-    local TOC = toc.compose(doc(toc))[0].children; // NOTE: skip h1
-    "<!DOCTYPE html>"+std.manifestXmlJsonml(["html", {lang: "en"},
-      ["head", {},
-        ["title", {}, "pm"],
-        ["meta", {"http-equiv": "Content-Type", charset: "UTF-8"}],
-        ["meta", {name: "description", content: "process manager"}],
-        ["meta", {"http-equiv": "X-UA-Compatible", content: "IE=edge,chrome=1"}],
-        ["meta", {name: "viewport", content: "width=device-width, initial-scale=1"}],
-        ["meta", {property: "og:title", content: "pm"}],
-        ["meta", {property: "og:description", content: "process manager"}],
-        ["meta", {property: "og:type", content: "website"}],
-        ["meta", {property: "og:url", content: "https://rprtr258.github.io/pm/"}],
-        ["meta", {property: "og:image", content: "https://rprtr258.github.io/pm/images/og-image.png"}],
-        ["style", {}, renderCSS(import "styles.jsonnet")],
-      ],
-      ["body", {class: "sticky", style: renderCSSProps({margin: "0"})},
-        ["main", {role: "presentation"},
-          ["aside", {class: "sidebar", role: "none"},
-            ["div", {class: "sidebar-nav", role: "navigation", "aria-label": "primary"}, (
-              local a(id, title) = ["a", {class: "section-link", href: "#"+id, title: title}, title];
-              local toc_render(xs) = self.ul(std.foldl(function(acc, x) acc + [[a(x.title, x.title)], [toc_render(x.children)]], xs, []));
-              toc_render(TOC)
-            )],
-          ],
-          ["section", {class: "content"},
-            ["article", {id: "main", class: "markdown-section", role: "main"}] + doc(html_adapter)]]]])
-  ),
-  process_state_diagram: import "process-state-diagram.jsonnet", // TODO: render from mermaid
-  code(s): (
-    local escape(s) = std.join("", std.map(function(c)
-      if c == "<" then "&lt;"
-      else if c == ">" then "&gt;"
-      else c,
-    s));
-    ["code", {}, escape(s)]
-  ),
-  b(s): ["b", {}, s],
-  span(s): ["span", {}, s],
-  p(xs): ["p", {}] + xs,
-  li(xs): ["li", {}] + xs,
-  ul(xs): ["ul", {}] + [self.li(x) for x in xs],
-  a(text, href): ["a", {href: href}, text],
-  a_external(text, href): ["a", {href: href, target: "_top"}, text],
-  h1(title): ["h1", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
-  h2(title): ["h2", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
-  h3(title): ["h3", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
-  img(src): ["img", {src: src, style: renderCSSProps({"max-width": "100%", border: "0"})}],
-  codeblock_sh(code): (
-    local functionn(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-function)"})}, s];
-    local variable(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-variable)"})}, s];
-    local comment(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-comment)"})}, s];
-    local operator(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-operator)"})}, s];
-    local env(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
-    local number(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
-    local punctuation(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-punctuation)"})}, s];
-    local render_word(word) =
-      local functionns = ["wget", "chmod", "chown", "mv", "cp", "ln", "sudo", "git"];
-      local lt = std.findSubstr("<", word);
-      local gt = std.findSubstr(">", word);
-      local lsb = std.findSubstr("[", word);
-      local rsb = std.findSubstr("]", word);
-      local ellipsis = std.findSubstr("...", word);
-      if word == "" then []
-      else if std.length(lt) > 0 then render_word(std.substr(word, 0, lt[0])) + [operator("&lt;")] + render_word(std.substr(word, lt[0]+1, std.length(word)))
-      else if std.length(gt) > 0 then render_word(std.substr(word, 0, gt[0])) + [operator("&gt;")] + render_word(std.substr(word, gt[0]+1, std.length(word)))
-      else if std.length(lsb) > 0 then render_word(std.substr(word, 0, lsb[0])) + [punctuation("[")] + render_word(std.substr(word, lsb[0]+1, std.length(word)))
-      else if std.length(rsb) > 0 then render_word(std.substr(word, 0, rsb[0])) + [punctuation("]")] + render_word(std.substr(word, rsb[0]+1, std.length(word)))
-      else if std.length(ellipsis) > 0 then render_word(std.substr(word, 0, ellipsis[0])) + [punctuation("...")] + render_word(std.substr(word, ellipsis[0]+3, std.length(word)))
-      else if std.any([word == x for x in functionns]) then [functionn(word)]
-      else if word == "[" then [punctuation(word)]
-      else if word == "]" then [punctuation(word)]
-      else if word == "644" then [number(word)]
-      else if word == "enable" then [["span", {class: "token class-name", style: renderCSSProps({color: "var(--code-theme-selector)"})}, "enable"]]
-      else if word[0] == "-" then [variable(word)]
-      else if word == "$HOME/.pm/" then [env("$HOME"), "/.pm/"]
-      else [word];
-    local render(line) = // TODO: use sh parser actually
-      if std.length(line) > 0 then
-        local hash = std.findSubstr("#", line);
-        local words = std.split(line, " ");
-        if std.length(hash) > 0 then
-          local before = std.substr(line, 0, hash[0]);
-          local after = std.substr(line, hash[0], std.length(line));
-          render(before) + [comment(after)]
-        else std.join([" "], [
-          render_word(word)
-          for word in words
-        ])
-      else [line];
-    local lines = [render(line) for line in std.split(code, "\n")];
-    ["pre", {"data-lang": "sh", style: renderCSSProps({background: "var(--code-theme-background)"})},
-      ["code", {class: "language-sh"}] + std.join(["\n"], lines)]
+local html_adapter = (
+  local join(sep, fmt, o) = std.join(sep, [fmt % {k: k, v: o[k]} for k in std.objectFields(o)]);
+  local renderCSSProps(o) = join(" ", "%(k)s: %(v)s;", o);
+  local renderCSS(o) = join(
+    "\n", "%(k)s { %(v)s }",
+    std.mapWithKey(function(_, props) renderCSSProps(props), o),
+  );
+
+  {
+    render(doc): (
+      local TOC = toc.compose(doc(toc))[0].children; // NOTE: skip h1
+      "<!DOCTYPE html>"+std.manifestXmlJsonml(["html", {lang: "en"},
+        ["head", {},
+          ["title", {}, "pm"],
+          ["meta", {"http-equiv": "Content-Type", charset: "UTF-8"}],
+          ["meta", {name: "description", content: "process manager"}],
+          ["meta", {"http-equiv": "X-UA-Compatible", content: "IE=edge,chrome=1"}],
+          ["meta", {name: "viewport", content: "width=device-width, initial-scale=1"}],
+          ["meta", {property: "og:title", content: "pm"}],
+          ["meta", {property: "og:description", content: "process manager"}],
+          ["meta", {property: "og:type", content: "website"}],
+          ["meta", {property: "og:url", content: "https://rprtr258.github.io/pm/"}],
+          ["meta", {property: "og:image", content: "https://rprtr258.github.io/pm/images/og-image.png"}],
+          ["style", {}, renderCSS(import "styles.jsonnet")],
+        ],
+        ["body", {class: "sticky", style: renderCSSProps({margin: "0"})},
+          ["main", {role: "presentation"},
+            ["aside", {class: "sidebar", role: "none"},
+              ["div", {class: "sidebar-nav", role: "navigation", "aria-label": "primary"}, (
+                local a(id, title) = ["a", {class: "section-link", href: "#"+id, title: title}, title];
+                local toc_render(xs) = self.ul(std.foldl(function(acc, x) acc + [[a(x.title, x.title)], [toc_render(x.children)]], xs, []));
+                toc_render(TOC)
+              )],
+            ],
+            ["section", {class: "content"},
+              ["article", {id: "main", class: "markdown-section", role: "main"}] + doc(html_adapter)]]]])
     ),
-};
+    process_state_diagram: import "process-state-diagram.jsonnet", // TODO: render from mermaid
+    code(s): (
+      local escape(s) = std.join("", std.map(function(c)
+        if c == "<" then "&lt;"
+        else if c == ">" then "&gt;"
+        else c,
+      s));
+      ["code", {}, escape(s)]
+    ),
+    b(s): ["b", {}, s],
+    span(s): ["span", {}, s],
+    p(xs): ["p", {}] + xs,
+    li(xs): ["li", {}] + xs,
+    ul(xs): ["ul", {}] + [self.li(x) for x in xs],
+    a(text, href): ["a", {href: href}, text],
+    a_external(text, href): ["a", {href: href, target: "_top"}, text],
+    h1(title): ["h1", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
+    h2(title): ["h2", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
+    h3(title): ["h3", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
+    img(src): ["img", {src: src, style: renderCSSProps({"max-width": "100%", border: "0"})}],
+    codeblock_sh(code): (
+      local functionn(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-function)"})}, s];
+      local variable(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-variable)"})}, s];
+      local comment(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-comment)"})}, s];
+      local operator(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-operator)"})}, s];
+      local env(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
+      local number(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-tag)"})}, s];
+      local punctuation(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-punctuation)"})}, s];
+      local render_word(word) =
+        local functionns = ["wget", "chmod", "chown", "mv", "cp", "ln", "sudo", "git"];
+        local lt = std.findSubstr("<", word);
+        local gt = std.findSubstr(">", word);
+        local lsb = std.findSubstr("[", word);
+        local rsb = std.findSubstr("]", word);
+        local ellipsis = std.findSubstr("...", word);
+        if word == "" then []
+        else if std.length(lt) > 0 then render_word(std.substr(word, 0, lt[0])) + [operator("&lt;")] + render_word(std.substr(word, lt[0]+1, std.length(word)))
+        else if std.length(gt) > 0 then render_word(std.substr(word, 0, gt[0])) + [operator("&gt;")] + render_word(std.substr(word, gt[0]+1, std.length(word)))
+        else if std.length(lsb) > 0 then render_word(std.substr(word, 0, lsb[0])) + [punctuation("[")] + render_word(std.substr(word, lsb[0]+1, std.length(word)))
+        else if std.length(rsb) > 0 then render_word(std.substr(word, 0, rsb[0])) + [punctuation("]")] + render_word(std.substr(word, rsb[0]+1, std.length(word)))
+        else if std.length(ellipsis) > 0 then render_word(std.substr(word, 0, ellipsis[0])) + [punctuation("...")] + render_word(std.substr(word, ellipsis[0]+3, std.length(word)))
+        else if std.any([word == x for x in functionns]) then [functionn(word)]
+        else if word == "[" then [punctuation(word)]
+        else if word == "]" then [punctuation(word)]
+        else if word == "644" then [number(word)]
+        else if word == "enable" then [["span", {class: "token class-name", style: renderCSSProps({color: "var(--code-theme-selector)"})}, "enable"]]
+        else if word[0] == "-" then [variable(word)]
+        else if word == "$HOME/.pm/" then [env("$HOME"), "/.pm/"]
+        else [word];
+      local render(line) = // TODO: use sh parser actually
+        if std.length(line) > 0 then
+          local hash = std.findSubstr("#", line);
+          local words = std.split(line, " ");
+          if std.length(hash) > 0 then
+            local before = std.substr(line, 0, hash[0]);
+            local after = std.substr(line, hash[0], std.length(line));
+            render(before) + [comment(after)]
+          else std.join([" "], [
+            render_word(word)
+            for word in words
+          ])
+        else [line];
+      local lines = [render(line) for line in std.split(code, "\n")];
+      ["pre", {"data-lang": "sh", style: renderCSSProps({background: "var(--code-theme-background)"})},
+        ["code", {class: "language-sh"}] + std.join(["\n"], lines)]
+    ),
+  }
+);
 
 local link_release = "https://github.com/rprtr258/pm/releases/latest";
 
@@ -323,6 +323,5 @@ local docs(R) = [
 
 {
   "index.html": html_adapter.render(docs),
-  // "readme.md": importstr "../readme.md",
-  "readme.md": markdown_adapter.render(docs),
+  "../readme.md": markdown_adapter.render(docs),
 }
