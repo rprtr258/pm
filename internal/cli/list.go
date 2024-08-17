@@ -226,10 +226,7 @@ var _usageFlagListFormat = scuf.NewString(func(b scuf.Buffer) {
 		String(" struct")
 })
 
-func completeFlagListFormat(
-	_ *cobra.Command, _ []string,
-	prefix string,
-) ([]string, cobra.ShellCompDirective) {
+func completeFlagListFormat(prefix string) ([]string, cobra.ShellCompDirective) {
 	return fun.FilterMap[string](
 		func(format string) (string, bool) {
 			return format, strings.HasPrefix(format, prefix)

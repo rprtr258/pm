@@ -12,9 +12,13 @@ import (
 func registerFlagCompletionFunc(
 	c *cobra.Command,
 	name string,
-	f func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective),
+	f func(toComplete string) ([]string, cobra.ShellCompDirective),
 ) {
-	if err := c.RegisterFlagCompletionFunc(name, f); err != nil {
+	if err := c.RegisterFlagCompletionFunc(
+		name,
+		func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return f(toComplete)
+		}); err != nil {
 		log.Fatal().
 			Err(err).
 			Str("flagName", name).
@@ -23,10 +27,7 @@ func registerFlagCompletionFunc(
 	}
 }
 
-func completeFlagName(
-	_ *cobra.Command, _ []string,
-	prefix string,
-) ([]string, cobra.ShellCompDirective) {
+func completeFlagName(prefix string) ([]string, cobra.ShellCompDirective) {
 	return slices.Collect(func(yield func(string) bool) {
 		for proc := range listProcs(dbb).Seq {
 			if strings.HasPrefix(proc.Name, prefix) && !yield(fmt.Sprintf("%s\tproc: %s", proc.Name, proc.Status.String())) {
@@ -36,10 +37,7 @@ func completeFlagName(
 	}), cobra.ShellCompDirectiveNoFileComp
 }
 
-func completeFlagTag(
-	_ *cobra.Command, _ []string,
-	prefix string,
-) ([]string, cobra.ShellCompDirective) {
+func completeFlagTag(prefix string) ([]string, cobra.ShellCompDirective) {
 	return slices.Collect(func(yield func(string) bool) {
 		for tag := range listProcs(dbb).Tags() {
 			if strings.HasPrefix(tag, prefix) && !yield(tag) {
@@ -49,10 +47,7 @@ func completeFlagTag(
 	}), cobra.ShellCompDirectiveNoFileComp
 }
 
-func completeFlagIDs(
-	_ *cobra.Command, _ []string,
-	prefix string,
-) ([]string, cobra.ShellCompDirective) {
+func completeFlagIDs(prefix string) ([]string, cobra.ShellCompDirective) {
 	return slices.Collect(func(yield func(string) bool) {
 		for proc := range listProcs(dbb).Seq {
 			if strings.HasPrefix(string(proc.ID), prefix) && !yield(fmt.Sprintf("%s\tname: %s", proc.ID.String(), proc.Name)) {
@@ -63,12 +58,11 @@ func completeFlagIDs(
 }
 
 func completeArgGenericSelector(
-	cmd *cobra.Command,
-	args []string,
+	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	names, _ := completeFlagName(cmd, args, prefix)
-	tags, _ := completeFlagTag(cmd, args, prefix)
+	names, _ := completeFlagName(prefix)
+	tags, _ := completeFlagTag(prefix)
 
 	flatten := make([]string, 0, len(names)+len(tags))
 	flatten = append(flatten, names...)
