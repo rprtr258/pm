@@ -64,20 +64,10 @@ pre[data-lang]::selection, code[class*=lang-]::selection { background: var(--cod
 <span style="color: var(--code-theme-function);">chmod</span> +x pm_linux_amd64
 <span style="color: var(--code-theme-comment);"># move binary to $PATH, here just local</span>
 <span style="color: var(--code-theme-function);">mv</span> pm_linux_amd64 pm
-</code></pre><h3 id="Systemd service"><a class="anchor" href="#Systemd service"><span>Systemd service</span></a></h3><p>To enable running processes on system startup:</p><ul><li>Copy <a href="https://github.com/rprtr258/pm/blob/master/./pm.service"><code>pm.service</code></a> file locally. This is the systemd service file that tells systemd how to manage your application.</li><li>Change <code>User</code> field to your own username. This specifies under which user account the service will run, which affects permissions and environment.</li><li>Change <code>ExecStart</code> to use <code>pm</code> binary installed. This is the command that systemd will execute to start your service.</li><li>Move the file to <code>/etc/systemd/system/pm.service</code> and set root permissions on it:</li></ul><pre data-lang="sh" style="background: var(--code-theme-background);"><code class="language-sh"><span style="color: var(--code-theme-comment);"># copy service file to system's directory for systemd services</span>
-<span style="color: var(--code-theme-function);">sudo</span> <span style="color: var(--code-theme-function);">cp</span> pm.service /etc/systemd/system/pm.service
-<span style="color: var(--code-theme-comment);"># set permission of service file to be readable and writable by owner, and readable by others</span>
-<span style="color: var(--code-theme-function);">sudo</span> <span style="color: var(--code-theme-function);">chmod</span> <span style="color: var(--code-theme-tag);">644</span> /etc/systemd/system/pm.service
-<span style="color: var(--code-theme-comment);"># change owner and group of service file to root, ensuring that it is managed by system administrator</span>
-<span style="color: var(--code-theme-function);">sudo</span> <span style="color: var(--code-theme-function);">chown</span> root:root /etc/systemd/system/pm.service
-<span style="color: var(--code-theme-comment);"># reload systemd manager configuration, scanning for new or changed units</span>
-<span style="color: var(--code-theme-function);">sudo</span> systemctl daemon-reload
-<span style="color: var(--code-theme-comment);"># enables service to start at boot time</span>
-<span style="color: var(--code-theme-function);">sudo</span> systemctl <span class="token class-name" style="color: var(--code-theme-selector);">enable</span> pm
-<span style="color: var(--code-theme-comment);"># starts service immediately</span>
-<span style="color: var(--code-theme-function);">sudo</span> systemctl start pm
-<span style="color: var(--code-theme-comment);"># soft link /usr/bin/pm binary to whenever it is installed</span>
+</code></pre><h3 id="Systemd service"><a class="anchor" href="#Systemd service"><span>Systemd service</span></a></h3><p>To enable running processes on system startup:</p><pre data-lang="sh" style="background: var(--code-theme-background);"><code class="language-sh"><span style="color: var(--code-theme-comment);"># soft link /usr/bin/pm binary to whenever it is installed</span>
 <span style="color: var(--code-theme-function);">sudo</span> <span style="color: var(--code-theme-function);">ln</span> <span style="color: var(--code-theme-variable);">-s</span> ~/go/bin/pm /usr/bin/pm
+<span style="color: var(--code-theme-comment);"># install systemd service, copy/paste output of following command</span>
+pm startup
 </code></pre><p>After these commands, processes with <code>startup: true</code> config option will be started on system startup.</p><h2 id="Configuration"><a class="anchor" href="#Configuration"><span>Configuration</span></a></h2><p><a href="https://jsonnet.org/" target="_top">jsonnet</a> configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead.</p><p>See <a href="https://github.com/rprtr258/pm/blob/master/./config.jsonnet">example configuration file</a>. Other examples can be found in <a href="https://github.com/rprtr258/pm/blob/master/./e2e/tests">tests</a> directory.</p><h2 id="Usage"><a class="anchor" href="#Usage"><span>Usage</span></a></h2><p>Most fresh usage descriptions can be seen using <code>pm &lt;command&gt; --help</code>.</p><h3 id="Run process"><a class="anchor" href="#Run process"><span>Run process</span></a></h3><pre data-lang="sh" style="background: var(--code-theme-background);"><code class="language-sh"><span style="color: var(--code-theme-comment);"># run process using command</span>
 pm run go run main.go
 
