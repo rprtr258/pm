@@ -215,27 +215,11 @@ local docs(R) = [
   ||| % {link_release: link_release}),
     R.h3("Systemd service"),
     R.p(["To enable running processes on system startup:"]),
-    R.ul([
-      ["Copy ", R.a(R.code("pm.service"), "./pm.service"), " file locally. This is the systemd service file that tells systemd how to manage your application."],
-      ["Change ", R.code("User"), " field to your own username. This specifies under which user account the service will run, which affects permissions and environment."],
-      ["Change ", R.code("ExecStart"), " to use ", R.code("pm"), " binary installed. This is the command that systemd will execute to start your service."],
-      ["Move the file to ", R.code("/etc/systemd/system/pm.service"), " and set root permissions on it:"],
-    ]),
     R.codeblock_sh(|||
-      # copy service file to system's directory for systemd services
-      sudo cp pm.service /etc/systemd/system/pm.service
-      # set permission of service file to be readable and writable by owner, and readable by others
-      sudo chmod 644 /etc/systemd/system/pm.service
-      # change owner and group of service file to root, ensuring that it is managed by system administrator
-      sudo chown root:root /etc/systemd/system/pm.service
-      # reload systemd manager configuration, scanning for new or changed units
-      sudo systemctl daemon-reload
-      # enables service to start at boot time
-      sudo systemctl enable pm
-      # starts service immediately
-      sudo systemctl start pm
       # soft link /usr/bin/pm binary to whenever it is installed
       sudo ln -s ~/go/bin/pm /usr/bin/pm
+      # install systemd service, copy/paste output of following command
+      pm startup
     |||),
     R.p(["After these commands, processes with ", R.code("startup: true"), " config option will be started on system startup."]),
 
