@@ -1,4 +1,6 @@
 # PM (process manager)
+<p align="center"><img src="docs/icon.svg" width="250" height="250"></p>
+
 ## Installation
 PM is available only for linux due to heavy usage of linux mechanisms. Go to the [releases](https://github.com/rprtr258/pm/releases/latest) page to download the latest binary.
 

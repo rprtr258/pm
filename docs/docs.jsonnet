@@ -32,7 +32,7 @@ local toc = {
   codeblock_sh(code): [],
   a(text, href): [],
   a_external(text, href): [],
-  img(src, alt): [],
+  icon(): [],
   process_state_diagram: [],
 };
 
@@ -69,6 +69,9 @@ local markdown_adapter = {
   code(code): renderer_markdown.code(code),
   codeblock_sh(code): renderer_markdown.codeblock("sh", code),
   ul(xs): renderer_markdown.ul(xs),
+  icon(): |||
+    <p align="center"><img src="docs/icon.svg" width="250" height="250"></p>
+  |||,
   process_state_diagram: |||
     ```mermaid
     flowchart TB
@@ -147,7 +150,8 @@ local html_adapter = (
     h1(title): ["h1", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
     h2(title): ["h2", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
     h3(title): ["h3", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
-    img(src): ["img", {src: src, style: renderCSSProps({"max-width": "100%", border: "0"})}],
+    icon(): ["p", {align: "center"}, ["img", {src: "/icon.svg", width: 250, height: 250, style: renderCSSProps({border: "0"})}]],
+    img(src, width, height): ["img", {src: src, width: width, height: height, style: renderCSSProps({border: "0"})}],
     codeblock_sh(code): (
       local functionn(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-function)"})}, s];
       local variable(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-variable)"})}, s];
@@ -203,6 +207,7 @@ local docs(R) = [
   R.h1("PM (process manager)"),
 
   // ["div", {}, R.a("https://github.com/rprtr258/pm", R.img("https://img.shields.io/badge/source-code?logo=github&label=github"))],
+  R.icon(),
   R.h2("Installation"),
   R.p(["PM is available only for linux due to heavy usage of linux mechanisms. Go to the ", R.a_external("releases", link_release), " page to download the latest binary."]),
   R.codeblock_sh(|||
