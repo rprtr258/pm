@@ -72,10 +72,7 @@ func pruneLogs(db db.Handle, config core.Config) error {
 }
 
 func setupLogger(config core.Config) {
-	level := zerolog.InfoLevel
-	if config.Debug {
-		level = zerolog.DebugLevel
-	}
+	level := fun.IF(config.Debug, zerolog.DebugLevel, zerolog.InfoLevel)
 
 	log.Logger = zerolog.New(os.Stderr).
 		Level(level).
