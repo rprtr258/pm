@@ -150,7 +150,7 @@ local html_adapter = (
     h1(title): ["h1", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
     h2(title): ["h2", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
     h3(title): ["h3", {id: title}, ["a", {href: "#"+title, class: "anchor"}, self.span(title)]],
-    icon(): ["p", {align: "center"}, ["img", {src: "/icon.svg", width: 250, height: 250, style: renderCSSProps({border: "0"})}]],
+    icon(): ["p", {align: "center"}, ["img", {src: "icon.svg", width: 250, height: 250, style: renderCSSProps({border: "0"})}]],
     img(src, width, height): ["img", {src: src, width: width, height: height, style: renderCSSProps({border: "0"})}],
     codeblock_sh(code): (
       local functionn(s) = ["span", {style: renderCSSProps({color: "var(--code-theme-function)"})}, s];
