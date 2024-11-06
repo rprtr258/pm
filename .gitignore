@@ -2,3 +2,4 @@ pm
 /bin/
 /dist/
 /.token
+/.coverdata

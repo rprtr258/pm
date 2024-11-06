@@ -97,11 +97,17 @@ docs-watch: # watch docs
 ## Test
 
 test: # run tests
-	@${GOTESTSUM} --format dots-v2 ./...
+	rm -rf .coverdata
+	mkdir .coverdata
+	GOCOVERDIR=../.coverdata ${GOTESTSUM} --format dots-v2 ./...
+	go tool covdata percent -i=.coverdata
 
 test-e2e: # run integration tests
-	@${GOTESTSUM} --format dots-v2 ./e2e/...
+	rm -rf .coverdata
+	mkdir .coverdata
+	GOCOVERDIR=../.coverdata ${GOTESTSUM} --format dots-v2 ./e2e/...
+	go tool covdata percent -i=.coverdata
 
 test-e2e-docker: # run integration tests in docker
-	@docker build -t pm-e2e --file e2e/Dockerfile .
-	@docker run pm-e2e
+	docker build -t pm-e2e --file e2e/Dockerfile .
+	docker run pm-e2e

@@ -113,6 +113,7 @@ func mustExec(cmd string, args ...string) {
 func TestMain(m *testing.M) {
 	// build pm binary
 	mustExec("go", "build",
+		"-cover",
 		"-o", filepath.Join(_e2eTestDir, "pm"),
 		filepath.Dir(_e2eTestDir))
 

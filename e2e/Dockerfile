@@ -1,9 +1,11 @@
 FROM golang:1.23.0-alpine AS build
-RUN go install gotest.tools/gotestsum@latest
 WORKDIR /app
+RUN mkdir /.coverdata
 COPY go.mod go.sum /app/
 RUN go mod download
 COPY . .
 RUN go build -o e2e/tests/hello-http e2e/tests/hello-http/main.go
-RUN go build -o pm . && mv pm e2e/pm
-CMD ["gotestsum", "--format", "dots-v2", "./e2e/..."]
+RUN go build -cover -o e2e/pm .
+ENV GOCOVERDIR=/.coverdata
+RUN go test ./e2e/...
+CMD ["go", "tool", "covdata", "percent", "-i=/.coverdata"]
