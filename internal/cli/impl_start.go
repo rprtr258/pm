@@ -85,7 +85,7 @@ func startShimImpl(db db.Handle, id core.PMID) error {
 	}
 	log.Debug().Str("cmd", cmd.String()).Msg("starting")
 	if err := cmd.Start(); err != nil {
-		return errors.Wrapf(err, "running failed: %v", proc)
+		return errors.Wrapf(err, "run command: %v", proc)
 	}
 
 	return nil

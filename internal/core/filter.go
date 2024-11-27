@@ -14,7 +14,7 @@ type filter struct {
 	AllIfNoFilters bool
 }
 
-func (f filter) NoFilters() bool {
+func (f filter) noFilters() bool {
 	return len(f.Names) == 0 &&
 		len(f.Tags) == 0 &&
 		len(f.IDs) == 0
@@ -71,7 +71,7 @@ func FilterFunc(opts ...FilterOption) func(Proc) bool {
 		opt(&_filter)
 	}
 
-	if _filter.NoFilters() {
+	if _filter.noFilters() {
 		return func(Proc) bool {
 			return _filter.AllIfNoFilters
 		}

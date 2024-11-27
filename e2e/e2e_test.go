@@ -209,7 +209,8 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 		wait.BoolFunc(func() bool {
 			d, err := os.ReadFile(filepath.Join(pmDir, "logs", string(serverID)+".stdout"))
 			test.NoError(t, err, test.Sprint("read server stdout"))
-			return string(d) == "123\n"
+			t.Logf("server logs:\n%q", string(d))
+			return string(d) == "123\r\n"
 		}),
 		wait.Timeout(time.Second*10),
 	), must.Sprint("check server received payload"))
