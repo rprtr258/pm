@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/creack/pty"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -190,16 +192,27 @@ func implShim(proc core.Proc) error {
 		MaxBackups: 1,
 	})
 
+	ptmx, tty, err := pty.Open()
+	if err != nil {
+		return errors.Wrap(err, "open pty")
+	}
+	defer func() { _ = tty.Close() }() // Best effort.
+	go func() { _, _ = io.Copy(ptmx, os.Stdin) }()
+	go func() { _, _ = io.Copy(outw, ptmx) }()
+	log.Debug().Any("pty", ptmx.Fd()).Any("tty", tty.Fd()).Msg("pty created")
+
 	cmdShape := exec.Cmd{
 		Path:   proc.Command,
 		Args:   append([]string{proc.Command}, proc.Args...),
 		Dir:    proc.Cwd,
 		Env:    env,
-		Stdin:  os.Stdin,
-		Stdout: outw,
+		Stdin:  tty,
+		Stdout: tty,
 		Stderr: errw,
 		SysProcAttr: &syscall.SysProcAttr{
-			Setpgid: true,
+			// Setpgid: true,
+			Setsid:  true,
+			Setctty: true,
 		},
 	}
 

@@ -5,6 +5,7 @@ go 1.23.0
 require (
 	github.com/charmbracelet/huh v0.5.2
 	github.com/charmbracelet/lipgloss v0.12.1
+	github.com/creack/pty v1.1.24
 	github.com/deref/rgbterm v0.0.0-20220210012105-fe81195c39e7
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/go-jsonnet v0.20.0
