@@ -6,7 +6,6 @@ package logrotation
 import (
 	"cmp"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +17,8 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
+
+	"github.com/rprtr258/pm/internal/errors"
 )
 
 const (
@@ -181,7 +182,7 @@ func (l *Writer) Write(b []byte) (int, error) {
 
 	writeLen := int64(len(b))
 	if writeLen > l.maxSize {
-		return 0, fmt.Errorf("write length %d exceeds maximum file size %d", writeLen, l.maxSize)
+		return 0, errors.Newf("write length %d exceeds maximum file size %d", writeLen, l.maxSize)
 	}
 
 	if l.file == nil {
@@ -278,7 +279,7 @@ func backupName(now time.Time, name string) string {
 // This methods assumes file has already been closed.
 func (l *Writer) openNew() error {
 	if err := os.MkdirAll(l.dir(), 0o755); err != nil {
-		return fmt.Errorf("make directories for new logfile: %w", err)
+		return errors.Wrap(err, "make directories for new logfile")
 	}
 
 	name := l.filename
@@ -295,7 +296,7 @@ func (l *Writer) openNew() error {
 		// move existing file
 		newname := backupName(now, name)
 		if err := os.Rename(name, newname); err != nil {
-			return fmt.Errorf("rename log file: %w", err)
+			return errors.Wrap(err, "rename log file")
 		}
 
 		if err := chown(l.fs, name, stat); err != nil {
@@ -308,7 +309,7 @@ func (l *Writer) openNew() error {
 	// just wipe out contents.
 	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
 	if err != nil {
-		return fmt.Errorf("open new logfile: %w", err)
+		return errors.Wrap(err, "open new logfile")
 	}
 
 	l.file = f
@@ -327,7 +328,7 @@ func (l *Writer) openExistingOrNew(writeLen int) error {
 		if os.IsNotExist(err) {
 			return l.openNew()
 		}
-		return fmt.Errorf("getting log file info: %w", err)
+		return errors.Wrap(err, "getting log file info")
 	}
 
 	if info.Size()+int64(writeLen) >= l.maxSize {
@@ -464,7 +465,7 @@ func readDir(dirname string) ([]os.FileInfo, error) {
 func (l *Writer) oldLogFiles() ([]logInfo, error) {
 	files, err := readDir(l.dir())
 	if err != nil {
-		return nil, fmt.Errorf("read log file directory: %w", err)
+		return nil, errors.Wrap(err, "read log file directory")
 	}
 
 	prefix, ext := prefixAndExt(l.filename)
@@ -521,24 +522,24 @@ func prefixAndExt(filename string) (prefix, ext string) {
 func compressLogFile(fs afero.Fs, src, dst string) (err error) {
 	f, err := fs.Open(src)
 	if err != nil {
-		return fmt.Errorf("open log file: %w", err)
+		return errors.Wrap(err, "open log file")
 	}
 	defer f.Close()
 
 	stat, err := fs.Stat(src)
 	if err != nil {
-		return fmt.Errorf("stat log file: %w", err)
+		return errors.Wrap(err, "stat log file")
 	}
 
 	if errChown := chown(fs, dst, stat); errChown != nil {
-		return fmt.Errorf("chown compressed log file: %w", errChown)
+		return errors.Wrap(errChown, "chown compressed log file")
 	}
 
 	// If this file already exists, we presume it was created by
 	// a previous attempt to compress log file.
 	gzf, errOpen := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, stat.Mode())
 	if errOpen != nil {
-		return fmt.Errorf("open compressed log file: %w", errOpen)
+		return errors.Wrap(errOpen, "open compressed log file")
 	}
 	defer gzf.Close()
 
@@ -548,7 +549,7 @@ func compressLogFile(fs afero.Fs, src, dst string) (err error) {
 	defer func() {
 		if err != nil {
 			os.Remove(dst)
-			err = fmt.Errorf("compress log file: %w", err)
+			err = errors.Wrap(err, "compress log file")
 		}
 	}()
 

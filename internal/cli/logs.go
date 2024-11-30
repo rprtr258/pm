@@ -46,7 +46,8 @@ func streamFile(
 ) error {
 	stat, errStat := os.Stat(logFile)
 	if errStat != nil {
-		return errors.Wrapf(errStat, "stat log file %s", logFile)
+		log.Debug().Err(errStat).Msg("stat log file")
+		return nil
 	}
 
 	tailer, err := tail.TailFile(logFile, tail.Config{

@@ -223,6 +223,7 @@ func implShim(proc core.Proc) error {
 	defer close(watchCh)
 
 	if watchPattern, ok := proc.Watch.Unpack(); ok {
+		log.Debug().Str("watch", watchPattern).Msg("init watch channel")
 		watchChClose, err := initWatchChannel(ctx, watchCh, proc.Cwd, watchPattern)
 		if err != nil {
 			return errors.Wrapf(err, "init watch channel")
@@ -256,8 +257,10 @@ func implShim(proc core.Proc) error {
 	waitTrigger := true
 	autorestartsLeft := proc.MaxRestarts
 	for {
+		log.Debug().Msg("loop started, waiting for trigger")
 		switch {
 		case waitTrigger:
+			log.Debug().Msg("starting for the first time/restarting after watch")
 			waitTrigger = false
 		case autorestartsLeft > 0: // autorestart
 			autorestartsLeft--
