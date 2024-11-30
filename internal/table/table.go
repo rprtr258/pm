@@ -9,6 +9,13 @@ import (
 	"github.com/rprtr258/scuf"
 )
 
+func safeRepeat(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strings.Repeat(s, n)
+}
+
 type Table struct {
 	Headers               []string
 	Rows                  [][]string
@@ -121,12 +128,12 @@ func renderShort(t Table, w int) string {
 			subLen := ansi.PrintableRuneWidth(header) +
 				ansi.PrintableRuneWidth(r)
 			if subLen <= w { // single line
-				return header + strings.Repeat(" ", w-subLen) + r
+				return header + safeRepeat(" ", w-subLen) + r
 			}
 			return t.Headers[i] + " " + r
 		}, row...), "\n"))
 	}
-	return strings.Join(res, "\n"+strings.Repeat(borders[W|E], w)+"\n")
+	return strings.Join(res, "\n"+safeRepeat(borders[W|E], w)+"\n")
 }
 
 func Render(t Table, w int) string {
@@ -158,11 +165,11 @@ func Render(t Table, w int) string {
 			continue
 		}
 
-		line0[i] = strings.Repeat(_we, col)
+		line0[i] = safeRepeat(_we, col)
 
 		header := mywrap(col, t.Headers[i])[0]
 		totalPadding := col - ansi.PrintableRuneWidth(header)
-		line1[i] = strings.Repeat(" ", totalPadding/2) + header + strings.Repeat(" ", totalPadding-totalPadding/2)
+		line1[i] = safeRepeat(" ", totalPadding/2) + header + safeRepeat(" ", totalPadding-totalPadding/2)
 	}
 	lines := []string{
 		borders[S|E] + strings.Join(line0, borders[S|W|E]) + borders[S|W],
@@ -187,7 +194,7 @@ func Render(t Table, w int) string {
 				}
 
 				totalPadding := col - ansi.PrintableRuneWidth(part) - 1
-				return " " + part + strings.Repeat(" ", totalPadding)
+				return " " + part + safeRepeat(" ", totalPadding)
 			}, cols...)
 			lines = append(lines, _ns+strings.Join(line, _ns)+_ns)
 		}
