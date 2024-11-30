@@ -15,7 +15,7 @@ import (
 var dbb, cfg = func() (db.Handle, core.Config) {
 	db, config, errNewApp := config.New()
 	if errNewApp != nil {
-		log.Fatal().Err(errNewApp).Msg("new app")
+		log.Panic().Err(errNewApp).Msg("new app")
 	}
 	return db, config
 }()
@@ -68,7 +68,7 @@ func confirmProc(ps core.ProcStat, action string) bool {
 		Value(&result).
 		WithTheme(theme()).
 		Run(); err != nil {
-		log.Fatal().Msg(err.Error())
+		log.Panic().Msg(err.Error())
 	}
 	return result
 }

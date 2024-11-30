@@ -124,5 +124,5 @@ On `master` branch:
 ```sh
 git tag v1.2.3
 git push --tags
-goreleaser release --clean
+GITHUB_TOKEN=$(cat .token) goreleaser release --clean
 ```
