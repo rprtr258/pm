@@ -196,11 +196,26 @@ func implShim(proc core.Proc) error {
 	if err != nil {
 		return errors.Wrap(err, "open pty")
 	}
-	defer func() { _ = tty.Close() }() // Best effort.
-	go func() { _, _ = io.Copy(ptmx, os.Stdin) }()
-	go func() { _, _ = io.Copy(outw, ptmx) }()
+	defer func() {
+		if err := tty.Close(); err != nil {
+			log.Error().Err(err).Msg("close tty")
+		}
+	}() // Best effort.
+	go func() {
+		// TODO: causes not starting process sometimes for some reason
+		// TODO: unused until attach is implemented?
+		// if _, err := io.Copy(ptmx, os.Stdin); err != nil {
+		// 	log.Error().Err(err).Msg("copy stdin to pty")
+		// }
+	}()
+	go func() {
+		if _, err := io.Copy(outw, ptmx); err != nil {
+			log.Error().Err(err).Msg("copy pty to stdout")
+		}
+	}()
 	log.Debug().Any("pty", ptmx.Fd()).Any("tty", tty.Fd()).Msg("pty created")
 
+	log.Debug().Msg("create command")
 	cmdShape := exec.Cmd{
 		Path:   proc.Command,
 		Args:   append([]string{proc.Command}, proc.Args...),
@@ -216,12 +231,15 @@ func implShim(proc core.Proc) error {
 		},
 	}
 
+	log.Debug().Msg("init context")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	log.Debug().Msg("init watch channel")
 	watchCh := make(chan []fsnotify.Event)
 	defer close(watchCh)
 
+	log.Debug().Msg("check watch")
 	if watchPattern, ok := proc.Watch.Unpack(); ok {
 		log.Debug().Str("watch", watchPattern).Msg("init watch channel")
 		watchChClose, err := initWatchChannel(ctx, watchCh, proc.Cwd, watchPattern)
@@ -231,6 +249,7 @@ func implShim(proc core.Proc) error {
 		defer watchChClose()
 	}
 
+	log.Debug().Msg("init signals channel")
 	terminateCh := make(chan os.Signal, 1)
 	signal.Notify(terminateCh, syscall.SIGINT, syscall.SIGTERM)
 	defer func() {
@@ -238,6 +257,7 @@ func implShim(proc core.Proc) error {
 		close(terminateCh)
 	}()
 
+	log.Debug().Msg("init wait channel")
 	waitCh := make(chan error) // process death events
 	defer close(waitCh)
 

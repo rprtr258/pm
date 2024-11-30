@@ -232,6 +232,7 @@ func (w *RecursiveWatcher) handleEvent(ev fsnotify.Event) {
 // addDir recursively adds watches on dir, ignoring errors if ignoreErrors is set.
 func (w *RecursiveWatcher) addDir(dir string, ignoreErrors bool) error {
 	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		log.Debug().Str("path", path).Any("d", d).Err(err).Msg("walk dir")
 		if err != nil {
 			// Don't descend
 			return fs.SkipDir

@@ -13,8 +13,7 @@ const EnvPMID = "PM_PMID"
 var _userHome = func() string {
 	dir, err := os.UserHomeDir()
 	if err != nil {
-		log.Error().Err(err).Msg("can't get home dir")
-		os.Exit(1)
+		log.Panic().Err(err).Msg("can't get home dir")
 	}
 
 	return dir

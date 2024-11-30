@@ -19,7 +19,7 @@ func registerFlagCompletionFunc(
 		func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return f(toComplete)
 		}); err != nil {
-		log.Fatal().
+		log.Panic().
 			Err(err).
 			Str("flagName", name).
 			Str("command", c.Name()).
