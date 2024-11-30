@@ -202,13 +202,6 @@ func implShim(proc core.Proc) error {
 		}
 	}() // Best effort.
 	go func() {
-		// TODO: causes not starting process sometimes for some reason
-		// TODO: unused until attach is implemented?
-		// if _, err := io.Copy(ptmx, os.Stdin); err != nil {
-		// 	log.Error().Err(err).Msg("copy stdin to pty")
-		// }
-	}()
-	go func() {
 		if _, err := io.Copy(outw, ptmx); err != nil {
 			log.Error().Err(err).Msg("copy pty to stdout")
 		}
