@@ -12,6 +12,7 @@ import (
 )
 
 var _cmdRestart = func() *cobra.Command {
+	const filter = filterRunning
 	var names, ids, tags []string
 	var config string
 	var interactive bool
@@ -19,7 +20,7 @@ var _cmdRestart = func() *cobra.Command {
 		Use:               "restart [name|tag|id]...",
 		Short:             "restart already added process(es)",
 		GroupID:           "management",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector(filter),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
@@ -76,9 +77,7 @@ var _cmdRestart = func() *cobra.Command {
 		},
 	}
 	addFlagInteractive(cmd, &interactive)
-	addFlagNames(cmd, &names)
-	addFlagTags(cmd, &tags)
-	addFlagIDs(cmd, &ids)
+	addFlagGenerics(cmd, filter, &names, &tags, &ids)
 	addFlagConfig(cmd, &config)
 	return cmd
 }()

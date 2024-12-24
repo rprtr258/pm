@@ -11,13 +11,14 @@ import (
 )
 
 var _cmdStart = func() *cobra.Command {
+	const filter = filterStopped
 	var names, ids, tags []string
 	var config string
 	cmd := &cobra.Command{
 		Use:               "start [name|tag|id]...",
 		Short:             "start already added process(es)",
 		GroupID:           "management",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector(filter),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
@@ -72,9 +73,7 @@ var _cmdStart = func() *cobra.Command {
 			return nil
 		},
 	}
-	addFlagNames(cmd, &names)
-	addFlagTags(cmd, &tags)
-	addFlagIDs(cmd, &ids)
+	addFlagGenerics(cmd, filter, &names, &tags, &ids)
 	addFlagConfig(cmd, &config)
 	return cmd
 }()

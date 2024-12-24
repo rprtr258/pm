@@ -77,7 +77,7 @@ func (p *Proc) String() string {
 	return b.String()
 }
 
-type Status int
+type Status int8
 
 const (
 	StatusCreated Status = iota

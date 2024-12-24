@@ -70,6 +70,7 @@ func implDelete(db db.Handle, dirLogs string, ids ...core.PMID) error {
 }
 
 var _cmdDelete = func() *cobra.Command {
+	const filter = filterAll
 	var names, ids, tags []string
 	var config string
 	var interactive bool
@@ -77,7 +78,7 @@ var _cmdDelete = func() *cobra.Command {
 		Use:               "delete [name|tag|id]...",
 		Short:             "stop and remove process(es)",
 		GroupID:           "management",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector(filter),
 		Aliases:           []string{"del", "rm"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
@@ -135,9 +136,7 @@ var _cmdDelete = func() *cobra.Command {
 		},
 	}
 	addFlagInteractive(cmd, &interactive)
-	addFlagNames(cmd, &names)
-	addFlagTags(cmd, &tags)
-	addFlagIDs(cmd, &ids)
+	addFlagGenerics(cmd, filter, &names, &tags, &ids)
 	addFlagConfig(cmd, &config)
 	return cmd
 }()

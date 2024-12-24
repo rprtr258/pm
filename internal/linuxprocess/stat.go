@@ -11,8 +11,8 @@ import (
 
 type Stat struct {
 	ShimPID int
-	Memory  uint64  // bytes
 	CPU     float64 // percent
+	Memory  uint64  // bytes
 
 	// might be zero
 	ChildPID       int

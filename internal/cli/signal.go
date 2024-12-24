@@ -4,6 +4,9 @@ import (
 	stdErrors "errors"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/rprtr258/fun"
@@ -19,55 +22,106 @@ func implSignal(
 	ids ...core.PMID,
 ) error {
 	list := linuxprocess.List()
-	return errors.Combine(fun.Map[error](func(id core.PMID) error {
-		return errors.Wrapf(func() error {
-			osProc, ok := linuxprocess.StatPMID(list, id)
-			if !ok {
-				return errors.Newf("get process by pmid, id=%s signal=%s", id, sig.String())
-			}
 
-			if errKill := syscall.Kill(-osProc.ShimPID, sig); errKill != nil {
+	pidsToSignal := map[int]core.PMID{}
+	for _, id := range ids {
+		stat, ok := linuxprocess.StatPMID(list, id)
+		if !ok {
+			return errors.Newf("get process by pmid, id=%s signal=%s", id, sig.String())
+		}
+
+		if stat.ChildPID == 0 {
+			continue
+		}
+
+		pidsToSignal[stat.ChildPID] = id
+		for _, child := range linuxprocess.Children(list, stat.ChildPID) {
+			pidsToSignal[child.Handle.Pid] = id
+		}
+	}
+
+	errs := []error{}
+	for pid, pmid := range pidsToSignal {
+		if err := func() error {
+			if errKill := syscall.Kill(-pid, sig); errKill != nil {
 				switch {
 				case stdErrors.Is(errKill, os.ErrProcessDone):
 					return errors.New("tried to send signal to process which is done")
 				case stdErrors.Is(errKill, syscall.ESRCH): // no such process
 					return errors.New("tried to send signal to process which doesn't exist")
 				default:
-					return errors.Wrapf(errKill, "kill process, pid=%d", osProc.ShimPID)
+					return errors.Wrapf(errKill, "kill process")
 				}
 			}
 
 			return nil
-		}(), "pmid=%s", id)
-	}, ids...)...)
+		}(); err != nil {
+			errs = append(errs, errors.Wrapf(err, "pmid=%s, pid=%d", pmid, pid))
+		}
+	}
+	return errors.Combine(errs...)
 }
 
+var (
+	_signals = func() map[string]syscall.Signal {
+		names := map[string]syscall.Signal{
+			"SIGHUP":  syscall.SIGHUP,
+			"SIGINT":  syscall.SIGINT,
+			"SIGQUIT": syscall.SIGQUIT,
+			"SIGKILL": syscall.SIGKILL,
+			"SIGTERM": syscall.SIGTERM,
+			"SIGCONT": syscall.SIGCONT,
+			"SIGSTOP": syscall.SIGSTOP,
+		}
+
+		res := make(map[string]syscall.Signal, 2*len(names))
+		for name, sig := range names {
+			res[name] = sig
+			res[strings.TrimPrefix(name, "SIG")] = sig
+		}
+		return res
+	}()
+	_signalNames = func() []string {
+		res := fun.Keys(_signals)
+		sort.Strings(res)
+		return res
+	}()
+)
+
 var _cmdSignal = func() *cobra.Command {
+	const filter = filterRunning
 	var names, ids, tags []string
 	var config string
 	var interactive bool
 	cmd := &cobra.Command{
-		Use:               "signal SIGNAL [name|tag|id]...",
-		Short:             "send signal to process(es)",
-		Aliases:           []string{"kill"},
-		GroupID:           "inspection",
-		ValidArgsFunction: completeArgGenericSelector,
-		Args:              cobra.MinimumNArgs(1),
+		Use:     "signal [sigspec] [name|tag|id]...",
+		Short:   "send signal to process(es)",
+		Aliases: []string{"kill"},
+		GroupID: "inspection",
+		ValidArgsFunction: func(
+			cmd *cobra.Command,
+			args []string,
+			prefix string,
+		) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return _signalNames, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			return completeArgGenericSelector(filter)(cmd, args, prefix)
+		},
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			signal := args[0]
 			args = args[1:]
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			var sig syscall.Signal
-			switch signal {
-			case "SIGKILL", "9":
-				sig = syscall.SIGKILL
-			case "SIGTERM", "15":
-				sig = syscall.SIGTERM
-			case "SIGINT", "2":
-				sig = syscall.SIGINT
-			default:
-				return errors.Newf("unknown signal: %q", signal)
+			sig, ok := _signals[signal]
+			if !ok {
+				if x, err := strconv.Atoi(signal); err == nil {
+					sig = syscall.Signal(x)
+				} else {
+					return errors.Newf("unknown signal: %q", signal)
+				}
 			}
 
 			list := listProcs(dbb)
@@ -116,9 +170,7 @@ var _cmdSignal = func() *cobra.Command {
 		},
 	}
 	addFlagInteractive(cmd, &interactive)
-	addFlagNames(cmd, &names)
-	addFlagTags(cmd, &tags)
-	addFlagIDs(cmd, &ids)
+	addFlagGenerics(cmd, filter, &names, &tags, &ids)
 	addFlagConfig(cmd, &config)
 	return cmd
 }()
