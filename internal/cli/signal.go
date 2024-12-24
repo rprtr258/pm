@@ -4,6 +4,8 @@ import (
 	stdErrors "errors"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -61,13 +63,19 @@ func implSignal(
 	return errors.Combine(errs...)
 }
 
-const (
-	_sigKill = "SIGKILL"
-	_sigTerm = "SIGTERM"
-	_sigInt  = "SIGINT"
+var (
+	_signals = map[string]syscall.Signal{
+		"SIGHUP":  syscall.SIGHUP,
+		"SIGINT":  syscall.SIGINT,
+		"SIGKILL": syscall.SIGKILL,
+		"SIGTERM": syscall.SIGTERM,
+	}
+	_signalNames = func() []string {
+		res := fun.Keys(_signals)
+		sort.Strings(res)
+		return res
+	}()
 )
-
-var _signals = []string{_sigKill, _sigTerm, _sigInt}
 
 var _cmdSignal = func() *cobra.Command {
 	const filter = filterRunning
@@ -75,7 +83,7 @@ var _cmdSignal = func() *cobra.Command {
 	var config string
 	var interactive bool
 	cmd := &cobra.Command{
-		Use:     "signal [" + strings.Join(_signals, "|") + "] [name|tag|id]...",
+		Use:     "signal [" + strings.Join(_signalNames, "|") + "|<signal number>] [name|tag|id]...",
 		Short:   "send signal to process(es)",
 		Aliases: []string{"kill"},
 		GroupID: "inspection",
@@ -85,7 +93,7 @@ var _cmdSignal = func() *cobra.Command {
 			prefix string,
 		) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
-				return _signals, cobra.ShellCompDirectiveNoFileComp
+				return _signalNames, cobra.ShellCompDirectiveNoFileComp
 			}
 
 			return completeArgGenericSelector(filter)(cmd, args, prefix)
@@ -96,16 +104,13 @@ var _cmdSignal = func() *cobra.Command {
 			args = args[1:]
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 
-			var sig syscall.Signal
-			switch signal {
-			case _sigKill, "9":
-				sig = syscall.SIGKILL
-			case _sigTerm, "15":
-				sig = syscall.SIGTERM
-			case _sigInt, "2":
-				sig = syscall.SIGINT
-			default:
-				return errors.Newf("unknown signal: %q", signal)
+			sig, ok := _signals[signal]
+			if !ok {
+				if x, err := strconv.Atoi(signal); err == nil {
+					sig = syscall.Signal(x)
+				} else {
+					return errors.Newf("unknown signal: %q", signal)
+				}
 			}
 
 			list := listProcs(dbb)
