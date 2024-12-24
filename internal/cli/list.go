@@ -296,6 +296,7 @@ func unmarshalFlagListFormat(format string) (func([]core.ProcStat) error, error)
 }
 
 var _cmdList = func() *cobra.Command {
+	const filter = filterAll
 	var ids, names, tags []string
 	var listFormat, sort string
 	cmd := &cobra.Command{
@@ -303,7 +304,7 @@ var _cmdList = func() *cobra.Command {
 		Short:             "list processes",
 		Aliases:           []string{"l", "ls", "ps", "status"},
 		GroupID:           "inspection",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector(filterAll),
 		RunE: func(_ *cobra.Command, args []string) error {
 			less, err := unmarshalFlagSort(sort)
 			if err != nil {
@@ -338,8 +339,8 @@ var _cmdList = func() *cobra.Command {
 	cmd.Flags().StringVarP(&listFormat, "format", "f", _formatTable, _usageFlagListFormat)
 	registerFlagCompletionFunc(cmd, "format", completeFlagListFormat)
 	cmd.Flags().StringVarP(&sort, "sort", "s", "id:asc", _usageFlagSort)
-	addFlagNames(cmd, &names)
-	addFlagTags(cmd, &tags)
-	addFlagIDs(cmd, &ids)
+	addFlagNames(cmd, &names, filterAll)
+	addFlagTags(cmd, &tags, filterAll)
+	addFlagIDs(cmd, &ids, filterAll)
 	return cmd
 }()

@@ -215,13 +215,14 @@ var (
 )
 
 var _cmdLogs = func() *cobra.Command {
+	const filter = filterAll
 	var names, ids, tags []string
 	var config string
 	cmd := &cobra.Command{
 		Use:               "logs [name|tag|id]...",
 		Short:             "watch for processes logs",
 		GroupID:           "inspection",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector(filterAll),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
@@ -299,9 +300,9 @@ var _cmdLogs = func() *cobra.Command {
 			}
 		},
 	}
-	addFlagNames(cmd, &names)
-	addFlagTags(cmd, &tags)
-	addFlagIDs(cmd, &ids)
+	addFlagNames(cmd, &names, filterAll)
+	addFlagTags(cmd, &tags, filterAll)
+	addFlagIDs(cmd, &ids, filterAll)
 	addFlagConfig(cmd, &config)
 	return cmd
 }()

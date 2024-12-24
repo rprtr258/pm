@@ -52,6 +52,7 @@ const (
 var _signals = []string{_sigKill, _sigTerm, _sigInt}
 
 var _cmdSignal = func() *cobra.Command {
+	const filter = filterRunning
 	var names, ids, tags []string
 	var config string
 	var interactive bool
@@ -69,7 +70,7 @@ var _cmdSignal = func() *cobra.Command {
 				return _signals, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			return completeArgGenericSelector(cmd, args, prefix)
+			return completeArgGenericSelector(filter)(cmd, args, prefix)
 		},
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -135,9 +136,9 @@ var _cmdSignal = func() *cobra.Command {
 		},
 	}
 	addFlagInteractive(cmd, &interactive)
-	addFlagNames(cmd, &names)
-	addFlagTags(cmd, &tags)
-	addFlagIDs(cmd, &ids)
+	addFlagNames(cmd, &names, filter)
+	addFlagTags(cmd, &tags, filter)
+	addFlagIDs(cmd, &ids, filter)
 	addFlagConfig(cmd, &config)
 	return cmd
 }()

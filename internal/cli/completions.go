@@ -27,46 +27,57 @@ func registerFlagCompletionFunc(
 	}
 }
 
-func completeFlagName(prefix string) ([]string, cobra.ShellCompDirective) {
-	return slices.Collect(func(yield func(string) bool) {
-		for proc := range seq.Seq {
-			if strings.HasPrefix(proc.Name, prefix) && !yield(fmt.Sprintf("%s\tproc: %s", proc.Name, proc.Status.String())) {
-				break
+func completeFlagName(isRunning filterType) func(prefix string) ([]string, cobra.ShellCompDirective) {
+	return func(prefix string) ([]string, cobra.ShellCompDirective) {
+		return slices.Collect(func(yield func(string) bool) {
+			for proc := range seq.FilterRunning(isRunning).Seq {
+				if strings.HasPrefix(proc.Name, prefix) && !yield(fmt.Sprintf("%s\tproc: %s", proc.Name, proc.Status.String())) {
+					break
+				}
 			}
-		}
-	}), cobra.ShellCompDirectiveNoFileComp
+		}), cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
-func completeFlagTag(prefix string) ([]string, cobra.ShellCompDirective) {
-	return slices.Collect(func(yield func(string) bool) {
-		for tag := range seq.Tags() {
-			if strings.HasPrefix(tag, prefix) && !yield(tag) {
-				break
+func completeFlagTag(isRunning filterType) func(prefix string) ([]string, cobra.ShellCompDirective) {
+	return func(prefix string) ([]string, cobra.ShellCompDirective) {
+		return slices.Collect(func(yield func(string) bool) {
+			for tag := range seq.FilterRunning(isRunning).Tags() {
+				if strings.HasPrefix(tag, prefix) && !yield(tag) {
+					break
+				}
 			}
-		}
-	}), cobra.ShellCompDirectiveNoFileComp
+		}), cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
-func completeFlagIDs(prefix string) ([]string, cobra.ShellCompDirective) {
-	return slices.Collect(func(yield func(string) bool) {
-		for proc := range seq.Seq {
-			if strings.HasPrefix(string(proc.ID), prefix) && !yield(fmt.Sprintf("%s\tname: %s", proc.ID.String(), proc.Name)) {
-				break
+func completeFlagIDs(isRunning filterType) func(prefix string) ([]string, cobra.ShellCompDirective) {
+	return func(prefix string) ([]string, cobra.ShellCompDirective) {
+		return slices.Collect(func(yield func(string) bool) {
+			for proc := range seq.FilterRunning(isRunning).Seq {
+				if strings.HasPrefix(string(proc.ID), prefix) && !yield(fmt.Sprintf("%s\tname: %s", proc.ID.String(), proc.Name)) {
+					break
+				}
 			}
-		}
-	}), cobra.ShellCompDirectiveNoFileComp
+		}), cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
-func completeArgGenericSelector( // TODO: add and use isrunning flag
+func completeArgGenericSelector(isRunning filterType) func(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
-	names, _ := completeFlagName(prefix)
-	tags, _ := completeFlagTag(prefix)
+	return func(
+		_ *cobra.Command, _ []string,
+		prefix string,
+	) ([]string, cobra.ShellCompDirective) {
+		names, _ := completeFlagName(isRunning)(prefix)
+		tags, _ := completeFlagTag(isRunning)(prefix)
 
-	flatten := make([]string, 0, len(names)+len(tags))
-	flatten = append(flatten, names...)
-	flatten = append(flatten, tags...)
+		flatten := make([]string, 0, len(names)+len(tags))
+		flatten = append(flatten, names...)
+		flatten = append(flatten, tags...)
 
-	return flatten, cobra.ShellCompDirectiveNoFileComp
+		return flatten, cobra.ShellCompDirectiveNoFileComp
+	}
 }

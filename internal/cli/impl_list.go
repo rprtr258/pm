@@ -28,6 +28,25 @@ func (l procSeq) Filter(p func(core.ProcStat) bool) procSeq {
 	}}
 }
 
+type filterType int8
+
+const (
+	filterAll filterType = iota
+	filterRunning
+	filterStopped
+)
+
+func (l procSeq) FilterRunning(filter filterType) procSeq {
+	return procSeq{func(yield func(core.ProcStat) bool) {
+		for proc := range l.Seq {
+			if (proc.Status != core.StatusStopped && filter != filterStopped ||
+				proc.Status == core.StatusStopped && filter != filterRunning) && !yield(proc) {
+				break
+			}
+		}
+	}}
+}
+
 func (l procSeq) Slice() []core.ProcStat {
 	return slices.Collect(l.Seq)
 }
@@ -43,11 +62,14 @@ func (l procSeq) IDs() iter.Seq[core.PMID] {
 }
 
 func (l procSeq) Tags() iter.Seq[string] {
-	tags := map[string]struct{}{"all": {}}
+	tags := map[string]struct{}{}
 	for ps := range l.Seq {
 		for _, tag := range ps.Tags {
 			tags[tag] = struct{}{}
 		}
+	}
+	if len(tags) > 0 {
+		tags["all"] = struct{}{}
 	}
 	return maps.Keys(tags)
 }

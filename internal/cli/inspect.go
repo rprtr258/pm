@@ -38,13 +38,14 @@ Status:
 `))
 
 var _cmdInspect = func() *cobra.Command {
+	const filter = filterAll
 	var names, ids, tags []string
 	cmd := &cobra.Command{
 		Use:               "inspect [name|tag|id]...",
 		Short:             "inspect process",
 		Aliases:           []string{"i"},
 		GroupID:           "inspection",
-		ValidArgsFunction: completeArgGenericSelector,
+		ValidArgsFunction: completeArgGenericSelector(filter),
 		RunE: func(_ *cobra.Command, args []string) error {
 			filterFunc := core.FilterFunc(
 				core.WithAllIfNoFilters,
@@ -66,8 +67,8 @@ var _cmdInspect = func() *cobra.Command {
 			return nil
 		},
 	}
-	addFlagNames(cmd, &names)
-	addFlagTags(cmd, &tags)
-	addFlagIDs(cmd, &ids)
+	addFlagNames(cmd, &names, filter)
+	addFlagTags(cmd, &tags, filter)
+	addFlagIDs(cmd, &ids, filter)
 	return cmd
 }()
