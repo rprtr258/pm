@@ -64,12 +64,24 @@ func implSignal(
 }
 
 var (
-	_signals = map[string]syscall.Signal{
-		"SIGHUP":  syscall.SIGHUP,
-		"SIGINT":  syscall.SIGINT,
-		"SIGKILL": syscall.SIGKILL,
-		"SIGTERM": syscall.SIGTERM,
-	}
+	_signals = func() map[string]syscall.Signal {
+		names := map[string]syscall.Signal{
+			"SIGHUP":  syscall.SIGHUP,
+			"SIGINT":  syscall.SIGINT,
+			"SIGQUIT": syscall.SIGQUIT,
+			"SIGKILL": syscall.SIGKILL,
+			"SIGTERM": syscall.SIGTERM,
+			"SIGCONT": syscall.SIGCONT,
+			"SIGSTOP": syscall.SIGSTOP,
+		}
+
+		res := make(map[string]syscall.Signal, 2*len(names))
+		for name, sig := range names {
+			res[name] = sig
+			res[strings.TrimPrefix(name, "SIG")] = sig
+		}
+		return res
+	}()
 	_signalNames = func() []string {
 		res := fun.Keys(_signals)
 		sort.Strings(res)
@@ -83,7 +95,7 @@ var _cmdSignal = func() *cobra.Command {
 	var config string
 	var interactive bool
 	cmd := &cobra.Command{
-		Use:     "signal [" + strings.Join(_signalNames, "|") + "|<signal number>] [name|tag|id]...",
+		Use:     "signal [sigspec] [name|tag|id]...",
 		Short:   "send signal to process(es)",
 		Aliases: []string{"kill"},
 		GroupID: "inspection",
