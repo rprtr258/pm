@@ -20,27 +20,45 @@ func implSignal(
 	ids ...core.PMID,
 ) error {
 	list := linuxprocess.List()
-	return errors.Combine(fun.Map[error](func(id core.PMID) error {
-		return errors.Wrapf(func() error {
-			osProc, ok := linuxprocess.StatPMID(list, id)
-			if !ok {
-				return errors.Newf("get process by pmid, id=%s signal=%s", id, sig.String())
-			}
 
-			if errKill := syscall.Kill(-osProc.ShimPID, sig); errKill != nil {
+	pidsToSignal := map[int]core.PMID{}
+	for _, id := range ids {
+		stat, ok := linuxprocess.StatPMID(list, id)
+		if !ok {
+			return errors.Newf("get process by pmid, id=%s signal=%s", id, sig.String())
+		}
+
+		if stat.ChildPID == 0 {
+			continue
+		}
+
+		pidsToSignal[stat.ChildPID] = id
+		for _, child := range linuxprocess.Children(list, stat.ChildPID) {
+			pidsToSignal[child.Handle.Pid] = id
+		}
+	}
+
+	errs := []error{}
+	for pid, pmid := range pidsToSignal {
+		if err := func() error {
+			// TODO: signal subtree, not shim
+			if errKill := syscall.Kill(-pid, sig); errKill != nil {
 				switch {
 				case stdErrors.Is(errKill, os.ErrProcessDone):
 					return errors.New("tried to send signal to process which is done")
 				case stdErrors.Is(errKill, syscall.ESRCH): // no such process
 					return errors.New("tried to send signal to process which doesn't exist")
 				default:
-					return errors.Wrapf(errKill, "kill process, pid=%d", osProc.ShimPID)
+					return errors.Wrapf(errKill, "kill process")
 				}
 			}
 
 			return nil
-		}(), "pmid=%s", id)
-	}, ids...)...)
+		}(); err != nil {
+			errs = append(errs, errors.Wrapf(err, "pmid=%s, pid=%d", pmid, pid))
+		}
+	}
+	return errors.Combine(errs...)
 }
 
 const (
