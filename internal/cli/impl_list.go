@@ -79,7 +79,9 @@ func listProcs(db db.Handle) procSeq {
 				procStat.Status = core.StatusRunning
 				procStat.ChildPID = fun.Valid(stat.ChildPID)
 			}
-			yield(procStat)
+			if !yield(procStat) {
+				return
+			}
 		}
 	}}
 }
