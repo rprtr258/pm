@@ -4,6 +4,7 @@ import (
 	stdErrors "errors"
 	"fmt"
 	"os"
+	"strings"
 	"syscall"
 
 	"github.com/rprtr258/fun"
@@ -42,17 +43,35 @@ func implSignal(
 	}, ids...)...)
 }
 
+const (
+	_sigKill = "SIGKILL"
+	_sigTerm = "SIGTERM"
+	_sigInt  = "SIGINT"
+)
+
+var _signals = []string{_sigKill, _sigTerm, _sigInt}
+
 var _cmdSignal = func() *cobra.Command {
 	var names, ids, tags []string
 	var config string
 	var interactive bool
 	cmd := &cobra.Command{
-		Use:               "signal SIGNAL [name|tag|id]...",
-		Short:             "send signal to process(es)",
-		Aliases:           []string{"kill"},
-		GroupID:           "inspection",
-		ValidArgsFunction: completeArgGenericSelector,
-		Args:              cobra.MinimumNArgs(1),
+		Use:     "signal [" + strings.Join(_signals, "|") + "] [name|tag|id]...",
+		Short:   "send signal to process(es)",
+		Aliases: []string{"kill"},
+		GroupID: "inspection",
+		ValidArgsFunction: func(
+			cmd *cobra.Command,
+			args []string,
+			prefix string,
+		) ([]string, cobra.ShellCompDirective) {
+			if len(args) == 0 {
+				return _signals, cobra.ShellCompDirectiveNoFileComp
+			}
+
+			return completeArgGenericSelector(cmd, args, prefix)
+		},
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			signal := args[0]
 			args = args[1:]
@@ -60,11 +79,11 @@ var _cmdSignal = func() *cobra.Command {
 
 			var sig syscall.Signal
 			switch signal {
-			case "SIGKILL", "9":
+			case _sigKill, "9":
 				sig = syscall.SIGKILL
-			case "SIGTERM", "15":
+			case _sigTerm, "15":
 				sig = syscall.SIGTERM
-			case "SIGINT", "2":
+			case _sigInt, "2":
 				sig = syscall.SIGINT
 			default:
 				return errors.Newf("unknown signal: %q", signal)

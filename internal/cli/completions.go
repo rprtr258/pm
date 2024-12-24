@@ -57,7 +57,7 @@ func completeFlagIDs(prefix string) ([]string, cobra.ShellCompDirective) {
 	}), cobra.ShellCompDirectiveNoFileComp
 }
 
-func completeArgGenericSelector(
+func completeArgGenericSelector( // TODO: add and use isrunning flag
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
