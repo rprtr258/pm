@@ -29,7 +29,7 @@ func registerFlagCompletionFunc(
 
 func completeFlagName(prefix string) ([]string, cobra.ShellCompDirective) {
 	return slices.Collect(func(yield func(string) bool) {
-		for proc := range listProcs(dbb).Seq {
+		for proc := range seq.Seq {
 			if strings.HasPrefix(proc.Name, prefix) && !yield(fmt.Sprintf("%s\tproc: %s", proc.Name, proc.Status.String())) {
 				break
 			}
@@ -39,7 +39,7 @@ func completeFlagName(prefix string) ([]string, cobra.ShellCompDirective) {
 
 func completeFlagTag(prefix string) ([]string, cobra.ShellCompDirective) {
 	return slices.Collect(func(yield func(string) bool) {
-		for tag := range listProcs(dbb).Tags() {
+		for tag := range seq.Tags() {
 			if strings.HasPrefix(tag, prefix) && !yield(tag) {
 				break
 			}
@@ -49,7 +49,7 @@ func completeFlagTag(prefix string) ([]string, cobra.ShellCompDirective) {
 
 func completeFlagIDs(prefix string) ([]string, cobra.ShellCompDirective) {
 	return slices.Collect(func(yield func(string) bool) {
-		for proc := range listProcs(dbb).Seq {
+		for proc := range seq.Seq {
 			if strings.HasPrefix(string(proc.ID), prefix) && !yield(fmt.Sprintf("%s\tname: %s", proc.ID.String(), proc.Name)) {
 				break
 			}

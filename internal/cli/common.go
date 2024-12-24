@@ -19,6 +19,7 @@ var dbb, cfg = func() (db.Handle, core.Config) {
 	}
 	return db, config
 }()
+var seq = listProcs(dbb)
 
 func printProcs(procs ...core.ProcStat) {
 	for _, proc := range procs {
