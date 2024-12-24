@@ -33,10 +33,12 @@ func completeArgGenericSelector(filter filterType) func(
 	) ([]string, cobra.ShellCompDirective) {
 		names, _ := completeFlagName(filter)(prefix)
 		tags, _ := completeFlagTag(filter)(prefix)
+		ids, _ := completeFlagIDs(filter)(prefix)
 
-		flatten := make([]string, 0, len(names)+len(tags))
+		flatten := make([]string, 0, len(names)+len(tags)+len(ids))
 		flatten = append(flatten, names...)
 		flatten = append(flatten, tags...)
+		flatten = append(flatten, ids...)
 
 		return flatten, cobra.ShellCompDirectiveNoFileComp
 	}
