@@ -43,7 +43,6 @@ func implSignal(
 	errs := []error{}
 	for pid, pmid := range pidsToSignal {
 		if err := func() error {
-			// TODO: signal subtree, not shim
 			if errKill := syscall.Kill(-pid, sig); errKill != nil {
 				switch {
 				case stdErrors.Is(errKill, os.ErrProcessDone):
