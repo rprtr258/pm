@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 	"github.com/rs/zerolog/log"
@@ -42,16 +44,50 @@ func addFlagStrings(
 	registerFlagCompletionFunc(cmd, long, completeFunc)
 }
 
-func addFlagNames(cmd *cobra.Command, names *[]string, isRunning filterType) {
-	addFlagStrings(cmd, names, "name", "name(s) of process(es)", completeFlagName(isRunning))
+func completeFlagName(filter filterType) func(prefix string) ([]string, cobra.ShellCompDirective) {
+	return func(prefix string) ([]string, cobra.ShellCompDirective) {
+		return slices.Collect(func(yield func(string) bool) {
+			for proc := range seq.FilterRunning(filter).Seq {
+				if strings.HasPrefix(proc.Name, prefix) && !yield(fmt.Sprintf("%s\tproc: %s", proc.Name, proc.Status.String())) {
+					break
+				}
+			}
+		}), cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
-func addFlagTags(cmd *cobra.Command, tags *[]string, isRunning filterType) {
-	addFlagStrings(cmd, tags, "tag", "tag(s) of process(es)", completeFlagTag(isRunning))
+func completeFlagTag(filter filterType) func(prefix string) ([]string, cobra.ShellCompDirective) {
+	return func(prefix string) ([]string, cobra.ShellCompDirective) {
+		return slices.Collect(func(yield func(string) bool) {
+			for tag := range seq.FilterRunning(filter).Tags() {
+				if strings.HasPrefix(tag, prefix) && !yield(tag) {
+					break
+				}
+			}
+		}), cobra.ShellCompDirectiveNoFileComp
+	}
 }
 
-func addFlagIDs(cmd *cobra.Command, ids *[]string, isRunning filterType) {
-	addFlagStrings(cmd, ids, "id", "id(s) of process(es) to list", completeFlagIDs(isRunning))
+func completeFlagIDs(filter filterType) func(prefix string) ([]string, cobra.ShellCompDirective) {
+	return func(prefix string) ([]string, cobra.ShellCompDirective) {
+		return slices.Collect(func(yield func(string) bool) {
+			for proc := range seq.FilterRunning(filter).Seq {
+				if strings.HasPrefix(string(proc.ID), prefix) && !yield(fmt.Sprintf("%s\tname: %s", proc.ID.String(), proc.Name)) {
+					break
+				}
+			}
+		}), cobra.ShellCompDirectiveNoFileComp
+	}
+}
+
+func addFlagGenerics(
+	cmd *cobra.Command,
+	filter filterType,
+	names, tags, ids *[]string,
+) {
+	addFlagStrings(cmd, names, "name", "name(s) of process(es)", completeFlagName(filter))
+	addFlagStrings(cmd, tags, "tag", "tag(s) of process(es)", completeFlagTag(filter))
+	addFlagStrings(cmd, ids, "id", "id(s) of process(es) to list", completeFlagIDs(filter))
 }
 
 func addFlagInteractive(cmd *cobra.Command, dest *bool) {

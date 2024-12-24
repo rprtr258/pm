@@ -67,8 +67,6 @@ var _cmdInspect = func() *cobra.Command {
 			return nil
 		},
 	}
-	addFlagNames(cmd, &names, filter)
-	addFlagTags(cmd, &tags, filter)
-	addFlagIDs(cmd, &ids, filter)
+	addFlagGenerics(cmd, filter, &names, &tags, &ids)
 	return cmd
 }()

@@ -77,9 +77,7 @@ var _cmdRestart = func() *cobra.Command {
 		},
 	}
 	addFlagInteractive(cmd, &interactive)
-	addFlagNames(cmd, &names, filter)
-	addFlagTags(cmd, &tags, filter)
-	addFlagIDs(cmd, &ids, filter)
+	addFlagGenerics(cmd, filter, &names, &tags, &ids)
 	addFlagConfig(cmd, &config)
 	return cmd
 }()

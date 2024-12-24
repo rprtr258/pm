@@ -1,10 +1,6 @@
 package cli
 
 import (
-	"fmt"
-	"slices"
-	"strings"
-
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -27,43 +23,7 @@ func registerFlagCompletionFunc(
 	}
 }
 
-func completeFlagName(isRunning filterType) func(prefix string) ([]string, cobra.ShellCompDirective) {
-	return func(prefix string) ([]string, cobra.ShellCompDirective) {
-		return slices.Collect(func(yield func(string) bool) {
-			for proc := range seq.FilterRunning(isRunning).Seq {
-				if strings.HasPrefix(proc.Name, prefix) && !yield(fmt.Sprintf("%s\tproc: %s", proc.Name, proc.Status.String())) {
-					break
-				}
-			}
-		}), cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-func completeFlagTag(isRunning filterType) func(prefix string) ([]string, cobra.ShellCompDirective) {
-	return func(prefix string) ([]string, cobra.ShellCompDirective) {
-		return slices.Collect(func(yield func(string) bool) {
-			for tag := range seq.FilterRunning(isRunning).Tags() {
-				if strings.HasPrefix(tag, prefix) && !yield(tag) {
-					break
-				}
-			}
-		}), cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-func completeFlagIDs(isRunning filterType) func(prefix string) ([]string, cobra.ShellCompDirective) {
-	return func(prefix string) ([]string, cobra.ShellCompDirective) {
-		return slices.Collect(func(yield func(string) bool) {
-			for proc := range seq.FilterRunning(isRunning).Seq {
-				if strings.HasPrefix(string(proc.ID), prefix) && !yield(fmt.Sprintf("%s\tname: %s", proc.ID.String(), proc.Name)) {
-					break
-				}
-			}
-		}), cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-func completeArgGenericSelector(isRunning filterType) func(
+func completeArgGenericSelector(filter filterType) func(
 	_ *cobra.Command, _ []string,
 	prefix string,
 ) ([]string, cobra.ShellCompDirective) {
@@ -71,8 +31,8 @@ func completeArgGenericSelector(isRunning filterType) func(
 		_ *cobra.Command, _ []string,
 		prefix string,
 	) ([]string, cobra.ShellCompDirective) {
-		names, _ := completeFlagName(isRunning)(prefix)
-		tags, _ := completeFlagTag(isRunning)(prefix)
+		names, _ := completeFlagName(filter)(prefix)
+		tags, _ := completeFlagTag(filter)(prefix)
 
 		flatten := make([]string, 0, len(names)+len(tags))
 		flatten = append(flatten, names...)

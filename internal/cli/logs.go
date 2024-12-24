@@ -300,9 +300,7 @@ var _cmdLogs = func() *cobra.Command {
 			}
 		},
 	}
-	addFlagNames(cmd, &names, filterAll)
-	addFlagTags(cmd, &tags, filterAll)
-	addFlagIDs(cmd, &ids, filterAll)
+	addFlagGenerics(cmd, filter, &names, &tags, &ids)
 	addFlagConfig(cmd, &config)
 	return cmd
 }()
