@@ -188,23 +188,23 @@ func getProcs(
 		core.WithAllIfNoFilters,
 	)
 
-	if config == nil {
-		return listProcs(db).
-			Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
-			Slice(), nil
-	}
+	var filterConfig func(core.ProcStat) bool
+	if config != nil {
+		configs, errLoadConfigs := core.LoadConfigs(*config)
+		if errLoadConfigs != nil {
+			return nil, errors.Wrapf(errLoadConfigs, "load configs: %v", *config)
+		}
 
-	configs, errLoadConfigs := core.LoadConfigs(*config)
-	if errLoadConfigs != nil {
-		return nil, errors.Wrapf(errLoadConfigs, "load configs: %v", *config)
+		procNames := fun.Map[string](func(cfg core.RunConfig) string {
+			return cfg.Name
+		}, configs...)
+		filterConfig = func(proc core.ProcStat) bool { return fun.Contains(proc.Name, procNames...) }
 	}
-
-	procNames := fun.Map[string](func(cfg core.RunConfig) string {
-		return cfg.Name
-	}, configs...)
 
 	return listProcs(db).
-		Filter(func(proc core.ProcStat) bool { return fun.Contains(proc.Name, procNames...) }).
+		Filter(func(ps core.ProcStat) bool {
+			return filterConfig == nil || filterConfig(ps)
+		}).
 		Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 		Slice(), nil
 }
