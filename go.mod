@@ -7,6 +7,7 @@ toolchain go1.23.4
 replace github.com/rprtr258/tea => ../tea // TODO: remove zalupa
 
 require (
+	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/charmbracelet/huh v0.6.0
 	github.com/charmbracelet/lipgloss v1.0.0
 	github.com/creack/pty v1.1.24

@@ -2,8 +2,10 @@ package cli
 
 import (
 	"context"
+	"strings"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/tea"
@@ -28,16 +30,6 @@ var (
 	listItemStyle = styles.Style{}
 )
 
-var listDelegate = list.ItemDelegate[core.Proc]{
-	func(vb tea.Viewbox, m *list.Model[core.Proc], index int, item core.Proc) {
-		style := fun.IF(index == m.Index(), listItemStyleSelected, listItemStyle)
-		vb.Styled(style).WriteLine(item.Name)
-	},
-	1,
-	0,
-	func(msg tea.Msg, m *list.Model[core.Proc]) []tea.Cmd { return nil },
-}
-
 type keyMap struct {
 	Up, Down key.Binding
 	Quit     key.Binding
@@ -49,10 +41,11 @@ type model struct {
 	cfg    core.Config
 	logsCh <-chan core.LogLine
 
-	list    list.Model[core.Proc]
-	keys    keyMap
-	keysMap help.KeyMap
-	help    help.Model
+	list     list.Model[core.Proc]
+	keys     keyMap
+	keysMap  help.KeyMap
+	help     help.Model
+	logsList list.Model[core.LogLine]
 }
 
 type msgRefresh struct{}
@@ -82,12 +75,49 @@ func (m *model) Init(f func(...tea.Cmd)) {
 	m.help = help.New()
 	m.help.ShortSeparator = "  " // TODO: crumbs like in zellij
 
-	m.list = list.New([]core.Proc{}, listDelegate, func(i core.Proc) string { return i.Name })
+	m.list = list.New([]core.Proc{}, list.ItemDelegate[core.Proc]{
+		func(vb tea.Viewbox, m *list.Model[core.Proc], index int, item core.Proc) {
+			style := fun.IF(index == m.Index(), listItemStyleSelected, listItemStyle)
+			vb.Styled(style).WriteLine(item.Name)
+		},
+		1,
+		0,
+		func(msg tea.Msg, m *list.Model[core.Proc]) []tea.Cmd { return nil },
+	}, func(i core.Proc) string { return i.Name })
 	m.list.SetShowTitle(false)
 	m.list.SetShowFilter(false)
 	m.list.SetShowStatusBar(false)
 	m.list.SetShowPagination(false)
 	m.list.SetShowHelp(false)
+
+	m.logsList = list.New([]core.LogLine{}, list.ItemDelegate[core.LogLine]{
+		func(vb tea.Viewbox, m *list.Model[core.LogLine], index int, item core.LogLine) {
+			// style := fun.IF(index == m.Index(), listItemStyleSelected, listItemStyle)
+			cleanLine := strings.ReplaceAll(stripansi.Strip(item.Line), "\r", "")
+			x0 := vb.
+				Styled(styles.Style{}.Foreground(styles.FgColor("238"))).
+				WriteLine(item.ProcName)
+			x1 := vb.
+				PaddingLeft(x0).
+				Styled(styles.Style{}.Foreground(styles.FgColor(fun.IF(
+					item.Type == core.LogTypeStdout,
+					"#00FF00",
+					"#FF0000",
+				)))).
+				WriteLine(" | ")
+			vb.
+				PaddingLeft(x0 + x1).
+				WriteLineX(cleanLine)
+		},
+		1,
+		0,
+		func(msg tea.Msg, m *list.Model[core.LogLine]) []tea.Cmd { return nil },
+	}, func(i core.LogLine) string { return i.Line })
+	m.logsList.SetShowTitle(false)
+	m.logsList.SetShowFilter(false)
+	m.logsList.SetShowStatusBar(false)
+	m.logsList.SetShowPagination(false)
+	m.logsList.SetShowHelp(false)
 
 	go func() {
 		for line := range m.logsCh {
@@ -119,7 +149,7 @@ func (m *model) Update(message tea.Msg, f func(...tea.Cmd)) {
 			return
 		}
 	case tea.MsgWindowSize:
-		m.list.SetWidth(msg.Width / 5)
+		m.list.SetWidth(msg.Width / 5) // TODO: remove
 	case msgRefresh:
 		procs, err := m.db.List(core.WithIDs(m.ids...))
 		if err != nil {
@@ -141,11 +171,12 @@ func (m *model) Update(message tea.Msg, f func(...tea.Cmd)) {
 		}))
 		return
 	case msgLog:
+		f(m.logsList.SetItems(append(m.logsList.Items(), msg.line)))
 	}
 }
 
 func (m *model) View(vb tea.Viewbox) {
-	vbPane, vbHelp := vb.SplitY2(tea.Flex(1), tea.Fixed(1)) // TODO: auto instead of flex(1)
+	vbPane, vbHelp := vb.SplitY2(tea.Auto(), tea.Fixed(1))
 	tablebox.Box(
 		vbPane,
 		[]tea.Layout{tea.Flex(1)},
@@ -156,7 +187,7 @@ func (m *model) View(vb tea.Viewbox) {
 				m.list.View(vb)
 			case x == 1:
 				// TODO: show last N log lines, update channels on refresh, update log lines on new log lines
-				vb.WriteLine("LOGS VIEW")
+				m.logsList.View(vb)
 			}
 		},
 		tablebox.NormalBorder,
