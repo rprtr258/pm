@@ -94,7 +94,7 @@ func runProc(
 			return r.String()
 		})
 		// try to find by name and update
-		procs, err := dbb.GetProcs(core.WithAllIfNoFilters)
+		procs, err := dbb.List(core.WithAllIfNoFilters)
 		if err != nil {
 			return "", errors.Wrapf(err, "get procs from db")
 		}

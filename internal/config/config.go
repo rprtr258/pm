@@ -40,7 +40,7 @@ func pruneLogs(db db.Handle, config core.Config) error {
 		return errors.Wrapf(err, "read log dir %s", config.DirLogs)
 	}
 
-	procs, err := db.GetProcs(core.WithAllIfNoFilters)
+	procs, err := db.List(core.WithAllIfNoFilters)
 	if err != nil {
 		return errors.Wrapf(err, "get procs")
 	}
