@@ -1,4 +1,4 @@
-package tui
+package cli
 
 import (
 	"context"
@@ -20,12 +20,6 @@ import (
 
 const _refreshInterval = time.Second
 
-type listItem struct {
-	proc core.Proc
-}
-
-func (i listItem) FilterValue() string { return i.proc.Name }
-
 var (
 	listItemStyleSelected = styles.Style{}.
 				Background(scuf.BgANSI(61)).
@@ -34,14 +28,14 @@ var (
 	listItemStyle = styles.Style{}
 )
 
-var listDelegate = list.ItemDelegate[listItem]{
-	func(vb tea.Viewbox, m *list.Model[listItem], index int, item listItem) {
+var listDelegate = list.ItemDelegate[core.Proc]{
+	func(vb tea.Viewbox, m *list.Model[core.Proc], index int, item core.Proc) {
 		style := fun.IF(index == m.Index(), listItemStyleSelected, listItemStyle)
-		vb.Styled(style).WriteLine(item.proc.Name)
+		vb.Styled(style).WriteLine(item.Name)
 	},
 	1,
 	0,
-	func(msg tea.Msg, m *list.Model[listItem]) []tea.Cmd { return nil },
+	func(msg tea.Msg, m *list.Model[core.Proc]) []tea.Cmd { return nil },
 }
 
 type keyMap struct {
@@ -50,17 +44,20 @@ type keyMap struct {
 }
 
 type model struct {
-	ids []core.PMID
-	db  db.Handle
-	cfg core.Config
+	ids    []core.PMID
+	db     db.Handle
+	cfg    core.Config
+	logsCh <-chan core.LogLine
 
-	list    list.Model[listItem]
+	list    list.Model[core.Proc]
 	keys    keyMap
 	keysMap help.KeyMap
 	help    help.Model
 }
 
 type msgRefresh struct{}
+
+type msgLog struct{ line core.LogLine }
 
 func (m *model) Init(f func(...tea.Cmd)) {
 	m.keys = keyMap{
@@ -85,13 +82,18 @@ func (m *model) Init(f func(...tea.Cmd)) {
 	m.help = help.New()
 	m.help.ShortSeparator = "  " // TODO: crumbs like in zellij
 
-	m.list = list.New([]listItem{}, listDelegate)
+	m.list = list.New([]core.Proc{}, listDelegate, func(i core.Proc) string { return i.Name })
 	m.list.SetShowTitle(false)
 	m.list.SetShowFilter(false)
 	m.list.SetShowStatusBar(false)
 	m.list.SetShowPagination(false)
 	m.list.SetShowHelp(false)
 
+	go func() {
+		for line := range m.logsCh {
+			f(func() tea.Msg { return msgLog{line} })
+		}
+	}()
 	f(
 		tea.EnterAltScreen,
 		func() tea.Msg { return msgRefresh{} },
@@ -126,9 +128,9 @@ func (m *model) Update(message tea.Msg, f func(...tea.Cmd)) {
 			return
 		}
 
-		m.list.SetItems(fun.FilterMap[listItem](func(id core.PMID) (listItem, bool) {
+		m.list.SetItems(fun.FilterMap[core.Proc](func(id core.PMID) (core.Proc, bool) {
 			proc, ok := procs[id]
-			return listItem{proc}, ok
+			return proc, ok
 		}, m.ids...))
 		if _, ok := m.list.SelectedItem(); !ok {
 			m.list.Select(0)
@@ -138,6 +140,7 @@ func (m *model) Update(message tea.Msg, f func(...tea.Cmd)) {
 			return msgRefresh{}
 		}))
 		return
+	case msgLog:
 	}
 }
 
@@ -152,6 +155,7 @@ func (m *model) View(vb tea.Viewbox) {
 			case x == 0:
 				m.list.View(vb)
 			case x == 1:
+				// TODO: show last N log lines, update channels on refresh, update log lines on new log lines
 				vb.WriteLine("LOGS VIEW")
 			}
 		},
@@ -161,11 +165,18 @@ func (m *model) View(vb tea.Viewbox) {
 	m.help.View(vbHelp, m.keysMap)
 }
 
-func Run(db db.Handle, cfg core.Config, ids ...core.PMID) error {
-	_, err := tea.NewProgram(context.Background(), &model{
-		ids: ids,
-		db:  db,
-		cfg: cfg,
+func tui(
+	ctx context.Context,
+	db db.Handle,
+	cfg core.Config,
+	logsCh <-chan core.LogLine,
+	ids ...core.PMID,
+) error {
+	_, err := tea.NewProgram(ctx, &model{
+		ids:    ids,
+		db:     db,
+		cfg:    cfg,
+		logsCh: logsCh,
 	}).Run()
 	return err
 }

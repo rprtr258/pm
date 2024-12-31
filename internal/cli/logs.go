@@ -236,37 +236,9 @@ var _cmdLogs = func() *cobra.Command {
 				return nil
 			}
 
-			var wg sync.WaitGroup
-			mergedLogsCh := make(chan core.LogLine)
-			for _, proc := range procs {
-				logsCh := implLogs(ctx, proc)
-
-				wg.Add(1)
-				ch := logsCh
-				go func() {
-					defer wg.Done()
-					for {
-						select {
-						case <-ctx.Done():
-							return
-						case v, ok := <-ch:
-							if !ok {
-								return
-							}
-
-							select {
-							case <-ctx.Done():
-								return
-							case mergedLogsCh <- v:
-							}
-						}
-					}
-				}()
-			}
-			go func() {
-				wg.Wait()
-				close(mergedLogsCh)
-			}()
+			mergedLogsCh := implAllLogs(ctx, fun.Map[<-chan core.LogLine](func(proc core.ProcStat) <-chan core.LogLine {
+				return implLogs(ctx, proc)
+			}, procs...))
 
 			pad := 0
 			for {
@@ -321,4 +293,40 @@ func colorByID(id core.PMID) scuf.Modifier {
 		x += int(id[i])
 	}
 	return colors[x%len(colors)]
+}
+
+func implAllLogs(
+	ctx context.Context,
+	procs []<-chan core.LogLine,
+) <-chan core.LogLine {
+	var wg sync.WaitGroup
+	mergedLogsCh := make(chan core.LogLine)
+	for _, logsCh := range procs {
+		wg.Add(1)
+		ch := logsCh
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case v, ok := <-ch:
+					if !ok {
+						return
+					}
+
+					select {
+					case <-ctx.Done():
+						return
+					case mergedLogsCh <- v:
+					}
+				}
+			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(mergedLogsCh)
+	}()
+	return mergedLogsCh
 }

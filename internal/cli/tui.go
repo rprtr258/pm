@@ -8,7 +8,6 @@ import (
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/errors"
-	"github.com/rprtr258/pm/internal/tui"
 )
 
 var _cmdTUI = func() *cobra.Command {
@@ -58,8 +57,13 @@ var _cmdTUI = func() *cobra.Command {
 				return nil
 			}
 
+			ctx := cmd.Context()
+			mergedLogsCh := implAllLogs(ctx, fun.Map[<-chan core.LogLine](func(proc core.ProcStat) <-chan core.LogLine {
+				return implLogs(ctx, proc)
+			}, procs...))
+
 			procIDs := fun.Map[core.PMID](func(proc core.ProcStat) core.PMID { return proc.ID }, procs...)
-			return tui.Run(dbb, cfg, procIDs...)
+			return tui(ctx, dbb, cfg, mergedLogsCh, procIDs...)
 		},
 	}
 	addFlagGenerics(cmd, filter, &names, &tags, &ids)
