@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/charmbracelet/bubbles/key"
+	bubbletea "github.com/charmbracelet/bubbletea"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/tea"
 	"github.com/rprtr258/tea/components/headless/list"
 	"github.com/rprtr258/tea/components/help"
-	"github.com/rprtr258/tea/components/key"
 	"github.com/rprtr258/tea/components/tablebox"
 	"github.com/rprtr258/tea/styles"
 	"github.com/rs/zerolog/log"
@@ -41,6 +42,9 @@ type model struct {
 	cfg    core.Config
 	logsCh <-chan core.LogLine
 
+	dispatch func(msg bubbletea.Msg)
+	size     [2]int
+
 	list     *list.List[core.Proc]
 	keys     keyMap
 	keysMap  help.KeyMap
@@ -52,20 +56,20 @@ type msgRefresh struct{}
 
 type msgLog struct{ line core.LogLine }
 
-func (m *model) Init(f func(...tea.Cmd)) {
+func (m *model) Init() bubbletea.Cmd {
 	m.keys = keyMap{
-		Up: key.Binding{
-			Keys: []string{"up", "k"},
-			Help: key.Help{"↑/k", "move up"},
-		},
-		Down: key.Binding{
-			Keys: []string{"down", "j"},
-			Help: key.Help{"↓/j", "move down"},
-		},
-		Quit: key.Binding{
-			Keys: []string{"q", "esc", "ctrl+c"},
-			Help: key.Help{"q", "quit"},
-		},
+		Up: key.NewBinding(
+			key.WithKeys("up", "k"),
+			key.WithHelp("↑/k", "move up"),
+		),
+		Down: key.NewBinding(
+			key.WithKeys("down", "j"),
+			key.WithHelp("↓/j", "move down"),
+		),
+		Quit: key.NewBinding(
+			key.WithKeys("q", "esc", "ctrl+c"),
+			key.WithHelp("q", "quit"),
+		),
 	}
 	m.keysMap = help.KeyMap{
 		ShortHelp: []key.Binding{m.keys.Up, m.keys.Down, m.keys.Quit},
@@ -80,33 +84,30 @@ func (m *model) Init(f func(...tea.Cmd)) {
 
 	go func() {
 		for line := range m.logsCh {
-			f(func() tea.Msg { return msgLog{line} })
+			m.dispatch(msgLog{line})
 		}
 	}()
-	f(
-		tea.EnterAltScreen,
-		func() tea.Msg { return msgRefresh{} },
-	)
+	go m.dispatch(tea.EnterAltScreen())
+	go m.dispatch(msgRefresh{})
+	return nil
 }
 
-func (m *model) Update(message tea.Msg, f func(...tea.Cmd)) {
-	switch msg := message.(type) {
-	case tea.MsgKey:
+func (m *model) update(msg bubbletea.Msg) bubbletea.Cmd {
+	switch msg := msg.(type) {
+	case bubbletea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Up):
 			m.list.SelectPrev()
 		case key.Matches(msg, m.keys.Down):
 			m.list.SelectNext()
 		case key.Matches(msg, m.keys.Quit):
-			f(tea.Quit)
-			return
+			return bubbletea.Quit
 		}
 	case msgRefresh:
 		procs, err := m.db.List(core.WithIDs(m.ids...))
 		if err != nil {
 			log.Error().Err(err).Msg("get procs")
-			f(tea.Quit)
-			return
+			return bubbletea.Quit
 		}
 
 		m.list.ItemsSet(fun.FilterMap[core.Proc](func(id core.PMID) (core.Proc, bool) {
@@ -117,16 +118,23 @@ func (m *model) Update(message tea.Msg, f func(...tea.Cmd)) {
 			m.list.Select(0)
 		}
 
-		f(tea.Tick(_refreshInterval, func(t time.Time) tea.Msg {
+		return bubbletea.Tick(_refreshInterval, func(t time.Time) bubbletea.Msg {
 			return msgRefresh{}
-		}))
-		return
+		})
 	case msgLog:
 		m.logsList.ItemsSet(append(m.logsList.ItemsAll(), msg.line))
+	case bubbletea.WindowSizeMsg:
+		m.size = [2]int{msg.Height, msg.Width}
 	}
+
+	return nil
 }
 
-func (m *model) View(vb tea.Viewbox) {
+func (m *model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
+	return m, m.update(msg)
+}
+
+func (m *model) view(vb tea.Viewbox) {
 	vbPane, vbHelp := vb.SplitY2(tea.Auto(), tea.Fixed(1))
 	tablebox.Box(
 		vbPane,
@@ -172,6 +180,12 @@ func (m *model) View(vb tea.Viewbox) {
 	m.help.View(vbHelp, m.keysMap)
 }
 
+func (m *model) View() string {
+	vb := tea.NewViewbox(m.size[0], m.size[1])
+	m.view(vb)
+	return string(vb.Render())
+}
+
 func tui(
 	ctx context.Context,
 	db db.Handle,
@@ -179,11 +193,14 @@ func tui(
 	logsCh <-chan core.LogLine,
 	ids ...core.PMID,
 ) error {
-	_, err := tea.NewProgram(ctx, &model{
+	m := &model{
 		ids:    ids,
 		db:     db,
 		cfg:    cfg,
 		logsCh: logsCh,
-	}).Run()
+	}
+	p := bubbletea.NewProgram(m, bubbletea.WithContext(ctx))
+	m.dispatch = p.Send
+	_, err := p.Run()
 	return err
 }
