@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
-	"github.com/charmbracelet/bubbles/key"
-	bubbletea "github.com/charmbracelet/bubbletea"
+	key2 "github.com/charmbracelet/bubbles/key"
+	tea2 "github.com/charmbracelet/bubbletea"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/tea"
 	"github.com/rprtr258/tea/components/headless/list"
 	"github.com/rprtr258/tea/components/help"
-	key2 "github.com/rprtr258/tea/components/key"
+	"github.com/rprtr258/tea/components/key"
 	"github.com/rprtr258/tea/components/tablebox"
 	"github.com/rprtr258/tea/styles"
 	"github.com/rs/zerolog/log"
@@ -33,34 +33,49 @@ var (
 )
 
 var keymap = struct {
-	Up, Down, Quit, Switch key2.Binding
+	// app controls
+	Quit key.Binding
+	// proc list
+	Up, Down key.Binding
+	// logs list
+	Switch, LogUp, LogDown key.Binding
 }{
-	Up: key2.Binding{
+	Up: key.Binding{
 		[]string{"up", "k"},
-		key2.Help{"↑/k", "move up"},
+		key.Help{"↑/k", "move up"},
 		false,
 	},
-	Down: key2.Binding{
+	Down: key.Binding{
 		[]string{"down", "j"},
-		key2.Help{"↓/j", "move down"},
+		key.Help{"↓/j", "move down"},
 		false,
 	},
-	Quit: key2.Binding{
+	Quit: key.Binding{
 		[]string{"q", "esc", "ctrl+c"},
-		key2.Help{"q", "quit"},
+		key.Help{"q", "quit"},
 		false,
 	},
-	Switch: key2.Binding{
+	Switch: key.Binding{
 		[]string{"h"},
-		key2.Help{"h", "Show all/stderr/stdout logs"},
+		key.Help{"h", "show all/stderr/stdout logs"}, // TODO: help based on current value
+		false,
+	},
+	LogUp: key.Binding{
+		[]string{tea2.KeyPgUp.String()},
+		key.Help{"PageUp", "scroll logs up"},
+		false,
+	},
+	LogDown: key.Binding{
+		[]string{tea2.KeyPgDown.String()},
+		key.Help{"PageDown", "scroll logs down"},
 		false,
 	},
 }
 
-func compatMatches(msg bubbletea.KeyMsg, keyy key2.Binding) bool {
-	return key.Matches(msg, key.NewBinding(
-		key.WithKeys(keyy.Keys...),
-		key.WithHelp(keyy.Help[0], keyy.Help[1]),
+func compatMatches(msg tea2.KeyMsg, keyy key.Binding) bool {
+	return key2.Matches(msg, key2.NewBinding(
+		key2.WithKeys(keyy.Keys...),
+		key2.WithHelp(keyy.Help[0], keyy.Help[1]),
 	))
 }
 
@@ -78,7 +93,7 @@ type model struct {
 	cfg    core.Config
 	logsCh <-chan core.LogLine
 
-	dispatch func(msg bubbletea.Msg)
+	dispatch func(msg tea2.Msg)
 	size     [2]int
 
 	list    *list.List[core.Proc]
@@ -87,15 +102,16 @@ type model struct {
 
 	logsList    map[core.PMID][]core.LogLine
 	logTypeShow logTypeShow
+	logScroll   int
 }
 
 type msgRefresh struct{}
 
 type msgLog struct{ line core.LogLine }
 
-func (m *model) Init() bubbletea.Cmd {
+func (m *model) Init() tea2.Cmd {
 	m.keysMap = help.KeyMap{
-		ShortHelp: []key2.Binding{keymap.Up, keymap.Down, keymap.Quit, keymap.Switch},
+		ShortHelp: []key.Binding{keymap.Up, keymap.Down, keymap.Quit, keymap.Switch, keymap.LogUp, keymap.LogDown},
 	}
 
 	m.help = help.New()
@@ -114,17 +130,26 @@ func (m *model) Init() bubbletea.Cmd {
 	return nil
 }
 
-func (m *model) update(msg bubbletea.Msg) bubbletea.Cmd {
+func (m *model) resetLogScroll() {
+	if m.list.Total() > 0 {
+		m.logScroll = 0
+	}
+}
+
+func (m *model) update(msg tea2.Msg) tea2.Cmd {
 	switch msg := msg.(type) {
-	case bubbletea.KeyMsg:
+	case tea2.KeyMsg:
 		switch {
 		case compatMatches(msg, keymap.Up):
+			m.resetLogScroll()
 			m.list.SelectPrev()
 		case compatMatches(msg, keymap.Down):
+			m.resetLogScroll()
 			m.list.SelectNext()
 		case compatMatches(msg, keymap.Quit):
-			return bubbletea.Quit
+			return tea2.Quit
 		case compatMatches(msg, keymap.Switch):
+			m.resetLogScroll()
 			switch m.logTypeShow {
 			case logTypeShowAll:
 				m.logTypeShow = logTypeShowErr
@@ -133,12 +158,18 @@ func (m *model) update(msg bubbletea.Msg) bubbletea.Cmd {
 			case logTypeShowOut:
 				m.logTypeShow = logTypeShowAll
 			}
+		case compatMatches(msg, keymap.LogUp):
+			// TODO: limit until first line
+			m.logScroll++
+		case compatMatches(msg, keymap.LogDown):
+			// TODO: limit until last line
+			m.logScroll--
 		}
 	case msgRefresh:
 		procs, err := m.db.List(core.WithIDs(m.ids...))
 		if err != nil {
 			log.Error().Err(err).Msg("get procs")
-			return bubbletea.Quit
+			return tea2.Quit
 		}
 
 		m.list.ItemsSet(fun.FilterMap[core.Proc](func(id core.PMID) (core.Proc, bool) {
@@ -149,20 +180,20 @@ func (m *model) update(msg bubbletea.Msg) bubbletea.Cmd {
 			m.list.Select(0)
 		}
 
-		return bubbletea.Tick(_refreshInterval, func(t time.Time) bubbletea.Msg {
+		return tea2.Tick(_refreshInterval, func(t time.Time) tea2.Msg {
 			return msgRefresh{}
 		})
 	case msgLog:
 		procID := msg.line.ProcID
 		m.logsList[procID] = append(m.logsList[procID], msg.line)
-	case bubbletea.WindowSizeMsg:
+	case tea2.WindowSizeMsg:
 		m.size = [2]int{msg.Height, msg.Width}
 	}
 
 	return nil
 }
 
-func (m *model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
+func (m *model) Update(msg tea2.Msg) (tea2.Model, tea2.Cmd) {
 	return m, m.update(msg)
 }
 
@@ -198,7 +229,7 @@ func (m *model) view(vb tea.Viewbox) {
 			}
 
 			// TODO: show last N log lines, update channels on refresh, update log lines on new log lines
-			for i, line := range logs[max(0, len(logs)-vb.Height):] {
+			for i, line := range fun.Subslice(max(0, len(logs)-max(vb.Height+m.logScroll, 1)), vb.Height, logs...) {
 				vb := vb.Row(i)
 
 				// style := fun.IF(index == m.Index(), listItemStyleSelected, listItemStyle)
@@ -239,7 +270,7 @@ func tui(
 		cfg:    cfg,
 		logsCh: logsCh,
 	}
-	p := bubbletea.NewProgram(m, bubbletea.WithContext(ctx))
+	p := tea2.NewProgram(m, tea2.WithContext(ctx))
 	m.dispatch = p.Send
 	_, err := p.Run()
 	return err
