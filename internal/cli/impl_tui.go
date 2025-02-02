@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"cmp"
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -16,7 +18,6 @@ import (
 	"github.com/rprtr258/tea/components/key"
 	"github.com/rprtr258/tea/components/tablebox"
 	"github.com/rprtr258/tea/styles"
-	"github.com/rs/zerolog/log"
 
 	"github.com/rprtr258/pm/internal/core"
 	"github.com/rprtr258/pm/internal/db"
@@ -36,7 +37,7 @@ var keymap = struct {
 	// app controls
 	Quit key.Binding
 	// proc list
-	Up, Down key.Binding
+	Up, Down, Stop key.Binding
 	// logs list
 	Switch, LogUp, LogDown key.Binding
 }{
@@ -48,6 +49,11 @@ var keymap = struct {
 	Down: key.Binding{
 		[]string{"down", "j"},
 		key.Help{"↓/j", "move down"},
+		false,
+	},
+	Stop: key.Binding{
+		[]string{"x"},
+		key.Help{"x", "stop"},
 		false,
 	},
 	Quit: key.Binding{
@@ -96,7 +102,7 @@ type model struct {
 	dispatch func(msg tea2.Msg)
 	size     [2]int
 
-	list    *list.List[core.Proc]
+	list    *list.List[core.ProcStat]
 	keysMap help.KeyMap
 	help    help.Model
 
@@ -111,13 +117,17 @@ type msgLog struct{ line core.LogLine }
 
 func (m *model) Init() tea2.Cmd {
 	m.keysMap = help.KeyMap{
-		ShortHelp: []key.Binding{keymap.Up, keymap.Down, keymap.Quit, keymap.Switch, keymap.LogUp, keymap.LogDown},
+		ShortHelp: []key.Binding{
+			keymap.Up, keymap.Down, keymap.Stop,
+			keymap.Quit,
+			keymap.Switch, keymap.LogUp, keymap.LogDown,
+		},
 	}
 
 	m.help = help.New()
 	m.help.ShortSeparator = "  " // TODO: crumbs like in zellij
 
-	m.list = list.New([]core.Proc{}) /* func(i core.Proc) string { return i.Name }*/
+	m.list = list.New([]core.ProcStat{}) /* func(i core.ProcStat) string { return i.Name }*/
 	m.logsList = map[core.PMID][]core.LogLine{}
 
 	go func() {
@@ -146,6 +156,12 @@ func (m *model) update(msg tea2.Msg) tea2.Cmd {
 		case compatMatches(msg, keymap.Down):
 			m.resetLogScroll()
 			m.list.SelectNext()
+		case compatMatches(msg, keymap.Stop):
+			proc, ok := m.list.Selected()
+			if !ok {
+				return nil
+			}
+			_ = implStop(m.db, proc.ID) // TODO: show error
 		case compatMatches(msg, keymap.Quit):
 			return tea2.Quit
 		case compatMatches(msg, keymap.Switch):
@@ -166,16 +182,14 @@ func (m *model) update(msg tea2.Msg) tea2.Cmd {
 			m.logScroll--
 		}
 	case msgRefresh:
-		procs, err := m.db.List(core.WithIDs(m.ids...))
-		if err != nil {
-			log.Error().Err(err).Msg("get procs")
-			return tea2.Quit
-		}
+		procs := listProcs(m.db).Filter(func(ps core.ProcStat) bool {
+			return fun.Contains(ps.ID, m.ids...)
+		}).Slice()
+		slices.SortFunc(procs, func(a, b core.ProcStat) int {
+			return cmp.Compare(a.ID, b.ID)
+		})
 
-		m.list.ItemsSet(fun.FilterMap[core.Proc](func(id core.PMID) (core.Proc, bool) {
-			proc, ok := procs[id]
-			return proc, ok
-		}, m.ids...))
+		m.list.ItemsSet(procs)
 		if _, ok := m.list.Selected(); !ok {
 			m.list.Select(0)
 		}
@@ -209,10 +223,27 @@ func (m *model) view(vb tea.Viewbox) {
 		switch x := yx[1]; x {
 		case 0:
 			for i := 0; i < min(vb.Height, m.list.Total()); i++ {
-				vb := vb.Row(i)
-
 				style := fun.IF(i == m.list.SelectedIndex(), listItemStyleSelected, listItemStyle)
-				vb.Styled(style).WriteLine(m.list.ItemsAll()[i].Name)
+				vb := vb.Row(i).Styled(style)
+
+				var (
+					statusColor scuf.Modifier
+					statusChar  string
+				)
+				switch m.list.ItemsAll()[i].Status {
+				case core.StatusCreated:
+					statusColor = scuf.FgHiYellow
+					statusChar = "❍ "
+				case core.StatusRunning:
+					statusColor = scuf.FgHiGreen
+					statusChar = "✔ "
+				case core.StatusStopped:
+					statusColor = scuf.Combine(scuf.FgRed, scuf.ModBold)
+					statusChar = "❌"
+				}
+
+				x0 := vb.Styled(style.Foreground(statusColor)).WriteLine(statusChar)
+				vb.PaddingLeft(x0).WriteLine(m.list.ItemsAll()[i].Name)
 			}
 		case 1:
 			proc, ok := m.list.Selected()
