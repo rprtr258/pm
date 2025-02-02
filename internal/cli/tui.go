@@ -58,7 +58,7 @@ var _cmdTUI = func() *cobra.Command {
 			}
 
 			ctx := cmd.Context()
-			mergedLogsCh := implAllLogs(ctx, fun.Map[<-chan core.LogLine](func(proc core.ProcStat) <-chan core.LogLine {
+			mergedLogsCh := mergeLogs(ctx, fun.Map[<-chan core.LogLine](func(proc core.ProcStat) <-chan core.LogLine {
 				return implLogs(ctx, proc)
 			}, procs...))
 

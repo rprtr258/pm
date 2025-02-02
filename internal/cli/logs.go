@@ -78,10 +78,14 @@ func streamFile(
 			case <-ctx.Done():
 				return
 			case line := <-tailer.Lines:
-				logLinesCh <- ProcLine{
+				select {
+				case <-ctx.Done():
+					return
+				case logLinesCh <- ProcLine{
 					Line: line.Text,
 					Type: logLineType,
 					Err:  line.Err,
+				}:
 				}
 			}
 		}
@@ -131,9 +135,6 @@ func streamProcLogs(ctx context.Context, proc core.ProcStat) <-chan ProcLine {
 // implLogs - watch for processes logs
 func implLogs(ctx context.Context, proc core.ProcStat) <-chan core.LogLine {
 	ctx, cancel := context.WithCancel(ctx)
-	if proc.Status != core.StatusRunning {
-		ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
-	}
 
 	logsCh := streamProcLogs(ctx, proc)
 
@@ -236,7 +237,7 @@ var _cmdLogs = func() *cobra.Command {
 				return nil
 			}
 
-			mergedLogsCh := implAllLogs(ctx, fun.Map[<-chan core.LogLine](func(proc core.ProcStat) <-chan core.LogLine {
+			mergedLogsCh := mergeLogs(ctx, fun.Map[<-chan core.LogLine](func(proc core.ProcStat) <-chan core.LogLine {
 				return implLogs(ctx, proc)
 			}, procs...))
 
@@ -295,7 +296,7 @@ func colorByID(id core.PMID) scuf.Modifier {
 	return colors[x%len(colors)]
 }
 
-func implAllLogs(
+func mergeLogs(
 	ctx context.Context,
 	procs []<-chan core.LogLine,
 ) <-chan core.LogLine {

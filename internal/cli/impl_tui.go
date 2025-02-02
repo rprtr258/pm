@@ -71,7 +71,7 @@ type model struct {
 	list     *list.List[core.Proc]
 	keysMap  help.KeyMap
 	help     help.Model
-	logsList *list.List[core.LogLine]
+	logsList map[core.PMID][]core.LogLine
 }
 
 type msgRefresh struct{}
@@ -86,8 +86,8 @@ func (m *model) Init() bubbletea.Cmd {
 	m.help = help.New()
 	m.help.ShortSeparator = "  " // TODO: crumbs like in zellij
 
-	m.list = list.New([]core.Proc{})        /* func(i core.Proc) string { return i.Name }*/
-	m.logsList = list.New([]core.LogLine{}) /* func(i core.LogLine) string { return i.Line }*/
+	m.list = list.New([]core.Proc{})            /* func(i core.Proc) string { return i.Name }*/
+	m.logsList = map[core.PMID][]core.LogLine{} /* func(i core.LogLine) string { return i.Line }*/
 
 	go func() {
 		for line := range m.logsCh {
@@ -129,7 +129,8 @@ func (m *model) update(msg bubbletea.Msg) bubbletea.Cmd {
 			return msgRefresh{}
 		})
 	case msgLog:
-		m.logsList.ItemsSet(append(m.logsList.ItemsAll(), msg.line))
+		procID := msg.line.ProcID
+		m.logsList[procID] = append(m.logsList[procID], msg.line)
 	case bubbletea.WindowSizeMsg:
 		m.size = [2]int{msg.Height, msg.Width}
 	}
@@ -159,26 +160,28 @@ func (m *model) view(vb tea.Viewbox) {
 				vb.Styled(style).WriteLine(m.list.ItemsAll()[i].Name)
 			}
 		case 1:
+			proc, ok := m.list.Selected()
+			if !ok {
+				continue
+			}
+
+			logs := m.logsList[proc.ID]
 			// TODO: show last N log lines, update channels on refresh, update log lines on new log lines
-			for i := 0; i < min(vb.Height, m.logsList.Total()); i++ {
+			for i, line := range logs[max(0, len(logs)-vb.Height):] {
 				vb := vb.Row(i)
 
 				// style := fun.IF(index == m.Index(), listItemStyleSelected, listItemStyle)
-				item := m.logsList.ItemsAll()[i]
-				cleanLine := strings.ReplaceAll(stripansi.Strip(item.Line), "\r", "")
+				cleanLine := strings.ReplaceAll(stripansi.Strip(line.Line), "\r", "")
 				x0 := vb.
-					Styled(styles.Style{}.Foreground(styles.FgColor("238"))).
-					WriteLine(item.ProcName)
-				x1 := vb.
-					PaddingLeft(x0).
 					Styled(styles.Style{}.Foreground(styles.FgColor(fun.IF(
-						item.Type == core.LogTypeStdout,
+						line.Type == core.LogTypeStdout,
 						"#00FF00",
 						"#FF0000",
 					)))).
-					WriteLine(" | ")
+					WriteLine(" │ ")
+				// TODO: dim stderr
 				vb.
-					PaddingLeft(x0 + x1).
+					PaddingLeft(x0).
 					WriteLineX(cleanLine)
 			}
 		}
