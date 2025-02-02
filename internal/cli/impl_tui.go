@@ -37,45 +37,23 @@ var keymap = struct {
 	// app controls
 	Quit key.Binding
 	// proc list
-	Up, Down, Stop key.Binding
+	Up, Down, Stop, Start, Delete key.Binding
 	// logs list
 	Switch, LogUp, LogDown key.Binding
 }{
-	Up: key.Binding{
-		[]string{"up", "k"},
-		key.Help{"↑/k", "move up"},
-		false,
-	},
-	Down: key.Binding{
-		[]string{"down", "j"},
-		key.Help{"↓/j", "move down"},
-		false,
-	},
-	Stop: key.Binding{
-		[]string{"x"},
-		key.Help{"x", "stop"},
-		false,
-	},
-	Quit: key.Binding{
-		[]string{"q", "esc", "ctrl+c"},
-		key.Help{"q", "quit"},
-		false,
-	},
+	Up:     key.Binding{[]string{tea2.KeyUp.String(), "k"}, key.Help{"↑/k", "move up"}, false},
+	Down:   key.Binding{[]string{tea2.KeyDown.String(), "j"}, key.Help{"↓/j", "move down"}, false},
+	Stop:   key.Binding{[]string{"x"}, key.Help{"x", "stop"}, false},
+	Start:  key.Binding{[]string{tea2.KeyEnter.String()}, key.Help{"Enter", "start"}, false},
+	Delete: key.Binding{[]string{"d"}, key.Help{"d", "delete"}, false},
+	Quit:   key.Binding{[]string{"q", "esc", "ctrl+c"}, key.Help{"q", "quit"}, false},
 	Switch: key.Binding{
 		[]string{"h"},
 		key.Help{"h", "show all/stderr/stdout logs"}, // TODO: help based on current value
 		false,
 	},
-	LogUp: key.Binding{
-		[]string{tea2.KeyPgUp.String()},
-		key.Help{"PageUp", "scroll logs up"},
-		false,
-	},
-	LogDown: key.Binding{
-		[]string{tea2.KeyPgDown.String()},
-		key.Help{"PageDown", "scroll logs down"},
-		false,
-	},
+	LogUp:   key.Binding{[]string{tea2.KeyPgUp.String()}, key.Help{"PageUp", "scroll logs up"}, false},
+	LogDown: key.Binding{[]string{tea2.KeyPgDown.String()}, key.Help{"PageDown", "scroll logs down"}, false},
 }
 
 func compatMatches(msg tea2.KeyMsg, keyy key.Binding) bool {
@@ -117,15 +95,16 @@ type msgLog struct{ line core.LogLine }
 
 func (m *model) Init() tea2.Cmd {
 	m.keysMap = help.KeyMap{
-		ShortHelp: []key.Binding{
-			keymap.Up, keymap.Down, keymap.Stop,
-			keymap.Quit,
-			keymap.Switch, keymap.LogUp, keymap.LogDown,
+		FullHelp: [][]key.Binding{
+			{keymap.Up, keymap.Down, keymap.Quit},
+			{keymap.Stop, keymap.Start, keymap.Delete},
+			{keymap.Switch, keymap.LogUp, keymap.LogDown},
 		},
 	}
 
 	m.help = help.New()
 	m.help.ShortSeparator = "  " // TODO: crumbs like in zellij
+	m.help.ShowAll = true
 
 	m.list = list.New([]core.ProcStat{}) /* func(i core.ProcStat) string { return i.Name }*/
 	m.logsList = map[core.PMID][]core.LogLine{}
@@ -161,7 +140,22 @@ func (m *model) update(msg tea2.Msg) tea2.Cmd {
 			if !ok {
 				return nil
 			}
+			// TODO: remove logs here
 			_ = implStop(m.db, proc.ID) // TODO: show error
+		case compatMatches(msg, keymap.Start):
+			proc, ok := m.list.Selected()
+			if !ok {
+				return nil
+			}
+			// TODO: remove logs here
+			_ = implStart(m.db, proc.ID) // TODO: show error
+		case compatMatches(msg, keymap.Delete):
+			proc, ok := m.list.Selected()
+			if !ok {
+				return nil
+			}
+			// TODO: remove logs here
+			_ = implDelete(m.db, cfg.DirLogs, proc.ID) // TODO: show error
 		case compatMatches(msg, keymap.Quit):
 			return tea2.Quit
 		case compatMatches(msg, keymap.Switch):
@@ -212,7 +206,7 @@ func (m *model) Update(msg tea2.Msg) (tea2.Model, tea2.Cmd) {
 }
 
 func (m *model) view(vb tea.Viewbox) {
-	vbPane, vbHelp := vb.SplitY2(tea.Auto(), tea.Fixed(1))
+	vbPane, vbHelp := vb.SplitY2(tea.Auto(), tea.Fixed(3))
 	for yx, vb := range tablebox.Box(
 		vbPane,
 		[]tea.Layout{tea.Flex(1)},
@@ -279,7 +273,7 @@ func (m *model) view(vb tea.Viewbox) {
 			}
 		}
 	}
-	m.help.View(vbHelp, m.keysMap)
+	m.help.View(vbHelp, m.keysMap) // TODO: extended help on ?, short by default
 }
 
 func (m *model) View() string {
