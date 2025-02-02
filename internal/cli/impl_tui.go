@@ -33,7 +33,7 @@ var (
 )
 
 var keymap = struct {
-	Up, Down, Quit key2.Binding
+	Up, Down, Quit, Switch key2.Binding
 }{
 	Up: key2.Binding{
 		[]string{"up", "k"},
@@ -50,6 +50,11 @@ var keymap = struct {
 		key2.Help{"q", "quit"},
 		false,
 	},
+	Switch: key2.Binding{
+		[]string{"h"},
+		key2.Help{"h", "Show all/stderr/stdout logs"},
+		false,
+	},
 }
 
 func compatMatches(msg bubbletea.KeyMsg, keyy key2.Binding) bool {
@@ -58,6 +63,14 @@ func compatMatches(msg bubbletea.KeyMsg, keyy key2.Binding) bool {
 		key.WithHelp(keyy.Help[0], keyy.Help[1]),
 	))
 }
+
+type logTypeShow int8
+
+const (
+	logTypeShowAll logTypeShow = 0
+	logTypeShowErr logTypeShow = 1
+	logTypeShowOut logTypeShow = 2
+)
 
 type model struct {
 	ids    []core.PMID
@@ -68,10 +81,12 @@ type model struct {
 	dispatch func(msg bubbletea.Msg)
 	size     [2]int
 
-	list     *list.List[core.Proc]
-	keysMap  help.KeyMap
-	help     help.Model
-	logsList map[core.PMID][]core.LogLine
+	list    *list.List[core.Proc]
+	keysMap help.KeyMap
+	help    help.Model
+
+	logsList    map[core.PMID][]core.LogLine
+	logTypeShow logTypeShow
 }
 
 type msgRefresh struct{}
@@ -80,14 +95,14 @@ type msgLog struct{ line core.LogLine }
 
 func (m *model) Init() bubbletea.Cmd {
 	m.keysMap = help.KeyMap{
-		ShortHelp: []key2.Binding{keymap.Up, keymap.Down, keymap.Quit},
+		ShortHelp: []key2.Binding{keymap.Up, keymap.Down, keymap.Quit, keymap.Switch},
 	}
 
 	m.help = help.New()
 	m.help.ShortSeparator = "  " // TODO: crumbs like in zellij
 
-	m.list = list.New([]core.Proc{})            /* func(i core.Proc) string { return i.Name }*/
-	m.logsList = map[core.PMID][]core.LogLine{} /* func(i core.LogLine) string { return i.Line }*/
+	m.list = list.New([]core.Proc{}) /* func(i core.Proc) string { return i.Name }*/
+	m.logsList = map[core.PMID][]core.LogLine{}
 
 	go func() {
 		for line := range m.logsCh {
@@ -109,6 +124,15 @@ func (m *model) update(msg bubbletea.Msg) bubbletea.Cmd {
 			m.list.SelectNext()
 		case compatMatches(msg, keymap.Quit):
 			return bubbletea.Quit
+		case compatMatches(msg, keymap.Switch):
+			switch m.logTypeShow {
+			case logTypeShowAll:
+				m.logTypeShow = logTypeShowErr
+			case logTypeShowErr:
+				m.logTypeShow = logTypeShowOut
+			case logTypeShowOut:
+				m.logTypeShow = logTypeShowAll
+			}
 		}
 	case msgRefresh:
 		procs, err := m.db.List(core.WithIDs(m.ids...))
@@ -166,6 +190,13 @@ func (m *model) view(vb tea.Viewbox) {
 			}
 
 			logs := m.logsList[proc.ID]
+			if m.logTypeShow != logTypeShowAll {
+				logs = fun.Filter(func(line core.LogLine) bool {
+					return m.logTypeShow == logTypeShowErr && line.Type == core.LogTypeStderr ||
+						m.logTypeShow == logTypeShowOut && line.Type == core.LogTypeStdout
+				}, logs...)
+			}
+
 			// TODO: show last N log lines, update channels on refresh, update log lines on new log lines
 			for i, line := range logs[max(0, len(logs)-vb.Height):] {
 				vb := vb.Row(i)
