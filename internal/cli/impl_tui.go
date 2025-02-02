@@ -3,7 +3,9 @@ package cli
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	key2 "github.com/charmbracelet/bubbles/key"
 	tea2 "github.com/charmbracelet/bubbletea"
 	"github.com/rprtr258/fun"
+	"github.com/rprtr258/fun/set"
 	"github.com/rprtr258/scuf"
 	"github.com/rprtr258/tea"
 	"github.com/rprtr258/tea/components/headless/list"
@@ -206,6 +209,7 @@ func (m *model) Update(msg tea2.Msg) (tea2.Model, tea2.Cmd) {
 }
 
 func (m *model) view(vb tea.Viewbox) {
+	// TODO: pane headers
 	vbPane, vbHelp := vb.SplitY2(tea.Auto(), tea.Fixed(3))
 	for yx, vb := range tablebox.Box(
 		vbPane,
@@ -216,9 +220,21 @@ func (m *model) view(vb tea.Viewbox) {
 	) {
 		switch x := yx[1]; x {
 		case 0:
-			for i := 0; i < min(vb.Height, m.list.Total()); i++ {
+			// TODO: pane headers
+			// TODO: split lines
+			vbInspect, vbList, vbTags := vb.SplitY3(tea.Fixed(3), tea.Auto(), tea.Fixed(3))
+			proc, ok := m.list.Selected()
+
+			// if ok {
+			_ = ok
+			vbInspect.Row(0).WriteLineX(fmt.Sprintf("ID: %s", proc.ID))
+			vbInspect.Row(1).WriteLineX(fmt.Sprintf("ID: %s", proc.ID))
+			vbInspect.Row(2).WriteLineX(fmt.Sprintf("ID: %s", proc.ID))
+			// }
+
+			for i := 0; i < min(vbList.Height, m.list.Total()); i++ {
 				style := fun.IF(i == m.list.SelectedIndex(), listItemStyleSelected, listItemStyle)
-				vb := vb.Row(i).Styled(style)
+				vb := vbList.Row(i).Styled(style)
 
 				var (
 					statusColor scuf.Modifier
@@ -238,6 +254,22 @@ func (m *model) view(vb tea.Viewbox) {
 
 				x0 := vb.Styled(style.Foreground(statusColor)).WriteLine(statusChar)
 				vb.PaddingLeft(x0).WriteLine(m.list.ItemsAll()[i].Name)
+			}
+
+			{
+				tagsSet := set.New[string](1)
+				for _, proc := range m.list.ItemsAll() {
+					for _, tag := range proc.Tags {
+						tagsSet.Add(tag)
+					}
+				}
+
+				tags := tagsSet.List()
+				sort.Strings(tags)
+
+				for i, tag := range tags[:min(vbTags.Height, len(tags))] {
+					vbTags.Row(i).WriteLine(tag)
+				}
 			}
 		case 1:
 			proc, ok := m.list.Selected()
