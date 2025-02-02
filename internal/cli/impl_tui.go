@@ -143,47 +143,46 @@ func (m *model) Update(msg bubbletea.Msg) (bubbletea.Model, bubbletea.Cmd) {
 
 func (m *model) view(vb tea.Viewbox) {
 	vbPane, vbHelp := vb.SplitY2(tea.Auto(), tea.Fixed(1))
-	tablebox.Box(
+	for yx, vb := range tablebox.Box(
 		vbPane,
 		[]tea.Layout{tea.Flex(1)},
 		[]tea.Layout{tea.Flex(1), tea.Flex(4)},
-		func(vb tea.Viewbox, y, x int) {
-			switch {
-			case x == 0:
-				for i := 0; i < min(vb.Height, m.list.Total()); i++ {
-					vb := vb.Row(i)
-
-					style := fun.IF(i == m.list.SelectedIndex(), listItemStyleSelected, listItemStyle)
-					vb.Styled(style).WriteLine(m.list.ItemsAll()[i].Name)
-				}
-			case x == 1:
-				// TODO: show last N log lines, update channels on refresh, update log lines on new log lines
-				for i := 0; i < min(vb.Height, m.logsList.Total()); i++ {
-					vb := vb.Row(i)
-
-					// style := fun.IF(index == m.Index(), listItemStyleSelected, listItemStyle)
-					item := m.logsList.ItemsAll()[i]
-					cleanLine := strings.ReplaceAll(stripansi.Strip(item.Line), "\r", "")
-					x0 := vb.
-						Styled(styles.Style{}.Foreground(styles.FgColor("238"))).
-						WriteLine(item.ProcName)
-					x1 := vb.
-						PaddingLeft(x0).
-						Styled(styles.Style{}.Foreground(styles.FgColor(fun.IF(
-							item.Type == core.LogTypeStdout,
-							"#00FF00",
-							"#FF0000",
-						)))).
-						WriteLine(" | ")
-					vb.
-						PaddingLeft(x0 + x1).
-						WriteLineX(cleanLine)
-				}
-			}
-		},
 		tablebox.NormalBorder,
 		styles.Style{}.Foreground(styles.ANSIColor(238)),
-	)
+	) {
+		switch x := yx[1]; x {
+		case 0:
+			for i := 0; i < min(vb.Height, m.list.Total()); i++ {
+				vb := vb.Row(i)
+
+				style := fun.IF(i == m.list.SelectedIndex(), listItemStyleSelected, listItemStyle)
+				vb.Styled(style).WriteLine(m.list.ItemsAll()[i].Name)
+			}
+		case 1:
+			// TODO: show last N log lines, update channels on refresh, update log lines on new log lines
+			for i := 0; i < min(vb.Height, m.logsList.Total()); i++ {
+				vb := vb.Row(i)
+
+				// style := fun.IF(index == m.Index(), listItemStyleSelected, listItemStyle)
+				item := m.logsList.ItemsAll()[i]
+				cleanLine := strings.ReplaceAll(stripansi.Strip(item.Line), "\r", "")
+				x0 := vb.
+					Styled(styles.Style{}.Foreground(styles.FgColor("238"))).
+					WriteLine(item.ProcName)
+				x1 := vb.
+					PaddingLeft(x0).
+					Styled(styles.Style{}.Foreground(styles.FgColor(fun.IF(
+						item.Type == core.LogTypeStdout,
+						"#00FF00",
+						"#FF0000",
+					)))).
+					WriteLine(" | ")
+				vb.
+					PaddingLeft(x0 + x1).
+					WriteLineX(cleanLine)
+			}
+		}
+	}
 	m.help.View(vbHelp, m.keysMap)
 }
 
