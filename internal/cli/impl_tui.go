@@ -32,11 +32,27 @@ var (
 	listItemStyle = styles.Style{}
 )
 
-type keyMap struct {
+var keymap = struct {
 	Up, Down, Quit key2.Binding
+}{
+	Up: key2.Binding{
+		[]string{"up", "k"},
+		key2.Help{"↑/k", "move up"},
+		false,
+	},
+	Down: key2.Binding{
+		[]string{"down", "j"},
+		key2.Help{"↓/j", "move down"},
+		false,
+	},
+	Quit: key2.Binding{
+		[]string{"q", "esc", "ctrl+c"},
+		key2.Help{"q", "quit"},
+		false,
+	},
 }
 
-func matches(msg bubbletea.KeyMsg, keyy key2.Binding) bool {
+func compatMatches(msg bubbletea.KeyMsg, keyy key2.Binding) bool {
 	return key.Matches(msg, key.NewBinding(
 		key.WithKeys(keyy.Keys...),
 		key.WithHelp(keyy.Help[0], keyy.Help[1]),
@@ -53,7 +69,6 @@ type model struct {
 	size     [2]int
 
 	list     *list.List[core.Proc]
-	keys     keyMap
 	keysMap  help.KeyMap
 	help     help.Model
 	logsList *list.List[core.LogLine]
@@ -64,25 +79,8 @@ type msgRefresh struct{}
 type msgLog struct{ line core.LogLine }
 
 func (m *model) Init() bubbletea.Cmd {
-	m.keys = keyMap{
-		Up: key2.Binding{
-			[]string{"up", "k"},
-			key2.Help{"↑/k", "move up"},
-			false,
-		},
-		Down: key2.Binding{
-			[]string{"down", "j"},
-			key2.Help{"↓/j", "move down"},
-			false,
-		},
-		Quit: key2.Binding{
-			[]string{"q", "esc", "ctrl+c"},
-			key2.Help{"q", "quit"},
-			false,
-		},
-	}
 	m.keysMap = help.KeyMap{
-		ShortHelp: []key2.Binding{m.keys.Up, m.keys.Down, m.keys.Quit},
+		ShortHelp: []key2.Binding{keymap.Up, keymap.Down, keymap.Quit},
 	}
 
 	m.help = help.New()
@@ -105,11 +103,11 @@ func (m *model) update(msg bubbletea.Msg) bubbletea.Cmd {
 	switch msg := msg.(type) {
 	case bubbletea.KeyMsg:
 		switch {
-		case matches(msg, m.keys.Up):
+		case compatMatches(msg, keymap.Up):
 			m.list.SelectPrev()
-		case matches(msg, m.keys.Down):
+		case compatMatches(msg, keymap.Down):
 			m.list.SelectNext()
-		case matches(msg, m.keys.Quit):
+		case compatMatches(msg, keymap.Quit):
 			return bubbletea.Quit
 		}
 	case msgRefresh:
