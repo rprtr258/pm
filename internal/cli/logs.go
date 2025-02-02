@@ -33,7 +33,6 @@ const (
 type ProcLine struct {
 	Line string
 	Type core.LogType
-	Err  error
 }
 
 func streamFile(
@@ -84,7 +83,6 @@ func streamFile(
 				case logLinesCh <- ProcLine{
 					Line: line.Text,
 					Type: logLineType,
-					Err:  line.Err,
 				}:
 				}
 			}
@@ -167,7 +165,6 @@ func implLogs(ctx context.Context, proc core.ProcStat) <-chan core.LogLine {
 					ProcName: proc.Name,
 					Line:     line.Line,
 					Type:     line.Type,
-					Err:      line.Err,
 				}:
 				}
 			}
@@ -249,10 +246,6 @@ var _cmdLogs = func() *cobra.Command {
 				case line, ok := <-mergedLogsCh:
 					if !ok {
 						return nil
-					}
-
-					if line.Err != nil {
-						line.Line = line.Err.Error()
 					}
 
 					lineColor := fun.Switch(line.Type, scuf.FgRed).
