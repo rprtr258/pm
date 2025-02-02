@@ -13,6 +13,7 @@ import (
 	"github.com/rprtr258/tea"
 	"github.com/rprtr258/tea/components/headless/list"
 	"github.com/rprtr258/tea/components/help"
+	key2 "github.com/rprtr258/tea/components/key"
 	"github.com/rprtr258/tea/components/tablebox"
 	"github.com/rprtr258/tea/styles"
 	"github.com/rs/zerolog/log"
@@ -32,8 +33,14 @@ var (
 )
 
 type keyMap struct {
-	Up, Down key.Binding
-	Quit     key.Binding
+	Up, Down, Quit key2.Binding
+}
+
+func matches(msg bubbletea.KeyMsg, keyy key2.Binding) bool {
+	return key.Matches(msg, key.NewBinding(
+		key.WithKeys(keyy.Keys...),
+		key.WithHelp(keyy.Help[0], keyy.Help[1]),
+	))
 }
 
 type model struct {
@@ -58,22 +65,24 @@ type msgLog struct{ line core.LogLine }
 
 func (m *model) Init() bubbletea.Cmd {
 	m.keys = keyMap{
-		Up: key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "move up"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "move down"),
-		),
-		Quit: key.NewBinding(
-			key.WithKeys("q", "esc", "ctrl+c"),
-			key.WithHelp("q", "quit"),
-		),
+		Up: key2.Binding{
+			[]string{"up", "k"},
+			key2.Help{"↑/k", "move up"},
+			false,
+		},
+		Down: key2.Binding{
+			[]string{"down", "j"},
+			key2.Help{"↓/j", "move down"},
+			false,
+		},
+		Quit: key2.Binding{
+			[]string{"q", "esc", "ctrl+c"},
+			key2.Help{"q", "quit"},
+			false,
+		},
 	}
 	m.keysMap = help.KeyMap{
-		ShortHelp: []key.Binding{m.keys.Up, m.keys.Down, m.keys.Quit},
-		FullHelp:  nil,
+		ShortHelp: []key2.Binding{m.keys.Up, m.keys.Down, m.keys.Quit},
 	}
 
 	m.help = help.New()
@@ -96,11 +105,11 @@ func (m *model) update(msg bubbletea.Msg) bubbletea.Cmd {
 	switch msg := msg.(type) {
 	case bubbletea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.keys.Up):
+		case matches(msg, m.keys.Up):
 			m.list.SelectPrev()
-		case key.Matches(msg, m.keys.Down):
+		case matches(msg, m.keys.Down):
 			m.list.SelectNext()
-		case key.Matches(msg, m.keys.Quit):
+		case matches(msg, m.keys.Quit):
 			return bubbletea.Quit
 		}
 	case msgRefresh:
