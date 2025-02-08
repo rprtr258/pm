@@ -127,56 +127,61 @@ func (m *model) resetLogScroll() {
 	}
 }
 
+func (m *model) updateKey(msg tea2.KeyMsg) tea2.Cmd {
+	switch {
+	case compatMatches(msg, keymap.Up):
+		m.resetLogScroll()
+		m.list.SelectPrev()
+	case compatMatches(msg, keymap.Down):
+		m.resetLogScroll()
+		m.list.SelectNext()
+	case compatMatches(msg, keymap.Stop):
+		proc, ok := m.list.Selected()
+		if !ok {
+			return nil
+		}
+		// TODO: remove logs here
+		_ = implStop(m.db, proc.ID) // TODO: show error
+	case compatMatches(msg, keymap.Start):
+		proc, ok := m.list.Selected()
+		if !ok {
+			return nil
+		}
+		// TODO: remove logs here
+		_ = implStart(m.db, proc.ID) // TODO: show error
+	case compatMatches(msg, keymap.Delete):
+		proc, ok := m.list.Selected()
+		if !ok {
+			return nil
+		}
+		// TODO: remove logs here
+		_ = implDelete(m.db, cfg.DirLogs, proc.ID) // TODO: show error
+	case compatMatches(msg, keymap.Quit):
+		return tea2.Quit
+	case compatMatches(msg, keymap.Switch):
+		m.resetLogScroll()
+		switch m.logTypeShow {
+		case logTypeShowAll:
+			m.logTypeShow = logTypeShowErr
+		case logTypeShowErr:
+			m.logTypeShow = logTypeShowOut
+		case logTypeShowOut:
+			m.logTypeShow = logTypeShowAll
+		}
+	case compatMatches(msg, keymap.LogUp):
+		// TODO: limit until first line
+		m.logScroll++
+	case compatMatches(msg, keymap.LogDown):
+		// TODO: limit until last line
+		m.logScroll--
+	}
+	return nil
+}
+
 func (m *model) update(msg tea2.Msg) tea2.Cmd {
 	switch msg := msg.(type) {
 	case tea2.KeyMsg:
-		switch {
-		case compatMatches(msg, keymap.Up):
-			m.resetLogScroll()
-			m.list.SelectPrev()
-		case compatMatches(msg, keymap.Down):
-			m.resetLogScroll()
-			m.list.SelectNext()
-		case compatMatches(msg, keymap.Stop):
-			proc, ok := m.list.Selected()
-			if !ok {
-				return nil
-			}
-			// TODO: remove logs here
-			_ = implStop(m.db, proc.ID) // TODO: show error
-		case compatMatches(msg, keymap.Start):
-			proc, ok := m.list.Selected()
-			if !ok {
-				return nil
-			}
-			// TODO: remove logs here
-			_ = implStart(m.db, proc.ID) // TODO: show error
-		case compatMatches(msg, keymap.Delete):
-			proc, ok := m.list.Selected()
-			if !ok {
-				return nil
-			}
-			// TODO: remove logs here
-			_ = implDelete(m.db, cfg.DirLogs, proc.ID) // TODO: show error
-		case compatMatches(msg, keymap.Quit):
-			return tea2.Quit
-		case compatMatches(msg, keymap.Switch):
-			m.resetLogScroll()
-			switch m.logTypeShow {
-			case logTypeShowAll:
-				m.logTypeShow = logTypeShowErr
-			case logTypeShowErr:
-				m.logTypeShow = logTypeShowOut
-			case logTypeShowOut:
-				m.logTypeShow = logTypeShowAll
-			}
-		case compatMatches(msg, keymap.LogUp):
-			// TODO: limit until first line
-			m.logScroll++
-		case compatMatches(msg, keymap.LogDown):
-			// TODO: limit until last line
-			m.logScroll--
-		}
+		return m.updateKey(msg)
 	case msgRefresh:
 		procs := listProcs(m.db).Filter(func(ps core.ProcStat) bool {
 			return fun.Contains(ps.ID, m.ids...)
@@ -190,7 +195,7 @@ func (m *model) update(msg tea2.Msg) tea2.Cmd {
 			m.list.Select(0)
 		}
 
-		return tea2.Tick(_refreshInterval, func(t time.Time) tea2.Msg {
+		return tea2.Tick(_refreshInterval, func(time.Time) tea2.Msg {
 			return msgRefresh{}
 		})
 	case msgLog:
@@ -199,12 +204,79 @@ func (m *model) update(msg tea2.Msg) tea2.Cmd {
 	case tea2.WindowSizeMsg:
 		m.size = [2]int{msg.Height, msg.Width}
 	}
-
 	return nil
 }
 
 func (m *model) Update(msg tea2.Msg) (tea2.Model, tea2.Cmd) {
-	return m, m.update(msg)
+	cmd := m.update(msg)
+	return m, cmd
+}
+
+func (m *model) viewInfo(vb tea.Viewbox) {
+	proc, ok := m.list.Selected()
+	if !ok {
+		return
+	}
+
+	cwd := normalizePathRelativeToHomeDir(proc.Cwd, m.homeDir)
+	cmd := normalizePathRelativeToHomeDir(proc.Command, m.homeDir)
+
+	y := 0
+	vb.Row(y).WriteLineX(fmt.Sprintf("ID: %s", proc.ID))
+	y++
+	vb.Row(y).WriteLineX(fmt.Sprintf("NAME: %s", proc.Name))
+	y++
+	vb.Row(y).WriteLineX(fmt.Sprintf("CWD: %s", cwd))
+	y++
+	vb.Row(y).WriteLineX(fmt.Sprintf("CMD: %s", cmd))
+	y++
+	vb.Row(y).
+		WriteLineX("STARTUP: ").
+		Styled(styles.Style{}.Foreground(fun.IF(proc.Startup, scuf.FgHiGreen, scuf.FgHiBlack))).
+		WriteLine(fun.IF(proc.Startup, "on", "off"))
+	y++
+	if watch, ok := proc.Watch.Unpack(); ok {
+		vb.Row(y).WriteLineX(fmt.Sprintf("WATCH: %s", watch))
+		y++
+	}
+	if len(proc.DependsOn) > 0 {
+		vb.Row(y).WriteLineX(fmt.Sprintf("DEPENDS: %s", strings.Join(proc.DependsOn, ",")))
+		y++
+	}
+	_ = y
+}
+
+func (m *model) viewLogs(vb tea.Viewbox) {
+	proc, ok := m.list.Selected()
+	if !ok {
+		return
+	}
+
+	logs := m.logsList[proc.ID]
+	if m.logTypeShow != logTypeShowAll {
+		logs = fun.Filter(func(line core.LogLine) bool {
+			return m.logTypeShow == logTypeShowErr && line.Type == core.LogTypeStderr ||
+				m.logTypeShow == logTypeShowOut && line.Type == core.LogTypeStdout
+		}, logs...)
+	}
+
+	// TODO: show last N log lines, update channels on refresh, update log lines on new log lines
+	for i, line := range fun.Subslice(max(0, len(logs)-max(vb.Height+m.logScroll, 1)), vb.Height, logs...) {
+		vbRow := vb.Row(i)
+
+		cleanLine := strings.ReplaceAll(stripansi.Strip(line.Line), "\r", "")
+		x0 := vbRow.
+			Styled(styles.Style{}.Foreground(styles.FgColor(fun.IF(
+				line.Type == core.LogTypeStdout,
+				"#00FF00",
+				"#FF0000",
+			)))).
+			WriteLine(" │ ")
+		// TODO: dim stderr
+		vbRow.
+			PaddingLeft(x0).
+			WriteLineX(cleanLine)
+	}
 }
 
 func (m *model) view(vb tea.Viewbox) {
@@ -227,40 +299,9 @@ func (m *model) view(vb tea.Viewbox) {
 	) {
 		switch i {
 		case 0: // info
-			vbInspect := vb // TODO: remove
-			if proc, ok := m.list.Selected(); ok {
-				cwd := normalizePathRelativeToHomeDir(proc.Cwd, m.homeDir)
-				cmd := normalizePathRelativeToHomeDir(proc.Command, m.homeDir)
-
-				y := 0
-				vbInspect.Row(y).WriteLineX(fmt.Sprintf("ID: %s", proc.ID))
-				y++
-				vbInspect.Row(y).WriteLineX(fmt.Sprintf("NAME: %s", proc.Name))
-				y++
-				vbInspect.Row(y).WriteLineX(fmt.Sprintf("CWD: %s", cwd))
-				y++
-				vbInspect.Row(y).WriteLineX(fmt.Sprintf("CMD: %s", cmd))
-				y++
-				vbInspect.Row(y).
-					WriteLineX("STARTUP: ").
-					Styled(styles.Style{}.Foreground(fun.IF(proc.Startup, scuf.FgHiGreen, scuf.FgHiBlack))).
-					WriteLine(fun.IF(proc.Startup, "on", "off"))
-				y++
-				if watch, ok := proc.Watch.Unpack(); ok {
-					vbInspect.Row(y).WriteLineX(fmt.Sprintf("WATCH: %s", watch))
-					y++
-				}
-				if len(proc.DependsOn) > 0 {
-					vbInspect.Row(y).WriteLineX(fmt.Sprintf("DEPENDS: %s", strings.Join(proc.DependsOn, ",")))
-					y++
-				}
-			}
+			m.viewInfo(vb)
 		case 1: // procs list
-			vbList := vb
-			for i := 0; i < min(vbList.Height, m.list.Total()); i++ {
-				style := fun.IF(i == m.list.SelectedIndex(), listItemStyleSelected, listItemStyle)
-				vb := vbList.Row(i).Styled(style)
-
+			for i := 0; i < min(vb.Height, m.list.Total()); i++ {
 				var (
 					statusColor scuf.Modifier
 					statusChar  string
@@ -277,11 +318,12 @@ func (m *model) view(vb tea.Viewbox) {
 					statusChar = "❌"
 				}
 
-				x0 := vb.Styled(style.Foreground(statusColor)).WriteLine(statusChar)
-				vb.PaddingLeft(x0).WriteLine(m.list.ItemsAll()[i].Name)
+				style := fun.IF(i == m.list.SelectedIndex(), listItemStyleSelected, listItemStyle)
+				vbRow := vb.Row(i).Styled(style)
+				x0 := vbRow.Styled(style.Foreground(statusColor)).WriteLine(statusChar)
+				vbRow.PaddingLeft(x0).WriteLine(m.list.ItemsAll()[i].Name)
 			}
 		case 2: // tags
-			vbTags := vb
 			tagsSet := set.New[string](1)
 			for _, proc := range m.list.ItemsAll() {
 				for _, tag := range proc.Tags {
@@ -292,41 +334,11 @@ func (m *model) view(vb tea.Viewbox) {
 			tags := tagsSet.List()
 			sort.Strings(tags)
 
-			for i, tag := range tags[:min(vbTags.Height, len(tags))] {
-				vbTags.Row(i).WriteLine(tag)
+			for i, tag := range tags[:min(vb.Height, len(tags))] {
+				vb.Row(i).WriteLine(tag)
 			}
 		case 3: // logs
-			proc, ok := m.list.Selected()
-			if !ok {
-				continue
-			}
-
-			logs := m.logsList[proc.ID]
-			if m.logTypeShow != logTypeShowAll {
-				logs = fun.Filter(func(line core.LogLine) bool {
-					return m.logTypeShow == logTypeShowErr && line.Type == core.LogTypeStderr ||
-						m.logTypeShow == logTypeShowOut && line.Type == core.LogTypeStdout
-				}, logs...)
-			}
-
-			// TODO: show last N log lines, update channels on refresh, update log lines on new log lines
-			for i, line := range fun.Subslice(max(0, len(logs)-max(vb.Height+m.logScroll, 1)), vb.Height, logs...) {
-				vb := vb.Row(i)
-
-				// style := fun.IF(index == m.Index(), listItemStyleSelected, listItemStyle)
-				cleanLine := strings.ReplaceAll(stripansi.Strip(line.Line), "\r", "")
-				x0 := vb.
-					Styled(styles.Style{}.Foreground(styles.FgColor(fun.IF(
-						line.Type == core.LogTypeStdout,
-						"#00FF00",
-						"#FF0000",
-					)))).
-					WriteLine(" │ ")
-				// TODO: dim stderr
-				vb.
-					PaddingLeft(x0).
-					WriteLineX(cleanLine)
-			}
+			m.viewLogs(vb)
 		}
 	}
 	m.help.View(vbHelp, m.keysMap) // TODO: extended help on ?, short by default
@@ -357,6 +369,7 @@ func tui(
 		logsCh:  logsCh,
 		homeDir: homeDirOpt,
 		keysMap: help.KeyMap{
+			ShortHelp: nil,
 			FullHelp: [][]key.Binding{
 				{keymap.Up, keymap.Down, keymap.Quit},
 				{keymap.Stop, keymap.Start, keymap.Delete},
