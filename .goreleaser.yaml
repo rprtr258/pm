@@ -19,7 +19,7 @@ builds:
       - -X github.com/rprtr258/pm/internal/core.Version={{.Version}}
 
 archives:
-  - format: binary
+  - formats: binary
     name_template: "{{.ProjectName}}_{{.Os}}_{{.Arch}}"
     files: [none*] # NOTE: hack to exclude README.md and LICENSE which are for some reason are always included even if this list is empty blyat
 
