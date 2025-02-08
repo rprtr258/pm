@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"os"
 	"slices"
 	"sort"
 	"strings"
@@ -74,6 +75,15 @@ const (
 	logTypeShowOut logTypeShow = 2
 )
 
+func normalizePathRelativeToHomeDir(path string, homeDir fun.Option[string]) string {
+	if homePath, ok := homeDir.Unpack(); ok {
+		if after, ok := strings.CutPrefix(path, homePath); ok {
+			return "~" + after
+		}
+	}
+	return path
+}
+
 type model struct {
 	ids    []core.PMID
 	db     db.Handle
@@ -82,6 +92,7 @@ type model struct {
 
 	dispatch func(msg tea2.Msg)
 	size     [2]int
+	homeDir  fun.Option[string]
 
 	list    *list.List[core.ProcStat]
 	keysMap help.KeyMap
@@ -213,8 +224,8 @@ func (m *model) view(vb tea.Viewbox) {
 	vbPane, vbHelp := vb.SplitY2(tea.Auto(), tea.Fixed(3))
 	for yx, vb := range tablebox.Box(
 		vbPane,
-		[]tea.Layout{tea.Flex(1)},
-		[]tea.Layout{tea.Flex(1), tea.Flex(4)},
+		[]tea.Layout{tea.Auto()},
+		[]tea.Layout{tea.Flex(1), tea.Flex(3)},
 		tablebox.NormalBorder,
 		styles.Style{}.Foreground(styles.ANSIColor(238)),
 	) {
@@ -222,15 +233,36 @@ func (m *model) view(vb tea.Viewbox) {
 		case 0:
 			// TODO: pane headers
 			// TODO: split lines
-			vbInspect, vbList, vbTags := vb.SplitY3(tea.Fixed(3), tea.Auto(), tea.Fixed(3))
+			vbInspect, vbList, vbTags := vb.SplitY3(tea.Fixed(7), tea.Auto(), tea.Fixed(3))
 			proc, ok := m.list.Selected()
 
-			// if ok {
-			_ = ok
-			vbInspect.Row(0).WriteLineX(fmt.Sprintf("ID: %s", proc.ID))
-			vbInspect.Row(1).WriteLineX(fmt.Sprintf("ID: %s", proc.ID))
-			vbInspect.Row(2).WriteLineX(fmt.Sprintf("ID: %s", proc.ID))
-			// }
+			if ok {
+				cwd := normalizePathRelativeToHomeDir(proc.Cwd, m.homeDir)
+				cmd := normalizePathRelativeToHomeDir(proc.Command, m.homeDir)
+
+				y := 0
+				vbInspect.Row(y).WriteLineX(fmt.Sprintf("ID: %s", proc.ID))
+				y++
+				vbInspect.Row(y).WriteLineX(fmt.Sprintf("NAME: %s", proc.Name))
+				y++
+				vbInspect.Row(y).WriteLineX(fmt.Sprintf("CWD: %s", cwd))
+				y++
+				vbInspect.Row(y).WriteLineX(fmt.Sprintf("CMD: %s", cmd))
+				y++
+				vbInspect.Row(y).
+					WriteLineX("STARTUP: ").
+					Styled(styles.Style{}.Foreground(fun.IF(proc.Startup, scuf.FgHiGreen, scuf.FgHiBlack))).
+					WriteLine(fun.IF(proc.Startup, "on", "off"))
+				y++
+				if watch, ok := proc.Watch.Unpack(); ok {
+					vbInspect.Row(y).WriteLineX(fmt.Sprintf("WATCH: %s", watch))
+					y++
+				}
+				if len(proc.DependsOn) > 0 {
+					vbInspect.Row(y).WriteLineX(fmt.Sprintf("DEPENDS: %s", strings.Join(proc.DependsOn, ",")))
+					y++
+				}
+			}
 
 			for i := 0; i < min(vbList.Height, m.list.Total()); i++ {
 				style := fun.IF(i == m.list.SelectedIndex(), listItemStyleSelected, listItemStyle)
@@ -321,11 +353,17 @@ func tui(
 	logsCh <-chan core.LogLine,
 	ids ...core.PMID,
 ) error {
+	homeDirOpt := fun.Invalid[string]()
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		homeDirOpt = fun.Valid(homeDir)
+	}
+
 	m := &model{
-		ids:    ids,
-		db:     db,
-		cfg:    cfg,
-		logsCh: logsCh,
+		ids:     ids,
+		db:      db,
+		cfg:     cfg,
+		logsCh:  logsCh,
+		homeDir: homeDirOpt,
 	}
 	p := tea2.NewProgram(m, tea2.WithContext(ctx))
 	m.dispatch = p.Send
