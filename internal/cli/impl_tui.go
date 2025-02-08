@@ -108,20 +108,8 @@ type msgRefresh struct{}
 type msgLog struct{ line core.LogLine }
 
 func (m *model) Init() tea2.Cmd {
-	m.keysMap = help.KeyMap{
-		FullHelp: [][]key.Binding{
-			{keymap.Up, keymap.Down, keymap.Quit},
-			{keymap.Stop, keymap.Start, keymap.Delete},
-			{keymap.Switch, keymap.LogUp, keymap.LogDown},
-		},
-	}
-
-	m.help = help.New()
 	m.help.ShortSeparator = "  " // TODO: crumbs like in zellij
 	m.help.ShowAll = true
-
-	m.list = list.New([]core.ProcStat{}) /* func(i core.ProcStat) string { return i.Name }*/
-	m.logsList = map[core.PMID][]core.LogLine{}
 
 	go func() {
 		for line := range m.logsCh {
@@ -368,6 +356,20 @@ func tui(
 		cfg:     cfg,
 		logsCh:  logsCh,
 		homeDir: homeDirOpt,
+		keysMap: help.KeyMap{
+			FullHelp: [][]key.Binding{
+				{keymap.Up, keymap.Down, keymap.Quit},
+				{keymap.Stop, keymap.Start, keymap.Delete},
+				{keymap.Switch, keymap.LogUp, keymap.LogDown},
+			},
+		},
+		help:        help.New(),
+		list:        list.New([]core.ProcStat{}),
+		logsList:    map[core.PMID][]core.LogLine{},
+		dispatch:    nil, // NOTE: set below
+		size:        [2]int{},
+		logTypeShow: logTypeShowAll,
+		logScroll:   0,
 	}
 	p := tea2.NewProgram(m, tea2.WithContext(ctx))
 	m.dispatch = p.Send
