@@ -63,8 +63,6 @@ events [
   name: .git/index.lock, op: CREATE
   name: c/subdir/c.txt, op: REMOVE
   name: c/subdir, op: REMOVE
-  name: c/subdir, op: REMOVE
-  name: c, op: REMOVE
   name: c, op: REMOVE
   name: .git/index.lock, op: RENAME
 ]
