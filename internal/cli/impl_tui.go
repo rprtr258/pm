@@ -222,21 +222,25 @@ func (m *model) Update(msg tea2.Msg) (tea2.Model, tea2.Cmd) {
 func (m *model) view(vb tea.Viewbox) {
 	// TODO: pane headers
 	vbPane, vbHelp := vb.SplitY2(tea.Auto(), tea.Fixed(3))
-	for yx, vb := range tablebox.Box(
+	for i, vb := range tablebox.Box(
 		vbPane,
-		[]tea.Layout{tea.Auto()},
-		[]tea.Layout{tea.Flex(1), tea.Flex(3)},
 		tablebox.NormalBorder,
 		styles.Style{}.Foreground(styles.ANSIColor(238)),
+		tablebox.Span(
+			tea.Flex(1),
+			tablebox.SpanTitle("Info", tea.Fixed(7)),
+			tablebox.SpanTitle("Procs", tea.Auto()),
+			tablebox.SpanTitle("Tags", tea.Fixed(3)),
+		),
+		tablebox.SpanTitle(
+			"Logs",
+			tea.Flex(3),
+		),
 	) {
-		switch x := yx[1]; x {
-		case 0:
-			// TODO: pane headers
-			// TODO: split lines
-			vbInspect, vbList, vbTags := vb.SplitY3(tea.Fixed(7), tea.Auto(), tea.Fixed(3))
-			proc, ok := m.list.Selected()
-
-			if ok {
+		switch i {
+		case 0: // info
+			vbInspect := vb // TODO: remove
+			if proc, ok := m.list.Selected(); ok {
 				cwd := normalizePathRelativeToHomeDir(proc.Cwd, m.homeDir)
 				cmd := normalizePathRelativeToHomeDir(proc.Command, m.homeDir)
 
@@ -263,7 +267,8 @@ func (m *model) view(vb tea.Viewbox) {
 					y++
 				}
 			}
-
+		case 1: // procs list
+			vbList := vb
 			for i := 0; i < min(vbList.Height, m.list.Total()); i++ {
 				style := fun.IF(i == m.list.SelectedIndex(), listItemStyleSelected, listItemStyle)
 				vb := vbList.Row(i).Styled(style)
@@ -287,23 +292,22 @@ func (m *model) view(vb tea.Viewbox) {
 				x0 := vb.Styled(style.Foreground(statusColor)).WriteLine(statusChar)
 				vb.PaddingLeft(x0).WriteLine(m.list.ItemsAll()[i].Name)
 			}
-
-			{
-				tagsSet := set.New[string](1)
-				for _, proc := range m.list.ItemsAll() {
-					for _, tag := range proc.Tags {
-						tagsSet.Add(tag)
-					}
-				}
-
-				tags := tagsSet.List()
-				sort.Strings(tags)
-
-				for i, tag := range tags[:min(vbTags.Height, len(tags))] {
-					vbTags.Row(i).WriteLine(tag)
+		case 2: // tags
+			vbTags := vb
+			tagsSet := set.New[string](1)
+			for _, proc := range m.list.ItemsAll() {
+				for _, tag := range proc.Tags {
+					tagsSet.Add(tag)
 				}
 			}
-		case 1:
+
+			tags := tagsSet.List()
+			sort.Strings(tags)
+
+			for i, tag := range tags[:min(vbTags.Height, len(tags))] {
+				vbTags.Row(i).WriteLine(tag)
+			}
+		case 3: // logs
 			proc, ok := m.list.Selected()
 			if !ok {
 				continue
