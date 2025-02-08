@@ -60,7 +60,7 @@ func compareArgs(first, second []string) bool {
 // ids must be handled before handling error, because it tries to run all
 // processes and error contains info about all failed processes, not only first.
 //
-//nolint:funlen
+//nolint:funlen // no
 func runProc(
 	dbb db.Handle,
 	dirLogs string,
@@ -87,25 +87,23 @@ func runProc(
 		}
 	}
 
-	name := config.Name
-
 	id, errCreate := func() (core.PMID, error) {
 		watch := fun.OptMap(config.Watch, func(r *regexp.Regexp) string {
 			return r.String()
 		})
 		// try to find by name and update
-		procs, err := dbb.GetProcs(core.WithAllIfNoFilters)
+		procs, err := dbb.List(core.WithAllIfNoFilters)
 		if err != nil {
 			return "", errors.Wrapf(err, "get procs from db")
 		}
 
 		//nolint:nestif // fuck you
 		if procID, ok := fun.FindKeyBy(procs, func(_ core.PMID, procData core.Proc) bool {
-			return procData.Name == name
+			return procData.Name == config.Name
 		}); ok {
 			procData := core.Proc{
 				ID:          procID,
-				Name:        name,
+				Name:        config.Name,
 				Cwd:         config.Cwd,
 				Tags:        fun.Uniq(append(config.Tags, "all")...),
 				Command:     command,
@@ -145,7 +143,7 @@ func runProc(
 		}
 
 		procID, err := dbb.AddProc(db.CreateQuery{
-			Name:        name,
+			Name:        config.Name,
 			Cwd:         config.Cwd,
 			Tags:        fun.Uniq(append(config.Tags, "all")...),
 			Command:     command,
@@ -170,7 +168,7 @@ func runProc(
 	}
 
 	err := implStart(dbb, id)
-	return id, name, err
+	return id, config.Name, err
 }
 
 func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {

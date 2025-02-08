@@ -16,7 +16,7 @@ import (
 )
 
 func implStop(db db.Handle, ids ...core.PMID) error {
-	procs, err := db.GetProcs(core.WithIDs(ids...))
+	procs, err := db.List(core.WithIDs(ids...))
 	if err != nil {
 		return errors.Wrapf(err, "get procs")
 	}

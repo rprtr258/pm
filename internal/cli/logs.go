@@ -33,7 +33,6 @@ const (
 type ProcLine struct {
 	Line string
 	Type core.LogType
-	Err  error
 }
 
 func streamFile(
@@ -78,10 +77,13 @@ func streamFile(
 			case <-ctx.Done():
 				return
 			case line := <-tailer.Lines:
-				logLinesCh <- ProcLine{
+				select {
+				case <-ctx.Done():
+					return
+				case logLinesCh <- ProcLine{
 					Line: line.Text,
 					Type: logLineType,
-					Err:  line.Err,
+				}:
 				}
 			}
 		}
@@ -131,9 +133,6 @@ func streamProcLogs(ctx context.Context, proc core.ProcStat) <-chan ProcLine {
 // implLogs - watch for processes logs
 func implLogs(ctx context.Context, proc core.ProcStat) <-chan core.LogLine {
 	ctx, cancel := context.WithCancel(ctx)
-	if proc.Status != core.StatusRunning {
-		ctx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
-	}
 
 	logsCh := streamProcLogs(ctx, proc)
 
@@ -166,7 +165,6 @@ func implLogs(ctx context.Context, proc core.ProcStat) <-chan core.LogLine {
 					ProcName: proc.Name,
 					Line:     line.Line,
 					Type:     line.Type,
-					Err:      line.Err,
 				}:
 				}
 			}
@@ -188,23 +186,23 @@ func getProcs(
 		core.WithAllIfNoFilters,
 	)
 
-	if config == nil {
-		return listProcs(db).
-			Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
-			Slice(), nil
-	}
+	var filterConfig func(core.ProcStat) bool
+	if config != nil {
+		configs, errLoadConfigs := core.LoadConfigs(*config)
+		if errLoadConfigs != nil {
+			return nil, errors.Wrapf(errLoadConfigs, "load configs: %v", *config)
+		}
 
-	configs, errLoadConfigs := core.LoadConfigs(*config)
-	if errLoadConfigs != nil {
-		return nil, errors.Wrapf(errLoadConfigs, "load configs: %v", *config)
+		procNames := fun.Map[string](func(cfg core.RunConfig) string {
+			return cfg.Name
+		}, configs...)
+		filterConfig = func(proc core.ProcStat) bool { return fun.Contains(proc.Name, procNames...) }
 	}
-
-	procNames := fun.Map[string](func(cfg core.RunConfig) string {
-		return cfg.Name
-	}, configs...)
 
 	return listProcs(db).
-		Filter(func(proc core.ProcStat) bool { return fun.Contains(proc.Name, procNames...) }).
+		Filter(func(ps core.ProcStat) bool {
+			return filterConfig == nil || filterConfig(ps)
+		}).
 		Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 		Slice(), nil
 }
@@ -236,37 +234,9 @@ var _cmdLogs = func() *cobra.Command {
 				return nil
 			}
 
-			var wg sync.WaitGroup
-			mergedLogsCh := make(chan core.LogLine)
-			for _, proc := range procs {
-				logsCh := implLogs(ctx, proc)
-
-				wg.Add(1)
-				ch := logsCh
-				go func() {
-					defer wg.Done()
-					for {
-						select {
-						case <-ctx.Done():
-							return
-						case v, ok := <-ch:
-							if !ok {
-								return
-							}
-
-							select {
-							case <-ctx.Done():
-								return
-							case mergedLogsCh <- v:
-							}
-						}
-					}
-				}()
-			}
-			go func() {
-				wg.Wait()
-				close(mergedLogsCh)
-			}()
+			mergedLogsCh := mergeLogs(ctx, fun.Map[<-chan core.LogLine](func(proc core.ProcStat) <-chan core.LogLine {
+				return implLogs(ctx, proc)
+			}, procs...))
 
 			pad := 0
 			for {
@@ -276,10 +246,6 @@ var _cmdLogs = func() *cobra.Command {
 				case line, ok := <-mergedLogsCh:
 					if !ok {
 						return nil
-					}
-
-					if line.Err != nil {
-						line.Line = line.Err.Error()
 					}
 
 					lineColor := fun.Switch(line.Type, scuf.FgRed).
@@ -321,4 +287,40 @@ func colorByID(id core.PMID) scuf.Modifier {
 		x += int(id[i])
 	}
 	return colors[x%len(colors)]
+}
+
+func mergeLogs(
+	ctx context.Context,
+	procs []<-chan core.LogLine,
+) <-chan core.LogLine {
+	var wg sync.WaitGroup
+	mergedLogsCh := make(chan core.LogLine)
+	for _, logsCh := range procs {
+		wg.Add(1)
+		ch := logsCh
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case v, ok := <-ch:
+					if !ok {
+						return
+					}
+
+					select {
+					case <-ctx.Done():
+						return
+					case mergedLogsCh <- v:
+					}
+				}
+			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(mergedLogsCh)
+	}()
+	return mergedLogsCh
 }

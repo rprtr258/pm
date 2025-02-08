@@ -78,15 +78,13 @@ var pmDir = func() string {
 func testMain(m *testing.M) int {
 	pm := pM{t: nil}
 
-	{
-		os.Setenv("PM_HOME", pmDir)
-		// cleanup
-		defer func() {
-			if err := os.RemoveAll(pmDir); err != nil {
-				log.Warn().Err(err).Msg("remove pm dir")
-			}
-		}()
-	}
+	os.Setenv("PM_HOME", pmDir) //nolint:tenv // NO, I CANT USE IT HERE YOU DUMB
+	// cleanup
+	defer func() {
+		if err := os.RemoveAll(pmDir); err != nil {
+			log.Warn().Err(err).Msg("remove pm dir")
+		}
+	}()
 
 	if err := pm.delete("all"); err != nil {
 		log.Error().Err(err).Msg("clear old processes")

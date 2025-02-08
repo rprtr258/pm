@@ -116,6 +116,7 @@ linters-settings:
     # Run `go tool vet help` to see all analyzers.
     disable:
       - fieldalignment
+      - composites
     # Settings per analyzer.
     settings:
       shadow:
@@ -212,7 +213,7 @@ linters:
     - whitespace # detects leading and trailing whitespace
     - decorder # checks declaration order and count of types, constants, variables and functions
     - exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
-    - godox # TODO: get back # detects FIXME, TODO and other comment keywords
+    # - godox # TODO: get back # detects FIXME, TODO and other comment keywords
     - goheader # checks is file header matches to pattern
     - interfacebloat # checks the number of methods inside an interface
     - prealloc # [premature optimization, but can be used in some cases] finds slice declarations that could potentially be preallocated

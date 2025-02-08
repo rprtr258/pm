@@ -39,5 +39,4 @@ type LogLine struct {
 	ProcName string
 	Type     LogType
 	Line     string
-	Err      error
 }

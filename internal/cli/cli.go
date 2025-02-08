@@ -27,6 +27,7 @@ var _app = func() *cobra.Command {
 	cmd.AddCommand(_cmdStop)
 	cmd.AddCommand(_cmdDelete)
 	cmd.AddCommand(_cmdSignal)
+	cmd.AddCommand(_cmdTUI)
 	return cmd
 }()
 

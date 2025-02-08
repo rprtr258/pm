@@ -193,7 +193,7 @@ func (h Handle) GetProc(id core.PMID) (core.Proc, bool) {
 	return mapFromRepo(proc), true
 }
 
-func (h Handle) GetProcs(filterOpts ...core.FilterOption) (map[core.PMID]core.Proc, error) {
+func (h Handle) List(filterOpts ...core.FilterOption) (map[core.PMID]core.Proc, error) {
 	entries, err := afero.ReadDir(h.dir, ".")
 	if err != nil {
 		return nil, err

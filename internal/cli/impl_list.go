@@ -75,7 +75,7 @@ func (l procSeq) Tags() iter.Seq[string] {
 }
 
 func listProcs(db db.Handle) procSeq {
-	procs, err := db.GetProcs(core.WithAllIfNoFilters)
+	procs, err := db.List(core.WithAllIfNoFilters)
 	if err != nil {
 		log.Error().Err(err).Msg("get procs")
 		return procSeq{nil}
