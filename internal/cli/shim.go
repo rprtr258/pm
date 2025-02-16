@@ -200,7 +200,7 @@ func implShim(proc core.Proc) error {
 		if err := tty.Close(); err != nil {
 			log.Error().Err(err).Msg("close tty")
 		}
-	}() // Best effort.
+	}()
 	go func() {
 		if _, err := io.Copy(outw, ptmx); err != nil {
 			log.Error().Err(err).Msg("copy pty to stdout")
