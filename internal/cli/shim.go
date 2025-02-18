@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -175,38 +177,107 @@ func initWatchChannel(
 	}, nil
 }
 
-//nolint:funlen // very important function, must be verbose here, done my best for now
+type multiwriter struct {
+	writers []net.Conn
+}
+
+func (m *multiwriter) Add(c net.Conn) {
+	m.writers = append(m.writers, c)
+}
+
+func (m *multiwriter) Write(p []byte) (int, error) {
+	log.Debug().Str("data", string(p)).Msg("write")
+	var n int
+	var err error
+	for i := 0; i < len(m.writers); i++ {
+		conn := m.writers[i]
+		n, err = conn.Write(p)
+		if err != nil {
+			log.Error().
+				Stringer("conn", conn.RemoteAddr()).
+				Err(err).
+				Msg("write to socket")
+			m.writers = slices.Delete(m.writers, i, i+1)
+			i--
+			continue
+		}
+	}
+	return n, err
+}
+
+//nolint:gocognit,funlen // very important function, must be verbose here, done my best for now
 func implShim(proc core.Proc) error {
+	// parse env because why the fuck not
 	env := os.Environ()
 	for k, v := range proc.Env {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
+	// log rotation facilities
 	outw := logrotation.New(logrotation.Config{
 		Filename:   proc.StdoutFile,
 		MaxBackups: 1,
 	})
-
 	errw := logrotation.New(logrotation.Config{
 		Filename:   proc.StderrFile,
 		MaxBackups: 1,
 	})
 
+	// allocating pseudo-terminal
 	ptmx, tty, err := pty.Open()
 	if err != nil {
 		return errors.Wrap(err, "open pty")
 	}
+	log.Debug().Any("pty", ptmx.Fd()).Any("tty", tty.Fd()).Msg("pty created")
 	defer func() {
-		if err := tty.Close(); err != nil {
-			log.Error().Err(err).Msg("close tty")
-		}
-	}() // Best effort.
-	go func() {
-		if _, err := io.Copy(outw, ptmx); err != nil {
-			log.Error().Err(err).Msg("copy pty to stdout")
+		if errTtyClose := tty.Close(); errTtyClose != nil {
+			log.Error().Err(errTtyClose).Msg("close tty")
 		}
 	}()
-	log.Debug().Any("pty", ptmx.Fd()).Any("tty", tty.Fd()).Msg("pty created")
+	conns := &multiwriter{nil}
+	ptmxr := io.TeeReader(ptmx, conns)
+	go func() {
+		if _, errCopyOut := io.Copy(outw, ptmxr); errCopyOut != nil {
+			log.Error().Err(errCopyOut).Msg("copy pty to stdout")
+		}
+	}()
+
+	// socket to serve proc stdin over for attach command
+	l, err := net.Listen("unix", filepath.Join(core.DirHome, proc.ID.String()+".sock"))
+	if err != nil {
+		return errors.Wrap(err, "listen")
+	}
+	defer l.Close()
+	go func() {
+		for {
+			conn, errAccept := l.Accept()
+			if errAccept != nil {
+				log.Error().Err(errAccept).Msg("accept")
+				return
+			}
+			log.Debug().
+				Stringer("remote_addr", conn.RemoteAddr()).
+				Stringer("local_addr", conn.LocalAddr()).
+				Msg("accept")
+			conns.Add(conn)
+			go func() {
+				if _, err := io.Copy(ptmx, conn); err != nil {
+					log.Error().Err(err).Msg("copy pty to socket")
+				}
+				log.Debug().
+					Stringer("remote_addr", conn.RemoteAddr()).
+					Stringer("local_addr", conn.LocalAddr()).
+					Msg("disconnected")
+				_ = conn.Close()
+				for i, w := range conns.writers {
+					if w == conn {
+						conns.writers = slices.Delete(conns.writers, i, i+1)
+						break
+					}
+				}
+			}()
+		}
+	}()
 
 	log.Debug().Msg("create command")
 	cmdShape := exec.Cmd{
