@@ -185,8 +185,10 @@ func (m *multiwriter) Add(c net.Conn) {
 	m.writers = append(m.writers, c)
 }
 
-func (m *multiwriter) Write(p []byte) (n int, err error) {
+func (m *multiwriter) Write(p []byte) (int, error) {
 	log.Debug().Str("data", string(p)).Msg("write")
+	var n int
+	var err error
 	for i := 0; i < len(m.writers); i++ {
 		conn := m.writers[i]
 		n, err = conn.Write(p)
@@ -200,10 +202,10 @@ func (m *multiwriter) Write(p []byte) (n int, err error) {
 			continue
 		}
 	}
-	return
+	return n, err
 }
 
-//nolint:funlen // very important function, must be verbose here, done my best for now
+//nolint:gocognit,funlen // very important function, must be verbose here, done my best for now
 func implShim(proc core.Proc) error {
 	// parse env because why the fuck not
 	env := os.Environ()
@@ -228,15 +230,15 @@ func implShim(proc core.Proc) error {
 	}
 	log.Debug().Any("pty", ptmx.Fd()).Any("tty", tty.Fd()).Msg("pty created")
 	defer func() {
-		if err := tty.Close(); err != nil {
-			log.Error().Err(err).Msg("close tty")
+		if errTtyClose := tty.Close(); errTtyClose != nil {
+			log.Error().Err(errTtyClose).Msg("close tty")
 		}
 	}()
-	conns := &multiwriter{}
+	conns := &multiwriter{nil}
 	ptmxr := io.TeeReader(ptmx, conns)
 	go func() {
-		if _, err := io.Copy(outw, ptmxr); err != nil {
-			log.Error().Err(err).Msg("copy pty to stdout")
+		if _, errCopyOut := io.Copy(outw, ptmxr); errCopyOut != nil {
+			log.Error().Err(errCopyOut).Msg("copy pty to stdout")
 		}
 	}()
 

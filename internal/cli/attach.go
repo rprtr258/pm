@@ -38,19 +38,18 @@ var _cmdAttach = func() *cobra.Command {
 			}
 			proc := procs[0]
 
-			conn, err := net.Dial("unix", filepath.Join(core.DirHome, proc.ID.String()+".sock"))
-			if err != nil {
-				return errors.Wrap(err, "connect to proc socket")
+			conn, errIn := net.Dial("unix", filepath.Join(core.DirHome, proc.ID.String()+".sock"))
+			if errIn != nil {
+				return errors.Wrap(errIn, "connect to proc socket")
 			}
 
 			go func() {
-				_, err := io.Copy(os.Stdout, conn)
-				if err != nil {
-					log.Error().Err(err).Msg("copy stdout")
+				if _, errOut := io.Copy(os.Stdout, conn); errOut != nil {
+					log.Error().Err(errOut).Msg("copy stdout")
 				}
 			}()
-			_, err = io.Copy(conn, os.Stdin)
-			return errors.Wrap(err, "copy stdin")
+			_, errIn = io.Copy(conn, os.Stdin)
+			return errors.Wrap(errIn, "copy stdin")
 		},
 	}
 	addFlagGenerics(cmd, filter, &names, &tags, &ids)
