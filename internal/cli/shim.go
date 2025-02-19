@@ -243,7 +243,11 @@ func implShim(proc core.Proc) error {
 	}()
 
 	// socket to serve proc stdin over for attach command
-	l, err := net.Listen("unix", filepath.Join(core.DirHome, proc.ID.String()+".sock"))
+	socketFilename := filepath.Join(core.DirHome, proc.ID.String()+".sock")
+	if err := os.Remove(socketFilename); err != nil && !os.IsNotExist(err) {
+		log.Error().Err(err).Msg("remove socket")
+	}
+	l, err := net.Listen("unix", socketFilename)
 	if err != nil {
 		return errors.Wrap(err, "listen")
 	}
