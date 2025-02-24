@@ -207,7 +207,7 @@ func (m *multiwriter) Write(p []byte) (int, error) {
 	return n, err
 }
 
-//nolint:gocognit,funlen // very important function, must be verbose here, done my best for now
+//nolint:gocognit,funlen,gocyclo,cyclop,maintidx // very important function, must be verbose here, done my best for now
 func implShim(proc core.Proc) error {
 	// parse env because why the fuck not
 	env := os.Environ()

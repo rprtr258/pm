@@ -93,6 +93,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		Watch     *string           `json:"watch"`
 		Startup   bool              `json:"startup"`
 		DependsOn []string          `json:"depends_on"`
+		Cron      *string           `json:"cron"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
@@ -160,6 +161,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			MaxRestarts: 0,
 			Startup:     config.Startup,
 			DependsOn:   config.DependsOn,
+			Cron:        fun.FromPtr(config.Cron),
 		}, nil
 	}, scannedConfigs...)
 }
