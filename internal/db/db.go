@@ -38,6 +38,7 @@ type procData struct {
 	KillTimeout time.Duration `json:"kill_timeout"`
 	DependsOn   []string      `json:"depends_on"`
 	MaxRestarts uint          `json:"max_restarts"`
+	Cron        *string       `json:"cron"`
 }
 
 func (p procData) ID() string {
@@ -60,6 +61,7 @@ func mapFromRepo(proc procData) core.Proc {
 		KillTimeout: proc.KillTimeout,
 		DependsOn:   proc.DependsOn,
 		MaxRestarts: proc.MaxRestarts,
+		Cron:        fun.FromPtr(proc.Cron),
 	}
 }
 
@@ -109,6 +111,7 @@ type CreateQuery struct {
 	KillTimeout time.Duration
 	DependsOn   []string
 	MaxRestarts uint
+	Cron        fun.Option[string]
 }
 
 func (h Handle) writeProc(proc procData) error {
@@ -155,6 +158,7 @@ func (h Handle) AddProc(query CreateQuery, logsDir string) (core.PMID, error) {
 		KillTimeout: query.KillTimeout,
 		DependsOn:   query.DependsOn,
 		MaxRestarts: query.MaxRestarts,
+		Cron:        query.Cron.Ptr(),
 	}); err != nil {
 		return "", err
 	}
@@ -177,6 +181,7 @@ func (h Handle) UpdateProc(proc core.Proc) error {
 		KillTimeout: proc.KillTimeout,
 		DependsOn:   proc.DependsOn,
 		MaxRestarts: proc.MaxRestarts,
+		Cron:        proc.Cron.Ptr(),
 	}); err != nil {
 		return FlushError{err}
 	}

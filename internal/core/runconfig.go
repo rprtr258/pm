@@ -34,6 +34,7 @@ type RunConfig struct {
 	MaxRestarts uint                       //  maximum number of restarts, 0 means no limit
 	Startup     bool                       //  run process on OS startup
 	DependsOn   []string                   // name of processes that must be started before this one
+	Cron        fun.Option[string]         // cron expression
 }
 
 func isConfigFile(arg string) bool {
@@ -92,6 +93,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 		Watch     *string           `json:"watch"`
 		Startup   bool              `json:"startup"`
 		DependsOn []string          `json:"depends_on"`
+		Cron      *string           `json:"cron"`
 	}
 	var scannedConfigs []configScanDTO
 	if err := json.Unmarshal([]byte(jsonText), &scannedConfigs); err != nil {
@@ -159,6 +161,7 @@ func LoadConfigs(filename string) ([]RunConfig, error) {
 			MaxRestarts: 0,
 			Startup:     config.Startup,
 			DependsOn:   config.DependsOn,
+			Cron:        fun.FromPtr(config.Cron),
 		}, nil
 	}, scannedConfigs...)
 }
