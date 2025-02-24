@@ -51,9 +51,10 @@ type Proc struct {
 
 	Startup bool // Startup - run on OS startup
 
-	KillTimeout time.Duration // time to wait before sending SIGKILL
-	DependsOn   []string      // names of processes that must be started before this proc
-	MaxRestarts uint          // MaxRestarts - max number of times to restart process
+	KillTimeout time.Duration      // time to wait before sending SIGKILL
+	DependsOn   []string           // names of processes that must be started before this proc
+	MaxRestarts uint               // MaxRestarts - max number of times to restart process
+	Cron        fun.Option[string] // Cron - cron expression
 }
 
 var _procStringTemplate = template.Must(template.New("proc").

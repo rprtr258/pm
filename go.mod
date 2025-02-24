@@ -6,6 +6,7 @@ toolchain go1.23.4
 
 require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
+	github.com/adhocore/gronx v1.19.5
 	github.com/charmbracelet/bubbles v0.20.0
 	github.com/charmbracelet/bubbletea v1.3.0
 	github.com/charmbracelet/huh v0.6.0

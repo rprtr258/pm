@@ -34,6 +34,7 @@ type RunConfig struct {
 	MaxRestarts uint                       //  maximum number of restarts, 0 means no limit
 	Startup     bool                       //  run process on OS startup
 	DependsOn   []string                   // name of processes that must be started before this one
+	Cron        fun.Option[string]         // cron expression
 }
 
 func isConfigFile(arg string) bool {

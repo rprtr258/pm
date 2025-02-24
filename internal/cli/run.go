@@ -10,6 +10,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/adhocore/gronx"
 	"github.com/rprtr258/fun"
 	"github.com/rprtr258/fun/set"
 	"github.com/rs/zerolog/log"
@@ -116,6 +117,7 @@ func runProc(
 				KillTimeout: config.KillTimeout,
 				DependsOn:   config.DependsOn,
 				MaxRestarts: config.MaxRestarts,
+				Cron:        config.Cron,
 			}
 
 			proc := procs[procID]
@@ -156,6 +158,7 @@ func runProc(
 			KillTimeout: cmp.Or(config.KillTimeout, 5*time.Second),
 			DependsOn:   config.DependsOn,
 			MaxRestarts: config.MaxRestarts,
+			Cron:        config.Cron,
 		}, dirLogs)
 		if err != nil {
 			return "", errors.Wrapf(err, "save proc")
@@ -242,7 +245,7 @@ func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 				visited[i] = statusProcessed
 			}
 		}
-		for i := 0; i < len(configs); i++ {
+		for i := range configs {
 			dfs(i)
 			if loopFound {
 				return errors.Newf("loop found")
@@ -265,7 +268,7 @@ func runProcs(db db.Handle, dirLogs string, configs ...core.RunConfig) error {
 }
 
 var _cmdRun = func() *cobra.Command {
-	var name, cwd, config, watch string
+	var name, cwd, config, watch, cron string
 	var tags []string
 	var maxRestarts uint
 	cmd := &cobra.Command{
@@ -277,6 +280,7 @@ var _cmdRun = func() *cobra.Command {
 			cwd := fun.IF(cmd.Flags().Lookup("cwd").Changed, &cwd, nil)
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)
 			watch := fun.IF(cmd.Flags().Lookup("watch").Changed, &watch, nil)
+			cron := fun.IF(cmd.Flags().Lookup("cron").Changed, &cron, nil)
 
 			if config == nil { // inline run, e.g. `pm run -- npm dev`
 				if len(posArgs) == 0 {
@@ -305,6 +309,11 @@ var _cmdRun = func() *cobra.Command {
 					watchOpt = fun.Valid(watchRE)
 				}
 
+				if cron != nil && !gronx.IsValid(*cron) {
+					return errors.Newf("invalid cron expression: %q", *cron)
+				}
+				cronOpt := fun.FromPtr(cron)
+
 				runConfig := core.RunConfig{
 					Command:     command,
 					Args:        args,
@@ -320,6 +329,7 @@ var _cmdRun = func() *cobra.Command {
 					MaxRestarts: maxRestarts,
 					Startup:     false,
 					DependsOn:   nil,
+					Cron:        cronOpt,
 				}
 
 				return runProcs(dbb, cfg.DirLogs, runConfig)
@@ -365,6 +375,7 @@ var _cmdRun = func() *cobra.Command {
 	cmd.Flags().StringVar(&cwd, "cwd", "", "set working directory")
 	addFlagConfig(cmd, &config)
 	cmd.Flags().StringVar(&watch, "watch", "", "restart on changes to files matching specified regex")
+	cmd.Flags().StringVar(&cron, "cron", "", "restart periodically on cron expression")
 	cmd.Flags().UintVar(&maxRestarts, "max-restarts", 0, "autorestart process, giving up after COUNT times")
 	return cmd
 }()

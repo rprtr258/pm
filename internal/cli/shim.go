@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	stdErrors "errors"
 	"fmt"
 	"io"
 	"net"
@@ -16,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/adhocore/gronx"
 	"github.com/creack/pty"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -256,7 +258,9 @@ func implShim(proc core.Proc) error {
 		for {
 			conn, errAccept := l.Accept()
 			if errAccept != nil {
-				log.Error().Err(errAccept).Msg("accept")
+				if !stdErrors.Is(errAccept, net.ErrClosed) {
+					log.Error().Err(errAccept).Msg("accept")
+				}
 				return
 			}
 			log.Debug().
@@ -345,7 +349,9 @@ func implShim(proc core.Proc) error {
 	waitTrigger := true
 	autorestartsLeft := proc.MaxRestarts
 	for {
-		log.Debug().Msg("loop started, waiting for trigger")
+		log.Debug().
+			Bool("wait_trigger", waitTrigger).
+			Msg("loop started, waiting for trigger")
 		switch {
 		case waitTrigger:
 			log.Debug().Msg("starting for the first time/restarting after watch")
@@ -390,7 +396,35 @@ func implShim(proc core.Proc) error {
 			log.Debug().Any("events", events).Msg("watch triggered")
 			killCmd(cmd, proc.KillTimeout)
 			waitTrigger = true // do not wait for autorestart or watch, start immediately
-		case <-waitCh:
+		case err := <-waitCh:
+			log.Debug().Err(err).Msg("proc stopped")
+			if cronExpr, ok := proc.Cron.Unpack(); ok {
+				nextAt, err := gronx.NextTick(cronExpr, false)
+				if err != nil {
+					return errors.Wrapf(err, "add cron %q", cronExpr)
+				}
+				waitFor := time.Until(nextAt)
+				log.Debug().
+					Stringer("for", waitFor).
+					Err(err).
+					Msg("waiting for cron")
+				select {
+				case <-terminateCh:
+					// NOTE: Terminate child completely.
+					// Stop is done by sending SIGTERM.
+					// Manual restart is done by restarting whole shim and child by cli.
+					log.Debug().Msg("terminate signal received")
+					killCmd(cmd, proc.KillTimeout)
+					return nil
+				case events := <-watchCh:
+					log.Debug().Any("events", events).Msg("watch triggered")
+					killCmd(cmd, proc.KillTimeout)
+					waitTrigger = true // do not wait for autorestart or watch, start immediately
+				case <-time.After(waitFor):
+					log.Debug().Time("time", time.Now()).Msg("restarting due to cron")
+					waitTrigger = true // do not wait for autorestart or watch, start immediately
+				}
+			}
 		}
 	}
 }
