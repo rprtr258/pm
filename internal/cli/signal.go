@@ -97,7 +97,6 @@ var _cmdSignal = func() *cobra.Command {
 		Use:     "signal [sigspec] [name|tag|id]...",
 		Short:   "send signal to process(es)",
 		Aliases: []string{"kill"},
-		GroupID: "inspection",
 		ValidArgsFunction: func(
 			cmd *cobra.Command,
 			args []string,

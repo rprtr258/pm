@@ -19,7 +19,6 @@ var _cmdRestart = func() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "restart [name|tag|id]...",
 		Short:             "restart already added process(es)",
-		GroupID:           "management",
 		ValidArgsFunction: completeArgGenericSelector(filter),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)

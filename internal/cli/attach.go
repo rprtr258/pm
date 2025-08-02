@@ -20,7 +20,6 @@ var _cmdAttach = func() *cobra.Command {
 		Use:               "attach [name|tag|id]",
 		Short:             "attach to process stdin/stdout",
 		Aliases:           []string{"a"},
-		GroupID:           "management",
 		ValidArgsFunction: completeArgGenericSelector(filter),
 		RunE: func(_ *cobra.Command, args []string) error {
 			filterFunc := core.FilterFunc(

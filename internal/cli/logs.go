@@ -219,7 +219,6 @@ var _cmdLogs = func() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "logs [name|tag|id]...",
 		Short:             "watch for processes logs",
-		GroupID:           "inspection",
 		ValidArgsFunction: completeArgGenericSelector(filterAll),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
