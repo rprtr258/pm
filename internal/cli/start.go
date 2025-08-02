@@ -17,7 +17,6 @@ var _cmdStart = func() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "start [name|tag|id]...",
 		Short:             "start already added process(es)",
-		GroupID:           "management",
 		ValidArgsFunction: completeArgGenericSelector(filter),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)

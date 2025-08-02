@@ -272,9 +272,8 @@ var _cmdRun = func() *cobra.Command {
 	var tags []string
 	var maxRestarts uint
 	cmd := &cobra.Command{
-		Use:     "run",
-		Short:   "create and run new process",
-		GroupID: "management",
+		Use:   "run",
+		Short: "create and run new process",
 		RunE: func(cmd *cobra.Command, posArgs []string) error {
 			name := fun.IF(cmd.Flags().Lookup("name").Changed, &name, nil)
 			cwd := fun.IF(cmd.Flags().Lookup("cwd").Changed, &cwd, nil)

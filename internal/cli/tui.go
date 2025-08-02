@@ -17,7 +17,6 @@ var _cmdTUI = func() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "tui [name|tag|id]...",
 		Short:             "open TUI dashboard process(es)",
-		GroupID:           "management",
 		ValidArgsFunction: completeArgGenericSelector(filter),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			config := fun.IF(cmd.Flags().Lookup("config").Changed, &config, nil)

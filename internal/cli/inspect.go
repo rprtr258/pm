@@ -45,7 +45,6 @@ var _cmdInspect = func() *cobra.Command {
 		Use:               "inspect [name|tag|id]...",
 		Short:             "inspect process",
 		Aliases:           []string{"i"},
-		GroupID:           "inspection",
 		ValidArgsFunction: completeArgGenericSelector(filter),
 		RunE: func(_ *cobra.Command, args []string) error {
 			filterFunc := core.FilterFunc(

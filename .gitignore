@@ -3,3 +3,4 @@ pm
 /dist/
 /.token
 /.coverdata
+/.pms/
