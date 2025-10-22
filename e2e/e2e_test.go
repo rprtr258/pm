@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -54,7 +55,7 @@ func isTCPPortAvailableForDial(port int) bool {
 	return false
 }
 
-func httpResponse(t *testing.T, endpoint string) (int, string) {
+func useHTTPGet(t *testing.T, endpoint string) (int, string) {
 	t.Helper()
 
 	resp, err := http.Get(endpoint)
@@ -65,39 +66,6 @@ func httpResponse(t *testing.T, endpoint string) (int, string) {
 	test.NoError(t, err, test.Sprint("read response body"))
 
 	return resp.StatusCode, string(body)
-}
-
-var dataDir = func() string {
-	res, err := os.MkdirTemp(os.TempDir(), "pm-e2e-test-*")
-	if err != nil {
-		log.Fatal().Err(err).Msg("create temp dir")
-	}
-	return res
-}()
-
-func testMain(m *testing.M) int {
-	pm := pM{t: nil}
-
-	// TODO: expose var constant from xdg lib?
-	os.Setenv("XDG_DATA_HOME", dataDir) //nolint:tenv // NO, I CANT USE IT HERE, YOU DUMB
-	os.Setenv("XDG_CONFIG_HOME", dataDir)
-	// cleanup
-	defer func() {
-		if err := os.RemoveAll(dataDir); err != nil {
-			log.Warn().Err(err).Msg("remove pm dir")
-		}
-	}()
-
-	if err := pm.delete("all"); err != nil {
-		log.Error().Err(err).Msg("clear old processes")
-	}
-	defer func() {
-		if err := pm.delete("all"); err != nil {
-			log.Error().Err(err).Msg("clear tested processes")
-		}
-	}()
-
-	return m.Run()
 }
 
 func mustExec(cmd string, args ...string) {
@@ -117,7 +85,14 @@ func TestMain(m *testing.M) {
 		"-o", filepath.Join(_e2eTestDir, "pm"),
 		filepath.Dir(_e2eTestDir))
 
-	os.Exit(testMain(m))
+	os.Exit(m.Run())
+}
+
+func useCwd(t testing.TB) string {
+	t.Helper()
+	cwd, err := os.Getwd()
+	test.NoError(t, err)
+	return cwd
 }
 
 func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
@@ -126,20 +101,19 @@ func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 		"-o", filepath.Join(_e2eTestDir, "tests", "hello-http"),
 		filepath.Join(_e2eTestDir, "tests", "hello-http", "main.go"))
 
-	pm := usePM(t)
+	pm, _ := usePM(t)
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()
 
 	// start test processes
-	name := pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
+	name := pm.UseProc(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    "hello-http",
 		Command: "./tests/hello-http/main",
 		Args:    []string{":" + strconv.Itoa(serverPort)},
 	})
 	must.EqOp(t, "hello-http", name)
 
-	cwd, err := os.Getwd()
-	test.NoError(t, err)
+	cwd := useCwd(t)
 
 	list := pm.List()
 	test.SliceLen(t, 1, list)
@@ -157,7 +131,7 @@ func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 	))
 
 	// check response is correct
-	code, body := httpResponse(t, "http://localhost:"+strconv.Itoa(serverPort)+"/")
+	code, body := useHTTPGet(t, "http://localhost:"+strconv.Itoa(serverPort)+"/")
 	must.EqOp(t, http.StatusOK, code)
 	must.EqOp(t, "hello world", body)
 
@@ -167,15 +141,17 @@ func Test_HelloHttpServer(t *testing.T) { //nolint:paralleltest // not parallel
 
 	// check server stopped
 	test.True(t, isTCPPortAvailableForListen(serverPort))
+
+	must.NoError(t, pm.Delete("hello-http")) // TODO: make ficture
 }
 
 func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parallel
-	pm := usePM(t)
+	pm, dataDir := usePM(t)
 
 	serverPort := portal.New(t, portal.WithAddress("localhost")).One()
 
 	// start server
-	must.EqOp(t, "nc-server", pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
+	must.EqOp(t, "nc-server", pm.UseProc(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    "nc-server",
 		Command: "/usr/bin/nc",
 		Args:    []string{"-l", "-p", strconv.Itoa(serverPort)},
@@ -186,12 +162,12 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 		wait.BoolFunc(func() bool {
 			return !isTCPPortAvailableForListen(serverPort)
 		}),
-		wait.Timeout(time.Second*10),
+		wait.Timeout(10*time.Second),
 		wait.Gap(3*time.Second),
 	), must.Sprint("check server started"))
 
 	// start client
-	must.EqOp(t, "nc-client", pm.Run(core.RunConfig{ //nolint:exhaustruct // not needed
+	must.EqOp(t, "nc-client", pm.UseProc(core.RunConfig{ //nolint:exhaustruct // not needed
 		Name:    "nc-client",
 		Command: "/bin/sh",
 		Args:    []string{"-c", `echo "123" | nc localhost ` + strconv.Itoa(serverPort)},
@@ -199,7 +175,7 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 
 	list := pm.List()
 
-	serverProc, _, ok := fun.Index(func(proc core.Proc) bool {
+	serverProc, _, ok := fun.Index(func(proc core.ProcStat) bool {
 		return proc.Name == "nc-server"
 	}, list...)
 	must.True(t, ok)
@@ -209,7 +185,6 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 		wait.BoolFunc(func() bool {
 			d, err := os.ReadFile(filepath.Join(dataDir, "pm", "logs", string(serverID)+".stdout"))
 			test.NoError(t, err, test.Sprint("read server stdout"))
-			t.Logf("server logs:\n%q", string(d))
 			return string(d) == "123\r\n"
 		}),
 		wait.Timeout(time.Second*10),
@@ -220,4 +195,42 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 
 	// check server stopped
 	test.True(t, isTCPPortAvailableForListen(serverPort))
+	must.NoError(t, pm.Delete("nc-client", "nc-server"))
+}
+
+func Test_MaxRestarts(t *testing.T) {
+	// build binary beforehand
+	mustExec("go", "build",
+		"-o", filepath.Join(_e2eTestDir, "tests", "crashloop"),
+		filepath.Join(_e2eTestDir, "tests", "crashloop", "main.go"))
+
+	pm, dataDir := usePM(t)
+
+	const restarts = 3
+	must.EqOp(t, "mx", pm.UseProc(core.RunConfig{ //nolint:exhaustruct // not needed
+		Name:        "mx",
+		Command:     "./tests/crashloop/main",
+		Args:        []string{},
+		MaxRestarts: restarts,
+	}))
+
+	must.Wait(t, wait.InitialSuccess(
+		wait.BoolFunc(func() bool {
+			list := pm.List()
+			return len(list) == 1 && list[0].Name == "mx" && list[0].Status == core.StatusStopped
+		}),
+		wait.Timeout((restarts+2)*time.Second),
+		wait.Gap(500*time.Millisecond),
+	), must.Sprint("check proc stopped"))
+
+	list := pm.List()
+
+	proc, _, ok := fun.Index(func(proc core.ProcStat) bool {
+		return proc.Name == "mx"
+	}, list...)
+	must.True(t, ok)
+
+	logs, err := os.ReadFile(filepath.Join(dataDir, "pm", "logs", string(proc.ID)+".stdout"))
+	test.NoError(t, err, test.Sprint("read stdout"))
+	must.Eq(t, strings.Repeat("trying to wake up\r\nnah, going back to sleep\r\n", restarts+1), string(logs))
 }

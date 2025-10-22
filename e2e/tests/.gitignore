@@ -1,2 +1,3 @@
-hello-http/main
-tick/main
+/hello-http/main
+/tick/main
+/crashloop/main

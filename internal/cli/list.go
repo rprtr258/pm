@@ -326,7 +326,7 @@ var _cmdList = func() *cobra.Command {
 				Filter(func(ps core.ProcStat) bool { return filterFunc(ps.Proc) }).
 				Slice()
 
-			if len(procsToShow) == 0 {
+			if len(procsToShow) == 0 && listFormat != _formatJSON {
 				fmt.Fprintln(os.Stderr, "no processes added")
 				return nil
 			}
