@@ -39,7 +39,7 @@ func List() []ProcListItem {
 			continue
 		}
 
-		pp, err := process.NewProcess(int32(proc.Pid))
+		pp, err := process.NewProcess(int32(proc.Pid)) //nolint:gosec // int32 is required for some reason
 		if err != nil {
 			continue
 		}

@@ -280,10 +280,20 @@ local docs(R) = [
     ]),
 
     R.h3("PM directory structure"),
-    R.p([R.code("pm"), " uses directory ", R.code("$HOME/.pm"), " to store data by default. ", R.code("PM_HOME"), " environment variable can be used to change this. Layout is following:"]),
+    R.p([
+      R.code("pm"),
+      " uses ",
+      R.a("XDG", "https://specifications.freedesktop.org/basedir-spec/latest/"),
+      " specification, so db and logs are in ",
+      R.code("~/.local/share/pm"),
+      " and config is ",
+      R.code("~/.config/pm.json"),
+      ". ",
+      R.code("XDG_DATA_HOME"), " and ", R.code("XDG_CONFIG_HOME"),
+      " environment variables can be used to change this. Layout is following:"]),
     R.codeblock_sh(|||
-      $HOME/.pm/
-      ├──config.json # pm config file
+      ~/.config/pm.json # pm config file
+      ~/.local/share/pm/
       ├──db/ # database tables
       │   └──<ID> # process info
       └──logs/ # processes logs

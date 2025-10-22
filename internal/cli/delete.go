@@ -127,7 +127,7 @@ var _cmdDelete = func() *cobra.Command {
 				return errors.Wrapf(err, "stop")
 			}
 
-			if err := implDelete(dbb, cfg.DirLogs, procIDs...); err != nil {
+			if err := implDelete(dbb, core.DirLogs, procIDs...); err != nil {
 				return errors.Wrapf(err, "delete")
 			}
 

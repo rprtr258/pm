@@ -331,7 +331,7 @@ var _cmdRun = func() *cobra.Command {
 					Cron:        cronOpt,
 				}
 
-				return runProcs(dbb, cfg.DirLogs, runConfig)
+				return runProcs(dbb, core.DirLogs, runConfig)
 			}
 
 			configs, errLoadConfigs := core.LoadConfigs(*config)
@@ -342,7 +342,7 @@ var _cmdRun = func() *cobra.Command {
 			names := posArgs
 			if len(names) == 0 {
 				// no filtering by names, run all processes
-				return runProcs(dbb, cfg.DirLogs, configs...)
+				return runProcs(dbb, core.DirLogs, configs...)
 			}
 
 			configsByName := make(map[string]core.RunConfig, len(names))
@@ -366,7 +366,7 @@ var _cmdRun = func() *cobra.Command {
 				return merr
 			}
 
-			return runProcs(dbb, cfg.DirLogs, fun.Values(configsByName)...)
+			return runProcs(dbb, core.DirLogs, fun.Values(configsByName)...)
 		},
 	}
 	cmd.Flags().StringVarP(&name, "name", "n", "", "set a name for the process")

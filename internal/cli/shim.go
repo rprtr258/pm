@@ -249,7 +249,7 @@ func implShim(proc core.Proc) error {
 	if errRm := os.Remove(socketFilename); errRm != nil && !os.IsNotExist(errRm) {
 		log.Error().Err(errRm).Msg("remove socket")
 	}
-	l, err := net.Listen("unix", socketFilename)
+	l, err := (&net.ListenConfig{}).Listen(context.Background(), "unix", socketFilename)
 	if err != nil {
 		return errors.Wrap(err, "listen")
 	}

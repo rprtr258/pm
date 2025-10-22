@@ -1,29 +1,18 @@
 package core
 
 import (
-	"cmp"
-	"os"
 	"path/filepath"
 
-	"github.com/rs/zerolog/log"
+	"github.com/adrg/xdg"
 )
 
 const EnvPMID = "PM_PMID"
 
-var _userHome = func() string {
-	dir, err := os.UserHomeDir()
-	if err != nil {
-		log.Panic().Err(err).Msg("can't get home dir")
-	}
-
-	return dir
-}()
-
 var (
-	DirHome       = cmp.Or(os.Getenv("PM_HOME"), filepath.Join(_userHome, ".pm"))
-	_dirProcsLogs = filepath.Join(DirHome, "logs")
-	_configPath   = filepath.Join(DirHome, "config.json")
-	_dirDB        = filepath.Join(DirHome, "db")
+	DirHome     = filepath.Join(xdg.DataHome, "pm")
+	DirLogs     = filepath.Join(DirHome, "logs")
+	DirDB       = filepath.Join(DirHome, "db")
+	_configPath = filepath.Join(xdg.ConfigHome, "pm.json")
 )
 
 type LogType int
