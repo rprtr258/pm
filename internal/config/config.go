@@ -34,10 +34,10 @@ func ensureDir(dirname string) error {
 	return nil
 }
 
-func pruneLogs(db db.Handle, config core.Config) error {
-	logFiles, err := os.ReadDir(config.DirLogs)
+func pruneLogs(db db.Handle) error {
+	logFiles, err := os.ReadDir(core.DirLogs)
 	if err != nil {
-		return errors.Wrapf(err, "read log dir %s", config.DirLogs)
+		return errors.Wrapf(err, "read log dir %s", core.DirLogs)
 	}
 
 	procs, err := db.List(core.WithAllIfNoFilters)
@@ -59,7 +59,7 @@ func pruneLogs(db db.Handle, config core.Config) error {
 		}
 
 		// proc not found, remove log file
-		filename := filepath.Join(config.DirLogs, logFile.Name())
+		filename := filepath.Join(core.DirLogs, logFile.Name())
 		log.Debug().
 			Str("file", filename).
 			Msg("pruning log file")
@@ -120,8 +120,8 @@ func New() (db.Handle, core.Config, error) {
 
 		setupLogger(config)
 
-		if err := ensureDir(config.DirLogs); err != nil {
-			return errors.Wrapf(err, "ensure logs dir %s", config.DirLogs)
+		if err := ensureDir(core.DirLogs); err != nil {
+			return errors.Wrapf(err, "ensure logs dir %s", core.DirLogs)
 		}
 
 		if core.Version != "dev" && config.Version != core.Version {
@@ -129,12 +129,12 @@ func New() (db.Handle, core.Config, error) {
 		}
 
 		var errDB error
-		dbFs, errDB = db.InitRealDir(config.DirDB)
+		dbFs, errDB = db.InitRealDir(core.DirDB)
 		if errDB != nil {
-			return errors.Wrapf(errDB, "new db, dir=%q", config.DirDB)
+			return errors.Wrapf(errDB, "new db, dir=%q", core.DirDB)
 		}
 
-		if err := pruneLogs(db.New(dbFs), config); err != nil {
+		if err := pruneLogs(db.New(dbFs)); err != nil {
 			return errors.Wrap(err, "prune logs")
 		}
 

@@ -67,7 +67,7 @@ func httpResponse(t *testing.T, endpoint string) (int, string) {
 	return resp.StatusCode, string(body)
 }
 
-var pmDir = func() string {
+var dataDir = func() string {
 	res, err := os.MkdirTemp(os.TempDir(), "pm-e2e-test-*")
 	if err != nil {
 		log.Fatal().Err(err).Msg("create temp dir")
@@ -78,10 +78,12 @@ var pmDir = func() string {
 func testMain(m *testing.M) int {
 	pm := pM{t: nil}
 
-	os.Setenv("PM_HOME", pmDir) //nolint:tenv // NO, I CANT USE IT HERE YOU DUMB
+	// TODO: expose var constant from xdg lib?
+	os.Setenv("XDG_DATA_HOME", dataDir) //nolint:tenv // NO, I CANT USE IT HERE, YOU DUMB
+	os.Setenv("XDG_CONFIG_HOME", dataDir)
 	// cleanup
 	defer func() {
-		if err := os.RemoveAll(pmDir); err != nil {
+		if err := os.RemoveAll(dataDir); err != nil {
 			log.Warn().Err(err).Msg("remove pm dir")
 		}
 	}()
@@ -205,7 +207,7 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 
 	must.Wait(t, wait.InitialSuccess(
 		wait.BoolFunc(func() bool {
-			d, err := os.ReadFile(filepath.Join(pmDir, "logs", string(serverID)+".stdout"))
+			d, err := os.ReadFile(filepath.Join(dataDir, "pm", "logs", string(serverID)+".stdout"))
 			test.NoError(t, err, test.Sprint("read server stdout"))
 			t.Logf("server logs:\n%q", string(d))
 			return string(d) == "123\r\n"

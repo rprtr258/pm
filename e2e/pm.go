@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -29,7 +30,11 @@ func usePM(t *testing.T) pM {
 }
 
 func (pM) exec(cmd string, args ...string) *exec.Cmd {
-	return exec.Command(_pmBin, append([]string{cmd}, args...)...) //nolint:gosec // fuck you, _pmBin is constant
+	return exec.CommandContext( //nolint:gosec // fuck you, _pmBin is constant
+		context.Background(),
+		_pmBin,
+		append([]string{cmd}, args...)...,
+	)
 }
 
 // Run returns new proc name

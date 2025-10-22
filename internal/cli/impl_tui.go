@@ -155,7 +155,7 @@ func (m *model) updateKey(msg tea2.KeyMsg) tea2.Cmd {
 			return nil
 		}
 		// TODO: remove logs here
-		_ = implDelete(m.db, cfg.DirLogs, proc.ID) // TODO: show error
+		_ = implDelete(m.db, core.DirLogs, proc.ID) // TODO: show error
 	case compatMatches(msg, keymap.Quit):
 		return tea2.Quit
 	case compatMatches(msg, keymap.Switch):

@@ -98,11 +98,11 @@ flowchart TB
 - **shim** - monitors and restarts processes, handle watches, signals and shutdowns
 
 ### PM directory structure
-`pm` uses directory `$HOME/.pm` to store data by default. `PM_HOME` environment variable can be used to change this. Layout is following:
+`pm` uses [XDG](https://specifications.freedesktop.org/basedir-spec/latest/) specification, so db and logs are in `~/.local/share/pm` and config is `~/.config/pm.json`. `XDG_DATA_HOME` and `XDG_CONFIG_HOME` environment variables can be used to change this. Layout is following:
 
 ```sh
-$HOME/.pm/
-├──config.json # pm config file
+~/.config/pm.json # pm config file
+~/.local/share/pm/
 ├──db/ # database tables
 │   └──<ID> # process info
 └──logs/ # processes logs
@@ -124,5 +124,5 @@ On `master` branch:
 ```sh
 git tag v1.2.3
 git push --tags
-GITHUB_TOKEN=$(cat .token) goreleaser release --clean
+goreleaser release --clean
 ```

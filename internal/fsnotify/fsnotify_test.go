@@ -159,7 +159,7 @@ func watcher(s *setupCtx) (special, error) {
 	if err != nil {
 		return special{}, fmt.Errorf("failed to create a Watcher: %w", err)
 	}
-	s.Env.Defer(func() {
+	s.Defer(func() {
 		w.Close()
 	})
 	bwh := newBatchedWatcherHandler(s, w.Events, w.Errors, handleEvent)

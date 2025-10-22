@@ -12,13 +12,15 @@ PM := go run main.go
 CURDIR=$(shell pwd)
 BINDIR=${CURDIR}/bin
 
-GOLANGCILINTVER=1.60.1
+GOLANGCILINTVER=2.5.0
 GOLANGCILINTBIN=${BINDIR}/golangci-lint_${GOLANGCILINTVER}
 
 GOCRITICVER=v0.11.4
 GOCRITICBIN=${BINDIR}/gocritic_${GOCRITICVER}
 
 GOTESTSUM=go run gotest.tools/gotestsum@latest
+
+JSONNET=go run github.com/google/go-jsonnet/cmd/jsonnet@latest
 
 
 .PHONY: help
@@ -89,7 +91,7 @@ lint: lint-go lint-goreleaser # run all linters
 
 .PHONY: docs
 docs: # generate docs
-	jsonnet --string --multi ./docs/ ./docs/docs.jsonnet --max-trace 1024
+	${JSONNET} --string --multi ./docs/ ./docs/docs.jsonnet --max-trace 1024
 
 docs-watch: # watch docs
 	reflex -r 'docs/.*' -- $(MAKE) docs
