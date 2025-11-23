@@ -20,15 +20,15 @@ import (
 const _pmBin = "./pm"
 
 type pM struct {
-	t *testing.T
+	t testing.TB
 }
 
-func useTempDir(t testing.TB, pattern string) string {
-	t.Helper()
+func useTempDir(tb testing.TB, pattern string) string {
+	tb.Helper()
 
 	dir, err := os.MkdirTemp(os.TempDir(), pattern)
-	test.NoError(t, err, test.Sprint("create temp dir"))
-	t.Cleanup(func() {
+	test.NoError(tb, err, test.Sprint("create temp dir"))
+	tb.Cleanup(func() {
 		if err := os.RemoveAll(dir); err != nil {
 			log.Warn().Err(err).Msg("remove pm dir")
 		}
@@ -36,32 +36,32 @@ func useTempDir(t testing.TB, pattern string) string {
 	return dir
 }
 
-func usePM(t *testing.T) (pM, string) {
-	t.Helper()
+func usePM(tb testing.TB) (pM, string) {
+	tb.Helper()
 
-	dataDir := useTempDir(t, "pm-e2e-test-*")
+	dataDir := useTempDir(tb, "pm-e2e-test-*")
 	// TODO: expose var constant from xdg lib?
-	t.Setenv("XDG_DATA_HOME", dataDir)
-	t.Setenv("XDG_CONFIG_HOME", dataDir)
+	tb.Setenv("XDG_DATA_HOME", dataDir)
+	tb.Setenv("XDG_CONFIG_HOME", dataDir)
 
-	pm := pM{t}
+	pm := pM{tb}
 
-	t.Cleanup(func() {
+	tb.Cleanup(func() {
 		// ensure no procs left
 		list := pm.List()
 		if len(list) == 0 {
 			return
 		}
 
-		t.Errorf("procs left: %v", list)
-		test.NoError(t, pm.delete("all"), test.Sprint("clear old processes"))
+		tb.Errorf("procs left: %v", list)
+		test.NoError(tb, pm.delete("all"), test.Sprint("clear old processes"))
 		// time.Sleep(3 * time.Second)
 	})
 
 	return pm, dataDir
 }
 
-func (p pM) exec(cmd string, args ...string) *exec.Cmd {
+func (pM) exec(cmd string, args ...string) *exec.Cmd {
 	return exec.CommandContext( //nolint:gosec // fuck you, _pmBin is constant
 		context.TODO(),
 		_pmBin,
@@ -92,7 +92,7 @@ func (pm pM) run(config core.RunConfig) string {
 		args = append(args, "--cwd", config.Cwd)
 	}
 	if config.MaxRestarts != 0 {
-		args = append(args, "--max-restarts", strconv.Itoa(int(config.MaxRestarts)))
+		args = append(args, "--max-restarts", strconv.FormatUint(uint64(config.MaxRestarts), 10))
 	}
 	args = append(args, append([]string{config.Command, "--"}, config.Args...)...)
 

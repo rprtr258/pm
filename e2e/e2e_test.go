@@ -55,15 +55,15 @@ func isTCPPortAvailableForDial(port int) bool {
 	return false
 }
 
-func useHTTPGet(t *testing.T, endpoint string) (int, string) {
-	t.Helper()
+func useHTTPGet(tb testing.TB, endpoint string) (int, string) {
+	tb.Helper()
 
 	resp, err := http.Get(endpoint)
-	must.NoError(t, err, must.Sprint("get response"))
+	must.NoError(tb, err, must.Sprint("get response"))
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
-	test.NoError(t, err, test.Sprint("read response body"))
+	test.NoError(tb, err, test.Sprint("read response body"))
 
 	return resp.StatusCode, string(body)
 }
@@ -88,10 +88,10 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func useCwd(t testing.TB) string {
-	t.Helper()
+func useCwd(tb testing.TB) string {
+	tb.Helper()
 	cwd, err := os.Getwd()
-	test.NoError(t, err)
+	test.NoError(tb, err)
 	return cwd
 }
 
@@ -198,7 +198,7 @@ func Test_ClientServerNetcat(t *testing.T) { //nolint:paralleltest // not parall
 	must.NoError(t, pm.Delete("nc-client", "nc-server"))
 }
 
-func Test_MaxRestarts(t *testing.T) {
+func Test_MaxRestarts(t *testing.T) { //nolint:paralleltest // not parallel
 	// build binary beforehand
 	mustExec("go", "build",
 		"-o", filepath.Join(_e2eTestDir, "tests", "crashloop"),
