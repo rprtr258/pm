@@ -1,7 +1,7 @@
 local dotenv = std.native("dotenv");
 local now = std.extVar("now");
 
-function(now, dotenv) [
+[
   {
     name: "qmen24-" + now,
     command: "sleep",
@@ -27,13 +27,13 @@ function(now, dotenv) [
   {
     name: "hello-world",
     command: "go",
-    args: ["run", "tests/main.go"],
+    args: ["run", "./e2e/tests/hello-world/main.go"],
   },
 ] + [
   {
     name: "http-hello-server",
     command: "go",
-    args: ["run", "tests/hello-http/main.go"],
+    args: ["run", "e2e/tests/hello-http/main.go", ":5678"],
   },
   {
     name: "test-env",
@@ -45,7 +45,7 @@ function(now, dotenv) [
   },
   {
     name: "web",
-    cwd: "./tests/example-http",
+    cwd: "./e2e/tests/example-http",
     command: "sh",
     args: ["-c", |||
       docker build -t web . &&
@@ -54,17 +54,15 @@ function(now, dotenv) [
   },
   {
     name: "hang",
-    cwd: "./tests/hang",
+    cwd: "./e2e/tests/hang",
     command: "go",
     args: ["run", "main.go"],
   },
 ] + [
   {
     name: "tick#%d" % i,
-    // command: "tests/tick/main",
-    // args: ["--interval", "%(dur)dms" % {dur: i * 10}],
     command: "go",
-    cwd: "tests",
+    cwd: "./e2e/tests",
     args: [
       "run",
       "tick/main.go",

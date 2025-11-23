@@ -66,7 +66,12 @@ func newVM() *jsonnet.VM {
 				return nil, errors.Wrapf(errUnmarshal, "parse dotenv")
 			}
 
-			return env, nil
+			// since "evaluate jsonnet file: RUNTIME ERROR: Not a json type: map[string]string"
+			res := make(map[string]any, len(env))
+			for k, v := range env {
+				res[k] = v
+			}
+			return res, nil
 		},
 		Params: ast.Identifiers{"dotenv"},
 	})

@@ -13,7 +13,7 @@ import (
 
 func printSignals() {
 	sigCh := make(chan os.Signal, 100)
-	signal.Notify(sigCh, os.Interrupt, os.Interrupt)
+	signal.Notify(sigCh, os.Interrupt)
 	for sig := range sigCh {
 		signalCode, _ := sig.(syscall.Signal)
 		log.Info().
