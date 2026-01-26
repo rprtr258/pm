@@ -19,8 +19,8 @@ GOCRITICVER=v0.11.4
 GOCRITICBIN=${BINDIR}/gocritic_${GOCRITICVER}
 
 GOTESTSUM=go run gotest.tools/gotestsum@latest
-
-JSONNET=go run github.com/google/go-jsonnet/cmd/jsonnet@latest
+BUN=bun
+REFLEX=go run github.com/cespare/reflex@latest
 
 
 .PHONY: help
@@ -91,10 +91,10 @@ lint: lint-go lint-goreleaser # run all linters
 
 .PHONY: docs
 docs: # generate docs
-	${JSONNET} --string --multi ./docs/ ./docs/docs.jsonnet --max-trace 1024
+	${BUN} run ./docs/main.ts
 
 docs-watch: # watch docs
-	reflex -r 'docs/.*' -- $(MAKE) docs
+	${REFLEX} -r 'docs/.*' -- $(MAKE) docs
 
 ## Test
 

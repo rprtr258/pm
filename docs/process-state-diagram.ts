@@ -1,4 +1,4 @@
-["div", {class: "mermaid", "data-processed": "true"},
+export default ["div", {class: "mermaid", "data-processed": "true"},
   ["svg", {"aria-roledescription": "flowchart-v2", role: "graphics-document document", viewBox: "-8 -8 370.84375 520.125", style: "max-width: 370.84375px;", "xmlns:xlink": "http://www.w3.org/1999/xlink", xmlns: "http://www.w3.org/2000/svg", width: "100%", id: "mermaid-1722776679139"},
     ["style", {}, '#mermaid-1722776679139{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;fill:#333;}#mermaid-1722776679139 .error-icon{fill:#552222;}#mermaid-1722776679139 .error-text{fill:#552222;stroke:#552222;}#mermaid-1722776679139 .edge-thickness-normal{stroke-width:2px;}#mermaid-1722776679139 .edge-thickness-thick{stroke-width:3.5px;}#mermaid-1722776679139 .edge-pattern-solid{stroke-dasharray:0;}#mermaid-1722776679139 .edge-pattern-dashed{stroke-dasharray:3;}#mermaid-1722776679139 .edge-pattern-dotted{stroke-dasharray:2;}#mermaid-1722776679139 .marker{fill:#333333;stroke:#333333;}#mermaid-1722776679139 .marker.cross{stroke:#333333;}#mermaid-1722776679139 svg{font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:16px;}#mermaid-1722776679139 .label{font-family:"trebuchet ms",verdana,arial,sans-serif;color:#333;}#mermaid-1722776679139 .cluster-label text{fill:#333;}#mermaid-1722776679139 .cluster-label span,#mermaid-1722776679139 p{color:#333;}#mermaid-1722776679139 .label text,#mermaid-1722776679139 span,#mermaid-1722776679139 p{fill:#333;color:#333;}#mermaid-1722776679139 .node rect,#mermaid-1722776679139 .node circle,#mermaid-1722776679139 .node ellipse,#mermaid-1722776679139 .node polygon,#mermaid-1722776679139 .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#mermaid-1722776679139 .flowchart-label text{text-anchor:middle;}#mermaid-1722776679139 .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#mermaid-1722776679139 .node .label{text-align:center;}#mermaid-1722776679139 .node.clickable{cursor:pointer;}#mermaid-1722776679139 .arrowheadPath{fill:#333333;}#mermaid-1722776679139 .edgePath .path{stroke:#333333;stroke-width:2.0px;}#mermaid-1722776679139 .flowchart-link{stroke:#333333;fill:none;}#mermaid-1722776679139 .edgeLabel{background-color:#e8e8e8;text-align:center;}#mermaid-1722776679139 .edgeLabel rect{opacity:0.5;background-color:#e8e8e8;fill:#e8e8e8;}#mermaid-1722776679139 .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#mermaid-1722776679139 .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#mermaid-1722776679139 .cluster text{fill:#333;}#mermaid-1722776679139 .cluster span,#mermaid-1722776679139 p{color:#333;}#mermaid-1722776679139 div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:"trebuchet ms",verdana,arial,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#mermaid-1722776679139 .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#mermaid-1722776679139 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}'],
     ["g", {},
@@ -21,14 +21,14 @@
           ["path", {"marker-end": "url(#mermaid-1722776679139_flowchart-pointEnd)", style: "fill:none;", class: "edge-thickness-normal edge-pattern-solid flowchart-link LS-S LE-C", id: "L-S-C-0", d: "M141.723,124.781L130.552,130.814C119.381,136.846,97.038,148.911,85.867,160.977C74.695,173.042,74.695,185.107,74.695,194.423C74.695,203.739,74.695,210.305,74.695,213.589L74.695,216.872"}],
           ["path", {"marker-end": "url(#mermaid-1722776679139_flowchart-pointEnd)", style: "fill:none;", class: "edge-thickness-normal edge-pattern-solid flowchart-link LS-Running LE-S", id: "L-Running-S-0", d: "M160.781,197.172L160.781,191.139C160.781,185.107,160.781,173.042,162.251,161.826C163.72,150.611,166.659,140.246,168.128,135.063L169.598,129.88"}],
         ],
-        (
-          local edgeLabel(p1, p2, h, w, label) =
+        (() => {
+          const edgeLabel = (p1: string, p2: string, h: string, w: string, label: string) =>
             ["g", {transform: "translate("+p1+")", class: "edgeLabel"},
               ["g", {transform: "translate("+p2+")", class: "label"},
                 ["foreignobject", {height: h, width: w},
                   ["div", {style: "display: inline-block; white-space: nowrap;", xmlns: "http://www.w3.org/1999/xhtml"},
                     ["span", {class: "edgeLabel"}, label]]]]];
-          ["g", {class: "edgeLabels"},
+          return ["g", {class: "edgeLabels"},
             edgeLabel("176.34375, 51.1953125",      "-44.9140625, -11.1953125", "22.390625", "89.828125",  "new process"),
             edgeLabel("74.6953125, 295.7578125",    "-54.6953125, -11.1953125", "22.390625", "109.390625", "process started"),
             edgeLabel("117.73828125, 405.5390625",  "-45.359375, -11.1953125",  "22.390625", "90.71875",   "process died"),
@@ -36,7 +36,8 @@
             edgeLabel("282.443359375, 295.7578125", "-8.8984375, -11.1953125",  "22.390625", "17.796875",  "no"),
             edgeLabel("74.6953125, 160.9765625",    "-15.5625, -11.1953125",    "22.390625", "31.125",     "start"),
             edgeLabel("160.97582, 160.2903",        "-15.125, -11.1953125",     "22.390625", "30.25",      "stop"),
-          ]),
+          ];
+        })(),
         ["g", {class: "nodes"},
           ["g", {transform: "translate(176.34375, 7.5)", "data-node": "true", id: "flowchart-0-0", class: "node default flowchart-label"}, ["rect", {height: "15", width: "15", y: "-7.5", x: "-7.5", ry: "5", rx: "5", class: "basic label-container"}], ["g", {transform: "translate(0, 0)", class: "label"}, ["rect", {}], ["foreignobject", {height: "0", width: "0"}, ["div", {style: "display: inline-block; white-space: nowrap;", xmlns: "http://www.w3.org/1999/xhtml"}, ["span", {class: "nodeLabel"}]]]]],
           ["g", {transform: "translate(117.73828125, 350.6484375)", "data-node": "true", id: "flowchart-R-3", class: "node default default flowchart-label"}, ["rect", {height: "37.390625", width: "74.609375", y: "-18.6953125", x: "-37.3046875", ry: "5", rx: "5", class: "basic label-container"}], ["g", {transform: "translate(-29.8046875, -11.1953125)", class: "label"}, ["rect", {}], ["foreignobject", {height: "22.390625", width: "59.609375"}, ["div", {style: "display: inline-block; white-space: nowrap;", xmlns: "http://www.w3.org/1999/xhtml"}, ["span", {class: "nodeLabel"}, "Running"]]]]],
@@ -47,4 +48,4 @@
       ]
     ],
   ],
-]
+];
