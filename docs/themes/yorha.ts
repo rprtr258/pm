@@ -2,10 +2,10 @@ export default {
 base00: "d1cdb7",
 base01: "bab5a1",
 base02: "454138",
-base03: "6e8090", // not set
+base03: "508b57",
 base04: "064048", // not set
 base05: "4d4d4d", // not set
-base06: "0c7c8c", // not set
+base06: "dcd8c0",
 base07: "454138",
 base08: "8a3f3a",
 base09: "454138",

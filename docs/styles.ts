@@ -44,7 +44,7 @@ const themes: Record<string, Theme> = {
   "simple": simpletheme,
   "yorha": yorhatheme,
 };
-const theme = "simple";
+const theme = "yorha";
 const colors = Object.fromEntries(Object.entries(themes[theme]).map(([k, v]) => [k, "#"+v]));
 
 export default [
@@ -504,7 +504,7 @@ export default [
     "--code-block-margin": "1em 0",
     "--code-inline-background": colors.base07,
     "--code-inline-border-radius": "var(--border-radius-s)",
-    "--code-inline-color": "var(--code-theme-text)",
+    "--code-inline-color": colors.base06,
     "--code-inline-margin": "0 0.15em",
     "--code-inline-padding": "0.125em 0.4em",
 
@@ -552,16 +552,16 @@ export default [
   ["pre[data-lang]::selection, code[class*=lang-]::selection", {
     "background": "var(--code-theme-selection, var(--selection-color))",
   }],
-  // ["table", {
-  //   "border-spacing": "0",
-  // }],
-  // ["th", {
-  //   "border-bottom": "0.1rem solid var(--sidebar-border-color)",
-  // }],
-  // ["body", {
-  //   "background-image": "linear-gradient(to right, #ccc8b1 1px, rgba(204,200,177,0) 1px), linear-gradient(to bottom, #ccc8b1 1px, rgba(204,200,177,0) 1px)",
-  //   "background-size": "0.3rem 0.3rem",
-  // }],
+  ["table", {
+    "border-spacing": "0",
+  }],
+  ["th", {
+    "border-bottom": "0.1rem solid var(--sidebar-border-color)",
+  }],
+  ["body", {
+    "background-image": "linear-gradient(to right, #ccc8b1 1px, rgba(204,200,177,0) 1px), linear-gradient(to bottom, #ccc8b1 1px, rgba(204,200,177,0) 1px)",
+    "background-size": "0.3rem 0.3rem",
+  }],
   // @media(min-width: 48em) { body.sticky .sidebar { position: fixed } }
 //   @media print {
 //     .sidebar {

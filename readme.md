@@ -26,7 +26,48 @@ pm startup
 After these commands, processes with `startup: true` config option will be started on system startup.
 
 ## Configuration
-[jsonnet](https://jsonnet.org/) configuration language is used. It is also fully compatible with plain JSON, so you can write JSON instead.
+PM supports multiple configuration formats for defining processes. The original [jsonnet](https://jsonnet.org/) format is supported, along with several additional formats for flexibility:
+
+### Supported Formats
+#### JSONNet (.jsonnet)
+The primary configuration format. JSONNet is fully compatible with plain JSON.
+
+```jsonnet
+[
+  {
+    name: "web-server",
+    command: "node",
+    args: ["server.js"],
+    env: {
+      PORT: "3000",
+      NODE_ENV: "production"
+    },
+    tags: ["web"],
+    startup: true
+  }
+]
+```
+
+### Configuration Schema
+All formats define list of processes with following fields:
+
+| Field | Type | Description | Required |
+|-------|------|-------------|----------|
+| `name` | `string` | Process name (auto-generated if omitted) | No |
+| `command` | `string` | Command to execute | Yes |
+| `args` | `array(string)` | Command arguments | No |
+| `cwd` | `string` | Working directory | No |
+| `env` | `map(string, string)` | Environment variables (name: value pairs) | No |
+| `tags` | `array(string)` | Process tags for filtering | No |
+| `watch` | `string` | File pattern to watch for restarts (regex) | No |
+| `startup` | `boolean` | Start process on system startup | No |
+| `depends_on` | `array(string)` | Process names that must start first | No |
+| `cron` | `string` | Cron expression for scheduled execution | No |
+| `stdout_file` | `string` | File to redirect stdout to | No |
+| `stderr_file` | `string` | File to redirect stderr to | No |
+| `kill_timeout` | `duration` | Time before SIGKILL after SIGINT | No |
+| `autorestart` | `boolean` | Auto-restart on process death | No |
+| `max_restarts` | `number` | Maximum restart limit (0 = unlimited) | No |
 
 See [example configuration file](./config.jsonnet). Other examples can be found in [tests](./e2e/tests) directory.
 
@@ -86,7 +127,7 @@ flowchart TB
   end
   A -->|yes| C
   A -->|no| S
-  Running  -->|stop| S
+  Running -->|stop| S
   S -->|start| C
 ```
 
