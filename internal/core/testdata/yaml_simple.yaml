@@ -1,0 +1,6 @@
+echo-first:
+  command: "echo"
+  args: ["first"]
+echo-second:
+  command: "echo"
+  args: ["second"]

@@ -1,0 +1,3 @@
+relative-cwd-test:
+  command: "echo"
+  cwd: "../"

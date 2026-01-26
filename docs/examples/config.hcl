@@ -1,0 +1,10 @@
+process "web-server" {
+  command = "node"
+  args    = ["server.js"]
+  env = {
+    PORT     = "3000"
+    NODE_ENV = "production"
+  }
+  tags    = ["web"]
+  startup = true
+}

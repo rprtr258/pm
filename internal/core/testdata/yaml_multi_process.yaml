@@ -1,0 +1,15 @@
+test-process:
+  command: "echo"
+  args: ["hello", "world"]
+  cwd: "/tmp"
+  env:
+    TEST_VAR: "test_value"
+    ANOTHER_VAR: "another_value"
+  tags: ["test", "demo"]
+  watch: ".*\\.go"
+  startup: true
+  depends_on: ["db", "cache"]
+  cron: "0 */6 * * *"
+sleep-process:
+  command: "sleep"
+  args: [10]

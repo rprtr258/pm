@@ -48,12 +48,86 @@ The primary configuration format. JSONNet is fully compatible with plain JSON.
 ]
 ```
 
+#### YAML (.yaml, .yml)
+[YAML](https://yaml.org/)[ ](https://noyaml.com/)- Human-readable data serialization standard.
+
+```yaml
+web-server:
+  command: "node"
+  args: ["server.js"]
+  env:
+    PORT: "3000"
+    NODE_ENV: "production"
+  tags: ["web"]
+  startup: true
+```
+
+#### TOML (.toml)
+[TOML](https://toml.io/) - Tom's Obvious, Minimal Language configuration format.
+
+```toml
+[web-server]
+command = "node"
+args = ["server.js"]
+env = { PORT = "3000", NODE_ENV = "production" }
+tags = ["web"]
+startup = true
+```
+
+#### INI (.ini, .cfg, .conf)
+Classic configuration file format with section-based structure.
+
+```ini
+[web-server]
+command = node
+args = server.js
+env.PORT = 3000
+env.NODE_ENV = production
+tags = web
+startup = true
+```
+
+#### HCL (.hcl)
+HashiCorp Configuration Language, designed for human-readable machine-friendly configs.
+
+```hcl
+process "web-server" {
+  command = "node"
+  args    = ["server.js"]
+  env = {
+    PORT     = "3000"
+    NODE_ENV = "production"
+  }
+  tags    = ["web"]
+  startup = true
+}
+```
+
+#### JSON (.json)
+Plain JSON configuration format.
+
+```json
+[
+  {
+    "name": "web-server",
+    "command": "node",
+    "args": ["server.js"],
+    "env": {
+      "PORT": "3000",
+      "NODE_ENV": "production"
+    },
+    "tags": ["web"],
+    "startup": true
+  }
+]
+```
+
 ### Configuration Schema
 All formats define list of processes with following fields:
 
 | Field | Type | Description | Required |
 |-------|------|-------------|----------|
-| `name` | `string` | Process name (auto-generated if omitted) | No |
+| `name` | `string` | Process name | Yes |
 | `command` | `string` | Command to execute | Yes |
 | `args` | `array(string)` | Command arguments | No |
 | `cwd` | `string` | Working directory | No |

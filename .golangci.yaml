@@ -17,7 +17,6 @@ linters:
     - errchkjson
     - errname
     - exhaustive
-    - exhaustruct
     - forcetypeassert
     - funlen
     - gocognit
@@ -69,41 +68,13 @@ linters:
       check:
         - switch
         - map
-    exhaustruct:
-      exclude:
-        - ^net.ListenConfig$
-        - ^net/http.Client$
-        - ^net/http.Cookie$
-        - ^net/http.Request$
-        - ^net/http.Response$
-        - ^net/http.Server$
-        - ^net/http.Transport$
-        - ^net/url.URL$
-        - ^os/exec.Cmd$
-        - ^reflect.StructField$
-        - ^syscall.SysProcAttr$
-        - ^github.com/Shopify/sarama.Config$
-        - ^github.com/Shopify/sarama.ProducerMessage$
-        - ^github.com/mitchellh/mapstructure.DecoderConfig$
-        - ^github.com/prometheus/client_golang/.+Opts$
-        - ^github.com/spf13/cobra.Command$
-        - ^github.com/spf13/cobra.CompletionOptions$
-        - ^github.com/stretchr/testify/mock.Mock$
-        - ^github.com/testcontainers/testcontainers-go.+Request$
-        - ^github.com/testcontainers/testcontainers-go.FromDockerfile$
-        - ^golang.org/x/tools/go/analysis.Analyzer$
-        - ^google.golang.org/protobuf/.+Options$
-        - ^gopkg.in/yaml.v3.Node$
-        - ^gopkg.in/yaml.v3.Node$
-        - ^github.com/urfave/.+App$
-        - ^github.com/urfave/.+Command$
-        - ^github.com/urfave/.+Flag$
-        - ^github.com/rprtr258/pm/internal/logrotation.Config$
     funlen:
       lines: 100
       statements: 50
     gocognit:
       min-complexity: 40
+    goconst:
+      min-occurrences: 4
     gocritic:
       settings:
         captLocal:
