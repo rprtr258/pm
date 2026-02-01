@@ -1,0 +1,3 @@
+watch-test:
+  command: "echo"
+  watch: ".*\\.(go|js|ts)$"

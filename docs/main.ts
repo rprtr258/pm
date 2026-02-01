@@ -423,27 +423,28 @@ const docs = <T, X>({
       h3("Supported Formats"), tabs([
         ["JSONNet (.jsonnet)",
           p("The primary configuration format. JSONNet is fully compatible with plain JSON."),
-          codeblock(dedent(`
-            [
-              {
-                name: "web-server",
-                command: "node",
-                args: ["server.js"],
-                env: {
-                  PORT: "3000",
-                  NODE_ENV: "production"
-                },
-                tags: ["web"],
-                startup: true
-              }
-            ]
-          `), "jsonnet")],
+          codeblock(configExamples.jsonnet, "jsonnet")],
+        ["YAML (.yaml, .yml)",
+          p(a_external("YAML", "https://yaml.org/"), a_external(" ", "https://noyaml.com/"), "- Human-readable data serialization standard."),
+          codeblock(configExamples.yaml, "yaml")],
+        ["TOML (.toml)",
+          p(a_external("TOML", "https://toml.io/"), " - Tom's Obvious, Minimal Language configuration format."),
+          codeblock(configExamples.toml, "toml")],
+        ["INI (.ini, .cfg, .conf)",
+          p("Classic configuration file format with section-based structure."),
+          codeblock(configExamples.ini, "ini")],
+        ["HCL (.hcl)",
+          p("HashiCorp Configuration Language, designed for human-readable machine-friendly configs."),
+          codeblock(configExamples.hcl, "hcl")],
+        ["JSON (.json)",
+          p("Plain JSON configuration format."),
+          codeblock(configExamples.json, "json")],
       ]),
       h3("Configuration Schema"),
         p("All formats define list of processes with following fields:"),
         table(
           ["Field",              "Type",           "Description",                              "Required"],
-          [code("name"),         code("string"),   "Process name (auto-generated if omitted)", "No"],
+          [code("name"),         code("string"),   "Process name",                              "Yes"],
           [code("command"),      code("string"),   "Command to execute",                       "Yes"],
           [code("args"),         code("array(string)"), "Command arguments",                   "No"],
           [code("cwd"),          code("string"),   "Working directory",                        "No"],
@@ -571,6 +572,16 @@ async function writeFile(filename: string, content: string): Promise<void> {
 }
 
 const workspaceDir = join(import.meta.dir, "..");
+// Read example config files for documentation
+const configExamples = {
+  jsonnet: await Bun.file(import.meta.dir + "/examples/config.jsonnet").text(),
+  yaml: await Bun.file(import.meta.dir + "/examples/config.yaml").text(),
+  toml: await Bun.file(import.meta.dir + "/examples/config.toml").text(),
+  ini: await Bun.file(import.meta.dir + "/examples/config.ini").text(),
+  hcl: await Bun.file(import.meta.dir + "/examples/config.hcl").text(),
+  json: await Bun.file(import.meta.dir + "/examples/config.json").text(),
+};
+
 console.log("Checking links...");
 await Promise.all([...new Set(links_collect.render(docs))].map(async ({link, isExternal}) => {
   if (isExternal) {
