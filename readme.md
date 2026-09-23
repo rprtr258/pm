@@ -1,7 +1,9 @@
 # PM (process manager)
-<p align="center"><img src="docs/icon.svg" width="250" height="250"></p>
+<img src="docs/icon.svg" align="right" alt="PM logo" width="150" height="150">
 
 PM is a process manager for Linux: declare your long-running processes in a config file, and PM starts them, keeps them running in the background, restarts them when they crash or when the code changes, and shows you status, logs, and a TUI dashboard. It's like [pm2](https://pm2.keymetrics.io/) — but a single static binary with no Node.js and no JS scripts, and declarative configs in six formats.
+
+<br clear="all">
 
 - **Single binary.** One static Linux binary — no Node.js, no JS scripts. Also installable with `go install github.com/rprtr258/pm@latest`.
 - **Six config formats.** [Jsonnet](https://jsonnet.org/) (primary, back-compatible with JSON), YAML, TOML, INI, HCL, JSON — pick one per project.

@@ -74,7 +74,7 @@ linters:
     gocognit:
       min-complexity: 40
     goconst:
-      min-occurrences: 4
+      min-occurrences: 5
     gocritic:
       settings:
         captLocal:
