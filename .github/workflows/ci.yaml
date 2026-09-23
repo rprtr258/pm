@@ -20,6 +20,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version-file: 'go.mod'
+          cache: true
 
       - name: Add SSH Go Module Private Key
         env:
@@ -40,7 +41,7 @@ jobs:
         env:
           GOPRIVATE: github.com/rprtr258
         with:
-          version: v2.5.0
+          version: v2.13.2
           args: --config=.golangci.yaml
           only-new-issues: true # show only new issues if it's a pull request
 
@@ -53,7 +54,7 @@ jobs:
       - name: Install go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.23.0'
+          go-version-file: 'go.mod'
           cache: true
 
       - name: Add SSH Go Module Private Key

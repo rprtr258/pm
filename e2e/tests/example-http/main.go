@@ -21,7 +21,7 @@ func handleEcho(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	if _, err := w.Write(request); err != nil {
+	if _, err := w.Write(request); err != nil { //nolint:gosec // example program
 		panic(err)
 	}
 }

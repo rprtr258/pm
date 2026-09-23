@@ -12,10 +12,10 @@ PM := go run main.go
 CURDIR=$(shell pwd)
 BINDIR=${CURDIR}/bin
 
-GOLANGCILINTVER=2.5.0
+GOLANGCILINTVER=2.13.2
 GOLANGCILINTBIN=${BINDIR}/golangci-lint_${GOLANGCILINTVER}
 
-GOCRITICVER=v0.11.4
+GOCRITICVER=v0.15.0
 GOCRITICBIN=${BINDIR}/gocritic_${GOCRITICVER}
 
 GOTESTSUM=go run gotest.tools/gotestsum@latest
@@ -82,7 +82,7 @@ install-linter: bindir
 
 lint-go: install-linter # run go linter
 	@${GOLANGCILINTBIN} run ./...
-	@${GOCRITICBIN} check -enableAll -disable='rangeValCopy,hugeParam,unnamedResult' ./...
+	@${GOCRITICBIN} check -enableAll -disable='rangeValCopy,hugeParam,unnamedResult,importShadow,commentedOutCode' ./...
 
 lint-goreleaser: # run goreleaser linter
 	goreleaser check

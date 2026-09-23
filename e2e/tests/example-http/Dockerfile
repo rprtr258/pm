@@ -1,4 +1,4 @@
-FROM golang:1.19
+FROM golang:1.27
 
 WORKDIR /app
 COPY main.go main.go
