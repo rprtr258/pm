@@ -121,9 +121,8 @@ func cols(t Table, w int) []int {
 }
 
 func renderShort(t Table, w int) string {
-	res := []string{}
-	for _, row := range t.Rows {
-		res = append(res, strings.Join(fun.Map[string](func(r string, i int) string {
+	res := fun.Map[string](func(row []string) string {
+		return strings.Join(fun.Map[string](func(r string, i int) string {
 			header := t.Headers[i]
 			subLen := ansi.PrintableRuneWidth(header) +
 				ansi.PrintableRuneWidth(r)
@@ -131,8 +130,8 @@ func renderShort(t Table, w int) string {
 				return header + safeRepeat(" ", w-subLen) + r
 			}
 			return t.Headers[i] + " " + r
-		}, row...), "\n"))
-	}
+		}, row...), "\n")
+	}, t.Rows...)
 	return strings.Join(res, "\n"+safeRepeat(borders[W|E], w)+"\n")
 }
 

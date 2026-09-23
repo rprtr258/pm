@@ -264,7 +264,7 @@ func handleSliceEvent(b *batchedWatcherHandler[[]fsnotify.Event], specialFile st
 		if err != nil {
 			b.s.log.logf("error: failed to derive %q relative to %q: %v", ev.Name, b.s.rootdir, err)
 		} else {
-			sb.WriteString(fmt.Sprintf("  name: %s, op: %v\n", rel, ev.Op))
+			fmt.Fprintf(&sb, "  name: %s, op: %v\n", rel, ev.Op)
 		}
 	}
 	sb.WriteString("]\n")
