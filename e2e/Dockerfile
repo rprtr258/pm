@@ -1,4 +1,4 @@
-FROM golang:1.23.0-alpine AS build
+FROM golang:1.27.0-alpine AS build
 WORKDIR /app
 RUN mkdir /.coverdata
 COPY go.mod go.sum /app/

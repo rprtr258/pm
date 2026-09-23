@@ -1,0 +1,643 @@
+﻿2026-09-23T00:49:07.7492029Z Current runner version: '2.337.0'
+2026-09-23T00:49:07.7530816Z ##[group]Runner Image Provisioner
+2026-09-23T00:49:07.7533016Z Hosted Compute Agent
+2026-09-23T00:49:07.7534800Z Version: 20260828.587
+2026-09-23T00:49:07.7536749Z Commit: abac92662cab4cc7352de4f9f9d2e2419aad9c29
+2026-09-23T00:49:07.7538907Z Build Date: 2026-08-28T16:44:25Z
+2026-09-23T00:49:07.7541345Z Worker ID: {90b69316-286b-4b8d-b92a-db58b5433e93}
+2026-09-23T00:49:07.7543586Z Azure Region: eastus2
+2026-09-23T00:49:07.7545472Z ##[endgroup]
+2026-09-23T00:49:07.7548594Z ##[group]Operating System
+2026-09-23T00:49:07.7550737Z Ubuntu
+2026-09-23T00:49:07.7552269Z 24.04.5
+2026-09-23T00:49:07.7553957Z LTS
+2026-09-23T00:49:07.7555627Z ##[endgroup]
+2026-09-23T00:49:07.7557347Z ##[group]Runner Image
+2026-09-23T00:49:07.7559189Z Image: ubuntu-24.04
+2026-09-23T00:49:07.7561034Z Version: 20260920.314.1
+2026-09-23T00:49:07.7564046Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260920.314/images/ubuntu/Ubuntu2404-Readme.md
+2026-09-23T00:49:07.7567618Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260920.314
+2026-09-23T00:49:07.7570563Z ##[endgroup]
+2026-09-23T00:49:07.7577564Z ##[group]GITHUB_TOKEN Permissions
+2026-09-23T00:49:07.7582109Z Actions: write
+2026-09-23T00:49:07.7583819Z ArtifactMetadata: write
+2026-09-23T00:49:07.7585565Z Attestations: write
+2026-09-23T00:49:07.7587360Z Checks: write
+2026-09-23T00:49:07.7589001Z CodeQuality: write
+2026-09-23T00:49:07.7591010Z Contents: write
+2026-09-23T00:49:07.7592657Z CopilotRequests: write
+2026-09-23T00:49:07.7594518Z Deployments: write
+2026-09-23T00:49:07.7596376Z Discussions: write
+2026-09-23T00:49:07.7598204Z Drives: write
+2026-09-23T00:49:07.7600179Z Issues: write
+2026-09-23T00:49:07.7602033Z Metadata: read
+2026-09-23T00:49:07.7604106Z Models: read
+2026-09-23T00:49:07.7606062Z Packages: write
+2026-09-23T00:49:07.7607965Z Pages: write
+2026-09-23T00:49:07.7610033Z PullRequests: write
+2026-09-23T00:49:07.7611800Z RepositoryProjects: write
+2026-09-23T00:49:07.7613691Z SecurityEvents: write
+2026-09-23T00:49:07.7615624Z Statuses: write
+2026-09-23T00:49:07.7617481Z VulnerabilityAlerts: read
+2026-09-23T00:49:07.7619627Z ##[endgroup]
+2026-09-23T00:49:07.7623463Z Secret source: Actions
+2026-09-23T00:49:07.7626124Z Cache mode: write
+2026-09-23T00:49:07.7628107Z Prepare workflow directory
+2026-09-23T00:49:07.8108249Z Prepare all required actions
+2026-09-23T00:49:07.8156236Z Getting action download info
+2026-09-23T00:49:07.9854824Z Download action repository 'actions/checkout@v3' (SHA:a37ce9120846195fa4ece8f58b268e6043cb2f26)
+2026-09-23T00:49:08.0947167Z Download action repository 'actions/setup-go@v4' (SHA:7b8cf10d4e4a01d4992d18a89f4d7dc5a3e6d6f4)
+2026-09-23T00:49:08.3197258Z Download action repository 'golangci/golangci-lint-action@v7' (SHA:9fae48acfc02a90574d7c304a1758ef9895495fa)
+2026-09-23T00:49:08.6233444Z Complete job name: lint
+2026-09-23T00:49:08.7148190Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-23T00:49:08.7158147Z ##[group]Run actions/checkout@v3
+2026-09-23T00:49:08.7159707Z with:
+2026-09-23T00:49:08.7160587Z   repository: rprtr258/pm
+2026-09-23T00:49:08.7165005Z   token: ***
+2026-09-23T00:49:08.7165859Z   ssh-strict: true
+2026-09-23T00:49:08.7166728Z   persist-credentials: true
+2026-09-23T00:49:08.7167635Z   clean: true
+2026-09-23T00:49:08.7168486Z   sparse-checkout-cone-mode: true
+2026-09-23T00:49:08.7169585Z   fetch-depth: 1
+2026-09-23T00:49:08.7170448Z   fetch-tags: false
+2026-09-23T00:49:08.7171312Z   lfs: false
+2026-09-23T00:49:08.7172143Z   submodules: false
+2026-09-23T00:49:08.7173019Z   set-safe-directory: true
+2026-09-23T00:49:08.7174011Z   allow-unsafe-pr-checkout: false
+2026-09-23T00:49:08.7175286Z ##[endgroup]
+2026-09-23T00:49:08.7982303Z (node:2146) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-09-23T00:49:08.7984500Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-09-23T00:49:08.8085801Z Syncing repository: rprtr258/pm
+2026-09-23T00:49:08.8088681Z ##[group]Getting Git version info
+2026-09-23T00:49:08.8090192Z Working directory is '/home/runner/work/pm/pm'
+2026-09-23T00:49:08.8092008Z [command]/usr/bin/git version
+2026-09-23T00:49:08.8155707Z git version 2.55.0
+2026-09-23T00:49:08.8179016Z ##[endgroup]
+2026-09-23T00:49:08.8192727Z Temporarily overriding HOME='/home/runner/work/_temp/843662f1-4efe-4772-af09-4cda8f04c95c' before making global git config changes
+2026-09-23T00:49:08.8196436Z Adding repository directory to the temporary git global config as a safe directory
+2026-09-23T00:49:08.8200171Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pm/pm
+2026-09-23T00:49:08.8251928Z Deleting the contents of '/home/runner/work/pm/pm'
+2026-09-23T00:49:08.8256711Z ##[group]Initializing the repository
+2026-09-23T00:49:08.8260975Z [command]/usr/bin/git init /home/runner/work/pm/pm
+2026-09-23T00:49:08.8382594Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-09-23T00:49:08.8384713Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-09-23T00:49:08.8386437Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-09-23T00:49:08.8387653Z hint: call:
+2026-09-23T00:49:08.8388873Z hint:
+2026-09-23T00:49:08.8390317Z hint: 	git config --global init.defaultBranch <name>
+2026-09-23T00:49:08.8391410Z hint:
+2026-09-23T00:49:08.8392437Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-09-23T00:49:08.8393865Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-09-23T00:49:08.8395740Z hint:
+2026-09-23T00:49:08.8396620Z hint: 	git branch -m <name>
+2026-09-23T00:49:08.8397538Z hint:
+2026-09-23T00:49:08.8398655Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-09-23T00:49:08.8400905Z Initialized empty Git repository in /home/runner/work/pm/pm/.git/
+2026-09-23T00:49:08.8403430Z [command]/usr/bin/git remote add origin https://github.com/rprtr258/pm
+2026-09-23T00:49:08.8453464Z ##[endgroup]
+2026-09-23T00:49:08.8456271Z ##[group]Disabling automatic garbage collection
+2026-09-23T00:49:08.8458422Z [command]/usr/bin/git config --local gc.auto 0
+2026-09-23T00:49:08.8489006Z ##[endgroup]
+2026-09-23T00:49:08.8492047Z ##[group]Setting up auth
+2026-09-23T00:49:08.8494310Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-09-23T00:49:08.8532634Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-09-23T00:49:08.8919038Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-09-23T00:49:08.8949052Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-09-23T00:49:08.9167254Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-09-23T00:49:08.9205845Z ##[endgroup]
+2026-09-23T00:49:08.9208427Z ##[group]Fetching the repository
+2026-09-23T00:49:08.9215371Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --progress --no-recurse-submodules --depth=1 origin +190ed6a5eda1efb13fc41f8c3dd06d585c87eda7:refs/remotes/origin/bump-deps
+2026-09-23T00:49:09.1455234Z remote: Enumerating objects: 148, done.        
+2026-09-23T00:49:09.1458215Z remote: Counting objects:   0% (1/148)        
+2026-09-23T00:49:09.1461401Z remote: Counting objects:   1% (2/148)        
+2026-09-23T00:49:09.1464188Z remote: Counting objects:   2% (3/148)        
+2026-09-23T00:49:09.1467125Z remote: Counting objects:   3% (5/148)        
+2026-09-23T00:49:09.1468814Z remote: Counting objects:   4% (6/148)        
+2026-09-23T00:49:09.1471626Z remote: Counting objects:   5% (8/148)        
+2026-09-23T00:49:09.1473764Z remote: Counting objects:   6% (9/148)        
+2026-09-23T00:49:09.1475350Z remote: Counting objects:   7% (11/148)        
+2026-09-23T00:49:09.1476967Z remote: Counting objects:   8% (12/148)        
+2026-09-23T00:49:09.1478550Z remote: Counting objects:   9% (14/148)        
+2026-09-23T00:49:09.1480800Z remote: Counting objects:  10% (15/148)        
+2026-09-23T00:49:09.1482907Z remote: Counting objects:  11% (17/148)        
+2026-09-23T00:49:09.1484977Z remote: Counting objects:  12% (18/148)        
+2026-09-23T00:49:09.1487050Z remote: Counting objects:  13% (20/148)        
+2026-09-23T00:49:09.1489445Z remote: Counting objects:  14% (21/148)        
+2026-09-23T00:49:09.1491645Z remote: Counting objects:  15% (23/148)        
+2026-09-23T00:49:09.1493776Z remote: Counting objects:  16% (24/148)        
+2026-09-23T00:49:09.1495896Z remote: Counting objects:  17% (26/148)        
+2026-09-23T00:49:09.1498011Z remote: Counting objects:  18% (27/148)        
+2026-09-23T00:49:09.1500450Z remote: Counting objects:  19% (29/148)        
+2026-09-23T00:49:09.1502608Z remote: Counting objects:  20% (30/148)        
+2026-09-23T00:49:09.1504677Z remote: Counting objects:  21% (32/148)        
+2026-09-23T00:49:09.1507095Z remote: Counting objects:  22% (33/148)        
+2026-09-23T00:49:09.1509856Z remote: Counting objects:  23% (35/148)        
+2026-09-23T00:49:09.1511861Z remote: Counting objects:  24% (36/148)        
+2026-09-23T00:49:09.1513784Z remote: Counting objects:  25% (37/148)        
+2026-09-23T00:49:09.1515706Z remote: Counting objects:  26% (39/148)        
+2026-09-23T00:49:09.1517716Z remote: Counting objects:  27% (40/148)        
+2026-09-23T00:49:09.1520025Z remote: Counting objects:  28% (42/148)        
+2026-09-23T00:49:09.1522032Z remote: Counting objects:  29% (43/148)        
+2026-09-23T00:49:09.1524012Z remote: Counting objects:  30% (45/148)        
+2026-09-23T00:49:09.1525977Z remote: Counting objects:  31% (46/148)        
+2026-09-23T00:49:09.1527969Z remote: Counting objects:  32% (48/148)        
+2026-09-23T00:49:09.1530365Z remote: Counting objects:  33% (49/148)        
+2026-09-23T00:49:09.1533255Z remote: Counting objects:  34% (51/148)        
+2026-09-23T00:49:09.1536258Z remote: Counting objects:  35% (52/148)        
+2026-09-23T00:49:09.1538352Z remote: Counting objects:  36% (54/148)        
+2026-09-23T00:49:09.1541013Z remote: Counting objects:  37% (55/148)        
+2026-09-23T00:49:09.1543149Z remote: Counting objects:  38% (57/148)        
+2026-09-23T00:49:09.1545237Z remote: Counting objects:  39% (58/148)        
+2026-09-23T00:49:09.1547347Z remote: Counting objects:  40% (60/148)        
+2026-09-23T00:49:09.1549894Z remote: Counting objects:  41% (61/148)        
+2026-09-23T00:49:09.1551996Z remote: Counting objects:  42% (63/148)        
+2026-09-23T00:49:09.1554199Z remote: Counting objects:  43% (64/148)        
+2026-09-23T00:49:09.1556253Z remote: Counting objects:  44% (66/148)        
+2026-09-23T00:49:09.1558369Z remote: Counting objects:  45% (67/148)        
+2026-09-23T00:49:09.1560735Z remote: Counting objects:  46% (69/148)        
+2026-09-23T00:49:09.1562747Z remote: Counting objects:  47% (70/148)        
+2026-09-23T00:49:09.1564817Z remote: Counting objects:  48% (72/148)        
+2026-09-23T00:49:09.1566907Z remote: Counting objects:  49% (73/148)        
+2026-09-23T00:49:09.1568891Z remote: Counting objects:  50% (74/148)        
+2026-09-23T00:49:09.1571215Z remote: Counting objects:  51% (76/148)        
+2026-09-23T00:49:09.1573295Z remote: Counting objects:  52% (77/148)        
+2026-09-23T00:49:09.1575303Z remote: Counting objects:  53% (79/148)        
+2026-09-23T00:49:09.1577396Z remote: Counting objects:  54% (80/148)        
+2026-09-23T00:49:09.1580112Z remote: Counting objects:  55% (82/148)        
+2026-09-23T00:49:09.1582667Z remote: Counting objects:  56% (83/148)        
+2026-09-23T00:49:09.1585390Z remote: Counting objects:  57% (85/148)        
+2026-09-23T00:49:09.1587409Z remote: Counting objects:  58% (86/148)        
+2026-09-23T00:49:09.1589712Z remote: Counting objects:  59% (88/148)        
+2026-09-23T00:49:09.1591753Z remote: Counting objects:  60% (89/148)        
+2026-09-23T00:49:09.1593761Z remote: Counting objects:  61% (91/148)        
+2026-09-23T00:49:09.1595769Z remote: Counting objects:  62% (92/148)        
+2026-09-23T00:49:09.1597810Z remote: Counting objects:  63% (94/148)        
+2026-09-23T00:49:09.1600030Z remote: Counting objects:  64% (95/148)        
+2026-09-23T00:49:09.1602049Z remote: Counting objects:  65% (97/148)        
+2026-09-23T00:49:09.1604048Z remote: Counting objects:  66% (98/148)        
+2026-09-23T00:49:09.1606073Z remote: Counting objects:  67% (100/148)        
+2026-09-23T00:49:09.1608085Z remote: Counting objects:  68% (101/148)        
+2026-09-23T00:49:09.1610321Z remote: Counting objects:  69% (103/148)        
+2026-09-23T00:49:09.1613338Z remote: Counting objects:  70% (104/148)        
+2026-09-23T00:49:09.1616717Z remote: Counting objects:  71% (106/148)        
+2026-09-23T00:49:09.1618883Z remote: Counting objects:  72% (107/148)        
+2026-09-23T00:49:09.1621318Z remote: Counting objects:  73% (109/148)        
+2026-09-23T00:49:09.1623363Z remote: Counting objects:  74% (110/148)        
+2026-09-23T00:49:09.1625405Z remote: Counting objects:  75% (111/148)        
+2026-09-23T00:49:09.1627446Z remote: Counting objects:  76% (113/148)        
+2026-09-23T00:49:09.1629739Z remote: Counting objects:  77% (114/148)        
+2026-09-23T00:49:09.1631791Z remote: Counting objects:  78% (116/148)        
+2026-09-23T00:49:09.1633823Z remote: Counting objects:  79% (117/148)        
+2026-09-23T00:49:09.1635835Z remote: Counting objects:  80% (119/148)        
+2026-09-23T00:49:09.1637841Z remote: Counting objects:  81% (120/148)        
+2026-09-23T00:49:09.1640071Z remote: Counting objects:  82% (122/148)        
+2026-09-23T00:49:09.1642115Z remote: Counting objects:  83% (123/148)        
+2026-09-23T00:49:09.1644133Z remote: Counting objects:  84% (125/148)        
+2026-09-23T00:49:09.1646137Z remote: Counting objects:  85% (126/148)        
+2026-09-23T00:49:09.1648109Z remote: Counting objects:  86% (128/148)        
+2026-09-23T00:49:09.1650349Z remote: Counting objects:  87% (129/148)        
+2026-09-23T00:49:09.1652339Z remote: Counting objects:  88% (131/148)        
+2026-09-23T00:49:09.1654309Z remote: Counting objects:  89% (132/148)        
+2026-09-23T00:49:09.1656305Z remote: Counting objects:  90% (134/148)        
+2026-09-23T00:49:09.1658278Z remote: Counting objects:  91% (135/148)        
+2026-09-23T00:49:09.1660578Z remote: Counting objects:  92% (137/148)        
+2026-09-23T00:49:09.1662581Z remote: Counting objects:  93% (138/148)        
+2026-09-23T00:49:09.1664747Z remote: Counting objects:  94% (140/148)        
+2026-09-23T00:49:09.1666740Z remote: Counting objects:  95% (141/148)        
+2026-09-23T00:49:09.1668708Z remote: Counting objects:  96% (143/148)        
+2026-09-23T00:49:09.1671518Z remote: Counting objects:  97% (144/148)        
+2026-09-23T00:49:09.1674824Z remote: Counting objects:  98% (146/148)        
+2026-09-23T00:49:09.1678003Z remote: Counting objects:  99% (147/148)        
+2026-09-23T00:49:09.1681420Z remote: Counting objects: 100% (148/148)        
+2026-09-23T00:49:09.1684742Z remote: Counting objects: 100% (148/148), done.        
+2026-09-23T00:49:09.1688064Z remote: Compressing objects:   0% (1/122)        
+2026-09-23T00:49:09.1691499Z remote: Compressing objects:   1% (2/122)        
+2026-09-23T00:49:09.1694743Z remote: Compressing objects:   2% (3/122)        
+2026-09-23T00:49:09.1697964Z remote: Compressing objects:   3% (4/122)        
+2026-09-23T00:49:09.1701450Z remote: Compressing objects:   4% (5/122)        
+2026-09-23T00:49:09.1703867Z remote: Compressing objects:   5% (7/122)        
+2026-09-23T00:49:09.1705888Z remote: Compressing objects:   6% (8/122)        
+2026-09-23T00:49:09.1708042Z remote: Compressing objects:   7% (9/122)        
+2026-09-23T00:49:09.1710351Z remote: Compressing objects:   8% (10/122)        
+2026-09-23T00:49:09.1712344Z remote: Compressing objects:   9% (11/122)        
+2026-09-23T00:49:09.1714303Z remote: Compressing objects:  10% (13/122)        
+2026-09-23T00:49:09.1716317Z remote: Compressing objects:  11% (14/122)        
+2026-09-23T00:49:09.1718397Z remote: Compressing objects:  12% (15/122)        
+2026-09-23T00:49:09.1720600Z remote: Compressing objects:  13% (16/122)        
+2026-09-23T00:49:09.1722589Z remote: Compressing objects:  14% (18/122)        
+2026-09-23T00:49:09.1724566Z remote: Compressing objects:  15% (19/122)        
+2026-09-23T00:49:09.1726585Z remote: Compressing objects:  16% (20/122)        
+2026-09-23T00:49:09.1728601Z remote: Compressing objects:  17% (21/122)        
+2026-09-23T00:49:09.1731462Z remote: Compressing objects:  18% (22/122)        
+2026-09-23T00:49:09.1734671Z remote: Compressing objects:  19% (24/122)        
+2026-09-23T00:49:09.1738020Z remote: Compressing objects:  20% (25/122)        
+2026-09-23T00:49:09.1741554Z remote: Compressing objects:  21% (26/122)        
+2026-09-23T00:49:09.1744868Z remote: Compressing objects:  22% (27/122)        
+2026-09-23T00:49:09.1748160Z remote: Compressing objects:  23% (29/122)        
+2026-09-23T00:49:09.1751759Z remote: Compressing objects:  24% (30/122)        
+2026-09-23T00:49:09.1755090Z remote: Compressing objects:  25% (31/122)        
+2026-09-23T00:49:09.1758398Z remote: Compressing objects:  26% (32/122)        
+2026-09-23T00:49:09.1762047Z remote: Compressing objects:  27% (33/122)        
+2026-09-23T00:49:09.1765347Z remote: Compressing objects:  28% (35/122)        
+2026-09-23T00:49:09.1768633Z remote: Compressing objects:  29% (36/122)        
+2026-09-23T00:49:09.1772187Z remote: Compressing objects:  30% (37/122)        
+2026-09-23T00:49:09.1775508Z remote: Compressing objects:  31% (38/122)        
+2026-09-23T00:49:09.1777753Z remote: Compressing objects:  32% (40/122)        
+2026-09-23T00:49:09.1780088Z remote: Compressing objects:  33% (41/122)        
+2026-09-23T00:49:09.1782137Z remote: Compressing objects:  34% (42/122)        
+2026-09-23T00:49:09.1784144Z remote: Compressing objects:  35% (43/122)        
+2026-09-23T00:49:09.1786148Z remote: Compressing objects:  36% (44/122)        
+2026-09-23T00:49:09.1788144Z remote: Compressing objects:  37% (46/122)        
+2026-09-23T00:49:09.1791223Z remote: Compressing objects:  38% (47/122)        
+2026-09-23T00:49:09.1794433Z remote: Compressing objects:  39% (48/122)        
+2026-09-23T00:49:09.1797538Z remote: Compressing objects:  40% (49/122)        
+2026-09-23T00:49:09.1800862Z remote: Compressing objects:  41% (51/122)        
+2026-09-23T00:49:09.1803966Z remote: Compressing objects:  42% (52/122)        
+2026-09-23T00:49:09.1807405Z remote: Compressing objects:  43% (53/122)        
+2026-09-23T00:49:09.1810993Z remote: Compressing objects:  44% (54/122)        
+2026-09-23T00:49:09.1814185Z remote: Compressing objects:  45% (55/122)        
+2026-09-23T00:49:09.1816698Z remote: Compressing objects:  46% (57/122)        
+2026-09-23T00:49:09.1818711Z remote: Compressing objects:  47% (58/122)        
+2026-09-23T00:49:09.1821941Z remote: Compressing objects:  48% (59/122)        
+2026-09-23T00:49:09.1824729Z remote: Compressing objects:  49% (60/122)        
+2026-09-23T00:49:09.1827546Z remote: Compressing objects:  50% (61/122)        
+2026-09-23T00:49:09.1830339Z remote: Compressing objects:  51% (63/122)        
+2026-09-23T00:49:09.1832745Z remote: Compressing objects:  52% (64/122)        
+2026-09-23T00:49:09.1836024Z remote: Compressing objects:  53% (65/122)        
+2026-09-23T00:49:09.1838501Z remote: Compressing objects:  54% (66/122)        
+2026-09-23T00:49:09.1840894Z remote: Compressing objects:  55% (68/122)        
+2026-09-23T00:49:09.1866975Z remote: Compressing objects:  56% (69/122)        
+2026-09-23T00:49:09.1869067Z remote: Compressing objects:  57% (70/122)        
+2026-09-23T00:49:09.1871751Z remote: Compressing objects:  58% (71/122)        
+2026-09-23T00:49:09.1873907Z remote: Compressing objects:  59% (72/122)        
+2026-09-23T00:49:09.1876101Z remote: Compressing objects:  60% (74/122)        
+2026-09-23T00:49:09.1878110Z remote: Compressing objects:  61% (75/122)        
+2026-09-23T00:49:09.1880563Z remote: Compressing objects:  62% (76/122)        
+2026-09-23T00:49:09.1882596Z remote: Compressing objects:  63% (77/122)        
+2026-09-23T00:49:09.1884786Z remote: Compressing objects:  64% (79/122)        
+2026-09-23T00:49:09.1886940Z remote: Compressing objects:  65% (80/122)        
+2026-09-23T00:49:09.1889010Z remote: Compressing objects:  66% (81/122)        
+2026-09-23T00:49:09.1892461Z remote: Compressing objects:  67% (82/122)        
+2026-09-23T00:49:09.1895917Z remote: Compressing objects:  68% (83/122)        
+2026-09-23T00:49:09.1899595Z remote: Compressing objects:  69% (85/122)        
+2026-09-23T00:49:09.1901738Z remote: Compressing objects:  70% (86/122)        
+2026-09-23T00:49:09.1905249Z remote: Compressing objects:  71% (87/122)        
+2026-09-23T00:49:09.1907664Z remote: Compressing objects:  72% (88/122)        
+2026-09-23T00:49:09.1910622Z remote: Compressing objects:  73% (90/122)        
+2026-09-23T00:49:09.1913170Z remote: Compressing objects:  74% (91/122)        
+2026-09-23T00:49:09.1915447Z remote: Compressing objects:  75% (92/122)        
+2026-09-23T00:49:09.1917934Z remote: Compressing objects:  76% (93/122)        
+2026-09-23T00:49:09.1920219Z remote: Compressing objects:  77% (94/122)        
+2026-09-23T00:49:09.1922389Z remote: Compressing objects:  78% (96/122)        
+2026-09-23T00:49:09.1924497Z remote: Compressing objects:  79% (97/122)        
+2026-09-23T00:49:09.1926692Z remote: Compressing objects:  80% (98/122)        
+2026-09-23T00:49:09.1928705Z remote: Compressing objects:  81% (99/122)        
+2026-09-23T00:49:09.1931706Z remote: Compressing objects:  82% (101/122)        
+2026-09-23T00:49:09.1933793Z remote: Compressing objects:  83% (102/122)        
+2026-09-23T00:49:09.1935845Z remote: Compressing objects:  84% (103/122)        
+2026-09-23T00:49:09.1937870Z remote: Compressing objects:  85% (104/122)        
+2026-09-23T00:49:09.1940256Z remote: Compressing objects:  86% (105/122)        
+2026-09-23T00:49:09.1942298Z remote: Compressing objects:  87% (107/122)        
+2026-09-23T00:49:09.1944450Z remote: Compressing objects:  88% (108/122)        
+2026-09-23T00:49:09.1946481Z remote: Compressing objects:  89% (109/122)        
+2026-09-23T00:49:09.1948635Z remote: Compressing objects:  90% (110/122)        
+2026-09-23T00:49:09.1950940Z remote: Compressing objects:  91% (112/122)        
+2026-09-23T00:49:09.1953101Z remote: Compressing objects:  92% (113/122)        
+2026-09-23T00:49:09.1955155Z remote: Compressing objects:  93% (114/122)        
+2026-09-23T00:49:09.1957489Z remote: Compressing objects:  94% (115/122)        
+2026-09-23T00:49:09.1959891Z remote: Compressing objects:  95% (116/122)        
+2026-09-23T00:49:09.1961970Z remote: Compressing objects:  96% (118/122)        
+2026-09-23T00:49:09.1964122Z remote: Compressing objects:  97% (119/122)        
+2026-09-23T00:49:09.1966165Z remote: Compressing objects:  98% (120/122)        
+2026-09-23T00:49:09.1968197Z remote: Compressing objects:  99% (121/122)        
+2026-09-23T00:49:09.1970493Z remote: Compressing objects: 100% (122/122)        
+2026-09-23T00:49:09.1972634Z remote: Compressing objects: 100% (122/122), done.        
+2026-09-23T00:49:09.1974622Z Receiving objects:   0% (1/148)
+2026-09-23T00:49:09.1976210Z Receiving objects:   1% (2/148)
+2026-09-23T00:49:09.1977788Z Receiving objects:   2% (3/148)
+2026-09-23T00:49:09.1979698Z Receiving objects:   3% (5/148)
+2026-09-23T00:49:09.1981334Z Receiving objects:   4% (6/148)
+2026-09-23T00:49:09.1982940Z Receiving objects:   5% (8/148)
+2026-09-23T00:49:09.1984523Z Receiving objects:   6% (9/148)
+2026-09-23T00:49:09.1986129Z Receiving objects:   7% (11/148)
+2026-09-23T00:49:09.1987747Z Receiving objects:   8% (12/148)
+2026-09-23T00:49:09.1989793Z Receiving objects:   9% (14/148)
+2026-09-23T00:49:09.1991435Z Receiving objects:  10% (15/148)
+2026-09-23T00:49:09.1993066Z Receiving objects:  11% (17/148)
+2026-09-23T00:49:09.1994694Z Receiving objects:  12% (18/148)
+2026-09-23T00:49:09.1996298Z Receiving objects:  13% (20/148)
+2026-09-23T00:49:09.1997916Z Receiving objects:  14% (21/148)
+2026-09-23T00:49:09.1999738Z Receiving objects:  15% (23/148)
+2026-09-23T00:49:09.2001372Z Receiving objects:  16% (24/148)
+2026-09-23T00:49:09.2002997Z Receiving objects:  17% (26/148)
+2026-09-23T00:49:09.2004619Z Receiving objects:  18% (27/148)
+2026-09-23T00:49:09.2006294Z Receiving objects:  19% (29/148)
+2026-09-23T00:49:09.2007918Z Receiving objects:  20% (30/148)
+2026-09-23T00:49:09.2009887Z Receiving objects:  21% (32/148)
+2026-09-23T00:49:09.2011527Z Receiving objects:  22% (33/148)
+2026-09-23T00:49:09.2013160Z Receiving objects:  23% (35/148)
+2026-09-23T00:49:09.2014764Z Receiving objects:  24% (36/148)
+2026-09-23T00:49:09.2016370Z Receiving objects:  25% (37/148)
+2026-09-23T00:49:09.2017997Z Receiving objects:  26% (39/148)
+2026-09-23T00:49:09.2019837Z Receiving objects:  27% (40/148)
+2026-09-23T00:49:09.2021591Z Receiving objects:  28% (42/148)
+2026-09-23T00:49:09.2023192Z Receiving objects:  29% (43/148)
+2026-09-23T00:49:09.2024796Z Receiving objects:  30% (45/148)
+2026-09-23T00:49:09.2026398Z Receiving objects:  31% (46/148)
+2026-09-23T00:49:09.2028010Z Receiving objects:  32% (48/148)
+2026-09-23T00:49:09.2029933Z Receiving objects:  33% (49/148)
+2026-09-23T00:49:09.2031571Z Receiving objects:  34% (51/148)
+2026-09-23T00:49:09.2033182Z Receiving objects:  35% (52/148)
+2026-09-23T00:49:09.2034800Z Receiving objects:  36% (54/148)
+2026-09-23T00:49:09.2036404Z Receiving objects:  37% (55/148)
+2026-09-23T00:49:09.2038149Z Receiving objects:  38% (57/148)
+2026-09-23T00:49:09.2040005Z Receiving objects:  39% (58/148)
+2026-09-23T00:49:09.2041629Z Receiving objects:  40% (60/148)
+2026-09-23T00:49:09.2043251Z Receiving objects:  41% (61/148)
+2026-09-23T00:49:09.2045060Z Receiving objects:  42% (63/148)
+2026-09-23T00:49:09.2047249Z Receiving objects:  43% (64/148)
+2026-09-23T00:49:09.2049132Z Receiving objects:  44% (66/148)
+2026-09-23T00:49:09.2051093Z Receiving objects:  45% (67/148)
+2026-09-23T00:49:09.2053438Z Receiving objects:  46% (69/148)
+2026-09-23T00:49:09.2055146Z Receiving objects:  47% (70/148)
+2026-09-23T00:49:09.2056901Z Receiving objects:  48% (72/148)
+2026-09-23T00:49:09.2058528Z Receiving objects:  49% (73/148)
+2026-09-23T00:49:09.2061404Z Receiving objects:  50% (74/148)
+2026-09-23T00:49:09.2063883Z Receiving objects:  51% (76/148)
+2026-09-23T00:49:09.2066704Z Receiving objects:  52% (77/148)
+2026-09-23T00:49:09.2069693Z Receiving objects:  53% (79/148)
+2026-09-23T00:49:09.2072404Z Receiving objects:  54% (80/148)
+2026-09-23T00:49:09.2075101Z Receiving objects:  55% (82/148)
+2026-09-23T00:49:09.2078085Z Receiving objects:  56% (83/148)
+2026-09-23T00:49:09.2080067Z Receiving objects:  57% (85/148)
+2026-09-23T00:49:09.2081708Z Receiving objects:  58% (86/148)
+2026-09-23T00:49:09.2083625Z Receiving objects:  59% (88/148)
+2026-09-23T00:49:09.2085937Z Receiving objects:  60% (89/148)
+2026-09-23T00:49:09.2087585Z Receiving objects:  61% (91/148)
+2026-09-23T00:49:09.2089448Z Receiving objects:  62% (92/148)
+2026-09-23T00:49:09.2091107Z Receiving objects:  63% (94/148)
+2026-09-23T00:49:09.2092713Z Receiving objects:  64% (95/148)
+2026-09-23T00:49:09.2094320Z Receiving objects:  65% (97/148)
+2026-09-23T00:49:09.2095920Z Receiving objects:  66% (98/148)
+2026-09-23T00:49:09.2097705Z Receiving objects:  67% (100/148)
+2026-09-23T00:49:09.2099746Z Receiving objects:  68% (101/148)
+2026-09-23T00:49:09.2101975Z Receiving objects:  69% (103/148)
+2026-09-23T00:49:09.2104866Z Receiving objects:  70% (104/148)
+2026-09-23T00:49:09.2107774Z Receiving objects:  71% (106/148)
+2026-09-23T00:49:09.2110940Z Receiving objects:  72% (107/148)
+2026-09-23T00:49:09.2113780Z Receiving objects:  73% (109/148)
+2026-09-23T00:49:09.2116717Z Receiving objects:  74% (110/148)
+2026-09-23T00:49:09.2118661Z Receiving objects:  75% (111/148)
+2026-09-23T00:49:09.2120605Z Receiving objects:  76% (113/148)
+2026-09-23T00:49:09.2122408Z Receiving objects:  77% (114/148)
+2026-09-23T00:49:09.2124889Z Receiving objects:  78% (116/148)
+2026-09-23T00:49:09.2126530Z Receiving objects:  79% (117/148)
+2026-09-23T00:49:09.2128146Z Receiving objects:  80% (119/148)
+2026-09-23T00:49:09.2130037Z Receiving objects:  81% (120/148)
+2026-09-23T00:49:09.2131664Z Receiving objects:  82% (122/148)
+2026-09-23T00:49:09.2133699Z Receiving objects:  83% (123/148)
+2026-09-23T00:49:09.2135685Z Receiving objects:  84% (125/148)
+2026-09-23T00:49:09.2138542Z Receiving objects:  85% (126/148)
+2026-09-23T00:49:09.2141594Z Receiving objects:  86% (128/148)
+2026-09-23T00:49:09.2144420Z Receiving objects:  87% (129/148)
+2026-09-23T00:49:09.2147310Z Receiving objects:  88% (131/148)
+2026-09-23T00:49:09.2150412Z Receiving objects:  89% (132/148)
+2026-09-23T00:49:09.2153306Z Receiving objects:  90% (134/148)
+2026-09-23T00:49:09.2155953Z Receiving objects:  91% (135/148)
+2026-09-23T00:49:09.2158442Z Receiving objects:  92% (137/148)
+2026-09-23T00:49:09.2161399Z Receiving objects:  93% (138/148)
+2026-09-23T00:49:09.2164036Z Receiving objects:  94% (140/148)
+2026-09-23T00:49:09.2166952Z Receiving objects:  95% (141/148)
+2026-09-23T00:49:09.2170857Z remote: Total 148 (delta 3), reused 89 (delta 0), pack-reused 0 (from 0)        
+2026-09-23T00:49:09.2175031Z Receiving objects:  96% (143/148)
+2026-09-23T00:49:09.2177925Z Receiving objects:  97% (144/148)
+2026-09-23T00:49:09.2181010Z Receiving objects:  98% (146/148)
+2026-09-23T00:49:09.2183900Z Receiving objects:  99% (147/148)
+2026-09-23T00:49:09.2186824Z Receiving objects: 100% (148/148)
+2026-09-23T00:49:09.2190290Z Receiving objects: 100% (148/148), 170.46 KiB | 7.10 MiB/s, done.
+2026-09-23T00:49:09.2193794Z Resolving deltas:   0% (0/3)
+2026-09-23T00:49:09.2196220Z Resolving deltas:  33% (1/3)
+2026-09-23T00:49:09.2198595Z Resolving deltas:  66% (2/3)
+2026-09-23T00:49:09.2201168Z Resolving deltas: 100% (3/3)
+2026-09-23T00:49:09.2203649Z Resolving deltas: 100% (3/3), done.
+2026-09-23T00:49:09.2206331Z From https://github.com/rprtr258/pm
+2026-09-23T00:49:09.2209838Z  * [new ref]         190ed6a5eda1efb13fc41f8c3dd06d585c87eda7 -> origin/bump-deps
+2026-09-23T00:49:09.2215677Z ##[endgroup]
+2026-09-23T00:49:09.2217902Z ##[group]Determining the checkout info
+2026-09-23T00:49:09.2220687Z ##[endgroup]
+2026-09-23T00:49:09.2222868Z ##[group]Checking out the ref
+2026-09-23T00:49:09.2225286Z [command]/usr/bin/git checkout --progress --force -B bump-deps refs/remotes/origin/bump-deps
+2026-09-23T00:49:09.2227799Z Switched to a new branch 'bump-deps'
+2026-09-23T00:49:09.2229936Z branch 'bump-deps' set up to track 'origin/bump-deps'.
+2026-09-23T00:49:09.2235652Z ##[endgroup]
+2026-09-23T00:49:09.2238728Z [command]/usr/bin/git log -1 --format='%H'
+2026-09-23T00:49:09.2241101Z '190ed6a5eda1efb13fc41f8c3dd06d585c87eda7'
+2026-09-23T00:49:09.2538039Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-23T00:49:09.2544291Z ##[group]Run actions/setup-go@v4
+2026-09-23T00:49:09.2545798Z with:
+2026-09-23T00:49:09.2547087Z   go-version-file: go.mod
+2026-09-23T00:49:09.2548508Z   cache: true
+2026-09-23T00:49:09.2550162Z   check-latest: false
+2026-09-23T00:49:09.2560191Z   token: ***
+2026-09-23T00:49:09.2561520Z ##[endgroup]
+2026-09-23T00:49:09.3831747Z Setup go version spec 1.27.0
+2026-09-23T00:49:09.3846393Z Attempting to download 1.27.0...
+2026-09-23T00:49:09.3952929Z (node:2231) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-09-23T00:49:09.3957215Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-09-23T00:49:09.7431708Z matching 1.27.0...
+2026-09-23T00:49:09.7472760Z Acquiring 1.27.0 from https://github.com/actions/go-versions/releases/download/1.27.0-32325163857/go-1.27.0-linux-x64.tar.gz
+2026-09-23T00:49:10.5247505Z Extracting Go...
+2026-09-23T00:49:10.5357852Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/8d79ee08-09f3-4398-9fc6-4c34a057fc30 -f /home/runner/work/_temp/9d9a6a57-636b-4d76-84c6-fe27fc96d209
+2026-09-23T00:49:12.2275858Z Successfully extracted go to /home/runner/work/_temp/8d79ee08-09f3-4398-9fc6-4c34a057fc30
+2026-09-23T00:49:12.2276976Z Adding to the cache ...
+2026-09-23T00:49:18.1422575Z Successfully cached go to /opt/hostedtoolcache/go/1.27.0/x64
+2026-09-23T00:49:18.1430275Z Added go to the path
+2026-09-23T00:49:18.1431043Z Successfully set up Go version 1.27.0
+2026-09-23T00:49:18.1680293Z [command]/opt/hostedtoolcache/go/1.27.0/x64/bin/go env GOMODCACHE
+2026-09-23T00:49:18.1722311Z [command]/opt/hostedtoolcache/go/1.27.0/x64/bin/go env GOCACHE
+2026-09-23T00:49:18.1771547Z /home/runner/go/pkg/mod
+2026-09-23T00:49:18.1787857Z /home/runner/.cache/go-build
+2026-09-23T00:49:18.2591819Z Cache hit for: setup-go-Linux-ubuntu24-go-1.27.0-560ad56828d60cc3cb777b2b59da3dc927bb3cdf10e2ffc79f60aca92fad4c4b
+2026-09-23T00:49:18.2709520Z (node:2231) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+2026-09-23T00:49:19.3035617Z Received 230686720 of 426655695 (54.1%), 217.4 MBs/sec
+2026-09-23T00:49:20.0308941Z Received 426655695 of 426655695 (100.0%), 234.0 MBs/sec
+2026-09-23T00:49:20.0310202Z Cache Size: ~407 MB (426655695 B)
+2026-09-23T00:49:20.0437111Z [command]/usr/bin/tar -xf /home/runner/work/_temp/ba2809ff-2585-4cf3-9341-ecd7c7008a28/cache.tzst -P -C /home/runner/work/pm/pm --use-compress-program unzstd
+2026-09-23T00:49:23.5449471Z Cache restored successfully
+2026-09-23T00:49:23.7132633Z Cache restored from key: setup-go-Linux-ubuntu24-go-1.27.0-560ad56828d60cc3cb777b2b59da3dc927bb3cdf10e2ffc79f60aca92fad4c4b
+2026-09-23T00:49:23.7157028Z go version go1.27.0 linux/amd64
+2026-09-23T00:49:23.7157346Z 
+2026-09-23T00:49:23.7157805Z ##[group]go env
+2026-09-23T00:49:23.7321700Z AR='ar'
+2026-09-23T00:49:23.7322293Z CC='gcc'
+2026-09-23T00:49:23.7322839Z CGO_CFLAGS='-O2 -g'
+2026-09-23T00:49:23.7323431Z CGO_CPPFLAGS=''
+2026-09-23T00:49:23.7324011Z CGO_CXXFLAGS='-O2 -g'
+2026-09-23T00:49:23.7324594Z CGO_ENABLED='1'
+2026-09-23T00:49:23.7325152Z CGO_FFLAGS='-O2 -g'
+2026-09-23T00:49:23.7325730Z CGO_LDFLAGS='-O2 -g'
+2026-09-23T00:49:23.7326299Z CXX='g++'
+2026-09-23T00:49:23.7326864Z GCCGO='gccgo'
+2026-09-23T00:49:23.7327409Z GO111MODULE=''
+2026-09-23T00:49:23.7328323Z GOAMD64='v1'
+2026-09-23T00:49:23.7328874Z GOARCH='amd64'
+2026-09-23T00:49:23.7329606Z GOAUTH='netrc'
+2026-09-23T00:49:23.7330166Z GOBIN='/home/runner/go/bin'
+2026-09-23T00:49:23.7331112Z GOCACHE='/home/runner/.cache/go-build'
+2026-09-23T00:49:23.7331811Z GOCACHEPROG=''
+2026-09-23T00:49:23.7332343Z GODEBUG=''
+2026-09-23T00:49:23.7332908Z GOENV='/home/runner/.config/go/env'
+2026-09-23T00:49:23.7333532Z GOEXE=''
+2026-09-23T00:49:23.7334053Z GOEXPERIMENT=''
+2026-09-23T00:49:23.7334600Z GOFIPS140='off'
+2026-09-23T00:49:23.7335120Z GOFLAGS=''
+2026-09-23T00:49:23.7336495Z GOGCCFLAGS='-fPIC -m64 -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build1414683223=/tmp/go-build -gno-record-gcc-switches'
+2026-09-23T00:49:23.7337901Z GOHOSTARCH='amd64'
+2026-09-23T00:49:23.7338507Z GOHOSTOS='linux'
+2026-09-23T00:49:23.7339051Z GOINSECURE=''
+2026-09-23T00:49:23.7339885Z GOMOD='/home/runner/work/pm/pm/go.mod'
+2026-09-23T00:49:23.7340656Z GOMODCACHE='/home/runner/go/pkg/mod'
+2026-09-23T00:49:23.7341302Z GONOPROXY=''
+2026-09-23T00:49:23.7341829Z GONOSUMDB=''
+2026-09-23T00:49:23.7342347Z GOOS='linux'
+2026-09-23T00:49:23.7342881Z GOPACKAGESDRIVER=''
+2026-09-23T00:49:23.7343460Z GOPATH='/home/runner/go'
+2026-09-23T00:49:23.7344060Z GOPRIVATE=''
+2026-09-23T00:49:23.7344883Z GOPROXY='https://proxy.golang.org,direct'
+2026-09-23T00:49:23.7346011Z GOROOT='/opt/hostedtoolcache/go/1.27.0/x64'
+2026-09-23T00:49:23.7346863Z GOSUMDB='sum.golang.org'
+2026-09-23T00:49:23.7347551Z GOTELEMETRY='local'
+2026-09-23T00:49:23.7348299Z GOTELEMETRYDIR='/home/runner/.config/go/telemetry'
+2026-09-23T00:49:23.7349118Z GOTMPDIR=''
+2026-09-23T00:49:23.7350466Z GOTOOLCHAIN='auto'
+2026-09-23T00:49:23.7351263Z GOTOOLDIR='/opt/hostedtoolcache/go/1.27.0/x64/pkg/tool/linux_amd64'
+2026-09-23T00:49:23.7352178Z GOVCS=''
+2026-09-23T00:49:23.7352894Z GOVERSION='go1.27.0'
+2026-09-23T00:49:23.7353639Z GOWORK=''
+2026-09-23T00:49:23.7354406Z PKG_CONFIG='pkg-config'
+2026-09-23T00:49:23.7354898Z 
+2026-09-23T00:49:23.7355768Z ##[endgroup]
+2026-09-23T00:49:23.7609569Z ##[group]Run mkdir -p ~/.ssh
+2026-09-23T00:49:23.7610331Z [36;1mmkdir -p ~/.ssh[0m
+2026-09-23T00:49:23.7611063Z [36;1mssh-keyscan github.com >> ~/.ssh/known_hosts[0m
+2026-09-23T00:49:23.7611877Z [36;1mssh-agent -a $SSH_AUTH_SOCK > /dev/null[0m
+2026-09-23T00:49:23.7612906Z [36;1mssh-add - <<< "***[0m
+2026-09-23T00:49:23.7613896Z [36;1m***[0m
+2026-09-23T00:49:23.7614775Z [36;1m***[0m
+2026-09-23T00:49:23.7615613Z [36;1m***[0m
+2026-09-23T00:49:23.7616468Z [36;1m***[0m
+2026-09-23T00:49:23.7617307Z [36;1m***[0m
+2026-09-23T00:49:23.7618154Z [36;1m***[0m
+2026-09-23T00:49:23.7618972Z [36;1m***[0m
+2026-09-23T00:49:23.7620061Z [36;1m***[0m
+2026-09-23T00:49:23.7620913Z [36;1m***[0m
+2026-09-23T00:49:23.7621780Z [36;1m***[0m
+2026-09-23T00:49:23.7622722Z [36;1m***[0m
+2026-09-23T00:49:23.7623631Z [36;1m***[0m
+2026-09-23T00:49:23.7624456Z [36;1m***[0m
+2026-09-23T00:49:23.7625300Z [36;1m***[0m
+2026-09-23T00:49:23.7626090Z [36;1m***[0m
+2026-09-23T00:49:23.7626990Z [36;1m***[0m
+2026-09-23T00:49:23.7627840Z [36;1m***[0m
+2026-09-23T00:49:23.7628662Z [36;1m***[0m
+2026-09-23T00:49:23.7629678Z [36;1m***[0m
+2026-09-23T00:49:23.7630507Z [36;1m***[0m
+2026-09-23T00:49:23.7631352Z [36;1m***[0m
+2026-09-23T00:49:23.7632196Z [36;1m***[0m
+2026-09-23T00:49:23.7633027Z [36;1m***[0m
+2026-09-23T00:49:23.7633844Z [36;1m***[0m
+2026-09-23T00:49:23.7634674Z [36;1m***[0m
+2026-09-23T00:49:23.7635493Z [36;1m***[0m
+2026-09-23T00:49:23.7636337Z [36;1m***[0m
+2026-09-23T00:49:23.7637151Z [36;1m***[0m
+2026-09-23T00:49:23.7638006Z [36;1m***[0m
+2026-09-23T00:49:23.7638858Z [36;1m***[0m
+2026-09-23T00:49:23.7639891Z [36;1m***[0m
+2026-09-23T00:49:23.7640745Z [36;1m***[0m
+2026-09-23T00:49:23.7641585Z [36;1m***[0m
+2026-09-23T00:49:23.7642427Z [36;1m***[0m
+2026-09-23T00:49:23.7643243Z [36;1m***[0m
+2026-09-23T00:49:23.7643964Z [36;1m***[0m
+2026-09-23T00:49:23.7644537Z [36;1m***[0m
+2026-09-23T00:49:23.7645039Z [36;1m"[0m
+2026-09-23T00:49:23.7645665Z [36;1mecho "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> $GITHUB_ENV[0m
+2026-09-23T00:49:23.7971522Z shell: /usr/bin/bash -e {0}
+2026-09-23T00:49:23.7971945Z env:
+2026-09-23T00:49:23.7972282Z   SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+2026-09-23T00:49:23.7972705Z ##[endgroup]
+2026-09-23T00:49:24.9147707Z # github.com:22 SSH-2.0-af8ca74
+2026-09-23T00:49:24.9920882Z # github.com:22 SSH-2.0-af8ca74
+2026-09-23T00:49:25.0692632Z # github.com:22 SSH-2.0-af8ca74
+2026-09-23T00:49:25.1444600Z # github.com:22 SSH-2.0-af8ca74
+2026-09-23T00:49:25.1503284Z # github.com:22 SSH-2.0-af8ca74
+2026-09-23T00:49:25.1960655Z Identity added: (stdin) (rprtr258@nb-spb-a590)
+2026-09-23T00:49:25.2010004Z ##[group]Run git config --global url."ssh://git@github.com/".insteadOf https://github.com/
+2026-09-23T00:49:25.2010870Z [36;1mgit config --global url."ssh://git@github.com/".insteadOf https://github.com/[0m
+2026-09-23T00:49:25.2073807Z shell: /usr/bin/bash -e {0}
+2026-09-23T00:49:25.2074191Z env:
+2026-09-23T00:49:25.2074515Z   SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+2026-09-23T00:49:25.2074933Z ##[endgroup]
+2026-09-23T00:49:25.2259471Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-23T00:49:25.2274097Z ##[group]Run golangci/golangci-lint-action@v7
+2026-09-23T00:49:25.2274882Z with:
+2026-09-23T00:49:25.2275409Z   version: v2.5.0
+2026-09-23T00:49:25.2276019Z   args: --config=.golangci.yaml
+2026-09-23T00:49:25.2276674Z   only-new-issues: true
+2026-09-23T00:49:25.2277295Z   install-mode: binary
+2026-09-23T00:49:25.2282257Z   github-token: ***
+2026-09-23T00:49:25.2282855Z   verify: true
+2026-09-23T00:49:25.2283416Z   skip-cache: false
+2026-09-23T00:49:25.2284016Z   skip-save-cache: false
+2026-09-23T00:49:25.2284434Z   problem-matchers: false
+2026-09-23T00:49:25.2284826Z   cache-invalidation-interval: 7
+2026-09-23T00:49:25.2285208Z env:
+2026-09-23T00:49:25.2285581Z   SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+2026-09-23T00:49:25.2285983Z   GOPRIVATE: github.com/rprtr258
+2026-09-23T00:49:25.2286362Z ##[endgroup]
+2026-09-23T00:49:25.3658306Z ##[group]prepare environment
+2026-09-23T00:49:25.3663609Z Checking for go.mod: go.mod
+2026-09-23T00:49:25.3668695Z (node:2300) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-09-23T00:49:25.3670354Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-09-23T00:49:25.4501160Z Cache not found for input keys: golangci-lint.cache-Linux-2959-c524831f97887f97a2c17e7cc9efdc8b7f525a32, golangci-lint.cache-Linux-2959-
+2026-09-23T00:49:25.4512319Z Finding needed golangci-lint version...
+2026-09-23T00:49:25.4513331Z Installation mode: binary
+2026-09-23T00:49:25.4514270Z Installing golangci-lint binary v2.5.0...
+2026-09-23T00:49:25.4516076Z Downloading binary https://github.com/golangci/golangci-lint/releases/download/v2.5.0/golangci-lint-2.5.0-linux-amd64.tar.gz ...
+2026-09-23T00:49:25.7335680Z [command]/usr/bin/tar xz --overwrite --warning=no-unknown-keyword --overwrite -C /home/runner -f /home/runner/work/_temp/cc963489-f640-4339-9d92-84c05da83ec4
+2026-09-23T00:49:25.9743128Z Installed golangci-lint into /home/runner/golangci-lint-2.5.0-linux-amd64/golangci-lint in 528ms
+2026-09-23T00:49:26.3921247Z Writing patch to /tmp/tmp-2300-TEWIN4WGSheo/push.patch
+2026-09-23T00:49:26.3932650Z Prepared env in 1028ms
+2026-09-23T00:49:26.3933953Z ##[endgroup]
+2026-09-23T00:49:26.3935648Z ##[group]run golangci-lint
+2026-09-23T00:49:26.3941619Z only new issues on push: /tmp/tmp-2300-TEWIN4WGSheo/push.patch
+2026-09-23T00:49:26.3944035Z Running [/home/runner/golangci-lint-2.5.0-linux-amd64/golangci-lint config path --config=.golangci.yaml] in [/home/runner/work/pm/pm] ...
+2026-09-23T00:49:26.5111629Z Running [/home/runner/golangci-lint-2.5.0-linux-amd64/golangci-lint run --new-from-patch=/tmp/tmp-2300-TEWIN4WGSheo/push.patch --new=false --new-from-rev= --new-from-merge-base= --config=.golangci.yaml] in [/home/runner/work/pm/pm] ...
+2026-09-23T00:49:26.6241644Z Error: can't load config: the Go language version (go1.25) used to build golangci-lint is lower than the targeted Go version (1.27.0)
+2026-09-23T00:49:26.6243414Z The command is terminated due to an error: can't load config: the Go language version (go1.25) used to build golangci-lint is lower than the targeted Go version (1.27.0)
+2026-09-23T00:49:26.6244360Z 
+2026-09-23T00:49:26.6265461Z ##[error]golangci-lint exit with code 3
+2026-09-23T00:49:26.6272880Z Ran golangci-lint in 114ms
+2026-09-23T00:49:26.6273571Z ##[endgroup]
+2026-09-23T00:49:26.6477373Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-23T00:49:26.6478843Z Post job cleanup.
+2026-09-23T00:49:26.7887941Z (node:2343) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-09-23T00:49:26.7888957Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-09-23T00:49:26.8063912Z [warning] Path Validation Error: Path(s) specified in the action for caching do(es) not exist, hence no cache is being saved.
+2026-09-23T00:49:26.8222740Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+2026-09-23T00:49:26.8224286Z Post job cleanup.
+2026-09-23T00:49:26.8940931Z (node:2356) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-09-23T00:49:26.8942953Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-09-23T00:49:26.8979515Z [command]/usr/bin/git version
+2026-09-23T00:49:26.9028315Z git version 2.55.0
+2026-09-23T00:49:26.9046068Z Copying '/home/runner/.gitconfig' to '/home/runner/work/_temp/c393b399-0668-43af-9624-60ee7dba318c/.gitconfig'
+2026-09-23T00:49:26.9056524Z Temporarily overriding HOME='/home/runner/work/_temp/c393b399-0668-43af-9624-60ee7dba318c' before making global git config changes
+2026-09-23T00:49:26.9058149Z Adding repository directory to the temporary git global config as a safe directory
+2026-09-23T00:49:26.9061815Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/pm/pm
+2026-09-23T00:49:26.9104776Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-09-23T00:49:26.9137532Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-09-23T00:49:26.9359170Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-09-23T00:49:26.9383124Z http.https://github.com/.extraheader
+2026-09-23T00:49:26.9392382Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-09-23T00:49:26.9423416Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-09-23T00:49:26.9764993Z Cleaning up orphan processes
+2026-09-23T00:49:27.0047905Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v3, actions/setup-go@v4, golangci/golangci-lint-action@v7. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
