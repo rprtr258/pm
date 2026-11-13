@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/acarl005/stripansi"
 	key2 "github.com/charmbracelet/bubbles/key"
 	tea2 "github.com/charmbracelet/bubbletea"
 	"github.com/rprtr258/fun"
@@ -264,7 +263,7 @@ func (m *model) viewLogs(vb tea.Viewbox) {
 	for i, line := range fun.Subslice(max(0, len(logs)-max(vb.Height+m.logScroll, 1)), vb.Height, logs...) {
 		vbRow := vb.Row(i)
 
-		cleanLine := strings.ReplaceAll(stripansi.Strip(line.Line), "\r", "")
+		cleanLine := sanitizeLogLine(line.Line)
 		x0 := vbRow.
 			Styled(styles.Style{}.Foreground(styles.FgColor(fun.IF(
 				line.Type == core.LogTypeStdout,

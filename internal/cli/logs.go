@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -259,7 +260,7 @@ var _cmdLogs = func() *cobra.Command {
 					fmt.Println(
 						scuf.String(line.ProcName, colorByID(line.ProcID)),
 						strings.Repeat(" ", pad-len(line.ProcName)+1)+barColor,
-						scuf.String(line.Line, lineColor),
+						scuf.String(sanitizeLogLine(line.Line), lineColor),
 					)
 				}
 			}
@@ -322,4 +323,24 @@ func mergeLogs(
 		close(mergedLogsCh)
 	}()
 	return mergedLogsCh
+}
+
+// Child procs run attached to a tty, so their log files contain
+// terminal-control sequences (spinner redraws, cursor moves, mode toggles).
+// Replaying them corrupts the host tty — especially inside multiplexers like
+// zellij — so only color (SGR) sequences may survive.
+var (
+	_reCSI = regexp.MustCompile(`\x1b\[[\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e]`)
+	_reOSC = regexp.MustCompile(`\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)`)
+)
+
+func sanitizeLogLine(line string) string {
+	line = strings.ReplaceAll(line, "\r", "")
+	line = _reOSC.ReplaceAllString(line, "")
+	return _reCSI.ReplaceAllStringFunc(line, func(s string) string {
+		if s[len(s)-1] == 'm' {
+			return s
+		}
+		return ""
+	})
 }
