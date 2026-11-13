@@ -267,12 +267,3 @@ flowchart TB
     ├──<ID>.stdout # stdout of process with id ID
     └──<ID>.stderr # stderr of process with id ID
 ```
-
-### Release
-On `master` branch:
-
-```sh
-git tag v1.2.3
-git push --tags
-GITHUB_TOKEN=<token> goreleaser release --clean
-```
